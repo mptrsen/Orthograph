@@ -1,18 +1,37 @@
 #!/usr/bin/perl
+#--------------------------------------------------
+# FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs
+# Copyright 2011 Malte Petersen <mptrsen@uni-bonn.de>
+# 
+# Forage is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+# 
+# Foobar is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along with
+# Foobar. If not, see http://www.gnu.org/licenses/.
+#-------------------------------------------------- 
+
 use strict;   # make me write good code
 use warnings; # cry if something seems odd
+use Getopt::Long;
 
 # Forage: Find Orthologs using Reciprocity Among Genes and ESTs
+my $version = 0.00001;
+my $estfile = '';
 
-print "FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs\n";
-print "(c) 2011 Malte Petersen\n";
-print "version 0.00000001\n";
-print "\n";
-print "What HaMStR does:\n";
-print "\n";
-print "Step 0: hmmbuild the HMMs from the core orthologs\n";
-print "Step 1: translate the EST library to protein sequences somehow\n";
-print "Step 1: hmmsearch the ProtEST library using the HMM built in Step 0\n";
-print "Step 2: if obtained hits, re-blast them against a reference proteome\n";
-print "Step 3: if obtained hits, translate the EST to protein using genewise (?)\n";
-exit;
+GetOptions(	'estfile=s' => \$estfile,
+						'E=s'				=> \$estfile,
+);
+
+my $header = <<EOF;
+Forage: Find Orthologs using Reciprocity Among Genes and ESTs
+Copyright 2011 Malte Petersen <mptrsen\@uni-bonn.de>
+Version $version
+Using EST file $estfile
+EOF
+print $header;
