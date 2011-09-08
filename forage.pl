@@ -8,21 +8,25 @@
 # Foundation, either version 3 of the License, or (at your option) any later
 # version.
 # 
-# Foobar is distributed in the hope that it will be useful, but WITHOUT ANY
+# Forage is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 # A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License along with
-# Foobar. If not, see http://www.gnu.org/licenses/.
+# Forage. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
 
 use strict;   # make me write good code
 use warnings; # cry if something seems odd
 use Getopt::Long;
+use Bio::Perl;
+use Bio::SeqIO;
+use Bio::PrimarySeq;
 
 # Forage: Find Orthologs using Reciprocity Among Genes and ESTs
 my $version = 0.00001;
 my $estfile = '';
+my @seqobjs;
 
 GetOptions(	'estfile=s' => \$estfile,
 						'E=s'				=> \$estfile,
@@ -35,3 +39,23 @@ Version $version
 Using EST file $estfile
 EOF
 print $header;
+&translate($estfile);
+
+# Sub: translate
+# Translate a sequence into all six reading frames, print out everything
+# Expects: scalar string filename
+# Returns: -
+sub translate {
+	my ($infile) = @_;
+	my $estfileobj = Bio::SeqIO->new( '-file' => $infile, '-format' => 'fasta');
+	while (my $seqobj = $estfileobj->next_seq) {
+		my @sixframesobj = Bio::SeqUtils->translate_6frames($seqobj);
+		print '>', $seqobj->display_id, "\n";
+		print $seqobj->seq, "\n";
+		for(my $i=0; $i < @sixframesobj; ++$i) {
+			my $protseq = $sixframesobj[$i];
+			print '>', $protseq->display_id, "|frame_", $i+1, "\n";
+			print $protseq->seq, "\n";
+		}
+	}
+}
