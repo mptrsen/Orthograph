@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #--------------------------------------------------
-# FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs
+# This file is part of Forage.
 # Copyright 2011 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Forage is free software: you can redistribute it and/or modify it under the
@@ -48,14 +48,23 @@ print $header;
 sub translate {
 	my ($infile) = @_;
 	my $estfileobj = Bio::SeqIO->new( '-file' => $infile, '-format' => 'fasta');
+	my $protfileobj = Bio::SeqIO->new( '-file' => ">$infile.prot", '-format' => 'fasta');
+	
 	while (my $seqobj = $estfileobj->next_seq) {
 		my @sixframesobj = Bio::SeqUtils->translate_6frames($seqobj);
 		print '>', $seqobj->display_id, "\n";
 		print $seqobj->seq, "\n";
 		for(my $i=0; $i < @sixframesobj; ++$i) {
-			my $protseq = $sixframesobj[$i];
-			print '>', $protseq->display_id, "|frame_", $i+1, "\n";
-			print $protseq->seq, "\n";
+			
+			my $protname = $sixframesobj[$i]->display_id;
+			$protname =~ s/-(\d)R$/\|frame_$1R/;
+			$protname =~ s/-(\d)F$/\|frame_$1F/;
+			$sixframesobj[$i]->display_id($protname);
+			print '>', $sixframesobj[$i]->display_id, "\n";
+			print $sixframesobj[$i]->seq, "\n";
+			$protfileobj->write_seq($sixframesobj[$i]);
 		}
 	}
 }
+
+
