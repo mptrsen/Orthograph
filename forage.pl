@@ -29,6 +29,7 @@ use Bio::SeqIO;
 #-------------------------------------------------- 
 use lib './';
 use Forage::Item;
+use Genetic::Codes;
 
 #--------------------------------------------------
 # # Variable initialisation
@@ -39,6 +40,7 @@ my $outdir;
 my $estfile = '';
 my $hmmfile = '';
 my $hmmdir = '';
+my @hmmfiles;
 my $hmmsearchprog = 'hmmsearch';
 my @hmmsearchcmd;
 my $hmmfullout = 0;
@@ -49,7 +51,7 @@ my @eval_option = ();
 my $score_threshold;
 my @score_option = ();
 my @seqobjs;
-my @hmmfiles;
+my $translatecmd = 'fastatranslate';
 my $i;
 my $header = <<EOF;
 Forage: Find Orthologs using Reciprocity Among Genes and ESTs
@@ -80,8 +82,6 @@ GetOptions(	'v'					=> \$verbose,
 @hmmfiles = &hmmlist;
 
 print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMMs\n" 
-	if ($verbose and $hmmdir);
-print "Using HMM dir $hmmdir.\n"
 	if $hmmdir;
 print "Using HMM file $hmmfile.\n" 
 	if $hmmfile;
@@ -96,7 +96,7 @@ print "Score cutoff: $score_threshold.\n"
 # # translate the ESTs to protein
 #-------------------------------------------------- 
 print "Translating EST file to protein... ";
-my $protfile = &translate_est($estfile);
+my $protfile = &fastatranslate_est($estfile);
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
@@ -105,7 +105,7 @@ print "Hmmsearching the protein file using all HMMs... ";
 foreach my $hmmfile (@hmmfiles) {
 	++$i;
 	my $hmmresultref = &hmmsearch($hmmfile, $protfile, $outdir);
-	print $hmmresultref;
+	#print $hmmresultref;
 	#&gethmmscores($hmmresultfileref);
 }
 print "$i HMM files processed.\n";
@@ -176,10 +176,31 @@ sub hmmlist {#{{{
 	}
 }#}}}
 
+# Sub: fastatranslate_est
+# Translate a nucleotide fasta file to protein in all six reading frames
+# Expects: scalar string filename
+# Returns: scalar string filename (protfile)
+sub fastatranslate_est {#{{{
+	my ($infile) = @_;
+	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
+	if (-e $outfile) {
+		print "$outfile exists, using this one.\n";
+		return $outfile;
+	}
+	&backup_old_output_files($outfile);
+	my $translateline = $translatecmd . " " . $infile . ">$outfile";
+	print "Translating $infile, please wait...\t";
+	die "Fatal: Could not translate $infile: $!"
+		if system($translateline);
+	print "done!\n";
+	return $outfile;
+}#}}}
+
 # Sub: translate_est
 # Translate a sequence into all six reading frames, print out everything
 # Expects: scalar string filename
 # Returns: scalar string filename (protfile)
+# Candidate for deletion: terribly slow and uses BioPerl
 sub translate_est {#{{{
 	my ($infile) = @_;
 	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
@@ -269,6 +290,7 @@ sub backup_old_output_files {#{{{
 # Write sequence to output file
 # Arguments: reference to seq object, scalar string filename
 # Returns: True 
+# Candidate for deletion: Uses BioPerl and is only called in translate_est, which is also marked for deletion
 sub writeout {#{{{
 	my ($seqobj, $outfile) = @_;
 	my $outfileobj = Bio::SeqIO->new( '-file' => ">>$outfile", '-format' => 'fasta' );
