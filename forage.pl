@@ -20,10 +20,11 @@ use strict;   # make me write good code
 use warnings; # cry if something seems odd
 use Getopt::Long;
 use File::Path qw(mkpath);	# mkdir with parent dirs
+use Path::Class;	# easy handling of paths independent of OS
 use Tie::File;
 use lib './';
 use Forage::Item;
-use Genetic::Codes;
+#use Genetic::Codes;
 
 #--------------------------------------------------
 # # Variable initialisation
@@ -115,7 +116,7 @@ print "$i HMM files processed.\n";
 ###################################################
 
 # Sub: intro
-# Checks input etc.
+# Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
 sub intro {#{{{
 	die "Fatal: At least two arguments required: EST file (-E) and HMM file/dir (-H or -hmmdir)!\n"
@@ -124,7 +125,7 @@ sub intro {#{{{
 	die "Fatal: Can't use both e-value and score thresholds!\n"
 		if ($eval_threshold and $score_threshold);
 
-	$outdir = "out_$estfile";
+	($outdir = "out_$estfile") =~ s//$1/;
 
 
 	# build hmmsearch command line
@@ -154,9 +155,10 @@ sub intro {#{{{
 # Returns: array hmmfiles
 sub hmmlist {#{{{
 	if ($hmmdir) {
-		$hmmdir =~ s/\/+$//;
-		opendir(my $dir, $hmmdir) or die "Fatal: Could not open HMM dir: $!\n";
-		while (my $file = readdir $dir) {
+		my $dir = &Path::Class::dir($hmmdir);
+		my $dir_handle = $dir->open or die "Fatal: Could not open HMM dir: $!\n";
+		#opendir(my $dir, $hmmdir) or die "Fatal: Could not open HMM dir: $!\n";
+		while (my $file = readdir $dir_handle) {
 			push(@hmmfiles, "$hmmdir/$file") if ($file =~ /\.hmm$/);
 		}
 		closedir($dir);
@@ -184,7 +186,7 @@ sub fastatranslate_est {#{{{
 	&backup_old_output_files($outfile);
 	my $translateline = $translatecmd . " " . $infile . ">$outfile";
 	print "Translating $infile, please wait...\t";
-	die "Fatal: Could not translate $infile: $!"
+	die "Fatal: Could not translate $infile: $!\n"
 		if system($translateline);
 	print "done!\n";
 	return $outfile;

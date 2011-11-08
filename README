@@ -1,4 +1,11 @@
 FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs
 
+Requirements:
+----------------------------------------------------------------------------------
+HMMER3                        [http://hmmer.janelia.org/]
+exonerate                     [http://www.ebi.ac.uk/~guy/exonerate/]
+Path::Class                   from CPAN
+
+
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
