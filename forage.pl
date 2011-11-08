@@ -21,12 +21,6 @@ use warnings; # cry if something seems odd
 use Getopt::Long;
 use File::Path qw(mkpath);	# mkdir with parent dirs
 use Tie::File;
-use Bio::SeqIO;
-#--------------------------------------------------
-# use Bio::SeqIO::fasta;
-# use Bio::PrimarySeq;
-# use Bio::Tools::Run::Hmmer;
-#-------------------------------------------------- 
 use lib './';
 use Forage::Item;
 use Genetic::Codes;
@@ -196,48 +190,6 @@ sub fastatranslate_est {#{{{
 	return $outfile;
 }#}}}
 
-# Sub: translate_est
-# Translate a sequence into all six reading frames, print out everything
-# Expects: scalar string filename
-# Returns: scalar string filename (protfile)
-# Candidate for deletion: terribly slow and uses BioPerl
-sub translate_est {#{{{
-	my ($infile) = @_;
-	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
-	if (-e $outfile) {
-		print "$outfile exists, using this one.\n";
-		return $outfile;
-	}
-	&backup_old_output_files($outfile);
-	my $estfileobj = Bio::SeqIO->new( '-file' => $infile, '-format' => 'fasta');
-	my $protfileobj = Bio::SeqIO->new( '-file' => ">$outfile", '-format' => 'fasta');
-	
-	while (my $seqobj = $estfileobj->next_seq) {
-		my @sixframesobj = Bio::SeqUtils->translate_6frames($seqobj);
-		foreach my $frameobj (@sixframesobj) {
-		#for(my $i=0; $i < @sixframesobj; ++$i) {
-			my $protname = $frameobj->display_id;
-
-			# 1F to frame_1F
-			$protname =~ s/-(..)$/\|frame_$1/;
-			
-			$frameobj->display_id($protname);
-			#--------------------------------------------------
-			# Adapt the seq width to its length so we can have the 
-			# seqs in one line when writing to file (non-interleaved)
-			#-------------------------------------------------- 
-			#--------------------------------------------------
-			# $protfileobj->width($frameobj->length);
-			# $protfileobj->write_seq($frameobj);
-			#-------------------------------------------------- 
-			&writeout($frameobj, $outfile);
-		}
-		print 'Translated ', $seqobj->display_id, " in all six reading frames.\n";
-	}
-	print "Wrote everything to $outfile.\n";
-	return $outfile;
-}#}}}
-
 # Sub: hmmsearch
 # HMM search a sequence using HMM, leaving an outfile for later processing
 # Expects: reference to sequence object, scalar string filename to HMM
@@ -286,19 +238,6 @@ sub backup_old_output_files {#{{{
 		rename( $outfile, $outfile.$backup_ext ) or die "wah: could not rename $outfile during backup: $!\n";
 		print "backed up old file $outfile to ", $outfile.$backup_ext, "\n";
 	}
-}#}}}
-
-# Sub: writeout
-# Write sequence to output file
-# Arguments: reference to seq object, scalar string filename
-# Returns: True 
-# Candidate for deletion: Uses BioPerl and is only called in translate_est, which is also marked for deletion
-sub writeout {#{{{
-	my ($seqobj, $outfile) = @_;
-	my $outfileobj = Bio::SeqIO->new( '-file' => ">>$outfile", '-format' => 'fasta' );
-	$outfileobj->width($seqobj->length);
-	$outfileobj->write_seq($seqobj);
-	return 1;
 }#}}}
 
 # Sub: helpmessage
