@@ -1,11 +1,18 @@
 FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs
 
 Requirements:
-----------------------------------------------------------------------------------
-HMMER3                        [http://hmmer.janelia.org/]
-exonerate                     [http://www.ebi.ac.uk/~guy/exonerate/]
-Path::Class                   from CPAN
+-----------------------------------------------------------------------
+HMMER3                        [http://hmmer.janelia.org/] 
+exonerate                     [http://www.ebi.ac.uk/~guy/exonerate/] 
+Path::Class                   Perl module from CPAN
+
+If your Perl installation was not compiled with thread support, but you would
+like to use FORAGE with multithreading emulation on multiprocessor platforms,
+install the 'forks' module from CPAN. Alternatively, you can run FORAGE
+single-threadedly, of course. 
+
+At the moment, threads are not implemented anyway.
 
 
-Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany
-(c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
+Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany (c) 2011-2012 Malte
+Petersen <mptrsen@uni-bonn.de>

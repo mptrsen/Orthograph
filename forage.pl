@@ -18,6 +18,7 @@
 
 use strict;   # make me write good code
 use warnings; # cry if something seems odd
+use Config;		# allows checking for system configuration
 use Getopt::Long;
 use File::Path qw(mkpath);	# mkdir with parent dirs
 use Path::Class;	# easy handling of paths independent of OS
@@ -25,6 +26,23 @@ use Tie::File;
 use lib './';
 use Forage::Item;
 #use Genetic::Codes;
+
+my $emulate_threads = 0;
+GetOptions('t' => \$emulate_threads);
+
+#--------------------------------------------------
+# # only use threads if the system supports it
+#-------------------------------------------------- 
+if (Config{'useithreads'}) {
+	use threads;
+	my $use_threads = 1;
+}
+else {
+	if ($emulate_threads) {
+		use forks;
+		my $use_threads = 1;
+	}
+}
 
 #--------------------------------------------------
 # # Variable initialisation
