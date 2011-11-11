@@ -20,51 +20,51 @@ use strict;   # make me write good code
 use warnings; # cry if something seems odd
 use Config;		# allows checking for system configuration
 use Getopt::Long;
-use File::Path qw(mkpath);	# mkdir with parent dirs
+use File::Path qw(make_path);	# mkdir with parent dirs
+use File::Basename;	# parsing path names
 use Path::Class;	# easy handling of paths independent of OS
 use Tie::File;
-use lib './';
-use Forage::Item;
+(my $libdir = $0) =~ s/forage\.pl$//; 
+use lib qw($libdir);
+#use Forage::Item;
 #use Genetic::Codes;
-
-my $emulate_threads = 0;
-GetOptions('t' => \$emulate_threads);
 
 #--------------------------------------------------
 # # only use threads if the system supports it
 #-------------------------------------------------- 
-if (Config{'useithreads'}) {
+my $use_threads = 0;
+if ($Config{'useithreads'}) {
 	use threads;
-	my $use_threads = 1;
-}
-else {
-	if ($emulate_threads) {
-		use forks;
-		my $use_threads = 1;
-	}
+	$use_threads = 1;
 }
 
 #--------------------------------------------------
 # # Variable initialisation
 #-------------------------------------------------- 
 my $version = 0.00001;#{{{
-my $verbose = 0;
-my $outdir;
-my $estfile = '';
-my $hmmfile = '';
-my $hmmdir = '';
-my @hmmfiles;
+
+#--------------------------------------------------
+# # Programs
+#-------------------------------------------------- 
+my $translatecmd = 'fastatranslate';
 my $hmmsearchprog = 'hmmsearch';
-my @hmmsearchcmd;
+
+my $estfile = '';
+my $eval_threshold;
+my $hmmdir = '';
+my $hmmfile = '';
 my $hmmfullout = 0;
+my $hmmoutdir = $hmmsearchprog;
 my $hmmoutopt;
 my $hmmresultfileref;
-my $eval_threshold;
-my @eval_option = ();
+my $outdir;
 my $score_threshold;
+my $verbose = 0;
+my @eval_option = ();
+my @hmmfiles;
+my @hmmsearchcmd;
 my @score_option = ();
 my @seqobjs;
-my $translatecmd = 'fastatranslate';
 my $i;
 my $header = <<EOF;
 Forage: Find Orthologs using Reciprocity Among Genes and ESTs
@@ -73,15 +73,19 @@ Version $version
 
 EOF
 
+#--------------------------------------------------
+# # Get command line options
+#-------------------------------------------------- 
 GetOptions(	'v'					=> \$verbose,
-						'estfile=s' => \$estfile,
-						'E=s'				=> \$estfile,
-						'eval=s'		=> \$eval_threshold,
-						'score=s'		=> \$score_threshold,
-						'H=s'				=> \$hmmfile,
-						'hmmdir=s'	=> \$hmmdir,
-						'hmmsearchprog=s'	=> \$hmmsearchprog,
-						'hmmfullout'	=> \$hmmfullout,
+			'threads'			=> \$use_threads,		# make using threads optional
+			'estfile=s'			=> \$estfile,
+			'E=s'				=> \$estfile,
+			'eval=s'			=> \$eval_threshold,
+			'score=s'			=> \$score_threshold,
+			'H=s'				=> \$hmmfile,
+			'hmmdir=s'			=> \$hmmdir,
+			'hmmsearchprog=s'	=> \$hmmsearchprog,
+			'hmmfullout'		=> \$hmmfullout,
 );#}}}
 
 #--------------------------------------------------
@@ -109,7 +113,7 @@ print "Score cutoff: $score_threshold.\n"
 # # translate the ESTs to protein
 #-------------------------------------------------- 
 print "Translating EST file to protein... ";
-my $protfile = &fastatranslate_est($estfile);
+my $protfile = &translate_est(file($estfile));
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
@@ -117,7 +121,7 @@ my $protfile = &fastatranslate_est($estfile);
 print "Hmmsearching the protein file using all HMMs... ";
 foreach my $hmmfile (@hmmfiles) {
 	++$i;
-	my $hmmresultref = &hmmsearch($hmmfile, $protfile, $outdir);
+	my $hmmresultref = &hmmsearch($hmmfile, $protfile, $hmmoutdir);
 	#print $hmmresultref;
 	#&gethmmscores($hmmresultfileref);
 }
@@ -143,7 +147,8 @@ sub intro {#{{{
 	die "Fatal: Can't use both e-value and score thresholds!\n"
 		if ($eval_threshold and $score_threshold);
 
-	($outdir = "out_$estfile") =~ s//$1/;
+	$outdir = dir('out_'.basename($estfile));
+	$hmmoutdir = dir($outdir, $hmmsearchprog);
 
 
 	# build hmmsearch command line
@@ -165,7 +170,7 @@ sub intro {#{{{
 
 	print "EST file " and &doesexist($estfile);
 
-	print "HMMsearch output dir " and &createdir("$outdir/$hmmdir");
+	print "HMMsearch output dir " and &createdir($hmmoutdir);
 }#}}}
 
 # Sub: hmmlist
@@ -177,9 +182,9 @@ sub hmmlist {#{{{
 		my $dir_handle = $dir->open or die "Fatal: Could not open HMM dir: $!\n";
 		#opendir(my $dir, $hmmdir) or die "Fatal: Could not open HMM dir: $!\n";
 		while (my $file = readdir $dir_handle) {
-			push(@hmmfiles, "$hmmdir/$file") if ($file =~ /\.hmm$/);
+			push(@hmmfiles, file($dir, $file)) if ($file =~ /\.hmm$/);
 		}
-		closedir($dir);
+		closedir($dir_handle);
 		return sort @hmmfiles;
 	}
 	else {
@@ -190,11 +195,11 @@ sub hmmlist {#{{{
 	}
 }#}}}
 
-# Sub: fastatranslate_est
+# Sub: translate_est
 # Translate a nucleotide fasta file to protein in all six reading frames
 # Expects: scalar string filename
 # Returns: scalar string filename (protfile)
-sub fastatranslate_est {#{{{
+sub translate_est {#{{{
 	my ($infile) = @_;
 	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
 	if (-e $outfile) {
@@ -203,7 +208,7 @@ sub fastatranslate_est {#{{{
 	}
 	&backup_old_output_files($outfile);
 	my $translateline = $translatecmd . " " . $infile . ">$outfile";
-	print "Translating $infile, please wait...\t";
+	print "translating $infile, please wait...\t";
 	die "Fatal: Could not translate $infile: $!\n"
 		if system($translateline);
 	print "done!\n";
@@ -215,20 +220,21 @@ sub fastatranslate_est {#{{{
 # Expects: reference to sequence object, scalar string filename to HMM
 # Returns: scalar reference to hmmoutfile
 sub hmmsearch {#{{{
-	my ($hmmfile, $protfile, $outdir) = @_;
+	my ($hmmfile, $protfile, $hmmoutdir) = @_;
 	# full output if desired, table only otherwise; reflects in outfile extension
-	my $hmmoutfile = $hmmfullout ? $hmmfile.'.out' : $hmmfile.'.tbl';
+	my $hmmoutfile = $hmmfullout ? file($outdir, $hmmsearchprog, basename($hmmfile).'.out') : file($outdir, $hmmsearchprog, basename($hmmfile).'.tbl');
 	# e-value and score options if desired
-	if (-e "$outdir/$hmmoutfile") {
+	if (-e $hmmoutfile) {
 		print "hmmsearch result file $hmmoutfile already exists, skipping this HMM\n"
 			if $verbose;
 		return $hmmoutfile;
 	}
 	else {
-		print join " ", (@hmmsearchcmd, "$outdir/$hmmoutfile", $hmmfile, $protfile, "\n")
+		my @hmmsearchline = (@hmmsearchcmd, $hmmoutfile, $hmmfile, $protfile);
+		print join " ", @hmmsearchline, "\n"
 			if $verbose;
-		die "Fatal: hmmsearch failed on $protfile with HMM $hmmfile\n" 
-			if system(@hmmsearchcmd, "$outdir/$hmmoutfile", $hmmfile, $protfile);
+		die "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!\n" 
+			if system(@hmmsearchline);
 		return $hmmoutfile;
 	}
 }#}}}
@@ -283,8 +289,8 @@ sub createdir {#{{{
 			die "Warning: $dir exists, but is not a directory! This will most likely lead to problems later.\n";
 		}
 		else {
-			print "Creating $dir... ";
-			File::Path->make_path($dir) or die "Fatal: Could not create $dir: $!\n";
+			print "does not exist, creating $dir... ";
+			make_path $dir, { verbose => 0 } or die "Fatal: Could not create $dir: $!\n";
 			print "OK\n";
 			return 1;
 		}

@@ -6,6 +6,10 @@ HMMER3                        [http://hmmer.janelia.org/]
 exonerate                     [http://www.ebi.ac.uk/~guy/exonerate/] 
 Path::Class                   Perl module from CPAN
 
+The standard Perl modules File::Basename and File::Path (used for platform-
+independent path handling) should already be present in your Perl
+distribution. If not, you need to install them from CPAN as well.
+
 If your Perl installation was not compiled with thread support, but you would
 like to use FORAGE with multithreading emulation on multiprocessor platforms,
 install the 'forks' module from CPAN. Alternatively, you can run FORAGE
