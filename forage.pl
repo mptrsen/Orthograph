@@ -18,6 +18,7 @@
 
 use strict;   # make me write good code
 use warnings; # cry if something seems odd
+use Data::Dumper;
 use Config;		# allows checking for system configuration
 use Getopt::Long;
 use File::Path qw(make_path);	# mkdir with parent dirs
@@ -30,12 +31,24 @@ use lib qw($libdir);
 #use Genetic::Codes;
 
 #--------------------------------------------------
-# # only use threads if the system supports it
+# only use threads if the system supports it
+# the whole threads system is totally not implemented yet,
+#	do not attempt to use it!
 #-------------------------------------------------- 
+
 my $use_threads = 0;
-if ($Config{'useithreads'}) {
-	use threads;
-	$use_threads = 1;
+if ($use_threads == 1 and $Config{'useithreads'}) {
+	print "Using threads.\n";
+	use Forage::Threaded;
+}
+elsif ($use_threads == 1 and !$Config{'useithreads'}) {
+	die "Fatal: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n";
+}
+else {
+	print "Not using threads. ";
+	use Forage::Unthreaded;
+	print "Loaded Forage::Unthreaded.\n";
+	$use_threads = 0;
 }
 
 #--------------------------------------------------
@@ -52,6 +65,7 @@ my $hmmsearchprog = 'hmmsearch';
 my $estfile = '';
 my $eval_threshold;
 my $hmmdir = '';
+my $hmmervars;
 my $hmmfile = '';
 my $hmmfullout = 0;
 my $hmmoutdir = $hmmsearchprog;
@@ -65,6 +79,7 @@ my @hmmfiles;
 my @hmmsearchcmd;
 my @score_option = ();
 my @seqobjs;
+my $hitcount;
 my $i;
 my $header = <<EOF;
 Forage: Find Orthologs using Reciprocity Among Genes and ESTs
@@ -118,14 +133,54 @@ my $protfile = &translate_est(file($estfile));
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
 #-------------------------------------------------- 
-print "Hmmsearching the protein file using all HMMs... ";
+print "Hmmsearching the protein file using all HMMs in $hmmdir...\n";
+$i = 0;
+$hitcount = 0;
+
+#--------------------------------------------------
+# # Create HMMer variable package
+#-------------------------------------------------- 
+$hmmervars = {
+	'hmmfile'				=> \$hmmfile,
+	'protfile'			=> \$protfile,
+	'outdir'				=> \$outdir,
+	'hmmfullout'		=> \$hmmfullout,
+	'hmmsearchprog' => \$hmmsearchprog,
+	'hmmsearchcmd'	=> \@hmmsearchcmd,
+	'verbose'				=> \$verbose,
+};
+
 foreach my $hmmfile (@hmmfiles) {
 	++$i;
-	my $hmmresultref = &hmmsearch($hmmfile, $protfile, $hmmoutdir);
-	#print $hmmresultref;
-	#&gethmmscores($hmmresultfileref);
+	$hmmervars->{'hmmfile'} = \$hmmfile;
+	$hmmervars->{'protfile'} = \$protfile;
+	# create new hmmobject, has all the necessary info for doing hmmsearch
+	my $hmmobj = Forage::Unthreaded->new($hmmervars);	
+	# now do the hmmsearch
+	$hmmobj->hmmsearch($hmmervars);
+	# count the hmmsearch hits
+	$hmmobj->hmmer_hitcount;
+	unless ($hmmobj->{'hmmhits'}) {	# do not care further with HMM files that did not return any result
+		print "No hits detected\n";
+		next;
+	}
+	print $hmmobj->{'hmmhits'}, " hits detected\n" if $verbose;
+	++$hitcount;
+	
+	#--------------------------------------------------
+	# #TODO next:
+	#-------------------------------------------------- 
+	# find the hit seqs in the EST file and re-search them against the core ortholog db
+	# using either blast or hmmsearch [hmmsearch: don't we need profiles for that?]
+
+	#--------------------------------------------------
+	# # TODO then:
+	#-------------------------------------------------- 
+	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
 }
-print "$i HMM files processed.\n";
+printf "%d HMM files processed.\n", $i;
+print "Done!\n";
+exit;
 
 
 # parse the protfile
@@ -213,30 +268,6 @@ sub translate_est {#{{{
 		if system($translateline);
 	print "done!\n";
 	return $outfile;
-}#}}}
-
-# Sub: hmmsearch
-# HMM search a sequence using HMM, leaving an outfile for later processing
-# Expects: reference to sequence object, scalar string filename to HMM
-# Returns: scalar reference to hmmoutfile
-sub hmmsearch {#{{{
-	my ($hmmfile, $protfile, $hmmoutdir) = @_;
-	# full output if desired, table only otherwise; reflects in outfile extension
-	my $hmmoutfile = $hmmfullout ? file($outdir, $hmmsearchprog, basename($hmmfile).'.out') : file($outdir, $hmmsearchprog, basename($hmmfile).'.tbl');
-	# e-value and score options if desired
-	if (-e $hmmoutfile) {
-		print "hmmsearch result file $hmmoutfile already exists, skipping this HMM\n"
-			if $verbose;
-		return $hmmoutfile;
-	}
-	else {
-		my @hmmsearchline = (@hmmsearchcmd, $hmmoutfile, $hmmfile, $protfile);
-		print join " ", @hmmsearchline, "\n"
-			if $verbose;
-		die "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!\n" 
-			if system(@hmmsearchline);
-		return $hmmoutfile;
-	}
 }#}}}
 
 # Sub: gethmmscores
