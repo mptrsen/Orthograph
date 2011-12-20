@@ -4,7 +4,7 @@ Requirements:
 -----------------------------------------------------------------------
 HMMER3                        [http://hmmer.janelia.org/] 
 exonerate                     [http://www.ebi.ac.uk/~guy/exonerate/] 
-Path::Class                   Perl module from CPAN
+Path::Class                   Perl module from CPAN	#TODO replace with File::Spec
 
 The standard Perl modules File::Basename and File::Path (used for platform-
 independent path handling) should already be present in your Perl
@@ -18,5 +18,5 @@ single-threadedly, of course.
 At the moment, threads are not implemented anyway.
 
 
-Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany (c) 2011-2012 Malte
-Petersen <mptrsen@uni-bonn.de>
+Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
+(c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>

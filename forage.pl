@@ -21,9 +21,11 @@ use warnings; # cry if something seems odd
 use Data::Dumper;
 use Config;		# allows checking for system configuration
 use Getopt::Long;
-use File::Path qw(make_path);	# mkdir with parent dirs
+use Carp;		# alternative warn and die
+use File::Path qw(make_path);	# mkdir with parent dirs; this also uses File::Spec
 use File::Basename;	# parsing path names
-use Path::Class;	# easy handling of paths independent of OS
+use IO::File;	# object-oriented access to files
+use IO::Dir;	# object-oriented access to dirs
 use Tie::File;
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
@@ -65,7 +67,6 @@ my $hmmsearchprog = 'hmmsearch';
 my $estfile = '';
 my $eval_threshold;
 my $hmmdir = '';
-my $hmmervars;
 my $hmmfile = '';
 my $hmmfullout = 0;
 my $hmmoutdir = $hmmsearchprog;
@@ -91,16 +92,16 @@ EOF
 #--------------------------------------------------
 # # Get command line options
 #-------------------------------------------------- 
-GetOptions(	'v'					=> \$verbose,
-			'threads'			=> \$use_threads,		# make using threads optional
-			'estfile=s'			=> \$estfile,
-			'E=s'				=> \$estfile,
-			'eval=s'			=> \$eval_threshold,
-			'score=s'			=> \$score_threshold,
-			'H=s'				=> \$hmmfile,
-			'hmmdir=s'			=> \$hmmdir,
+GetOptions(	'v'         => \$verbose,
+			'threads'         => \$use_threads,		# make using threads optional
+			'estfile=s'       => \$estfile,
+			'E=s'             => \$estfile,
+			'eval=s'          => \$eval_threshold,
+			'score=s'         => \$score_threshold,
+			'H=s'             => \$hmmfile,
+			'hmmdir=s'        => \$hmmdir,
 			'hmmsearchprog=s'	=> \$hmmsearchprog,
-			'hmmfullout'		=> \$hmmfullout,
+			'hmmfullout'      => \$hmmfullout,
 );#}}}
 
 #--------------------------------------------------
@@ -128,7 +129,7 @@ print "Score cutoff: $score_threshold.\n"
 # # translate the ESTs to protein
 #-------------------------------------------------- 
 print "Translating EST file to protein... ";
-my $protfile = &translate_est(file($estfile));
+my $protfile = &translate_est(File::Spec->catfile($estfile));
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
@@ -138,33 +139,37 @@ $i = 0;
 $hitcount = 0;
 
 #--------------------------------------------------
-# # Create HMMer variable package
+# # Setup the Forage module
 #-------------------------------------------------- 
-$hmmervars = {
-	'hmmfile'				=> \$hmmfile,
-	'protfile'			=> \$protfile,
-	'outdir'				=> \$outdir,
-	'hmmfullout'		=> \$hmmfullout,
-	'hmmsearchprog' => \$hmmsearchprog,
-	'hmmsearchcmd'	=> \@hmmsearchcmd,
-	'verbose'				=> \$verbose,
-};
+
+# verbose output; this is a class method
+Forage::Unthreaded->verbose(1) if $verbose;
+
+# the output directory
+Forage::Unthreaded->hmmoutdir($hmmoutdir);
+
+# the hmmsearch program
+# Forage::Unthreaded->hmmsearchprog($hmmsearchprog);
+
+# the hmmsearch command
+Forage::Unthreaded->hmmsearchcmd(\@hmmsearchcmd);
+
+# whether or not we want full output
+Forage::Unthreaded->hmmfullout(0);
+
 
 foreach my $hmmfile (@hmmfiles) {
 	++$i;
-	$hmmervars->{'hmmfile'} = \$hmmfile;
-	$hmmervars->{'protfile'} = \$protfile;
-	# create new hmmobject, has all the necessary info for doing hmmsearch
-	my $hmmobj = Forage::Unthreaded->new($hmmervars);	
-	# now do the hmmsearch
-	$hmmobj->hmmsearch($hmmervars);
+	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
+	my $hmmobj = Forage::Unthreaded->new($hmmfile);	
+	# now do the hmmsearch on the protfile
+	$hmmobj->hmmsearch($protfile);
 	# count the hmmsearch hits
-	$hmmobj->hmmer_hitcount;
-	unless ($hmmobj->{'hmmhits'}) {	# do not care further with HMM files that did not return any result
-		print "No hits detected\n";
+	unless ($hmmobj->hmmer_hitcount()) {	# do not care further with HMM files that did not return any result
+		printf "%4d hits detected for %s\n", $hmmobj->hmmer_hitcount, basename($hmmobj->hmmfile) if $verbose;
 		next;
 	}
-	print $hmmobj->{'hmmhits'}, " hits detected\n" if $verbose;
+	printf "%4d hits detected for %s\n", $hmmobj->hmmer_hitcount, basename($hmmobj->hmmfile) if $verbose;
 	++$hitcount;
 	
 	#--------------------------------------------------
@@ -178,7 +183,7 @@ foreach my $hmmfile (@hmmfiles) {
 	#-------------------------------------------------- 
 	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
 }
-printf "%d HMM files processed.\n", $i;
+printf "%d hits total.   %d HMM files processed. \n", $hitcount, $i;
 print "Done!\n";
 exit;
 
@@ -202,9 +207,8 @@ sub intro {#{{{
 	die "Fatal: Can't use both e-value and score thresholds!\n"
 		if ($eval_threshold and $score_threshold);
 
-	$outdir = dir('out_'.basename($estfile));
-	$hmmoutdir = dir($outdir, $hmmsearchprog);
-
+	$outdir = File::Spec->catdir('out_'.basename($estfile, '.fa'));
+	$hmmoutdir = File::Spec->catdir($outdir, $hmmsearchprog);
 
 	# build hmmsearch command line
 	# full output only if desired, table otherwise
@@ -233,13 +237,11 @@ sub intro {#{{{
 # Returns: array hmmfiles
 sub hmmlist {#{{{
 	if ($hmmdir) {
-		my $dir = &Path::Class::dir($hmmdir);
-		my $dir_handle = $dir->open or die "Fatal: Could not open HMM dir: $!\n";
-		#opendir(my $dir, $hmmdir) or die "Fatal: Could not open HMM dir: $!\n";
-		while (my $file = readdir $dir_handle) {
-			push(@hmmfiles, file($dir, $file)) if ($file =~ /\.hmm$/);
+		my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
+		while (my $file = $dir->read) {
+			push(@hmmfiles, File::Spec->catfile($dir, $file)) if ($file =~ /\.hmm$/);
 		}
-		closedir($dir_handle);
+		$dir->close;
 		return sort @hmmfiles;
 	}
 	else {
