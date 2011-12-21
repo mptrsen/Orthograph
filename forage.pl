@@ -23,7 +23,7 @@ use Config;		# allows checking for system configuration
 use Getopt::Long;
 use File::Path qw(make_path);	# mkdir with parent dirs
 use File::Basename;	# parsing path names
-use Path::Class;	# easy handling of paths independent of OS
+use File::Spec;
 use Tie::File;
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
@@ -128,7 +128,8 @@ print "Score cutoff: $score_threshold.\n"
 # # translate the ESTs to protein
 #-------------------------------------------------- 
 print "Translating EST file to protein... ";
-my $protfile = &translate_est(file($estfile));
+my $protfile = &translate_est(File::Spec->catfile($estfile));
+tie(my @targets, 'Tie::File', $estfile) or die "Fatal: Could not tie to $estfile\: $!\n";
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
@@ -159,25 +160,31 @@ foreach my $hmmfile (@hmmfiles) {
 	# now do the hmmsearch
 	$hmmobj->hmmsearch($hmmervars);
 	# count the hmmsearch hits
-	$hmmobj->hmmer_hitcount;
-	unless ($hmmobj->{'hmmhits'}) {	# do not care further with HMM files that did not return any result
+	if ($hmmobj->hitcount == 0) {
 		print "No hits detected\n";
 		next;
 	}
-	print $hmmobj->{'hmmhits'}, " hits detected\n" if $verbose;
+	print 'Hits detected: ' . $hmmobj->hitcount . "\n" if $verbose;
+	foreach ($hmmobj->hits) {
+		print $_ . "\n";
+	}
 	++$hitcount;
 	
 	#--------------------------------------------------
-	# #TODO next:
+	# # TODO next:
 	#-------------------------------------------------- 
 	# find the hit seqs in the EST file and re-search them against the core ortholog db
 	# using either blast or hmmsearch [hmmsearch: don't we need profiles for that?]
+	# use a pre-prepared Tie::File array, faster for large files
+	# TODO do this the object-oriented way :P
+	print "found back in EST file: \n" if grep( $hmmobj->{'hmmhits'}, @targets );
 
 	#--------------------------------------------------
 	# # TODO then:
 	#-------------------------------------------------- 
 	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
 }
+
 printf "%d HMM files processed.\n", $i;
 print "Done!\n";
 exit;
@@ -202,8 +209,8 @@ sub intro {#{{{
 	die "Fatal: Can't use both e-value and score thresholds!\n"
 		if ($eval_threshold and $score_threshold);
 
-	$outdir = dir('out_'.basename($estfile));
-	$hmmoutdir = dir($outdir, $hmmsearchprog);
+	$outdir = File::Spec->catdir('out_'.basename($estfile));
+	$hmmoutdir = File::Spec->catdir($outdir, $hmmsearchprog);
 
 
 	# build hmmsearch command line
@@ -233,11 +240,11 @@ sub intro {#{{{
 # Returns: array hmmfiles
 sub hmmlist {#{{{
 	if ($hmmdir) {
-		my $dir = &Path::Class::dir($hmmdir);
-		my $dir_handle = $dir->open or die "Fatal: Could not open HMM dir: $!\n";
+		my $dir = File::Spec->catdir($hmmdir);
+		opendir(my $dir_handle, $dir) or die "Fatal: Could not open HMM dir: $!\n";
 		#opendir(my $dir, $hmmdir) or die "Fatal: Could not open HMM dir: $!\n";
 		while (my $file = readdir $dir_handle) {
-			push(@hmmfiles, file($dir, $file)) if ($file =~ /\.hmm$/);
+			push(@hmmfiles, File::Spec->catfile($dir, $file)) if ($file =~ /\.hmm$/);
 		}
 		closedir($dir_handle);
 		return sort @hmmfiles;

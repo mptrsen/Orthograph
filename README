@@ -4,7 +4,6 @@ Requirements:
 -----------------------------------------------------------------------
 HMMER3                        [http://hmmer.janelia.org/] 
 exonerate                     [http://www.ebi.ac.uk/~guy/exonerate/] 
-Path::Class                   Perl module from CPAN
 
 The standard Perl modules File::Basename and File::Path (used for platform-
 independent path handling) should already be present in your Perl
