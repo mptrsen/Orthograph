@@ -278,14 +278,6 @@ sub translate_est {#{{{
 # Returns: reference to result object
 sub gethmmscores {#{{{
 	my $hmmresultref = shift;
-	print "Tieing hmmresult file $hmmresultref to an array\n"
-		if $verbose;
-	tie(my @file, 'Tie::File', $hmmresultref) 
-		or die "Fatal: Could not open HMM result file: $!\n";
-	untie @file 
-		or die "Warning: Could not close HMM result file: $!\n";
-	print "$hmmresultref successfully untied\n"
-		if $verbose;
 }#}}}
 
 # sub: clean_up_old_output_files
