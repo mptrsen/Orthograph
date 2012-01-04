@@ -1,30 +1,9 @@
-#--------------------------------------------------
-# This file is part of Forage.
-# Copyright 2011 Malte Petersen <mptrsen@uni-bonn.de>
-# 
-# Forage is free software: you can redistribute it and/or modify it under the
-# terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or (at your option) any later
-# version.
-# 
-# Forage is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License along with
-# Forage. If not, see http://www.gnu.org/licenses/.
-#-------------------------------------------------- 
 package Forage::Unthreaded;
 use strict;
 use warnings;
-<<<<<<< HEAD
-use File::Basename;
-use File::Spec;
-=======
 use File::Basename;	# basename of files
 use IO::File;	# object-oriented access to files
 use Carp;	# extended dying functions
->>>>>>> a07f701a45cd85c003e75f258d4a96c5be684fca
 use Data::Dumper;
 my $verbose = 0;
 my $hmmoutdir = File::Spec->catdir('.');
@@ -100,26 +79,12 @@ sub hmmsearch {#{{{
 	my $protfile	= shift;
 	my $hmmfile		= $self->hmmfile;
 	# full output if desired, table only otherwise; reflects in outfile extension
-<<<<<<< HEAD
-	my $hmmoutfile = $hmmfullout ? File::Spec->catfile($$outdir, $$hmmsearchprog, basename($$hmmfile).'.out') : File::Spec->catfile($$outdir, $$hmmsearchprog, basename($$hmmfile).'.tbl');
-	# e-value and score options if desired
-	if (-e $hmmoutfile) {
-		$self->{'hmmresultfile'} = $hmmoutfile;
-		print "hmmsearch result file $hmmoutfile already exists, using this one\n"
-			if $$verbose;
-		open(my $fh, '<', $self->{'hmmresultfile'})
-			or die 'Fatal: Could not open hmmsearch result file ', $self->{'hmmresultfile'}, ': ', $!, "\n";
-		$self->{'hmmresult'} = [ <$fh> ];
-		close $fh;
-		splice( @{$self->{'hmmresult'}}, 0, 3 );	# remove first 3 lines since they are comments anyway
-=======
 	my $hmmoutfile = $hmmfullout ? 
 		File::Spec->catfile($hmmoutdir, basename($hmmfile).'.out') : 
 		File::Spec->catfile($hmmoutdir, basename($hmmfile).'.tbl');
 	# e-value and score options if desired
 	if (-e $hmmoutfile) {
 		$self->hmmresultfile($hmmoutfile);
->>>>>>> a07f701a45cd85c003e75f258d4a96c5be684fca
 		return $self;
 	}
 	else {
@@ -131,38 +96,17 @@ sub hmmsearch {#{{{
 			unless (scalar @$hmmresult);
 		# only save those results that actually match something
 		unless (grep( /No hits detected/, @$hmmresult )) {
-<<<<<<< HEAD
-			$self->{'hmmresult'} = $hmmresult;
-			splice( @{$self->{'hmmresult'}}, 0, 3 );	# remove first 3 lines since they are comments anyway
-=======
->>>>>>> a07f701a45cd85c003e75f258d4a96c5be684fca
 			$self->{'hmmresultfile'} = $hmmoutfile;
 			return $self;
 		}
 		# empty result
 		else {
-			$self->{'hmmresult'} = 0;
 			$self->{'hmmresultfile'} = $hmmoutfile;
 			return $self;
 		}
 	}
 }#}}}
 
-<<<<<<< HEAD
-sub hitcount {
-	my ($self, $hmmvars) = @_;
-	return scalar(@{$self->{'hmmresult'}}) ;	
-}
-
-sub hits {
-	my ($self, $hmmvars) = @_;
-	open(my $fh, '<', $self->{'hmmresultfile'})
-		or die 'Fatal: Could not open hmmsearch result file ', $self->{'hmmresultfile'}, ': ', $!, "\n";
-	$self->{'hmmresult'} = [ <$fh> ];
-	close $fh;
-	unless ($hmmvars->{'hmmfullout'}) {
-		$self->{'hmmhits'} = scalar(@{$self->{'hmmresult'}}) ;	# -3 because the first 3 lines of the table are comments
-=======
 sub hmmer_hitcount {
 	my $self = shift;
 	if ($self->{'hmmhits'}) { 
@@ -202,7 +146,6 @@ sub hmmresultfile {
 	if (scalar @_ == 1) {
 		$self->{'hmmresultfile'} = shift; 
 		return 1;
->>>>>>> a07f701a45cd85c003e75f258d4a96c5be684fca
 	}
 	return ${$self->{'hmmresultfile'}};
 }
