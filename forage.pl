@@ -61,10 +61,16 @@ my $version = 0.00001;#{{{
 #--------------------------------------------------
 # # Programs
 #-------------------------------------------------- 
-my $translatecmd = 'fastatranslate';
+my $translateprog = 'fastatranslate';
+my $indexprog = 'fastaindex';
 my $hmmsearchprog = 'hmmsearch';
 
+#--------------------------------------------------
+# # Other variables
+#-------------------------------------------------- 
 my $estfile = '';
+my $protfile = '';
+my $indexfile = '';
 my $eval_threshold;
 my $hmmdir = '';
 my $hmmfile = '';
@@ -126,10 +132,14 @@ print "Score cutoff: $score_threshold.\n"
 	if $score_threshold;
 
 #--------------------------------------------------
-# # translate the ESTs to protein
+# # translate the ESTs to protein, index 
 #-------------------------------------------------- 
-print "Translating EST file to protein... ";
-my $protfile = &translate_est(File::Spec->catfile($estfile));
+print "Translating $estfile in all six reading frames...\t";
+$protfile = &translate_est(File::Spec->catfile($estfile));
+print "\n";
+print "Indexing $estfile for fast access...\t";
+$indexfile = &index_est(File::Spec->catfile($protfile));
+print "\n";
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
@@ -165,11 +175,11 @@ foreach my $hmmfile (@hmmfiles) {
 	# now do the hmmsearch on the protfile
 	$hmmobj->hmmsearch($protfile);
 	# count the hmmsearch hits
-	unless ($hmmobj->hmmer_hitcount()) {	# do not care further with HMM files that did not return any result
-		printf "%4d hits detected for %s\n", $hmmobj->hmmer_hitcount, basename($hmmobj->hmmfile) if $verbose;
+	unless ($hmmobj->hmmhitcount()) {	# do not care further with HMM files that did not return any result
+		printf "%4d hits detected for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) if $verbose;
 		next;
 	}
-	printf "%4d hits detected for %s\n", $hmmobj->hmmer_hitcount, basename($hmmobj->hmmfile) if $verbose;
+	printf "%4d hits detected for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) if $verbose;
 	++$hitcount;
 	
 	#--------------------------------------------------
@@ -183,7 +193,8 @@ foreach my $hmmfile (@hmmfiles) {
 	#-------------------------------------------------- 
 	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
 }
-printf "%d hits total.   %d HMM files processed. \n", $hitcount, $i;
+
+printf "%d sequences hit.   %d HMM files processed. \n", $hitcount, $i;
 print "Done!\n";
 exit;
 
@@ -239,7 +250,7 @@ sub hmmlist {#{{{
 	if ($hmmdir) {
 		my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
 		while (my $file = $dir->read) {
-			push(@hmmfiles, File::Spec->catfile($dir, $file)) if ($file =~ /\.hmm$/);
+			push(@hmmfiles, File::Spec->catfile($hmmdir, $file)) if ($file =~ /\.hmm$/);
 		}
 		$dir->close;
 		return sort @hmmfiles;
@@ -260,16 +271,32 @@ sub translate_est {#{{{
 	my ($infile) = @_;
 	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
 	if (-e $outfile) {
-		print "$outfile exists, using this one.\n";
+		print "$outfile exists, using this one";
 		return $outfile;
 	}
 	&backup_old_output_files($outfile);
-	my $translateline = $translatecmd . " " . $infile . ">$outfile";
-	print "translating $infile, please wait...\t";
+	my $translateline = $translateprog . " " . $infile . ">$outfile";
 	die "Fatal: Could not translate $infile: $!\n"
 		if system($translateline);
-	print "done!\n";
+
 	return $outfile;
+}#}}}
+
+# Sub: index_est
+# index a fasta file for fast fetching of sequences using fastafetch
+# Expects: scalar string filename
+# Returns: scalar string filename (indexfile)
+sub index_est {#{{{
+	my ($infile) = shift;
+	(my $indexfile = $infile) =~ s/\.fa$/.idx/;
+	if (-e $indexfile) {
+		print "$indexfile exists, using this one.\n";
+		return $indexfile;
+	}
+	&backup_old_output_files($indexfile);
+	my @indexline = ($indexprog, '--index', $indexfile, '--fasta', $infile);
+	die "Fatal: Could not index $infile: $!\n"
+		if system(@indexline);
 }#}}}
 
 # Sub: gethmmscores
