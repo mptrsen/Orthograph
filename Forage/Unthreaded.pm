@@ -34,7 +34,7 @@ sub new {
 sub verbose {
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
-	unless (scalar @_ == 1) { confess "Usage: CLASSNAME->verbose(1|0)" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->verbose(1|0)" }
 	$verbose = shift;
 }
 
@@ -44,7 +44,7 @@ sub verbose {
 sub hmmoutdir {
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
-	unless (scalar @_ == 1) { confess "Usage: CLASSNAME->hmmoutdir(OUTDIR)" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmoutdir(OUTDIR)" }
 	$hmmoutdir = shift;
 }
 
@@ -54,14 +54,14 @@ sub hmmoutdir {
 sub hmmsearchcmd {
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
-	unless (scalar @_ == 1) { confess "Usage: CLASSNAME->hmmsearchcmd(COMMAND)" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmsearchcmd(COMMAND)" }
 	$hmmsearchcmd = shift;
 }
 
 sub hmmfullout {
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
-	unless (scalar @_ == 1) { confess "Usage: CLASSNAME->hmmfullout(1|0)" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmfullout(1|0)" }
 	$hmmfullout = shift;
 }
 
@@ -91,6 +91,7 @@ sub hmmsearch {#{{{
 		my @hmmsearchline = (@$hmmsearchcmd, $hmmoutfile, $hmmfile, $protfile);
 		print join " ", @hmmsearchline, "\n"
 			if $verbose;
+		# do the search
 		my $hmmresult = [ `@hmmsearchline` ];
 		confess "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!\n" 
 			unless (scalar @$hmmresult);
@@ -107,25 +108,40 @@ sub hmmsearch {#{{{
 	}
 }#}}}
 
-sub hmmer_hitcount {
+# sub: hmmhitcount
+# extracts the number of hits from a hmm search result file
+# returns: int number of hmm hits
+sub hmmhitcount {
 	my $self = shift;
 	if ($self->{'hmmhits'}) { 
 		return $self->{'hmmhits'};
+	}
+	if ($self->{'hmmresult'}) {
+		unless ($hmmfullout) {
+			$self->{'hmmhits'} = scalar(@{$self->{'hmmresult'}}) - 3;	# -3 because the first 3 lines of the table are comments
+			return $self->{'hmmhits'};
+		}
+		croak "THIS NEEDS TO BE IMPLEMENTED, CAN'T WORK WITH FULL HMMSEARCH OUTPUT YET\n";
+	}
+	unless ($hmmfullout) {
+		$self->{'hmmhits'} = scalar(@{$self->hmmresult}) - 3;	# -3 because the first 3 lines of the table are comments
+		return $self->{'hmmhits'};
+	}
+}
+
+# sub: hmmresult
+# returns: the hmmsearch result as it is in the result file, sans the first 3 lines of the table (comments)
+sub hmmresult {
+	my $self = shift;
+	if ($self->{'hmmresult'}) {
+		return $self->{'hmmresult'};
 	}
 	my $fh = IO::File->new();
 	$fh->open($self->{'hmmresultfile'})
 		or croak 'Fatal: Could not open hmmsearch result file ', $self->{'hmmresultfile'}, ': ', $!, "\n";
 	$self->{'hmmresult'} = [ <$fh> ];
 	$fh->close;
-
-	unless ($hmmfullout) {
-		$self->{'hmmhits'} = scalar(@{$self->{'hmmresult'}}) - 3;	# -3 because the first 3 lines of the table are comments
-		return $self->{'hmmhits'};
-	}
-	#--------------------------------------------------
-	# $self->{'hmmhits'} = scalar(@{$self->{'hmmresult'}}) - 3;	# -3 because the first 3 lines of the table are comments
-	# return $self->{'hmmhits'};
-	#-------------------------------------------------- 
+	return $self->{'hmmresult'};
 }
 
 # hmm file used for searching
