@@ -29,15 +29,12 @@ use IO::Dir;	# object-oriented access to dirs
 use Tie::File;
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
-#use Forage::Item;
-#use Genetic::Codes;
 
 #--------------------------------------------------
 # Only use threads if the system supports it.
 # The whole threads system is totally not implemented yet,
 #	do not attempt to use it!
 #-------------------------------------------------- 
-
 my $use_threads = 0;
 if ($use_threads == 1 and $Config{'useithreads'}) {
 	print "Using threads.\n";
@@ -56,14 +53,21 @@ else {
 #--------------------------------------------------
 # # Variable initialisation
 #-------------------------------------------------- 
-my $version = 0.00001;#{{{
+my $version = 0.00001;
+my $config;                       # will hold the configuration from config file
+
+#--------------------------------------------------
+# # Parse config file
+#-------------------------------------------------- 
+(my $configfile = $0) =~ s/(\.pl)?$/.conf/;
+$config = &parse_config($configfile);
 
 #--------------------------------------------------
 # # Programs
 #-------------------------------------------------- 
-my $translateprog = '/home/mpetersen/src/exonerate-2.2.0/src/util/fastatranslate';
-my $indexprog = 'fastaindex';
-my $hmmsearchprog = 'hmmsearch';
+my $translateprog = $config->{'translateprog'} ? $config->{'translateprog'} : 'fastatranslate';
+my $indexprog     = $config->{'fastaindex'}    ? $config->{'fastaindex'}    : 'fastaindex';
+my $hmmsearchprog = $config->{'hmmsearchprog'} ? $config->{'hmmsearchprog'} : 'hmmsearch';
 
 #--------------------------------------------------
 # # Other variables
@@ -79,6 +83,14 @@ my $hmmfullout = 0;
 my $hmmoutdir = $hmmsearchprog;
 my $hmmoutopt;
 my $hmmresultfileref;
+my $mysql_dbname      = $config->{'mysql_dbname'}   ? $config->{'mysql_dbname'}   : 'forage';
+my $mysql_dbserver    = $config->{'mysql_dbserver'} ? $config->{'mysql_dbserver'} : 'localhost';
+my $mysql_dbuser      = $config->{'mysql_dbuser'}   ? $config->{'mysql_dbuser'}   : 'root';
+my $mysql_dbpwd       = $config->{'mysql_dbpwd'}    ? $config->{'mysql_dbpwd'}    : 'root';
+my $mysql_table       = $config->{'mysql_table'}    ? $config->{'mysql_table'}    : 'ests';
+my $mysql_id_col      = $config->{'mysql_id_col'}   ? $config->{'mysql_id_col'}   : 'id';
+my $mysql_hdr_col     = $config->{'mysql_hdr_col'}  ? $config->{'mysql_hdr_col'}  : 'hdr';
+my $mysql_seq_col     = $config->{'mysql_seq_col'}  ? $config->{'mysql_seq_col'}  : 'seq';
 my $outdir;
 my $score_threshold;
 my $verbose = 0;
@@ -109,8 +121,12 @@ GetOptions(	'v'         => \$verbose,
 			'hmmdir=s'        => \$hmmdir,
 			'hmmsearchprog=s'	=> \$hmmsearchprog,
 			'hmmfullout'      => \$hmmfullout,
-);#}}}
+);
 
+while (my @pair = each(%$config)) {
+	print join("\t", @pair) . "\n";
+}
+exit;
 #--------------------------------------------------
 # # Input error checking, reporting etc
 #-------------------------------------------------- 
@@ -171,7 +187,7 @@ Forage::Unthreaded->hmmsearchcmd(\@hmmsearchcmd);
 Forage::Unthreaded->hmmfullout(0);
 
 #--------------------------------------------------
-# # Do the pHMM search
+# # Do the pHMM search - this may be pipelined in the future
 #-------------------------------------------------- 
 
 foreach my $hmmfile (@hmmfiles) {
@@ -205,14 +221,39 @@ print "Done!\n";
 exit;
 
 
-# parse the protfile
-#--------------------------------------------------
-# &parse_protfile($protfile, @hmmfiles);
-#-------------------------------------------------- 
-
 ###################################################
 # # Functions follow
 ###################################################
+
+# Sub: parse_config
+# Parse a simple, ini-style config file where keys are separated from values by '='.
+# E.g.
+# outputdir = /home/foo/bar
+# translateprog=/usr/bin/translate
+sub parse_config {#{{{
+	my $file = shift;
+	my $conf = { };
+	open(my $fh, '<', $file) or die "Fatal: Could not open config file $file\: $!\n";
+
+	while (my $line = <$fh>) {
+		next if $line =~ /^\s*$/;	# skip empty lines
+		next if $line =~ /^\s*#/;	# skip comment lines starting with '#'
+		
+		# split by '=' producing a maximum of two items
+		my ($key, $val) = split('=', $line, 2);
+
+		foreach ($key, $val) {
+			s/\s+$//;	# remove all trailing whitespace
+			s/^\s+//;	# remove all leading whitespace
+		}
+
+		die "Fatal: Configuration option '$key' defined twice in line $. of config file $file\n"
+			if defined $conf->{$key};
+		$conf->{$key} = $val;
+	}
+	close($fh);
+	return $conf;
+}#}}}
 
 # Sub: intro
 # Checks input, file/dir presence, etc.

@@ -10,9 +10,9 @@ HMMer3                       http://hmmer.janelia.org
 Exonerate                    http://www.ebi.ac.uk/~guy/exonerate/ 
 MySQL                        http://www.mysql.com
 
-The standard Perl modules File::Spec, File::Basename and File::Path (used for
+The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and IO::Dir (used for
 platform-independent path handling) as well as DBI and DBD::Mysql for database
-handling should already be present in your Perl distribution. Update your Perl
+handling should be present in your Perl distribution. Update your Perl
 installation if not.
 
 If your Perl installation was not compiled with thread support, but you would

@@ -154,6 +154,7 @@ sub hmmresult {
 	my $fh = IO::File->new($self->{'hmmresultfile'});
 	$self->{'hmmresult'} = [ <$fh> ];
 	$fh->close;
+	splice(@{$self->{'hmmresult'}}, 0, 3);
 	return $self->{'hmmresult'};
 }
 
