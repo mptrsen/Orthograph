@@ -4,7 +4,6 @@ use warnings;
 use File::Basename;	# basename of files
 use IO::File;	# object-oriented access to files
 use Carp;	# extended dying functions
-use Data::Dumper;
 my $verbose = 0;
 my $hmmoutdir = File::Spec->catdir('.');
 my $hmmsearchprog = 'hmmsearch';

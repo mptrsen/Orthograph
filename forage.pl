@@ -85,7 +85,7 @@ my @eval_option = ();
 my @hmmfiles;
 my @hmmsearchcmd;
 my @score_option = ();
-my @seqobjs;
+my @ests;
 my $hitcount;
 my $i;
 my $header = <<EOF;
@@ -137,9 +137,11 @@ print "Score cutoff: $score_threshold.\n"
 print "Translating $estfile in all six reading frames...\t";
 $protfile = &translate_est(File::Spec->catfile($estfile));
 print "\n";
-print "Indexing $estfile for fast access...\t";
-$indexfile = &index_est(File::Spec->catfile($protfile));
-print "\n";
+#--------------------------------------------------
+# print "Indexing $estfile for fast access...\t";
+# $indexfile = &index_est(File::Spec->catfile($protfile));
+# print "\n";
+#-------------------------------------------------- 
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
@@ -176,10 +178,10 @@ foreach my $hmmfile (@hmmfiles) {
 	$hmmobj->hmmsearch($protfile);
 	# count the hmmsearch hits
 	unless ($hmmobj->hmmhitcount()) {	# do not care further with HMM files that did not return any result
-		printf "%4d hits detected for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) if $verbose;
+		printf "%4d candidates for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) if $verbose;
 		next;
 	}
-	printf "%4d hits detected for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) if $verbose;
+	printf "%4d candidates for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) if $verbose;
 	++$hitcount;
 	
 	#--------------------------------------------------
@@ -187,6 +189,14 @@ foreach my $hmmfile (@hmmfiles) {
 	#-------------------------------------------------- 
 	# find the hit seqs in the EST file and re-search them against the core ortholog db
 	# using either blast or hmmsearch [hmmsearch: don't we need profiles for that?]
+	# Read in the entire translated file? This means 40 MB and up, the largest is
+	# 80 MB in size.
+	my $estfh = IO::File->new($protfile);
+	if (defined $estfh) {
+		@ests = <$estfh>;
+	}
+	undef $estfh;
+
 
 	#--------------------------------------------------
 	# # TODO then:
@@ -194,7 +204,7 @@ foreach my $hmmfile (@hmmfiles) {
 	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
 }
 
-printf "%d sequences hit.   %d HMM files processed. \n", $hitcount, $i;
+printf "%d hmms hit.   %d HMM files processed. \n", $hitcount, $i;
 print "Done!\n";
 exit;
 
