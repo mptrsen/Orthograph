@@ -33,8 +33,8 @@ use lib qw($libdir);
 #use Genetic::Codes;
 
 #--------------------------------------------------
-# only use threads if the system supports it
-# the whole threads system is totally not implemented yet,
+# Only use threads if the system supports it.
+# The whole threads system is totally not implemented yet,
 #	do not attempt to use it!
 #-------------------------------------------------- 
 
@@ -61,7 +61,7 @@ my $version = 0.00001;#{{{
 #--------------------------------------------------
 # # Programs
 #-------------------------------------------------- 
-my $translateprog = 'fastatranslate';
+my $translateprog = '/home/mpetersen/src/exonerate-2.2.0/src/util/fastatranslate';
 my $indexprog = 'fastaindex';
 my $hmmsearchprog = 'hmmsearch';
 
@@ -71,6 +71,7 @@ my $hmmsearchprog = 'hmmsearch';
 my $estfile = '';
 my $protfile = '';
 my $indexfile = '';
+my $backup_ext = '.bak';
 my $eval_threshold;
 my $hmmdir = '';
 my $hmmfile = '';
@@ -137,9 +138,11 @@ print "Score cutoff: $score_threshold.\n"
 print "Translating $estfile in all six reading frames...\t";
 $protfile = &translate_est(File::Spec->catfile($estfile));
 print "\n";
-print "Indexing $estfile for fast access...\t";
-$indexfile = &index_est(File::Spec->catfile($protfile));
-print "\n";
+#--------------------------------------------------
+# print "Indexing $estfile for fast access...\t";
+# $indexfile = &index_est(File::Spec->catfile($protfile));
+# print "\n";
+#-------------------------------------------------- 
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
@@ -167,6 +170,9 @@ Forage::Unthreaded->hmmsearchcmd(\@hmmsearchcmd);
 # whether or not we want full output
 Forage::Unthreaded->hmmfullout(0);
 
+#--------------------------------------------------
+# # Do the pHMM search
+#-------------------------------------------------- 
 
 foreach my $hmmfile (@hmmfiles) {
 	++$i;
@@ -194,7 +200,7 @@ foreach my $hmmfile (@hmmfiles) {
 	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
 }
 
-printf "%d sequences hit.   %d HMM files processed. \n", $hitcount, $i;
+printf "%d HMMs hit something.   %d HMM files processed. \n", $hitcount, $i;
 print "Done!\n";
 exit;
 
@@ -268,7 +274,7 @@ sub hmmlist {#{{{
 # Expects: scalar string filename
 # Returns: scalar string filename (protfile)
 sub translate_est {#{{{
-	my ($infile) = @_;
+	my ($infile) = shift;
 	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
 	if (-e $outfile) {
 		print "$outfile exists, using this one";
@@ -311,7 +317,6 @@ sub gethmmscores {#{{{
 # input: reference to list of relevant contigs
 sub backup_old_output_files {#{{{
 	my ($outfile) = shift @_;
-	my $backup_ext = '.bak';
 	if (-e $outfile) {
 		rename( $outfile, $outfile.$backup_ext ) or die "wah: could not rename $outfile during backup: $!\n";
 		print "backed up old file $outfile to ", $outfile.$backup_ext, "\n";

@@ -20,7 +20,6 @@ use warnings;
 use File::Basename;	# basename of files
 use IO::File;	# object-oriented access to files
 use Carp;	# extended dying functions
-use Data::Dumper;
 my $verbose = 0;
 my $hmmoutdir = File::Spec->catdir('.');
 my $hmmsearchprog = 'hmmsearch';
@@ -152,9 +151,7 @@ sub hmmresult {
 	if ($self->{'hmmresult'}) {
 		return $self->{'hmmresult'};
 	}
-	my $fh = IO::File->new();
-	$fh->open($self->{'hmmresultfile'})
-		or croak 'Fatal: Could not open hmmsearch result file ', $self->{'hmmresultfile'}, ': ', $!, "\n";
+	my $fh = IO::File->new($self->{'hmmresultfile'});
 	$self->{'hmmresult'} = [ <$fh> ];
 	$fh->close;
 	return $self->{'hmmresult'};
