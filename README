@@ -10,10 +10,10 @@ HMMer3                       http://hmmer.janelia.org
 Exonerate                    http://www.ebi.ac.uk/~guy/exonerate/ 
 MySQL                        http://www.mysql.com
 
-The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and IO::Dir (used for
-platform-independent path handling) as well as DBI and DBD::Mysql for database
-handling should be present in your Perl distribution. Update your Perl
-installation if not.
+The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
+IO::Dir (used for platform-independent path handling) as well as DBI and
+DBD::Mysql for database handling should be present in your Perl distribution.
+Update your Perl installation if not.
 
 If your Perl installation was not compiled with thread support, but you would
 like to use FORAGE with multithreading emulation on multiprocessor platforms,
@@ -22,6 +22,9 @@ run FORAGE single-threadedly, of course.
 
 At the moment, threads are not implemented anyway.
 
+INVOCATION
+
+Forage allows parsing a config file, which by default is named 'forage.conf'.
 
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>

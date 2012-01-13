@@ -27,8 +27,18 @@ use File::Basename;	# parsing path names
 use IO::File;	# object-oriented access to files
 use IO::Dir;	# object-oriented access to dirs
 use Tie::File;
+use Seqload::Fasta;	# object-oriented access to fasta files
+use Seqload::Mysql;	# object-oriented access to fasta-style MySQL databases
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
+
+my $version = 0.00002;
+print <<EOF;
+Forage: Find Orthologs using Reciprocity Among Genes and ESTs
+Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>
+Version $version
+
+EOF
 
 #--------------------------------------------------
 # Only use threads if the system supports it.
@@ -53,15 +63,8 @@ else {
 #--------------------------------------------------
 # # Variable initialisation
 #-------------------------------------------------- 
-my $version = 0.00002;
 my $config;                       # will hold the configuration from config file
 
-print <<EOF;
-Forage: Find Orthologs using Reciprocity Among Genes and ESTs
-Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>
-Version $version
-
-EOF
 #--------------------------------------------------
 # # Parse config file
 #-------------------------------------------------- 
@@ -87,30 +90,37 @@ my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_progra
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
-my $backup_ext     = $config->{'backup_extension'} ? $config->{'backup_extension'} : '.bak';#{{{
-my $estfile        = $config->{'estfile'}          ? $config->{'estfile'}          : '';
-my $eval_threshold = $config->{'eval_threshold'}   ? $config->{'eval_threshold'}   : undef;
-my $hmmdir         = $config->{'hmmdir'}           ? $config->{'hmmdir'}           : '';
-my $hmmfile        = $config->{'hmmfile'}          ? $config->{'hmmfile'}          : '';
-my $hmmoutdir      = $config->{'hmm_output_dir'}   ? $config->{'hmm_output_dir'}   : $hmmsearchprog;
-my $mysql_dbname   = $config->{'mysql_dbname'}     ? $config->{'mysql_dbname'}     : 'forage';
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'} ? $config->{'mysql_dbpassword'} : 'root';
-my $mysql_dbserver = $config->{'mysql_dbserver'}   ? $config->{'mysql_dbserver'}   : 'localhost';
-my $mysql_dbuser   = $config->{'mysql_dbuser'}     ? $config->{'mysql_dbuser'}     : 'root';
-my $mysql_hdr_col  = $config->{'mysql_header_column'} ? $config->{'mysql_header_column'}    : 'hdr';
-my $mysql_id_col   = $config->{'mysql_id_column'}  ? $config->{'mysql_id_column'}     : 'id';
-my $mysql_seq_col  = $config->{'mysql_sequence_column'} ? $config->{'mysql_sequence_column'}    : 'seq';
-my $mysql_table    = $config->{'mysql_table'}      ? $config->{'mysql_table'}      : 'ests';
-my $outdir         = $config->{'output_dir'}       ? $config->{'output_dir'}       : undef;#}}}
+my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';#{{{
+my $estfile        = $config->{'estfile'}               ? $config->{'estfile'}              : '';
+my $eval_threshold = $config->{'eval_threshold'}        ? $config->{'eval_threshold'}       : undef;
+my $hmmdir         = $config->{'hmmdir'}                ? $config->{'hmmdir'}               : '';
+my $hmmfile        = $config->{'hmmfile'}               ? $config->{'hmmfile'}              : '';
+my $hmmoutdir      = $config->{'hmmsearch_output_dir'}  ? $config->{'hmmsearch_output_dir'} : $hmmsearchprog;
+my $mysql_dbname   = $config->{'mysql_dbname'}          ? $config->{'mysql_dbname'}         : 'forage';
+my $mysql_dbpwd    = $config->{'mysql_dbpassword'}      ? $config->{'mysql_dbpassword'}     : 'root';
+my $mysql_dbserver = $config->{'mysql_dbserver'}        ? $config->{'mysql_dbserver'}       : 'localhost';
+my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
+my $mysql_date_col = $config->{'mysql_date_column'}     ? $config->{'mysql_date_column'}    : 'date';
+my $mysql_hdr_col  = $config->{'mysql_header_column'}   ? $config->{'mysql_header_column'}  : 'hdr';
+my $mysql_id_col   = $config->{'mysql_id_column'}       ? $config->{'mysql_id_column'}      : 'id';
+my $mysql_seq_col  = $config->{'mysql_sequence_column'} ? $config->{'mysql_sequence_column'} : 'seq';
+my $mysql_spec_col  = $config->{'mysql_species_column'} ? $config->{'mysql_species_column'} : 'spec';
+my $mysql_table    = $config->{'mysql_table'}           ? $config->{'mysql_table'}          : 'ests';
+my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
+my $score_threshold = $config->{'score_threshold'}      ? $config->{'score_threshold'}      : undef;
+my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
+#}}}
 
 #--------------------------------------------------
 # # More variables
 #-------------------------------------------------- 
+my $count          = 0;
 my $hmmresultfileref;#{{{
 my $hmmfullout     = 0;
 my $hitcount;
+my $preparedb;
 my $protfile       = '';
-my $score_threshold;
+my $timestamp      = time();
 my $verbose        = 0;
 my @eval_option;
 my @hmmfiles;
@@ -133,8 +143,15 @@ GetOptions(	'v'         => \$verbose,#{{{
 			'hmmdir=s'        => \$hmmdir,
 			'hmmsearchprog=s'	=> \$hmmsearchprog,
 			'hmmfullout'      => \$hmmfullout,
+			'preparedb'       => \$preparedb,
 );#}}}
 
+if ($preparedb) {
+	$| = 1;
+	&preparedb;
+	print "done!\n";
+	exit;
+}
 #--------------------------------------------------
 # # Input error checking, reporting etc
 #-------------------------------------------------- 
@@ -157,18 +174,79 @@ print "Score cutoff: $score_threshold.\n"
 	if $score_threshold;
 
 #--------------------------------------------------
-# # translate the ESTs to protein
+# # translate the ESTs to protein, feed that shit to the database
 #-------------------------------------------------- 
+$| = 1;
 print "Translating $estfile in all six reading frames...\t";
 $protfile = &translate_est(File::Spec->catfile($estfile));
-print "\n";
 
 #--------------------------------------------------
-# # hmmsearch the protfile using all HMMs
+# # Feed that shit to the database...
 #-------------------------------------------------- 
-print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n";
-$i = 0;
-$hitcount = 0;
+printf "Preparing MySQL database '%s' on %s with columns '%s', '%s', '%s', '%s', '%s'... ", 
+	$mysql_dbname,
+	$mysql_dbserver,
+	$mysql_id_col,
+	$mysql_spec_col,
+	$mysql_date_col,
+	$mysql_hdr_col,
+	$mysql_seq_col;
+# open connection
+my $dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
+
+# create database structure if not present
+#TODO ask Peter/Oliver what they think: 
+# Should the db already be present or can I drop and recreate it as I see fit? 
+# Should there be a table for each species?
+my $query = "CREATE TABLE IF NOT EXISTS $mysql_table ( 
+	`$mysql_id_col`   INT(255) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	`$mysql_spec_col` VARCHAR(255) NOT NULL,
+	`$mysql_date_col` INT(10) UNSIGNED,
+	`$mysql_hdr_col`  VARCHAR(255) NOT NULL,
+	`$mysql_seq_col`  VARCHAR(65000) DEFAULT NULL)";
+my $sql = $dbh->prepare($query);
+$sql->execute();
+
+# clear table
+$query = "DELETE FROM $mysql_table";
+$sql = $dbh->prepare($query);
+$sql->execute() 
+	or die "$!\n";
+
+print "OK\n";
+
+# prepare insertion query
+$query = "INSERT INTO $mysql_table (
+	$mysql_spec_col,
+	$mysql_date_col, 
+	$mysql_hdr_col, 
+	$mysql_seq_col) VALUES (
+	?, 
+	?,
+	?, 
+	?)";
+$sql = $dbh->prepare($query);
+
+# open the translated fasta file and feed the seqs into the database
+print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... ";
+my $fh = Seqload::Fasta->open($protfile);
+$count = 0;
+while (my ($hdr, $seq) = $fh->next_seq) {
+	$timestamp = time();
+	$sql->execute($species_name, $timestamp, $hdr, $seq)
+		or die "$!\n";
+	++$count;
+}
+$fh->close;
+print "OK\n";
+$| = 0;
+
+# disconnect ASAP
+$dbh->disconnect;
+printf "%d sequences in database '%s' on %s.\n",
+	$count,
+	$mysql_dbname,
+	$mysql_dbserver;
 
 #--------------------------------------------------
 # # Setup the Forage module
@@ -190,7 +268,14 @@ Forage::Unthreaded->hmmsearchcmd(\@hmmsearchcmd);
 Forage::Unthreaded->hmmfullout(0);
 
 #--------------------------------------------------
-# # Do the pHMM search - this may be pipelined in the future
+# # HMMsearch the protfile using all HMMs
+#-------------------------------------------------- 
+print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n";
+$i = 0;
+$hitcount = 0;
+
+#--------------------------------------------------
+# # Do the HMM search - this may be pipelined in the future
 #-------------------------------------------------- 
 
 foreach my $hmmfile (@hmmfiles) {#{{{
@@ -333,7 +418,7 @@ sub translate_est {#{{{
 	my ($infile) = shift;
 	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
 	if (-e $outfile) {
-		print "$outfile exists, using this one";
+		print "$outfile exists, using this one\n";
 		return $outfile;
 	}
 	&backup_old_output_files($outfile);
@@ -341,6 +426,7 @@ sub translate_est {#{{{
 	die "Fatal: Could not translate $infile: $!\n"
 		if system($translateline);
 
+	print "OK\n";
 	return $outfile;
 }#}}}
 
@@ -394,6 +480,41 @@ sub createdir {#{{{
 	print "$dir exists.\n";
 	return 1;
 }#}}}
+
+# Sub: preparedb
+# Generate a clean database, deleting all existing tables and starting from scratch
+# Returns: True on success
+sub preparedb {
+	printf "Preparing MySQL database '%s' on %s with columns '%s', '%s', '%s', '%s', '%s'... ", 
+		$mysql_dbname,
+		$mysql_dbserver,
+		$mysql_id_col,
+		$mysql_spec_col,
+		$mysql_date_col,
+		$mysql_hdr_col,
+		$mysql_seq_col;
+	# open connection
+	my $dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
+
+	my $query = "DROP TABLE $mysql_table";
+	my $sql = $dbh->prepare($query);
+	$sql->execute()
+		or die "$!\n";
+
+	$query = "CREATE TABLE $mysql_table ( 
+		`$mysql_id_col`   INT(255) NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		`$mysql_spec_col` VARCHAR(255) NOT NULL,
+		`$mysql_date_col` INT(10) UNSIGNED,
+		`$mysql_hdr_col`  VARCHAR(255) NOT NULL,
+		`$mysql_seq_col`  VARCHAR(65000) DEFAULT NULL)";
+	$sql = $dbh->prepare($query);
+	$sql->execute()
+		or die "$!\n";
+
+	$dbh->disconnect();
+
+	return 1;
+}
 
 # Documentation#{{{
 =head1 NAME
@@ -450,7 +571,7 @@ The directory containing the HMM files that are used to search the EST database.
 
 The HMM file to use if you want to run Forage on a single HMM.
 
-=head2 hmm_output_dir
+=head2 hmmsearch_output_dir
 
 The directory name where the hmmsearch output files will be placed.
 
@@ -490,9 +611,13 @@ MySQL: Sequence column in the database. Ask your administrator if you don't know
 
 MySQL: Table name. Ask your administrator if you don't know.
 
-=head2 output_dir
+=head2 output_directory
 
 Output directory to use by Forage. It will be created if it does not exist.
+
+=head2 species_name
+
+Name of the analyzed species. Will occur in the database as well as in all output files in appropriate places.
 
 =head2 score_threshold
 
