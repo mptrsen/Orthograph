@@ -53,19 +53,19 @@ else {
 #--------------------------------------------------
 # # Variable initialisation
 #-------------------------------------------------- 
-my $version = 0.00001;#{{{
+my $version = 0.00002;
 my $config;                       # will hold the configuration from config file
 
 print <<EOF;
 Forage: Find Orthologs using Reciprocity Among Genes and ESTs
-Copyright 2011 Malte Petersen <mptrsen\@uni-bonn.de>
+Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>
 Version $version
 
 EOF
 #--------------------------------------------------
 # # Parse config file
 #-------------------------------------------------- 
-(my $configfile = $0) =~ s/(\.pl)?$/.conf/;
+(my $configfile = $0) =~ s/(\.pl)?$/.conf/;#{{{
 # mini argument parser for the configfile
 for (my $i = 0; $i < scalar @ARGV; ++$i) {
 	if ($ARGV[$i] =~ /-c/) {
@@ -75,52 +75,52 @@ for (my $i = 0; $i < scalar @ARGV; ++$i) {
 		else { warn "Warning: Config file name '$ARGV[$i+1]' not accepted (use './$ARGV[$i+1]' if you mean it). Falling back to '$configfile'\n" }
 	}
 }
-print "Now parsing config file '$configfile'.\n";
-$config = &parse_config($configfile) if (-e $configfile);
+print "Parsing config file '$configfile'.\n";
+$config = &parse_config($configfile) if (-e $configfile);#}}}
 
 #--------------------------------------------------
 # # Programs
 #-------------------------------------------------- 
-my $translateprog = $config->{'translateprog'} ? $config->{'translateprog'} : 'fastatranslate';
-my $indexprog     = $config->{'fastaindex'}    ? $config->{'fastaindex'}    : 'fastaindex';
-my $hmmsearchprog = $config->{'hmmsearchprog'} ? $config->{'hmmsearchprog'} : 'hmmsearch';
+my $translateprog = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';#{{{
+my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';#}}}
 
 #--------------------------------------------------
-# # Other variables
+# # These variables can be set in the config file
 #-------------------------------------------------- 
-my $estfile           = $config->{'estfile'}        ? $config->{'estfile'}        : '';
-my $protfile = '';
-my $indexfile = '';
-my $backup_ext = '.bak';
-my $eval_threshold;
-my $hmmdir            = $config->{'hmmdir'}         ? $config->{'hmmdir'}         : '';
-my $hmmfile           = $config->{'hmmfile'}        ? $config->{'hmmfile'}        : '';
-my $hmmfullout = 0;
-my $hmmoutdir = $hmmsearchprog;
-my $hmmoutopt;
-my $hmmresultfileref;
-my $mysql_dbname      = $config->{'mysql_dbname'}   ? $config->{'mysql_dbname'}   : 'forage';
-my $mysql_dbserver    = $config->{'mysql_dbserver'} ? $config->{'mysql_dbserver'} : 'localhost';
-my $mysql_dbuser      = $config->{'mysql_dbuser'}   ? $config->{'mysql_dbuser'}   : 'root';
-my $mysql_dbpwd       = $config->{'mysql_dbpwd'}    ? $config->{'mysql_dbpwd'}    : 'root';
-my $mysql_table       = $config->{'mysql_table'}    ? $config->{'mysql_table'}    : 'ests';
-my $mysql_id_col      = $config->{'mysql_id_col'}   ? $config->{'mysql_id_col'}   : 'id';
-my $mysql_hdr_col     = $config->{'mysql_hdr_col'}  ? $config->{'mysql_hdr_col'}  : 'hdr';
-my $mysql_seq_col     = $config->{'mysql_seq_col'}  ? $config->{'mysql_seq_col'}  : 'seq';
-my $outdir;
+my $backup_ext     = $config->{'backup_extension'} ? $config->{'backup_extension'} : '.bak';#{{{
+my $estfile        = $config->{'estfile'}          ? $config->{'estfile'}          : '';
+my $eval_threshold = $config->{'eval_threshold'}   ? $config->{'eval_threshold'}   : undef;
+my $hmmdir         = $config->{'hmmdir'}           ? $config->{'hmmdir'}           : '';
+my $hmmfile        = $config->{'hmmfile'}          ? $config->{'hmmfile'}          : '';
+my $hmmoutdir      = $config->{'hmm_output_dir'}   ? $config->{'hmm_output_dir'}   : $hmmsearchprog;
+my $mysql_dbname   = $config->{'mysql_dbname'}     ? $config->{'mysql_dbname'}     : 'forage';
+my $mysql_dbpwd    = $config->{'mysql_dbpassword'} ? $config->{'mysql_dbpassword'} : 'root';
+my $mysql_dbserver = $config->{'mysql_dbserver'}   ? $config->{'mysql_dbserver'}   : 'localhost';
+my $mysql_dbuser   = $config->{'mysql_dbuser'}     ? $config->{'mysql_dbuser'}     : 'root';
+my $mysql_hdr_col  = $config->{'mysql_header_column'} ? $config->{'mysql_header_column'}    : 'hdr';
+my $mysql_id_col   = $config->{'mysql_id_column'}  ? $config->{'mysql_id_column'}     : 'id';
+my $mysql_seq_col  = $config->{'mysql_sequence_column'} ? $config->{'mysql_sequence_column'}    : 'seq';
+my $mysql_table    = $config->{'mysql_table'}      ? $config->{'mysql_table'}      : 'ests';
+my $outdir         = $config->{'output_dir'}       ? $config->{'output_dir'}       : undef;#}}}
+
+#--------------------------------------------------
+# # More variables
+#-------------------------------------------------- 
+my $hmmresultfileref;#{{{
+my $hmmfullout     = 0;
+my $hitcount;
+my $protfile       = '';
 my $score_threshold;
-my $verbose = 0;
-my @eval_option = ();
+my $verbose        = 0;
+my @eval_option;
 my @hmmfiles;
 my @hmmsearchcmd;
-my @score_option = ();
+my @score_option;
 my @seqobjs;
-my $hitcount;
-my $i;
-#}}}
+my $i;#}}}
 
 #--------------------------------------------------
-# # Get command line options
+# # Get command line options. These may override variables set via the config file.
 #-------------------------------------------------- 
 GetOptions(	'v'         => \$verbose,#{{{
 			'c'               => \$configfile,
@@ -157,21 +157,16 @@ print "Score cutoff: $score_threshold.\n"
 	if $score_threshold;
 
 #--------------------------------------------------
-# # translate the ESTs to protein, index 
+# # translate the ESTs to protein
 #-------------------------------------------------- 
 print "Translating $estfile in all six reading frames...\t";
 $protfile = &translate_est(File::Spec->catfile($estfile));
 print "\n";
-#--------------------------------------------------
-# print "Indexing $estfile for fast access...\t";
-# $indexfile = &index_est(File::Spec->catfile($protfile));
-# print "\n";
-#-------------------------------------------------- 
 
 #--------------------------------------------------
 # # hmmsearch the protfile using all HMMs
 #-------------------------------------------------- 
-print "Hmmsearching the protein file using all HMMs in $hmmdir...\n";
+print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n";
 $i = 0;
 $hitcount = 0;
 
@@ -273,7 +268,9 @@ sub intro {#{{{
 	die "Fatal: Can't use both e-value and score thresholds!\n"
 		if ($eval_threshold and $score_threshold);
 
-	$outdir = File::Spec->catdir('out_'.basename($estfile, '.fa'));
+	# construct output directory paths
+	# outdir may be defined in the config file
+	$outdir = defined($outdir) ? $outdir : File::Spec->catdir('out_'.basename($estfile, '.fa'));
 	$hmmoutdir = File::Spec->catdir($outdir, $hmmsearchprog);
 
 	# build hmmsearch command line
@@ -347,23 +344,6 @@ sub translate_est {#{{{
 	return $outfile;
 }#}}}
 
-# Sub: index_est
-# index a fasta file for fast fetching of sequences using fastafetch
-# Expects: scalar string filename
-# Returns: scalar string filename (indexfile)
-sub index_est {#{{{
-	my ($infile) = shift;
-	(my $indexfile = $infile) =~ s/\.fa$/.idx/;
-	if (-e $indexfile) {
-		print "$indexfile exists, using this one.\n";
-		return $indexfile;
-	}
-	&backup_old_output_files($indexfile);
-	my @indexline = ($indexprog, '--index', $indexfile, '--fasta', $infile);
-	die "Fatal: Could not index $infile: $!\n"
-		if system(@indexline);
-}#}}}
-
 # Sub: gethmmscores
 # Parse the hmmsearch result, populate the data structure
 # Expects: scalar reference to hmmresult file
@@ -377,7 +357,7 @@ sub gethmmscores {#{{{
 sub backup_old_output_files {#{{{
 	my ($outfile) = shift @_;
 	if (-e $outfile) {
-		rename( $outfile, $outfile.$backup_ext ) or die "wah: could not rename $outfile during backup: $!\n";
+		rename($outfile, File::Spec->catfile($outfile . '.' . $backup_ext)) or die "wah: could not rename $outfile during backup: $!\n";
 		print "backed up old file $outfile to ", $outfile.$backup_ext, "\n";
 	}
 }#}}}
@@ -422,11 +402,7 @@ Forage
 
 =head1 DESCRIPTION
 
-Find Orthologs using Reciprocity Among Genes and ESTs
-
-=head1 COPYRIGHT
-
-Copyright 2011 Malte Petersen <mptrsen\@uni-bonn.de>
+F<F>ind F<O>rthologs using F<R>eciprocity F<A>mong F<G>enes and F<E>STs
 
 =head1 SYNOPSIS
 
@@ -436,7 +412,13 @@ forage.pl [OPTIONS]
 
 =head2 -c CONFIGFILE
 
-Use CONFIGFILE instead of forage.conf. The config file has to be in ini-style: 
+Use CONFIGFILE instead of forage.conf. Any options on the command line override options set in the config file.
+
+=head1 CONFIG FILE
+
+The configuration file allows to set all options available on the command line so that the user is spared having to use a very long command every time.
+
+The config file has to be in ini-style: 
 
   # this is a comment
   translateprog  = fastatranslate
@@ -448,7 +430,93 @@ Use CONFIGFILE instead of forage.conf. The config file has to be in ini-style:
   mysql_dbpwd    = root
   mysql_table    = ests
 
-etc. Empty lines and comments are ignored, keys and values have to be separated by an equal sign. Any options on the command line override options set in the config file.
+etc. Empty lines and comments are ignored, keys and values have to be separated by an equal sign. 
+
+=head2 AVAILABLE OPTIONS:
+
+=head2 estfile
+
+The fasta file containing the EST sequence database.
+
+=head2 eval_threshold
+
+e-Value threshold for the HMM search. Must be a number in scientific notation like 1e-05 or something.
+
+=head2 hmmdir
+
+The directory containing the HMM files that are used to search the EST database. See also F<hmmfile>.
+
+=head2 hmmfile
+
+The HMM file to use if you want to run Forage on a single HMM.
+
+=head2 hmm_output_dir
+
+The directory name where the hmmsearch output files will be placed.
+
+=head2 hmmsearchprog
+
+The hmmsearch program. On most systems, this is 'hmmsearch', which is the default. Change this if your binary has a different name.
+
+=head2 mysql_dbname
+
+MySQL: Database name. Ask your administrator if you don't know.
+
+=head2 mysql_dbpassword
+
+MySQL: Database password. Ask your administrator if you don't know.
+
+=head2 mysql_dbserver
+
+MySQL: Database server. Normally 'localhost'. Ask your administrator if you don't know.
+
+=head2 mysql_dbuser
+
+MySQL: Database user name. Ask your administrator if you don't know.
+
+=head2 mysql_header_column
+
+MySQL: Sequence header column in the database. Ask your administrator if you don't know.
+
+=head2 mysql_id_column
+
+MySQL: ID column in the database. Ask your administrator if you don't know. 
+
+=head2 mysql_sequence_column
+
+MySQL: Sequence column in the database. Ask your administrator if you don't know.
+
+=head2 mysql_table
+
+MySQL: Table name. Ask your administrator if you don't know.
+
+=head2 output_dir
+
+Output directory to use by Forage. It will be created if it does not exist.
+
+=head2 score_threshold
+
+Score threshold for the HMM search. Must be a number.
+
+=head2 translate_program
+
+The tool to use for translation of the EST sequence file. The program must accept a fasta file name as input and provide its output on STDOUT, which is then being redirected into a file that Forage uses.
+
+=head2 verbose
+
+Be verbose (output more information about what is going on). 
+
+=head1 AUTHOR
+
+Written by Malte Petersen <mptrsen@uni-bonn.de>
+
+=head1 COPYRIGHT
+
+Copyright (C) 2012 Malte Petersen 
+
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 =cut
 #}}}
