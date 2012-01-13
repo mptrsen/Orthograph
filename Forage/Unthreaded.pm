@@ -1,3 +1,19 @@
+#--------------------------------------------------
+# This file is part of Forage.
+# Copyright 2011 Malte Petersen <mptrsen@uni-bonn.de>
+# 
+# Forage is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+# 
+# Forage is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along with
+# Forage. If not, see http://www.gnu.org/licenses/.
+#-------------------------------------------------- 
 package Forage::Unthreaded;
 use strict;
 use warnings;
@@ -115,17 +131,11 @@ sub hmmhitcount {
 	if ($self->{'hmmhits'}) { 
 		return $self->{'hmmhits'};
 	}
-	if ($self->{'hmmresult'}) {
-		unless ($hmmfullout) {
-			$self->{'hmmhits'} = scalar(@{$self->{'hmmresult'}}) - 3;	# -3 because the first 3 lines of the table are comments
-			return $self->{'hmmhits'};
-		}
-		croak "THIS NEEDS TO BE IMPLEMENTED, CAN'T WORK WITH FULL HMMSEARCH OUTPUT YET\n";
-	}
 	unless ($hmmfullout) {
-		$self->{'hmmhits'} = scalar(@{$self->hmmresult}) - 3;	# -3 because the first 3 lines of the table are comments
+		$self->{'hmmhits'} = scalar(@{$self->hmmresult});	
 		return $self->{'hmmhits'};
 	}
+	# dunno what do with hmmfullout yet... TODO implement!
 }
 
 # sub: hmmresult

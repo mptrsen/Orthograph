@@ -1,1 +1,27 @@
+FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs
 
+SYSTEM REQUIREMENTS
+
+FORAGE requires the following software packages to be installed on the system:
+
+Package                      Download from
+-----------------------------------------------------------------------
+HMMer3                       http://hmmer.janelia.org
+Exonerate                    http://www.ebi.ac.uk/~guy/exonerate/ 
+MySQL                        http://www.mysql.com
+
+The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and IO::Dir (used for
+platform-independent path handling) as well as DBI and DBD::Mysql for database
+handling should be present in your Perl distribution. Update your Perl
+installation if not.
+
+If your Perl installation was not compiled with thread support, but you would
+like to use FORAGE with multithreading emulation on multiprocessor platforms,
+you may want to install the 'forks' module from CPAN. Alternatively, you can
+run FORAGE single-threadedly, of course. 
+
+At the moment, threads are not implemented anyway.
+
+
+Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
+(c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
