@@ -53,14 +53,30 @@ else {
 #--------------------------------------------------
 # # Variable initialisation
 #-------------------------------------------------- 
-my $version = 0.00001;
+my $version = 0.00001;#{{{
 my $config;                       # will hold the configuration from config file
 
+print <<EOF;
+Forage: Find Orthologs using Reciprocity Among Genes and ESTs
+Copyright 2011 Malte Petersen <mptrsen\@uni-bonn.de>
+Version $version
+
+EOF
 #--------------------------------------------------
 # # Parse config file
 #-------------------------------------------------- 
 (my $configfile = $0) =~ s/(\.pl)?$/.conf/;
-$config = &parse_config($configfile);
+# mini argument parser for the configfile
+for (my $i = 0; $i < scalar @ARGV; ++$i) {
+	if ($ARGV[$i] =~ /-c/) {
+		if ($ARGV[$i+1] !~ /^-/) {
+			$configfile = $ARGV[$i+1];
+		}
+		else { warn "Warning: Config file name '$ARGV[$i+1]' not accepted (use './$ARGV[$i+1]' if you mean it). Falling back to '$configfile'\n" }
+	}
+}
+print "Now parsing config file '$configfile'.\n";
+$config = &parse_config($configfile) if (-e $configfile);
 
 #--------------------------------------------------
 # # Programs
@@ -72,13 +88,13 @@ my $hmmsearchprog = $config->{'hmmsearchprog'} ? $config->{'hmmsearchprog'} : 'h
 #--------------------------------------------------
 # # Other variables
 #-------------------------------------------------- 
-my $estfile = '';
+my $estfile           = $config->{'estfile'}        ? $config->{'estfile'}        : '';
 my $protfile = '';
 my $indexfile = '';
 my $backup_ext = '.bak';
 my $eval_threshold;
-my $hmmdir = '';
-my $hmmfile = '';
+my $hmmdir            = $config->{'hmmdir'}         ? $config->{'hmmdir'}         : '';
+my $hmmfile           = $config->{'hmmfile'}        ? $config->{'hmmfile'}        : '';
 my $hmmfullout = 0;
 my $hmmoutdir = $hmmsearchprog;
 my $hmmoutopt;
@@ -101,17 +117,13 @@ my @score_option = ();
 my @seqobjs;
 my $hitcount;
 my $i;
-my $header = <<EOF;
-Forage: Find Orthologs using Reciprocity Among Genes and ESTs
-Copyright 2011 Malte Petersen <mptrsen\@uni-bonn.de>
-Version $version
-
-EOF
+#}}}
 
 #--------------------------------------------------
 # # Get command line options
 #-------------------------------------------------- 
-GetOptions(	'v'         => \$verbose,
+GetOptions(	'v'         => \$verbose,#{{{
+			'c'               => \$configfile,
 			'threads'         => \$use_threads,		# make using threads optional
 			'estfile=s'       => \$estfile,
 			'E=s'             => \$estfile,
@@ -121,12 +133,8 @@ GetOptions(	'v'         => \$verbose,
 			'hmmdir=s'        => \$hmmdir,
 			'hmmsearchprog=s'	=> \$hmmsearchprog,
 			'hmmfullout'      => \$hmmfullout,
-);
+);#}}}
 
-while (my @pair = each(%$config)) {
-	print join("\t", @pair) . "\n";
-}
-exit;
 #--------------------------------------------------
 # # Input error checking, reporting etc
 #-------------------------------------------------- 
@@ -190,7 +198,7 @@ Forage::Unthreaded->hmmfullout(0);
 # # Do the pHMM search - this may be pipelined in the future
 #-------------------------------------------------- 
 
-foreach my $hmmfile (@hmmfiles) {
+foreach my $hmmfile (@hmmfiles) {#{{{
 	++$i;
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
 	my $hmmobj = Forage::Unthreaded->new($hmmfile);	
@@ -214,7 +222,7 @@ foreach my $hmmfile (@hmmfiles) {
 	# # TODO then:
 	#-------------------------------------------------- 
 	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
-}
+}#}}}
 
 printf "%d HMMs hit something.   %d HMM files processed. \n", $hitcount, $i;
 print "Done!\n";
@@ -283,9 +291,19 @@ sub intro {#{{{
 		@hmmsearchcmd = ($hmmsearchprog, @eval_option, @score_option, '--tblout');
 	}
 
-	print $header;
+	if (-d $hmmdir) {
+		print "HMM dir $hmmdir exists.\n";
+	}
+	else {
+		die "Fatal: HMM dir $hmmdir does not exist!\n";
+	}
 
-	print "EST file " and &doesexist($estfile);
+	if (-e $estfile) {
+		print "EST file $estfile exists.\n";
+	}
+	else {
+		die "Fatal: EST file $estfile does not exist!\n";
+	}
 
 	print "HMMsearch output dir " and &createdir($hmmoutdir);
 }#}}}
@@ -368,10 +386,10 @@ sub backup_old_output_files {#{{{
 # Prints the help message
 sub helpmessage {#{{{
 	my $helpmessage = <<EOF;
-'estfile=s' 
-'E=s'				
-'H=s'				
-'hmmdir=s'	
+estfile ESTFILE
+E ESTFILE 
+H	HMMFILE
+hmmdir HMMDIR
 EOF
 	print $helpmessage;
 }#}}}
@@ -397,16 +415,40 @@ sub createdir {#{{{
 	return 1;
 }#}}}
 
-# Sub: doesexist
-# Checks whether an item exists on disk
-# Expects: scalar string filename/dirname
-# Returns: True if exists, False otherwise
-sub doesexist {#{{{
-	my $item = shift;
-	unless (-e $item) {
-		warn "$item does not exist!\n";
-		return 0;
-	}
-	print "$item exists.\n";
-	return 1;
-}#}}}
+# Documentation#{{{
+=head1 NAME
+
+Forage
+
+=head1 DESCRIPTION
+
+Find Orthologs using Reciprocity Among Genes and ESTs
+
+=head1 COPYRIGHT
+
+Copyright 2011 Malte Petersen <mptrsen\@uni-bonn.de>
+
+=head1 SYNOPSIS
+
+forage.pl [OPTIONS]
+
+=head1 OPTIONS
+
+=head2 -c CONFIGFILE
+
+Use CONFIGFILE instead of forage.conf. The config file has to be in ini-style: 
+
+  # this is a comment
+  translateprog  = fastatranslate
+  hmmdir         = /home/malty/thesis/forage/hmms
+  estfile        = /home/malty/data/cleaned/Andrena_vaga.fa
+  mysql_dbname   = forage
+  mysql_dbserver = localhost
+  mysql_dbuser   = root
+  mysql_dbpwd    = root
+  mysql_table    = ests
+
+etc. Empty lines and comments are ignored, keys and values have to be separated by an equal sign. Any options on the command line override options set in the config file.
+
+=cut
+#}}}

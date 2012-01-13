@@ -131,17 +131,11 @@ sub hmmhitcount {
 	if ($self->{'hmmhits'}) { 
 		return $self->{'hmmhits'};
 	}
-	if ($self->{'hmmresult'}) {
-		unless ($hmmfullout) {
-			$self->{'hmmhits'} = scalar(@{$self->{'hmmresult'}}) - 3;	# -3 because the first 3 lines of the table are comments
-			return $self->{'hmmhits'};
-		}
-		croak "THIS NEEDS TO BE IMPLEMENTED, CAN'T WORK WITH FULL HMMSEARCH OUTPUT YET\n";
-	}
 	unless ($hmmfullout) {
-		$self->{'hmmhits'} = scalar(@{$self->hmmresult}) - 3;	# -3 because the first 3 lines of the table are comments
+		$self->{'hmmhits'} = scalar(@{$self->hmmresult});	
 		return $self->{'hmmhits'};
 	}
+	# dunno what do with hmmfullout yet... TODO implement!
 }
 
 # sub: hmmresult
