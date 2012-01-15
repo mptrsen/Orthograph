@@ -31,9 +31,9 @@ sub new {
 	my ($class, $hmmfile, $protfile) = @_;
 
 	my $self = {
-		'hmmfile'				=> $hmmfile,
+		'hmmfile'       => $hmmfile,
 		'hmmresultfile'	=> '',
-		'hmmhits'				=> 0,
+		'hmmhitcount'   => 0,
 	};
 
 	bless ($self, $class);
@@ -128,12 +128,12 @@ sub hmmsearch {#{{{
 # returns: int number of hmm hits
 sub hmmhitcount {
 	my $self = shift;
-	if ($self->{'hmmhits'}) { 
-		return $self->{'hmmhits'};
+	if ($self->{'hmmhitcount'}) { 
+		return $self->{'hmmhitcount'};
 	}
 	unless ($hmmfullout) {
-		$self->{'hmmhits'} = scalar(@{$self->hmmresult});	
-		return $self->{'hmmhits'};
+		$self->{'hmmhitcount'} = scalar(@{$self->hmmresult});	
+		return $self->{'hmmhitcount'};
 	}
 	# dunno what do with hmmfullout yet... TODO implement!
 }
@@ -150,6 +150,27 @@ sub hmmresult {
 	$fh->close;
 	splice(@{$self->{'hmmresult'}}, 0, 3);
 	return $self->{'hmmresult'};
+}
+
+# sub: hmmhits
+# returns: list of hmm hits (headers)
+sub hmmhits {
+	my $self = shift;
+	if ($self->{'hmmhits'}) {
+		return $self->{'hmmhits'};
+	}
+	$self->{'hmmhits'} = [ ];
+	foreach (@{$self->hmmresult}) {
+		my @line = split(/\s+/);
+		push(@{$self->{'hmmhits'}}, [
+			$line[0],
+			$line[2],
+			$line[4],
+			$line[5]
+		]);
+	}
+	# this is an array reference
+	return $self->{'hmmhits'};
 }
 
 # hmm file used for searching
