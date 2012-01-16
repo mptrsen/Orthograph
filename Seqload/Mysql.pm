@@ -127,11 +127,7 @@ sub set_seq_col {
 # object methods
 #-------------------------------------------------- 
 
-<<<<<<< HEAD
-sub next{
-=======
 sub next_seq {
->>>>>>> 6b270413c1e5973f0e7efd176ef4187edba1449e
 	my $self = shift;
 	my $sql = $$self{'sql'};
 	if (my ($hdr, $seq) = $sql->fetchrow_array) {
