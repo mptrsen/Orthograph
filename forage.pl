@@ -116,6 +116,7 @@ my $count               = 0;#{{{
 my $hmmresultfileref;
 my $hmmfullout          = 0;
 my $hitcount;
+my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_date      = 'date';
 my $mysql_col_eval      = 'eval';
 my $mysql_col_hdr       = 'hdr';
@@ -196,19 +197,19 @@ $| = 1;
 $protfile = &translate_est(File::Spec->catfile($estfile));
 
 #--------------------------------------------------
-# # Feed that shit to the database...
+# # Database interactions
 #-------------------------------------------------- 
-# clear previous results from the same species
-print "Clearing previous results from database... ";
-my $query_clear_ests           = "DELETE FROM $mysql_table_ests 
-                                  WHERE $mysql_col_spec = '$species_name'";
-my $query_clear_hmmsearch      = "DELETE FROM $mysql_table_hmmsearch 
-                                  WHERE $mysql_col_spec = '$species_name'";
-my $query_clear_blast          = "DELETE FROM $mysql_table_blast 
-                                  WHERE $mysql_col_spec = '$species_name'";
-my $query_clear_core_orthologs = "DELETE FROM $mysql_table_core_orthologs 
-                                  WHERE $mysql_col_spec = '$species_name'";
-my $query_insert = "INSERT INTO $mysql_table_ests (
+print "Clearing previous results from database... " unless $quiet;
+&clear_db;
+print "done.\n" unless $quiet;
+
+# open the translated fasta file to feed the seqs into the database
+print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver. This will take a while (each dot represents 10000 sequences)";
+my $fh = Seqload::Fasta->open($protfile);
+$count = 0;
+
+# insertion query for the EST data
+my $query_insert_ests = "INSERT INTO $mysql_table_ests (
 	$mysql_col_spec,
 	$mysql_col_date, 
 	$mysql_col_hdr, 
@@ -218,26 +219,11 @@ my $query_insert = "INSERT INTO $mysql_table_ests (
 	?, 
 	?)";
 
-# open connection
-my $dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
-
-my $sql = $dbh->prepare($query_clear_ests);
-$sql->execute() or die "$!\n";
-$sql = $dbh->prepare($query_clear_hmmsearch);
-$sql->execute() or die "$!\n";
-$sql = $dbh->prepare($query_clear_blast);
-$sql->execute() or die "$!\n";
-$sql = $dbh->prepare($query_clear_core_orthologs);
-$sql->execute() or die "$!\n";
-print "done.\n";
-
 # prepare insertion query
-$sql = $dbh->prepare($query_insert);
+my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+my $sql = $dbh->prepare($query_insert_ests);
 
-# open the translated fasta file and feed the seqs into the database
-print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver. This will take a while (each dot represents 10000 sequences)";
-my $fh = Seqload::Fasta->open($protfile);
-$count = 0;
+# feed the sequences into the database
 while (my ($hdr, $seq) = $fh->next_seq) {
 	$timestamp = time();
 	$sql->execute($species_name, $timestamp, $hdr, $seq)
@@ -245,13 +231,15 @@ while (my ($hdr, $seq) = $fh->next_seq) {
 	++$count;
 	print '.' if $count % 10000 == 0;
 }
+# disconnect ASAP
+$dbh->disconnect;
+
+# close file, report
 $fh->close;
 print " done.\n";
 $| = 0;
 
-# disconnect ASAP
-$dbh->disconnect;
-printf "%d sequences in database '%s' on %s.\n",
+printf "%d sequences stored to database '%s' on %s.\n",
 	$count,
 	$mysql_dbname,
 	$mysql_dbserver;
@@ -306,7 +294,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#-------------------------------------------------- 
 
 	# prepare SQL query
-	$query_insert = "INSERT INTO $mysql_table_hmmsearch (
+	my $query = "INSERT INTO $mysql_table_hmmsearch (
 		$mysql_col_spec,
 		$mysql_col_hmmtarget,
 	  $mysql_col_hmm,
@@ -319,8 +307,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		?)";
 
 	# push results to database
-	$dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
-	$sql = $dbh->prepare($query_insert);
+	$dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	$sql = $dbh->prepare($query);
 
 	# this is an array reference
 	foreach (@{$hmmobj->hmmhits}) {
@@ -418,20 +406,20 @@ sub intro {#{{{
 	}
 
 	if (-d $hmmdir) {
-		print "HMM dir $hmmdir exists.\n";
+		print "HMM dir $hmmdir exists.\n" unless $quiet;
 	}
 	else {
 		die "Fatal: HMM dir $hmmdir does not exist!\n";
 	}
 
 	if (-e $estfile) {
-		print "EST file $estfile exists.\n";
+		print "EST file $estfile exists.\n" unless $quiet;
 	}
 	else {
 		die "Fatal: EST file $estfile does not exist!\n";
 	}
 
-	print "HMMsearch output dir " and &createdir($hmmoutdir);
+	print "HMMsearch output dir " unless $quiet and &createdir($hmmoutdir);
 }#}}}
 
 # Sub: hmmlist
@@ -463,7 +451,7 @@ sub translate_est {#{{{
 	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
 	print "Translating $estfile in all six reading frames... " unless $quiet;
 	if (-e $outfile) {
-		print "$outfile exists, using this one.\n";
+		print "$outfile exists, using this one.\n" unless $quiet;
 		return $outfile;
 	}
 	&backup_old_output_files($outfile);
@@ -513,16 +501,16 @@ sub createdir {#{{{
 	my $dir = shift;
 	unless (-d $dir) {
 		if (-e $dir and not -d $dir) {
-			die "Warning: $dir exists, but is not a directory! This will most likely lead to problems later.\n";
+			die "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later.\n";
 		}
 		else {
-			print "does not exist, creating $dir... ";
+			print "does not exist, creating $dir... " unless $quiet;
 			make_path $dir, { verbose => 0 } or die "Fatal: Could not create $dir: $!\n";
-			print "OK\n";
+			print "OK\n" unless $quiet;
 			return 1;
 		}
 	}
-	print "$dir exists.\n";
+	print "$dir exists.\n" unless $quiet;
 	return 1;
 }#}}}
 
@@ -562,7 +550,7 @@ sub preparedb {#{{{
 		`$mysql_col_seq`   VARCHAR(64000) DEFAULT NULL)";
 
 	# open connection
-	my $dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
 
 	# drop all tables
 	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast, $mysql_table_core_orthologs) {
@@ -585,6 +573,35 @@ sub preparedb {#{{{
 	$dbh->disconnect();
 
 	return 1;
+} #}}}
+
+# Sub: clear_db
+# clears the database of previous results from the same species 
+sub clear_db {#{{{
+	# clear previous results from the same species
+	my $query_clear_ests           = "DELETE FROM $mysql_table_ests 
+																		WHERE $mysql_col_spec = '$species_name'";
+	my $query_clear_hmmsearch      = "DELETE FROM $mysql_table_hmmsearch 
+																		WHERE $mysql_col_spec = '$species_name'";
+	my $query_clear_blast          = "DELETE FROM $mysql_table_blast 
+																		WHERE $mysql_col_spec = '$species_name'";
+	my $query_clear_core_orthologs = "DELETE FROM $mysql_table_core_orthologs 
+																		WHERE $mysql_col_spec = '$species_name'";
+
+	# open connection
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+
+	my $sql = $dbh->prepare($query_clear_ests);
+	$sql->execute() or die "$!\n";
+	$sql = $dbh->prepare($query_clear_hmmsearch);
+	$sql->execute() or die "$!\n";
+	$sql = $dbh->prepare($query_clear_blast);
+	$sql->execute() or die "$!\n";
+	$sql = $dbh->prepare($query_clear_core_orthologs);
+	$sql->execute() or die "$!\n";
+
+	# disconnect ASAP
+	$dbh->disconnect;
 }#}}}
 
 # Documentation#{{{
