@@ -8,6 +8,7 @@ Package                      Download from
 -----------------------------------------------------------------------
 HMMer3                       http://hmmer.janelia.org
 Exonerate                    http://www.ebi.ac.uk/~guy/exonerate/ 
+NCBI BLAST+                  ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 MySQL                        http://www.mysql.com
 
 The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
@@ -25,6 +26,9 @@ At the moment, threads are not implemented anyway.
 INVOCATION
 
 Forage allows parsing a config file, which by default is named 'forage.conf'.
+Available options can be obtained using 'perldoc forage.pl'. Many options can
+be set or overridden on the command line. For those switches, also see
+'perldoc forage.pl'.
 
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>

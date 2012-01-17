@@ -108,7 +108,7 @@ sub hmmsearch {#{{{
 			if $verbose;
 		# do the search
 		my $hmmresult = [ `@hmmsearchline` ];
-		confess "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!\n" 
+		croak "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!\n" 
 			unless (scalar @$hmmresult);
 		# only save those results that actually match something
 		unless (grep( /No hits detected/, @$hmmresult )) {
@@ -155,7 +155,7 @@ sub hmmresult {
 # sub: hmmhits_arrayref
 # returns: array reference to list of list
 # $hmmhits->[$i][0..3] (of line $i, fields 1, 3, 5, 6 of hmmsearch table output)
-sub hmmhits {
+sub hmmhits_arrayref {
 	my $self = shift;
 	if ($self->{'hmmhits'}) {
 		return $self->{'hmmhits'};
