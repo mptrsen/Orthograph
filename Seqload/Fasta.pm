@@ -68,7 +68,7 @@ sub next_seq {
 
 	my ($hdr, $seq) = split(/\n/, $item, 2);
 	$seq =~ s/>//g if defined $seq;
-	$seq =~ s/\s+$// if defined $seq;
+	$seq =~ s/\s+//g if defined $seq;	# remove all whitespace, including newlines
 
 	return($hdr, $seq);
 }
