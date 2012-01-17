@@ -24,9 +24,10 @@ use Getopt::Long;
 use Carp;		# alternative warn and die
 use File::Path qw(make_path);	# mkdir with parent dirs; this also uses File::Spec
 use File::Basename;	# parsing path names
+use File::Temp;	# temporary files
 use IO::File;	# object-oriented access to files
 use IO::Dir;	# object-oriented access to dirs
-use Seqload::Fasta;	# object-oriented access to fasta files
+use Seqload::Fasta qw(fasta2csv);	# object-oriented access to fasta files, fasta2csv converter
 use Seqload::Mysql;	# object-oriented access to fasta-style MySQL databases
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
@@ -77,8 +78,10 @@ for (my $i = 0; $i < scalar @ARGV; ++$i) {
 		else { warn "Warning: Config file name '$ARGV[$i+1]' not accepted (use './$ARGV[$i+1]' if you mean it). Falling back to '$configfile'\n" }
 	}
 }
-print "Parsing config file '$configfile'.\n";
-$config = &parse_config($configfile) if (-e $configfile);#}}}
+if (-e $configfile) {
+	print "Parsing config file '$configfile'.\n";
+	$config = &parse_config($configfile);
+}#}}}
 
 #--------------------------------------------------
 # # Programs
@@ -104,8 +107,11 @@ my $mysql_table_core_orthologs = $config->{'mysql_table_core_orthologs'}    ? $c
 my $mysql_table_ests = $config->{'mysql_table_ests'}    ? $config->{'mysql_table_ests'}     : 'ests';
 my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ? $config->{'mysql_table_hmmsearch'} : 'hmmsearch';
 my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
+my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;	# I like my quiet
 my $score_threshold = $config->{'score_threshold'}      ? $config->{'score_threshold'}      : undef;
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
+my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
+
 #}}}
 
 #--------------------------------------------------
@@ -128,11 +134,10 @@ my $mysql_col_seq       = 'seq';
 my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
 my $mysql_col_taxon     = 'taxon';
+my $num_ests;
 my $preparedb;
 my $protfile            = '';
-my $quiet;	# I like my quiet
 my $timestamp           = time();
-my $verbose             = 0;
 my @eval_option;
 my @hmmfiles;
 my @hmmsearchcmd;
@@ -159,6 +164,11 @@ GetOptions(	'v'     => \$verbose,#{{{
 );#}}}
 
 #--------------------------------------------------
+# # Input error checking, reporting etc
+#-------------------------------------------------- 
+&intro;
+
+#--------------------------------------------------
 # # Prepare the MySQL database by dropping and recreating all tables
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
@@ -167,11 +177,6 @@ if ($preparedb) {#{{{
 	print "OK; MySQL database now ready to run Forage.\n";
 	exit;
 }#}}}
-
-#--------------------------------------------------
-# # Input error checking, reporting etc
-#-------------------------------------------------- 
-&intro;
 
 #--------------------------------------------------
 # # create list of HMM files
@@ -195,57 +200,43 @@ unless ($quiet) {
 $| = 1;
 $protfile = &translate_est(File::Spec->catfile($estfile));
 
-#--------------------------------------------------
-# # Database interactions
-#-------------------------------------------------- 
+# Clear database of data from the same species
 print "Clearing previous results from database... " unless $quiet;
 &clear_db;
 print "done.\n" unless $quiet;
 
-# open the translated fasta file to feed the seqs into the database
-print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver. This will take a while (each dot represents 10000 sequences)";
-my $fh = Seqload::Fasta->open($protfile);
-$count = 0;
+print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
-# insertion query for the EST data
-my $query_insert_ests = "INSERT INTO $mysql_table_ests (
-	$mysql_col_spec,
-	$mysql_col_date, 
-	$mysql_col_hdr, 
-	$mysql_col_seq) VALUES (
-	?, 
-	?,
-	?, 
-	?)";
+# Create temporary csv file for high-speed reading into database
+my $tmpfh = File::Temp->new(UNLINK => 1);
+fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
 
-# prepare insertion query
+# load data from csv file into database
+my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $mysql_table_ests FIELDS TERMINATED BY ',' ($mysql_col_hdr, $mysql_col_seq)";
+# add date and spec
+my $query_update = "UPDATE $mysql_table_ests SET $mysql_col_date='" . time() . "', $mysql_col_spec='$species_name'";
+
+# open connection
 my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-my $sql = $dbh->prepare($query_insert_ests);
-
-# feed the sequences into the database
-while (my ($hdr, $seq) = $fh->next_seq) {
-	$timestamp = time();
-	$sql->execute($species_name, $timestamp, $hdr, $seq)
-		or die "$!\n";
-	++$count;
-	print '.' if $count % 10000 == 0;
-}
+$num_ests = $dbh->do($query);
+$dbh->do($query_update);
 # disconnect ASAP
 $dbh->disconnect;
 
-# close file, report
-$fh->close;
-print " done.\n";
+# report
+print " done.\n" unless $quiet;
 $| = 0;
 
 printf "%d sequences stored to database '%s' on %s.\n",
-	$count,
+	$num_ests,
 	$mysql_dbname,
-	$mysql_dbserver;
+	$mysql_dbserver unless $quiet;
 
 #--------------------------------------------------
 # # Setup the Forage module
 #-------------------------------------------------- 
+
+# These are all class methods
 
 # verbose output; this is a class method
 Forage::Unthreaded->verbose(1) if $verbose;
@@ -265,7 +256,7 @@ Forage::Unthreaded->hmmfullout(0);
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n";
+print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n" unless $quiet;
 $i = 0;
 $hitcount = 0;
 
@@ -307,10 +298,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	# push results to database
 	$dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	$sql = $dbh->prepare($query);
+	my $sql = $dbh->prepare($query);
 
 	# this is an array reference
-	foreach (@{$hmmobj->hmmhits}) {
+	foreach (@{$hmmobj->hmmhits_arrayref}) {
 		$sql->execute(
 			$species_name,
 		  $_->[0],
@@ -335,8 +326,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
 }#}}}
 
-printf "%d HMMs hit something.   %d HMM files processed. \n", $hitcount, $i;
-print "Done!\n";
+# report, end the program
+printf "%d HMMs hit something.   %d HMM files processed. \n", $hitcount, $i unless $quiet;
+printf "Forage analysis complete. Searched %d EST sequences using %d HMMs and hit something with %d of those.\n", $num_ests, $i, $hitcount;
 exit;
 
 
@@ -381,7 +373,12 @@ sub intro {#{{{
 	die "Fatal: At least two arguments required: EST file (-E) and HMM file/dir (-H or -hmmdir)!\n"
 		unless ($estfile and ($hmmdir or $hmmfile));
 
-	die "Fatal: Can't use both e-value and score thresholds!\n"
+	# mutually exclusive options
+	die "Fatal: Can't operate in both verbose and quiet mode\n"
+		if ($verbose and $quiet);
+
+	# mutually exclusive options
+	die "Fatal: Can't use both e-value and score thresholds\n"
 		if ($eval_threshold and $score_threshold);
 
 	# construct output directory paths
@@ -404,6 +401,7 @@ sub intro {#{{{
 		@hmmsearchcmd = ($hmmsearchprog, @eval_option, @score_option, '--tblout');
 	}
 
+	# the HMM directory
 	if (-d $hmmdir) {
 		print "HMM dir $hmmdir exists.\n" unless $quiet;
 	}
@@ -411,6 +409,7 @@ sub intro {#{{{
 		die "Fatal: HMM dir $hmmdir does not exist!\n";
 	}
 
+	# the EST file
 	if (-e $estfile) {
 		print "EST file $estfile exists.\n" unless $quiet;
 	}
@@ -418,7 +417,16 @@ sub intro {#{{{
 		die "Fatal: EST file $estfile does not exist!\n";
 	}
 
-	print "HMMsearch output dir " unless $quiet and &createdir($hmmoutdir);
+	# the HMMsearch output directory
+	if (-d $hmmoutdir) {
+		print "HMMsearch output dir exists\n" unless $quiet;
+	}
+	else {
+		$| = 1;
+		print "HMMsearch output dir does not exist, creating... " unless $quiet;
+		print "done.\n" if &createdir($hmmoutdir);
+		$| = 0;
+	}
 }#}}}
 
 # Sub: hmmlist
@@ -448,17 +456,19 @@ sub hmmlist {#{{{
 sub translate_est {#{{{
 	my ($infile) = shift;
 	(my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
+	$| = 1;
 	print "Translating $estfile in all six reading frames... " unless $quiet;
 	if (-e $outfile) {
 		print "$outfile exists, using this one.\n" unless $quiet;
 		return $outfile;
 	}
 	&backup_old_output_files($outfile);
-	my $translateline = $translateprog . " " . $infile . ">$outfile";
+	my $translateline = qq('$translateprog' $infile > $outfile);
 	die "Fatal: Could not translate $infile: $!\n"
 		if system($translateline);
 
 	print "done.\n";
+	$| = 0;
 	return $outfile;
 }#}}}
 
@@ -498,18 +508,13 @@ EOF
 # Returns: True if successful
 sub createdir {#{{{
 	my $dir = shift;
-	unless (-d $dir) {
-		if (-e $dir and not -d $dir) {
-			die "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later.\n";
-		}
-		else {
-			print "does not exist, creating $dir... " unless $quiet;
-			make_path $dir, { verbose => 0 } or die "Fatal: Could not create $dir: $!\n";
-			print "OK\n" unless $quiet;
-			return 1;
-		}
+	if (-e $dir and not -d $dir) {
+		die "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later.\n";
 	}
-	print "$dir exists.\n" unless $quiet;
+	else {
+		make_path $dir, { verbose => 0 } or die "Fatal: Could not create $dir: $!\n";
+		return 1;
+	}
 	return 1;
 }#}}}
 
@@ -601,6 +606,7 @@ sub clear_db {#{{{
 
 	# disconnect ASAP
 	$dbh->disconnect;
+	return 1;
 }#}}}
 
 # Documentation#{{{
