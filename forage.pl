@@ -26,7 +26,6 @@ use File::Path qw(make_path);	# mkdir with parent dirs; this also uses File::Spe
 use File::Basename;	# parsing path names
 use IO::File;	# object-oriented access to files
 use IO::Dir;	# object-oriented access to dirs
-use Tie::File;
 use Seqload::Fasta;	# object-oriented access to fasta files
 use Seqload::Mysql;	# object-oriented access to fasta-style MySQL databases
 (my $libdir = $0) =~ s/forage\.pl$//; 

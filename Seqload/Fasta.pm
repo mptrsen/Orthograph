@@ -19,6 +19,11 @@ A library for handling FASTA sequences in an object-oriented fashion.
 
 	$file->close;
 
+	# special: fasta2csv conversion
+	use Seqload::Fasta qw(fasta2csv);
+
+	fasta2csv($fastafile, $csvfile);
+
 =head1 METHODS
 
 =head2 open(FILENAME)
