@@ -106,6 +106,7 @@ sub fasta2csv {
 	close $outfh;
 
 	$fastafh->close;
+	return 1;
 }
 
 # return true
