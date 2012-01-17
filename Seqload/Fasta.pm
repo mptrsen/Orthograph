@@ -37,12 +37,15 @@ Closes the file.
 
 package Seqload::Fasta;
 use Carp;
+require Exporter;
+@ISA = qw(Exporter);
+@EXPORT_OK = qw(fasta2csv);
 
 # Constructor. Returns a sequence database object.
 sub open {
 	my ($class, $filename) = @_;
 	open (my $fh, '<', $filename)
-		or croak "Fatal: Could not open $filename\: $!\n";
+		or confess "Fatal: Could not open $filename\: $!\n";
 	my $self = {
 		'filename' => $filename,
 		'fh'       => $fh
@@ -86,6 +89,23 @@ sub close {
 sub DESTROY {
 	my $self = shift;
 	$self->close;
+}
+
+# Convert a fasta file to a csv file the easy way
+# Usage: Seqload::Fasta::fasta2csv($fastafile, $csvfile);
+sub fasta2csv {
+	my $fastafile = shift;
+	my $csvfile = shift;
+	my $fastafh = Seqload::Fasta->open($fastafile);
+
+	open(my $outfh, '>', $csvfile)
+		or confess "Fatal: Could not open $outfile\: $!\n";
+	while ((my $hdr, $seq) = $fastafh->next_seq) {
+		print $outfh $hdr . ',' . $seq . "\n";
+	}
+	close $outfh;
+
+	$fastafh->close;
 }
 
 # return true
