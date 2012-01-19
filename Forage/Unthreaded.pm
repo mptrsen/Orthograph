@@ -46,39 +46,42 @@ sub new {
 
 # Sub: verbose
 # sets $verbose
-sub verbose {
+sub verbose {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
 	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->verbose(1|0)" }
 	$verbose = shift;
-}
+}#}}}
 
 # Sub: outdir
 # sets output dir $outdir
 # Expects: reference to scalar path
-sub hmmoutdir {
+sub hmmoutdir {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
 	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmoutdir(OUTDIR)" }
 	$hmmoutdir = shift;
-}
+}#}}}
 
 # Sub: hmmsearchcmd
 # sets hmmsearch command
 # Expects: reference to array
-sub hmmsearchcmd {
+sub hmmsearchcmd {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
 	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmsearchcmd(COMMAND)" }
 	$hmmsearchcmd = shift;
-}
+}#}}}
 
-sub hmmfullout {
+# Sub: hmmfullout
+# sets option for full hmmsearch output
+# Expects: TRUE or FALSE
+sub hmmfullout {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method called as object method" }
 	unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmfullout(1|0)" }
 	$hmmfullout = shift;
-}
+}#}}}
 
 #--------------------------------------------------
 # # Object methods
@@ -126,7 +129,7 @@ sub hmmsearch {#{{{
 # sub: hmmhitcount
 # extracts the number of hits from a hmm search result file
 # returns: int number of hmm hits
-sub hmmhitcount {
+sub hmmhitcount {#{{{
 	my $self = shift;
 	if ($self->{'hmmhitcount'}) { 
 		return $self->{'hmmhitcount'};
@@ -136,11 +139,11 @@ sub hmmhitcount {
 		return $self->{'hmmhitcount'};
 	}
 	# dunno what do with hmmfullout yet... TODO implement!
-}
+}#}}}
 
 # sub: hmmresult
 # returns: the hmmsearch result as it is in the result file, sans the first 3 lines of the table (comments)
-sub hmmresult {
+sub hmmresult {#{{{
 	my $self = shift;
 	if ($self->{'hmmresult'}) {
 		return $self->{'hmmresult'};
@@ -150,12 +153,12 @@ sub hmmresult {
 	$fh->close;
 	splice(@{$self->{'hmmresult'}}, 0, 3);
 	return $self->{'hmmresult'};
-}
+}#}}}
 
 # sub: hmmhits_arrayref
 # returns: array reference to list of list
 # $hmmhits->[$i][0..3] (of line $i, fields 1, 3, 5, 6 of hmmsearch table output)
-sub hmmhits_arrayref {
+sub hmmhits_arrayref {#{{{
 	my $self = shift;
 	if ($self->{'hmmhits'}) {
 		return $self->{'hmmhits'};
@@ -173,27 +176,37 @@ sub hmmhits_arrayref {
 	}
 	# this is an array reference
 	return $self->{'hmmhits'};
+}#}}}
+
+# sub: hmmname
+# returns: name of the HMM that was used (may differ from the HMM file)
+sub hmmname {
+	my $self = shift;
+	if ($self->{'hmmname'}) {
+		return $self->{'hmmname'};
+	}
+	return ${$self->hmmresult}[1];
 }
 
 # hmm file used for searching
-sub hmmfile {
+sub hmmfile {#{{{
 	my $self = shift;
 	return $self->{'hmmfile'};
-}
+}#}}}
 
 # protein file (normally: EST input file)
-sub protfile {
+sub protfile {#{{{
 	my $self = shift;
 	return $self->{'protfile'};
-}
+}#}}}
 
 # hmmsearch result file (table or fullout)
-sub hmmresultfile {
+sub hmmresultfile {#{{{
 	my $self = shift;
 	if (scalar @_ == 1) {
 		$self->{'hmmresultfile'} = shift; 
 		return 1;
 	}
 	return ${$self->{'hmmresultfile'}};
-}
+}#}}}
 

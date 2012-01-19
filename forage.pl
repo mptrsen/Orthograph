@@ -98,7 +98,7 @@ my $estfile        = $config->{'estfile'}               ? $config->{'estfile'}  
 my $eval_threshold = $config->{'eval_threshold'}        ? $config->{'eval_threshold'}       : undef;
 my $hmmdir         = $config->{'hmmdir'}                ? $config->{'hmmdir'}               : '';
 my $hmmfile        = $config->{'hmmfile'}               ? $config->{'hmmfile'}              : '';
-my $hmmoutdir      = $config->{'hmmsearch_output_dir'}  ? $config->{'hmmsearch_output_dir'} : $hmmsearchprog;
+my $hmmoutdir      = $config->{'hmmsearch_output_dir'}  ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
 my $mysql_dbname   = $config->{'mysql_dbname'}          ? $config->{'mysql_dbname'}         : 'forage';
 my $mysql_dbpwd    = $config->{'mysql_dbpassword'}      ? $config->{'mysql_dbpassword'}     : 'root';
 my $mysql_dbserver = $config->{'mysql_dbserver'}        ? $config->{'mysql_dbserver'}       : 'localhost';
@@ -122,12 +122,13 @@ my $count               = 0;#{{{
 my $hmmresultfileref;
 my $hmmfullout          = 0;
 my $hitcount;
+my $hmmhitcount;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_date      = 'date';
 my $mysql_col_eval      = 'eval';
 my $mysql_col_hdr       = 'hdr';
 my $mysql_col_hmm       = 'hmm';
-my $mysql_col_hmmtarget = 'hmmhit';
+my $mysql_col_hmmhit    = 'hmmhit';
 my $mysql_col_id        = 'id';
 my $mysql_col_query     = 'query';
 my $mysql_col_score     = 'score';
@@ -162,15 +163,11 @@ GetOptions(	'v'     => \$verbose,#{{{
   'hmmfullout'      => \$hmmfullout,
   'preparedb'       => \$preparedb,
   'quiet'           => \$quiet,
+	'taxon=s'         => \$species_name,
 );#}}}
 
 #--------------------------------------------------
-# # Input error checking, reporting etc
-#-------------------------------------------------- 
-&intro;
-
-#--------------------------------------------------
-# # Prepare the MySQL database by dropping and recreating all tables
+# # Prepare the MySQL database by dropping and recreating all tables if requested
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
 	print "Setting MySQL database $mysql_dbname to a clean slate...\n";
@@ -180,11 +177,16 @@ if ($preparedb) {#{{{
 }#}}}
 
 #--------------------------------------------------
+# # Normal run. Input error checking, reporting etc
+#-------------------------------------------------- 
+&intro;
+
+#--------------------------------------------------
 # # create list of HMM files
 #-------------------------------------------------- 
 @hmmfiles = &hmmlist;
 
-unless ($quiet) {
+unless ($quiet) {#{{{
 	print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMMs\n" 
 		if $hmmdir;
 	print "Using HMM file $hmmfile.\n" 
@@ -193,16 +195,16 @@ unless ($quiet) {
 		if $eval_threshold;
 	print "Score cutoff: $score_threshold.\n"
 		if $score_threshold;
-}
+}#}}}
 
 #--------------------------------------------------
 # # translate the ESTs to protein, feed that shit to the database
 #-------------------------------------------------- 
 $| = 1;
-$protfile = &translate_est(File::Spec->catfile($estfile));
+$protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
 # Clear database of data from the same species
-print "Clearing previous results from database... " unless $quiet;
+print "Clearing database of previous results from '$species_name'... " unless $quiet;
 &clear_db;
 print "done.\n" unless $quiet;
 
@@ -215,14 +217,16 @@ fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\:
 # load data from csv file into database
 my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $mysql_table_ests FIELDS TERMINATED BY ',' ($mysql_col_hdr, $mysql_col_seq)";
 # add date and spec
-my $query_update = "UPDATE $mysql_table_ests SET $mysql_col_date='" . time() . "', $mysql_col_spec='$species_name'";
+my $query_update = "UPDATE $mysql_table_ests SET 
+  $mysql_col_date='" . time() . "', 
+	$mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
 
 # open connection
 my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
 $num_ests = $dbh->do($query);
 $dbh->do($query_update);
 # disconnect ASAP
-$dbh->disconnect;
+$dbh->disconnect;#}}}
 
 # report
 print " done.\n" unless $quiet;
@@ -237,7 +241,7 @@ printf "%d sequences stored to database '%s' on %s.\n",
 # # Setup the Forage module
 #-------------------------------------------------- 
 
-# These are all class methods
+# These are all class methods#{{{
 
 # verbose output; this is a class method
 Forage::Unthreaded->verbose(1) if $verbose;
@@ -252,7 +256,7 @@ Forage::Unthreaded->hmmoutdir($hmmoutdir);
 Forage::Unthreaded->hmmsearchcmd(\@hmmsearchcmd);
 
 # whether or not we want full output
-Forage::Unthreaded->hmmfullout(0);
+Forage::Unthreaded->hmmfullout(0);#}}}
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
@@ -260,6 +264,19 @@ Forage::Unthreaded->hmmfullout(0);
 print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n" unless $quiet;
 $i = 0;
 $hitcount = 0;
+
+# prepare SQL query for pushing HMMsearch results to the db
+my $query_insert_hmmresult = "INSERT INTO $mysql_table_hmmsearch (
+	$mysql_col_spec,
+	$mysql_col_hmmhit,
+	$mysql_col_hmm,
+	$mysql_col_score,
+	$mysql_col_eval) VALUES (
+	?,
+	?,
+	?,
+	?,
+	?)";
 
 #--------------------------------------------------
 # # Do the HMM search - this may be pipelined in the future
@@ -273,53 +290,53 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->hmmsearch($protfile);
 	# count the hmmsearch hits
 	unless ($hmmobj->hmmhitcount()) {	# do not care further with HMM files that did not return any result
-		printf "%4d hits detected for %s\n", 0, basename($hmmobj->hmmfile) unless $quiet;
+		printf "%4d hits detected for %s.\n", 0, basename($hmmobj->hmmfile) unless $quiet;
 		next;
 	}
-	printf "%4d hits detected for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) unless $quiet;
-	#--------------------------------------------------
-	# # print list of hits
-	# if ($verbose) {
-	# 	printf "    %s\n", $_->[0] foreach (@{$hmmobj->hmmhits});
-	# }
-	#-------------------------------------------------- 
-
-	# prepare SQL query
-	my $query = "INSERT INTO $mysql_table_hmmsearch (
-		$mysql_col_spec,
-		$mysql_col_hmmtarget,
-	  $mysql_col_hmm,
-		$mysql_col_score,
-		$mysql_col_eval) VALUES (
-	  ?,
-		?,
-		?,
-		?,
-		?)";
+	printf "%4d hits detected for %s:\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) unless $quiet;
+	# print list of hits
+	if ($verbose) {
+		printf "     %s\n", $_->[0] foreach (@{$hmmobj->hmmhits_arrayref});
+	}
 
 	# push results to database
 	$dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	my $sql = $dbh->prepare($query);
+	my $sql = $dbh->prepare($query_insert_hmmresult);
 
 	# this is an array reference
-	foreach (@{$hmmobj->hmmhits_arrayref}) {
+	foreach my $hmmhit (@{$hmmobj->hmmhits_arrayref}) {
 		$sql->execute(
 			$species_name,
-		  $_->[0],
-			$_->[1],
-			$_->[2],
-			$_->[3]
-		);
+		  $hmmhit->[0],	# target (header)
+			$hmmhit->[1],	# query (HMM)
+			$hmmhit->[2],	# score
+			$hmmhit->[3]	# evalue
+		) or die "Fatal: Could not push to database!\n";
+		++$hmmhitcount;
 	}
 	$dbh->disconnect;
-	print "     ... pushed to database.\n" if $verbose;;
+	print "       ... pushed to database.\n" if $verbose;;
 	++$hitcount;
 	
+
 	#--------------------------------------------------
 	# #TODO next:
 	#-------------------------------------------------- 
-	# find the hit seqs in the EST file and re-search them against the core ortholog db
+	# Get the hits from the database, store to a tempfile, blast against the core ortholog db
 	# using either blast or hmmsearch [hmmsearch: don't we need profiles for that?]
+	my $query = "SELECT * 
+	  FROM $mysql_table_hmmsearch 
+		WHERE $mysql_col_hmm = " . $hmmobj->hmmhits_arrayref->[0][1] . " 
+		ORDER BY $mysql_col_eval";
+
+	$dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	$sql = $dbh->prepare($query);
+	$sql->execute();
+	while (my @result = $sql->fetchrow_array()) {
+		print "@result\n";
+	}
+	$dbh->disconnect;
+
 
 	#--------------------------------------------------
 	# # TODO then:
@@ -329,7 +346,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 # report, end the program
 printf "%d HMMs hit something.   %d HMM files processed. \n", $hitcount, $i unless $quiet;
-printf "Forage analysis complete. Searched %d EST sequences using %d HMMs and hit something with %d of those.\n", $num_ests, $i, $hitcount;
+printf "Forage analysis complete. Searched %d EST sequences using %d HMMs and obtained %d hits.\n", $num_ests, $i, $hmmhitcount;
 exit;
 
 
@@ -373,6 +390,9 @@ sub parse_config {#{{{
 sub intro {#{{{
 	die "Fatal: At least two arguments required: EST file (-E) and HMM file/dir (-H or -hmmdir)!\n"
 		unless ($estfile and ($hmmdir or $hmmfile));
+	
+	die "Fatal: Species name needed (-taxon NAME)!\n"
+		unless ($species_name);
 
 	# mutually exclusive options
 	die "Fatal: Can't operate in both verbose and quiet mode\n"
@@ -384,8 +404,8 @@ sub intro {#{{{
 
 	# construct output directory paths
 	# outdir may be defined in the config file
-	$outdir = defined($outdir) ? $outdir : File::Spec->catdir('out_'.basename($estfile, '.fa'));
-	$hmmoutdir = File::Spec->catdir($outdir, $hmmsearchprog);
+	$outdir = defined($outdir) ? $outdir : $species_name;
+	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearchprog));
 
 	# build hmmsearch command line
 	# full output only if desired, table otherwise
@@ -407,7 +427,7 @@ sub intro {#{{{
 		print "HMM dir $hmmdir exists.\n" unless $quiet;
 	}
 	else {
-		die "Fatal: HMM dir $hmmdir does not exist!\n";
+		die "Fatal: HMM dir $hmmdir does not exist or is not a directory!\n";
 	}
 
 	# the EST file
@@ -420,12 +440,12 @@ sub intro {#{{{
 
 	# the HMMsearch output directory
 	if (-d $hmmoutdir) {
-		print "HMMsearch output dir exists\n" unless $quiet;
+		print "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
 	}
 	else {
 		$| = 1;
-		print "HMMsearch output dir does not exist, creating... " unless $quiet;
-		print "done.\n" if &createdir($hmmoutdir);
+		print "HMMsearch output dir $hmmoutdir does not exist, creating... " unless $quiet;
+		&createdir($hmmoutdir) and print "done.\n";
 		$| = 0;
 	}
 }#}}}
@@ -463,7 +483,6 @@ sub translate_est {#{{{
 		print "$outfile exists, using this one.\n" unless $quiet;
 		return $outfile;
 	}
-	&backup_old_output_files($outfile);
 	my $translateline = qq('$translateprog' $infile > $outfile);
 	die "Fatal: Could not translate $infile: $!\n"
 		if system($translateline);
@@ -524,35 +543,35 @@ sub createdir {#{{{
 # Returns: True on success
 sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
-		`$mysql_col_id`   INT(20) NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		`$mysql_col_spec` VARCHAR(255) NOT NULL,
-		`$mysql_col_date` INT(10) UNSIGNED,
-		`$mysql_col_hdr`  VARCHAR(255) NOT NULL,
-		`$mysql_col_seq`  VARCHAR(64000) DEFAULT NULL)";
+		$mysql_col_id   INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec VARCHAR(255) NOT NULL,
+		$mysql_col_date INT(11) UNSIGNED,
+		$mysql_col_hdr  VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
+		$mysql_col_seq  MEDIUMBLOB DEFAULT NULL)";	# BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		`$mysql_col_id`        INT(20) NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		`$mysql_col_spec`      VARCHAR(255) NOT NULL,
-		`$mysql_col_hmm`       VARCHAR(255) NOT NULL,
-		`$mysql_col_hmmtarget` VARCHAR(255) NOT NULL,
-		`$mysql_col_score`     FLOAT NOT NULL,
-		`$mysql_col_eval`      FLOAT NOT NULL)";
+		$mysql_col_id        INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec      VARCHAR(255) NOT NULL,
+		$mysql_col_hmm       VARCHAR(255) NOT NULL,
+		$mysql_col_hmmhit    VARCHAR(255) NOT NULL, INDEX ($mysql_col_hmmhit),
+		$mysql_col_score     FLOAT NOT NULL,
+		$mysql_col_eval      FLOAT NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		`$mysql_col_id`     INT(20) NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		`$mysql_col_spec`   VARCHAR(255) NOT NULL,
-		`$mysql_col_query`  VARCHAR(255) NOT NULL,
-		`$mysql_col_target` VARCHAR(255) NOT NULL,
-		`$mysql_col_score`  FLOAT NOT NULL,
-		`$mysql_col_eval`   FLOAT NOT NULL)";
+		$mysql_col_id     INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec   VARCHAR(255) NOT NULL,
+		$mysql_col_query  VARCHAR(255) NOT NULL, INDEX ($mysql_col_query),
+		$mysql_col_target VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
+		$mysql_col_score  FLOAT NOT NULL,
+		$mysql_col_eval   FLOAT NOT NULL)";
 	
 	my $query_create_core_orthologs = "CREATE TABLE $mysql_table_core_orthologs (
-		`$mysql_col_id`     INT(20) NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		`$mysql_col_spec`   VARCHAR(255) NOT NULL,
-		`$mysql_col_taxon`  VARCHAR(25) NOT NULL,
-		`$mysql_col_hmm`    VARCHAR(255) NOT NULL,
-		`$mysql_col_hdr`    VARCHAR(255) NOT NULL,
-		`$mysql_col_seq`   VARCHAR(64000) DEFAULT NULL)";
+		$mysql_col_id     INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec   VARCHAR(255) NOT NULL,
+		$mysql_col_taxon  VARCHAR(25) NOT NULL,
+		$mysql_col_hmm    VARCHAR(255) NOT NULL,
+		$mysql_col_hdr    VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
+		$mysql_col_seq    MEDIUMBLOB DEFAULT NULL)";	# BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
 
 	# open connection
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
