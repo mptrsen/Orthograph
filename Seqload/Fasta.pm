@@ -11,18 +11,28 @@ A library for handling FASTA sequences in an object-oriented fashion.
 
   use Seqload::Fasta;
   
-  my $file = Seqload::Fasta->new($filename);
+  # open the file, return fasta file object
+  my $file = Seqload::Fasta->open($filename);
   
-  while (my ($hdr, $seq) = $file->next) {
+  # loop through the sequences
+  while (my ($hdr, $seq) = $file->next_seq) {
     print $hdr . "\n" . $seq . "\n";
   }
 
+  # close the file object
 	$file->close;
 
+<<<<<<< HEAD
 	# special: fasta2csv conversion
 	use Seqload::Fasta qw(fasta2csv);
 
 	fasta2csv($fastafile, $csvfile);
+=======
+  # convert a fasta file to a csv file
+	Seqload::Fasta::fasta2csv($fastafile, $csvfile);
+
+
+>>>>>>> b7802d3e3511472bbe4f81b84e8d83027c6908f0
 
 =head1 METHODS
 
@@ -30,13 +40,22 @@ A library for handling FASTA sequences in an object-oriented fashion.
 
 Opens a fasta file. Returns a sequence database object.
 
-=head2 next
+=head2 next_seq
 
-Returns the next sequence in a sequence database object as an array (HEADER, SEQUENCE).
+Returns the next sequence in a sequence database object as an array (HEADER,
+SEQUENCE). Note that the '>' character is truncated from the header.
 
 =head2 close
 
 Closes the file.
+
+=head1 FUNCTIONS
+
+=head2 fasta2csv($fastafile, $csvfile)
+
+Converts a fasta file into a csv file where each line consists of
+'HEADER,SEQUENCE'. Manages opening, parsing and closing of the files, no
+additional file handles necessary..
 
 =cut#}}}
 
