@@ -1,21 +1,22 @@
 FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs
 
 SYSTEM REQUIREMENTS
+===================
 
 FORAGE requires the following software packages to be installed on the system:
 
-Package                      Download from
------------------------------------------------------------------------
-HMMer3                       http://hmmer.janelia.org
-Exonerate                    http://www.ebi.ac.uk/~guy/exonerate/ 
-NCBI BLAST+                  ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-MySQL                        http://www.mysql.com
+Package          Download from
+-------------------------------------------------------------------------------
+HMMer3           http://hmmer.janelia.org
+Exonerate        http://www.ebi.ac.uk/~guy/exonerate/ 
+NCBI BLAST+      ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+MySQL            http://www.mysql.com
 
 The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
 IO::Dir (used for platform-independent path handling) as well as DBI and
 DBD::Mysql for database handling should be present in your Perl distribution.
-Update your Perl installation if not and see [1] if you are installing Forage
-on a Windows system under Cygwin (http://www.cygwin.com). 
+Update your Perl installation if not and see [1] and [2] if you are installing
+Forage on a Windows system under Cygwin (http://www.cygwin.com). 
 
 If your Perl installation was not compiled with thread support, but you would
 like to use FORAGE with multithreading emulation on multiprocessor platforms,
@@ -25,11 +26,18 @@ run FORAGE single-threadedly, of course.
 At the moment, threads are not implemented anyway.
 
 INVOCATION
+==========
 
 Forage allows parsing a config file, which by default is named 'forage.conf'.
 Available options can be obtained using 'perldoc forage.pl'. Many options can
 be set or overridden on the command line. For those switches, also see
 'perldoc forage.pl'.
+
+MySQL PERFORMANCE
+=================
+
+Forage makes extensive use of MySQL query caching. For optimal performance,
+make sure that query caching is enabled in your MySQL instance.
 
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>

@@ -27,18 +27,20 @@ use File::Basename; # parsing path names
 use File::Temp; # temporary files
 use IO::File; # object-oriented access to files
 use IO::Dir;  # object-oriented access to dirs
+<<<<<<< HEAD
+=======
+use Tie::File;
+use Forage::Hmmsearch;
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
 
 my $version = 0.00002;
-print <<EOF;
-Forage: Find Orthologs using Reciprocity Among Genes and ESTs
-Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>
-Version $version
-
-EOF
+print "Forage: Find Orthologs using Reciprocity Among Genes and ESTs\n";
+print "Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n";
+print "Version $version\n\n";
 
 #--------------------------------------------------
 # Only use threads if the system supports it.
@@ -54,10 +56,15 @@ elsif ($use_threads == 1 and !$Config{'useithreads'}) {
   die "Fatal: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n";
 }
 else {
+<<<<<<< HEAD
   print "Not using threads. ";
   use Forage::Unthreaded;
   print "Loaded Forage::Unthreaded.\n";
   $use_threads = 0;
+=======
+	print "Not using threads.\n";
+	$use_threads = 0;
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 }#}}}
 
 #--------------------------------------------------
@@ -71,12 +78,21 @@ my $config;                       # will hold the configuration from config file
 (my $configfile = $0) =~ s/(\.pl)?$/.conf/;#{{{
 # mini argument parser for the configfile
 for (my $i = 0; $i < scalar @ARGV; ++$i) {
+<<<<<<< HEAD
   if ($ARGV[$i] =~ /-c/) {
     if ($ARGV[$i+1] !~ /^-/) {
       $configfile = $ARGV[$i+1];
     }
     else { warn "Warning: Config file name '$ARGV[$i+1]' not accepted (use './$ARGV[$i+1]' if you mean it). Falling back to '$configfile'\n" }
   }
+=======
+	if ($ARGV[$i] =~ /-c/) {
+		if ($ARGV[$i+1] !~ /^-/) {
+		  $configfile = $ARGV[$i+1];
+		}
+		else { warn "Warning: Config file name '$ARGV[$i+1]' not accepted (use './$ARGV[$i+1]' if you mean it). Falling back to '$configfile'\n" }
+	}
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 }
 if (-e $configfile) {
   print "Parsing config file '$configfile'.\n";
@@ -84,15 +100,18 @@ if (-e $configfile) {
 }#}}}
 
 #--------------------------------------------------
-# # Programs
+# # Programs in the order of their use
 #-------------------------------------------------- 
 my $translateprog = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';#{{{
-my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';#}}}
+my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';
+my $blastprog     = $config->{'blast_program'}     ? $config->{'blast_program'}     : 'blastp';#}}}
 
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
-my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';#{{{
+my $blast_max_hits = $config->{'blast_max_hits'}               ? $config->{'blast_max_hits'}              : 3;#{{{
+my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
+my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
 my $estfile        = $config->{'estfile'}               ? $config->{'estfile'}              : '';
 my $eval_threshold = $config->{'eval_threshold'}        ? $config->{'eval_threshold'}       : undef;
 my $hmmdir         = $config->{'hmmdir'}                ? $config->{'hmmdir'}               : '';
@@ -150,6 +169,7 @@ my $i;#}}}
 # # Get command line options. These may override variables set via the config file.
 #-------------------------------------------------- 
 GetOptions( 'v'     => \$verbose,#{{{
+<<<<<<< HEAD
   'c'               => \$configfile,
   'threads'         => \$use_threads,   # make using threads optional
   'estfile=s'       => \$estfile,
@@ -163,10 +183,26 @@ GetOptions( 'v'     => \$verbose,#{{{
   'preparedb'       => \$preparedb,
   'quiet'           => \$quiet,
   'taxon=s'         => \$species_name,
+=======
+	'c'               => \$configfile,
+	'threads'         => \$use_threads,   # make using threads optional
+	'estfile=s'       => \$estfile,
+	'E=s'             => \$estfile,
+	'eval=s'          => \$eval_threshold,
+	'score=s'         => \$score_threshold,
+	'H=s'             => \$hmmfile,
+	'hmmdir=s'        => \$hmmdir,
+	'hmmsearchprog=s' => \$hmmsearchprog,
+	'hmmfullout'      => \$hmmfullout,
+	'preparedb'       => \$preparedb,
+	'quiet'           => \$quiet,
+	'taxon=s'         => \$species_name,
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 );#}}}
 
 #--------------------------------------------------
-# # Prepare the MySQL database by dropping and recreating all tables if requested
+# # Special case: Prepare the MySQL database by dropping and recreating all
+# # tables if requested, then exit
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
   print "Setting MySQL database $mysql_dbname to a clean slate...\n";
@@ -210,15 +246,20 @@ print "done.\n" unless $quiet;
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
 # Create temporary csv file for high-speed reading into database
-my $tmpfh = File::Temp->new(UNLINK => 1);
+my $tmpfh = File::Temp->new('UNLINK' => 1);
 fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
 
 # load data from csv file into database
 my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $mysql_table_ests FIELDS TERMINATED BY ',' ($mysql_col_hdr, $mysql_col_seq)";
 # add date and spec
 my $query_update = "UPDATE $mysql_table_ests SET 
+<<<<<<< HEAD
   $mysql_col_date='" . time() . "', 
   $mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
+=======
+	$mysql_col_date='" . time() . "', 
+	$mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 
 # open connection
 my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
@@ -243,19 +284,19 @@ printf "%d sequences stored to database '%s' on %s.\n",
 # These are all class methods#{{{
 
 # verbose output; this is a class method
-Forage::Unthreaded->verbose(1) if $verbose;
+Forage::Hmmsearch->verbose(1) if $verbose;
 
 # the output directory
-Forage::Unthreaded->hmmoutdir($hmmoutdir);
+Forage::Hmmsearch->hmmoutdir($hmmoutdir);
 
 # the hmmsearch program
-# Forage::Unthreaded->hmmsearchprog($hmmsearchprog);
+# Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
 
 # the hmmsearch command
-Forage::Unthreaded->hmmsearchcmd(\@hmmsearchcmd);
+Forage::Hmmsearch->hmmsearchcmd(\@hmmsearchcmd);
 
 # whether or not we want full output
-Forage::Unthreaded->hmmfullout(0);#}}}
+Forage::Hmmsearch->hmmfullout(0);#}}}
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
@@ -264,7 +305,7 @@ print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n" unless $quie
 $i = 0;
 $hitcount = 0;
 
-# prepare SQL query for pushing HMMsearch results to the db
+# SQL query for pushing HMMsearch results to the db
 my $query_insert_hmmresult = "INSERT INTO $mysql_table_hmmsearch (
   $mysql_col_spec,
   $mysql_col_hmmhit,
@@ -281,7 +322,9 @@ my $query_insert_hmmresult = "INSERT INTO $mysql_table_hmmsearch (
 # # Do the HMM search - this may be pipelined in the future
 #-------------------------------------------------- 
 
+HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
+<<<<<<< HEAD
   ++$i;
   # create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
   my $hmmobj = Forage::Unthreaded->new($hmmfile); 
@@ -338,6 +381,77 @@ foreach my $hmmfile (@hmmfiles) {#{{{
   # # TODO then:
   #-------------------------------------------------- 
   # for the re-hits, gather nuc seq and compile everything that Karen wants output :)
+=======
+	++$i;
+	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
+	my $hmmobj = Forage::Hmmsearch->new($hmmfile); 
+	# now do the hmmsearch on the protfile
+	$hmmobj->hmmsearch($protfile);
+	# count the hmmsearch hits
+	unless ($hmmobj->hmmhitcount()) { # do not care further with HMM files that did not return any result
+		printf "%4d hits detected for %s.\n", 0, basename($hmmobj->hmmfile) unless $quiet;
+		next;
+	}
+	printf "%4d hits detected for %s:\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) unless $quiet;
+	# print list of hits if verbose
+	if ($verbose) {
+		printf "     %s\n", $_->{'target'} foreach (@{$hmmobj->hmmhits_arrayref});
+	}
+
+	#--------------------------------------------------
+	# # push results to database
+	#-------------------------------------------------- 
+	$dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	my $sql = $dbh->prepare($query_insert_hmmresult);
+
+	# this is a reference to an array of hashes
+	foreach my $hmmhit (@{$hmmobj->hmmhits_arrayref}) {
+		$sql->execute(
+		  $species_name,
+		  $hmmhit->{'target'}, # target (header)
+		  $hmmhit->{'query'},  # query (HMM)
+		  $hmmhit->{'score'},  # score
+		  $hmmhit->{'eval'}    # evalue
+		) or die "Fatal: Could not push to database!\n";
+		++$hmmhitcount;
+	}
+	$dbh->disconnect;
+	print "       ... pushed to database.\n" if $verbose;;
+	++$hitcount;
+	
+
+	#--------------------------------------------------
+	# # the reciprocal search
+	#-------------------------------------------------- 
+
+	# setup SQL query; use the first array item since they all share the query (HMM) ID 
+	my $query_get_sequences = "SELECT $mysql_col_hdr, $mysql_col_seq
+		FROM $mysql_table_ests INNER JOIN $mysql_table_hmmsearch
+		ON $mysql_table_hmmsearch.$mysql_col_hmmhit = $mysql_table_ests.$mysql_col_hdr 
+		WHERE $mysql_table_hmmsearch.$mysql_col_hmm = " . $hmmobj->hmmhits_arrayref->[0]{'query'};
+
+  # get the sequences from the database (as array->array reference)
+  $count = 0;
+  foreach my $result (@{&mysql_get($query_get_sequences)}) {
+    ++$count;
+    # run blastp on it: setup a temporary file that will not be preserved
+    my $tmpfh = File::Temp->new('UNLINK' => 1);
+    # fasta header and sequence
+    print $tmpfh '>' . $hmmobj->hmmhits_arrayref->[0]{'query'} . ':' . $$result[0] . "\n"; 
+    print $tmpfh $$result[1] . "\n";
+
+    my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmhits_arrayref->[0]{'query'} . '_' . $count . '.out');
+    my $blastp_command = "blastp -db /home/mpetersen/hamstr/blast_dir/dappu_1391/dappu_1391_prot -query $tmpfh -outfmt 7 -max_target_seqs 3 -out $blastoutfile";
+    print "      running $blastp_command\n" if $verbose;
+    if (system($blastp_command)) { die "blastp for result $count failed: $!\n" }
+  }
+
+
+	#--------------------------------------------------
+	# # TODO then:
+	#-------------------------------------------------- 
+	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 }#}}}
 
 # report, end the program
@@ -350,12 +464,36 @@ exit;
 # # Functions follow
 ###################################################
 
+# Sub: mysql_get
+# Get from the database the result of a SQL query
+# Expects: QUERY as a string literal
+# Returns: Reference to array of arrays (result lines->fields)
+sub mysql_get {#{{{
+	my $query = shift;
+	unless ($query) {
+		croak "Usage: mysql_get(QUERY)\n";
+	}
+  # prepare anonymous array
+	my $results = [ ];
+  # connect and fetch stuff
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	my $sql = $dbh->prepare($query);
+	$sql->execute();
+	while (my @result = $sql->fetchrow_array() ) {
+		push(@$results, \@result);
+	}
+	$sql->finish();
+	$dbh->disconnect; # disconnect ASAP
+	return $results;
+}#}}}
+
 # Sub: parse_config
 # Parse a simple, ini-style config file where keys are separated from values by '='.
 # E.g.
 # outputdir = /home/foo/bar
 # translateprog=/usr/bin/translate
 sub parse_config {#{{{
+<<<<<<< HEAD
   my $file = shift;
   my $conf = { };
   open(my $fh, '<', $file) or die "Fatal: Could not open config file $file\: $!\n";
@@ -378,12 +516,37 @@ sub parse_config {#{{{
   }
   close($fh);
   return $conf;
+=======
+	my $file = shift;
+	my $conf = { };
+	open(my $fh, '<', $file) or die "Fatal: Could not open config file $file\: $!\n";
+
+	while (my $line = <$fh>) {
+		next if $line =~ /^\s*$/; # skip empty lines
+		next if $line =~ /^\s*#/; # skip comment lines starting with '#'
+		
+		# split by '=' producing a maximum of two items
+		my ($key, $val) = split('=', $line, 2);
+
+		foreach ($key, $val) {
+		  s/\s+$//; # remove all trailing whitespace
+		  s/^\s+//; # remove all leading whitespace
+		}
+
+		die "Fatal: Configuration option '$key' defined twice in line $. of config file $file\n"
+		  if defined $conf->{$key};
+		$conf->{$key} = $val;
+	}
+	close($fh);
+	return $conf;
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 }#}}}
 
 # Sub: intro
 # Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
 sub intro {#{{{
+<<<<<<< HEAD
   die "Fatal: At least two arguments required: EST file (-E) and HMM file/dir (-H or -hmmdir)!\n"
     unless ($estfile and ($hmmdir or $hmmfile));
   
@@ -442,6 +605,78 @@ sub intro {#{{{
     $| = 1;
     print "HMMsearch output dir $hmmoutdir does not exist, creating... " unless $quiet;
     &createdir($hmmoutdir) and print "done.\n";
+=======
+	die "Fatal: At least two arguments required: EST file (-E) and HMM file/dir (-H or -hmmdir)!\n"
+		unless ($estfile and ($hmmdir or $hmmfile));
+	
+	die "Fatal: Species name needed (-taxon NAME)!\n"
+		unless ($species_name);
+
+	# mutually exclusive options
+	die "Fatal: Can't operate in both verbose and quiet mode\n"
+		if ($verbose and $quiet);
+
+	# mutually exclusive options
+	die "Fatal: Can't use both e-value and score thresholds\n"
+		if ($eval_threshold and $score_threshold);
+
+	# construct output directory paths
+	# outdir may be defined in the config file
+	$outdir = defined($outdir) ? $outdir : $species_name;
+	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearchprog));
+  $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blastprog));
+
+	# build hmmsearch command line
+	# full output only if desired, table otherwise
+	if ($eval_threshold) {
+		@eval_option = ('-E', $eval_threshold);
+	}
+	if ($score_threshold) {
+		@score_option = ('-T', $score_threshold);
+	}
+	if ($hmmfullout) {
+		@hmmsearchcmd = ($hmmsearchprog, @eval_option, @score_option, '-o');
+	}
+	else {
+		@hmmsearchcmd = ($hmmsearchprog, @eval_option, @score_option, '--tblout');
+	}
+
+	# the HMM directory
+	if (-d $hmmdir) {
+		print "HMM dir $hmmdir exists.\n" unless $quiet;
+	}
+	else {
+		die "Fatal: HMM dir $hmmdir does not exist or is not a directory!\n";
+	}
+
+	# the EST file
+	if (-e $estfile) {
+		print "EST file $estfile exists.\n" unless $quiet;
+	}
+	else {
+		die "Fatal: EST file $estfile does not exist!\n";
+	}
+
+	# the HMMsearch output directory
+	if (-d $hmmoutdir) {
+		print "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
+	}
+	else {
+		$| = 1;
+		print "HMMsearch output dir $hmmoutdir does not exist, creating... " unless $quiet;
+		&createdir($hmmoutdir) and print "done.\n";
+		$| = 0;
+	}
+
+  # the BLASTP output directory
+  if (-d $blastoutdir) {
+    print "BLASTP output dir $blastoutdir exists.\n" unless $quiet;
+  }
+  else {
+    $| = 1;
+    print "BLASTP output dir $blastoutdir does not exist, creating... " unless $quiet;
+    &createdir($blastoutdir) and print "done.\n";
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
     $| = 0;
   }
 }#}}}
@@ -450,6 +685,7 @@ sub intro {#{{{
 # Expects: nothing (?)
 # Returns: array hmmfiles
 sub hmmlist {#{{{
+<<<<<<< HEAD
   if ($hmmdir) {
     my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
     while (my $file = $dir->read) {
@@ -464,6 +700,22 @@ sub hmmlist {#{{{
     push(@hmmfiles, $hmmfile);
     return @hmmfiles;
   }
+=======
+	if ($hmmdir) {
+		my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
+		while (my $file = $dir->read) {
+		  push(@hmmfiles, File::Spec->catfile($hmmdir, $file)) if ($file =~ /\.hmm$/);
+		}
+		$dir->close;
+		return sort @hmmfiles;
+	}
+	else {
+		print "single hmm\n"
+		  if $verbose;
+		push(@hmmfiles, $hmmfile);
+		return @hmmfiles;
+	}
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 }#}}}
 
 # Sub: translate_est
@@ -538,6 +790,7 @@ sub createdir {#{{{
 # Generate a clean database, deleting all existing tables and starting from scratch
 # Returns: True on success
 sub preparedb {#{{{
+<<<<<<< HEAD
   my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
     $mysql_col_id   INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
     $mysql_col_spec VARCHAR(255) NOT NULL,
@@ -593,11 +846,69 @@ sub preparedb {#{{{
   $dbh->disconnect();
 
   return 1;
+=======
+	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
+		$mysql_col_id   INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec VARCHAR(255) NOT NULL,
+		$mysql_col_date INT(11) UNSIGNED,
+		$mysql_col_hdr  VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
+		$mysql_col_seq  MEDIUMBLOB DEFAULT NULL)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
+
+	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
+		$mysql_col_id        INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec      VARCHAR(255) NOT NULL,
+		$mysql_col_hmm       VARCHAR(255) NOT NULL,
+		$mysql_col_hmmhit    VARCHAR(255) NOT NULL, INDEX ($mysql_col_hmmhit),
+		$mysql_col_score     FLOAT NOT NULL,
+		$mysql_col_eval      FLOAT NOT NULL)";
+	
+	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
+		$mysql_col_id     INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec   VARCHAR(255) NOT NULL,
+		$mysql_col_query  VARCHAR(255) NOT NULL, INDEX ($mysql_col_query),
+		$mysql_col_target VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
+		$mysql_col_score  FLOAT NOT NULL,
+		$mysql_col_eval   FLOAT NOT NULL)";
+	
+	my $query_create_core_orthologs = "CREATE TABLE $mysql_table_core_orthologs (
+		$mysql_col_id     INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec   VARCHAR(255) NOT NULL,
+		$mysql_col_taxon  VARCHAR(25) NOT NULL,
+		$mysql_col_hmm    VARCHAR(255) NOT NULL,
+		$mysql_col_hdr    VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
+		$mysql_col_seq    MEDIUMBLOB DEFAULT NULL)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
+
+	# open connection
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+
+	# drop all tables
+	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast, $mysql_table_core_orthologs) {
+		my $query_drop = "DROP TABLE IF EXISTS $_";
+		print "$query_drop\n" if $verbose;
+		my $sql = $dbh->prepare($query_drop);
+		$sql->execute()
+		  or die "Could not execute SQL query: $!\n";
+	}
+
+	# create all tables
+	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, $query_create_core_orthologs) {
+		printf "$query\n" if $verbose;
+		my $sql = $dbh->prepare($query);
+		$sql->execute()
+		  or die "Could not execute SQL query: $!\n";
+	}
+
+	# disconnect
+	$dbh->disconnect();
+
+	return 1;
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 } #}}}
 
 # Sub: clear_db
 # clears the database of previous results from the same species 
 sub clear_db {#{{{
+<<<<<<< HEAD
   # clear previous results from the same species
   my $query_clear_ests           = "DELETE FROM $mysql_table_ests 
                                     WHERE $mysql_col_spec = '$species_name'";
@@ -623,6 +934,33 @@ sub clear_db {#{{{
   # disconnect ASAP
   $dbh->disconnect;
   return 1;
+=======
+	# clear previous results from the same species
+	my $query_clear_ests           = "DELETE FROM $mysql_table_ests 
+		                                WHERE $mysql_col_spec = '$species_name'";
+	my $query_clear_hmmsearch      = "DELETE FROM $mysql_table_hmmsearch 
+		                                WHERE $mysql_col_spec = '$species_name'";
+	my $query_clear_blast          = "DELETE FROM $mysql_table_blast 
+		                                WHERE $mysql_col_spec = '$species_name'";
+	my $query_clear_core_orthologs = "DELETE FROM $mysql_table_core_orthologs 
+		                                WHERE $mysql_col_spec = '$species_name'";
+
+	# open connection
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+
+	my $sql = $dbh->prepare($query_clear_ests);
+	$sql->execute() or die "$!\n";
+	$sql = $dbh->prepare($query_clear_hmmsearch);
+	$sql->execute() or die "$!\n";
+	$sql = $dbh->prepare($query_clear_blast);
+	$sql->execute() or die "$!\n";
+	$sql = $dbh->prepare($query_clear_core_orthologs);
+	$sql->execute() or die "$!\n";
+
+	# disconnect ASAP
+	$dbh->disconnect;
+	return 1;
+>>>>>>> ffbb25968d9e0cdc1dac57195419dd04e634aa20
 }#}}}
 
 # Documentation#{{{
@@ -650,15 +988,15 @@ The configuration file allows to set all options available on the command line s
 
 The config file has to be in ini-style: 
 
-  # this is a comment
-  translateprog  = fastatranslate
-  hmmdir         = /home/malty/thesis/forage/hmms
-  estfile        = /home/malty/data/cleaned/Andrena_vaga.fa
-  mysql_dbname   = forage
-  mysql_dbserver = localhost
-  mysql_dbuser   = root
-  mysql_dbpwd    = root
-  mysql_table    = ests
+	# this is a comment
+	translateprog  = fastatranslate
+	hmmdir         = /home/malty/thesis/forage/hmms
+	estfile        = /home/malty/data/cleaned/Andrena_vaga.fa
+	mysql_dbname   = forage
+	mysql_dbserver = localhost
+	mysql_dbuser   = root
+	mysql_dbpwd    = root
+	mysql_table    = ests
 
 etc. Empty lines and comments are ignored, keys and values have to be separated by an equal sign. 
 
