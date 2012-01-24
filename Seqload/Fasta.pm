@@ -22,17 +22,9 @@ A library for handling FASTA sequences in an object-oriented fashion.
   # close the file object
 	$file->close;
 
-<<<<<<< HEAD
-	# special: fasta2csv conversion
-	use Seqload::Fasta qw(fasta2csv);
-
-	fasta2csv($fastafile, $csvfile);
-=======
   # convert a fasta file to a csv file
 	Seqload::Fasta::fasta2csv($fastafile, $csvfile);
 
-
->>>>>>> b7802d3e3511472bbe4f81b84e8d83027c6908f0
 
 =head1 METHODS
 
