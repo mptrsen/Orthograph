@@ -20,10 +20,10 @@ A library for handling FASTA sequences in an object-oriented fashion.
   }
 
   # close the file object
-	$file->close;
+  $file->close;
 
   # convert a fasta file to a csv file
-	Seqload::Fasta::fasta2csv($fastafile, $csvfile);
+  Seqload::Fasta::fasta2csv($fastafile, $csvfile);
 
 
 
@@ -60,70 +60,70 @@ require Exporter;
 
 # Constructor. Returns a sequence database object.
 sub open {
-	my ($class, $filename) = @_;
-	open (my $fh, '<', $filename)
-		or confess "Fatal: Could not open $filename\: $!\n";
-	my $self = {
-		'filename' => $filename,
-		'fh'       => $fh
-	};
-	bless($self, $class);
-	return $self;
+  my ($class, $filename) = @_;
+  open (my $fh, '<', $filename)
+    or confess "Fatal: Could not open $filename\: $!\n";
+  my $self = {
+    'filename' => $filename,
+    'fh'       => $fh
+  };
+  bless($self, $class);
+  return $self;
 }
 
 # Returns the next sequence as an array (hdr, seq). 
 # Useful for looping through a seq database.
 sub next_seq {
-	my $self = shift;
-	my $fh = $self->{'fh'};
-	local $/ = "\n>";	# change the line separator
-	return unless $item = readline($fh);	# read the line(s)
-	chomp $item;
-	
-	if ($. == 1 and $item !~ /^>/) {	# first line is not a header
-		croak "Fatal: " . $self->{'filename'} . "is not a FASTA file: Missing descriptor line\n";
-	}
+  my $self = shift;
+  my $fh = $self->{'fh'};
+  local $/ = "\n>"; # change the line separator
+  return unless $item = readline($fh);  # read the line(s)
+  chomp $item;
+  
+  if ($. == 1 and $item !~ /^>/) {  # first line is not a header
+    croak "Fatal: " . $self->{'filename'} . "is not a FASTA file: Missing descriptor line\n";
+  }
 
-	$item =~ s/^>//;
+  $item =~ s/^>//;
 
-	my ($hdr, $seq) = split(/\n/, $item, 2);
-	$seq =~ s/>//g if defined $seq;
-	$seq =~ s/\s+//g if defined $seq;	# remove all whitespace, including newlines
+  my ($hdr, $seq) = split(/\n/, $item, 2);
+  $seq =~ s/>//g if defined $seq;
+  $seq =~ s/\s+//g if defined $seq; # remove all whitespace, including newlines
 
-	return($hdr, $seq);
+  return($hdr, $seq);
 }
 
 # Destructor. Closes the file and undefs the database object.
 sub close {
-	my $self = shift;
-	my $fh = $self->{'fh'};
-	my $filename = $self->{'filename'};
-	close($fh) or croak "Fatal: Could not close $filename\: $!\n";
-	undef($self);
+  my $self = shift;
+  my $fh = $self->{'fh'};
+  my $filename = $self->{'filename'};
+  close($fh) or croak "Fatal: Could not close $filename\: $!\n";
+  undef($self);
 }
 
 # I dunno if this is required but I guess this is called when you undef() an object
 sub DESTROY {
-	my $self = shift;
-	$self->close;
+  my $self = shift;
+  $self->close;
 }
 
 # Convert a fasta file to a csv file the easy way
 # Usage: Seqload::Fasta::fasta2csv($fastafile, $csvfile);
 sub fasta2csv {
-	my $fastafile = shift;
-	my $csvfile = shift;
-	my $fastafh = Seqload::Fasta->open($fastafile);
+  my $fastafile = shift;
+  my $csvfile = shift;
+  my $fastafh = Seqload::Fasta->open($fastafile);
 
-	open(my $outfh, '>', $csvfile)
-		or confess "Fatal: Could not open $outfile\: $!\n";
-	while ((my $hdr, $seq) = $fastafh->next_seq) {
-		print $outfh $hdr . ',' . $seq . "\n";
-	}
-	close $outfh;
+  open(my $outfh, '>', $csvfile)
+    or confess "Fatal: Could not open $outfile\: $!\n";
+  while ((my $hdr, $seq) = $fastafh->next_seq) {
+    print $outfh $hdr . ',' . $seq . "\n";
+  }
+  close $outfh;
 
-	$fastafh->close;
-	return 1;
+  $fastafh->close;
+  return 1;
 }
 
 # return true
