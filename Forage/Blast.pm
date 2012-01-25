@@ -23,6 +23,7 @@ use Carp; # extended dying functions
 my $verbose = 0;
 my $blastoutdir = File::Spec->catdir('.');
 my $blastprog = 'blastp';
+my $blast_cmd;
 
 sub new {
 	my ($class, $db, $queryfile) = @_;
@@ -37,6 +38,12 @@ sub new {
 	return $self;
 }
 
+sub blast_cmdline {
+	my $class = shift;
+	if (ref $class) { confess "Class method used as object method\n" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->blast_cmdline(COMMAND)\n";
+	$blast_cmd = shift;
+}
 sub blastp {
 	my $self = shift;
 	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->blastp(FILE)\n" }
