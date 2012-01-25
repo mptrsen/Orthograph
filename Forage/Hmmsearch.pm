@@ -1,6 +1,6 @@
 #--------------------------------------------------
 # This file is part of Forage.
-# Copyright 2011 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Forage is free software: you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
@@ -23,8 +23,10 @@ use Carp; # extended dying functions
 my $verbose = 0;
 my $hmmoutdir = File::Spec->catdir('.');
 my $hmmsearchprog = 'hmmsearch';
-my $hmmsearchcmd;
+my @hmmsearchcmd;
 my $hmmfullout = 0;
+my $eval_threshold = 10;
+my $score_threshold = 0;
 1;
 
 sub new {
@@ -44,8 +46,12 @@ sub new {
 # # Class methods
 #-------------------------------------------------- 
 
-# Sub: verbose
-# sets $verbose
+=head2 verbose
+
+Sets verbose output on (TRUE) or off (FALSE). Default is FALSE.
+
+=cut
+
 sub verbose {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
@@ -53,9 +59,12 @@ sub verbose {#{{{
   $verbose = shift;
 }#}}}
 
-# Sub: outdir
-# sets output dir $outdir
-# Expects: reference to scalar path
+=head2 outdir
+
+Sets output directory for the hmmsearch output files. Expects a reference to scalar F<pathname>. Defaults to F<.>.
+
+=cut
+
 sub hmmoutdir {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
@@ -63,34 +72,75 @@ sub hmmoutdir {#{{{
   $hmmoutdir = shift;
 }#}}}
 
-# Sub: hmmsearchcmd
-# sets hmmsearch command
-# Expects: reference to array
-sub hmmsearchcmd {#{{{
+=head2 hmmsearchprog
+
+Sets the HMMsearch program. Expects a string. Defaults to 'F<hmmsearch>'.
+
+=cut
+
+sub hmmsearchprog {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
   unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmsearchcmd(COMMAND)" }
-  $hmmsearchcmd = shift;
+  $hmmsearchprog = shift;
 }#}}}
 
-# Sub: hmmfullout
-# sets option for full hmmsearch output
-# Expects: TRUE or FALSE
+=head2 hmmfullout
+
+Sets the option for full hmmsearch output (parsing of which is not yet implemented). Can be TRUE or FALSE. Defaults to FALSE.
+
+=cut
+
 sub hmmfullout {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
   unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmfullout(1|0)" }
   $hmmfullout = shift;
+  if ($hmmfullout) { 
+    @hmmsearchcmd = qq($hmmsearchprog -E $eval_threshold -T $score_threshold);
+  }
+  else { @hmmsearchcmd = qq($hmmsearchprog -E $eval_threshold -T $score_threshold) }
+}#}}}
+
+=head3 eval_threshold
+
+Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
+
+=cut
+
+sub eval_threshold {#{{{
+	my $class = shift;
+	if (ref $class) { confess "Class method used as object method\n" }
+	unless (@_ == 1) { confess "Usage: Forage::Blast->eval_threshold(N)\n" }
+	$eval_threshold = shift;
+}#}}}
+
+=head3 score_threshold
+
+Sets or returns the e-value threshold to use for the blastp search. Defaults to 0.
+
+=cut
+
+sub score_threshold {#{{{
+	my $class = shift;
+	if (ref $class) { confess "Class method used as object method\n" }
+	unless (@_ == 1) { confess "Usage: Forage::Blast->score_threshold(N)\n" }
+	$score_threshold = shift;
 }#}}}
 
 #--------------------------------------------------
 # # Object methods
 #-------------------------------------------------- 
 
-# Sub: hmmsearch
-# HMM search a sequence using HMM, leaving an outfile for later processing
-# Expects: reference to sequence object, scalar string filename to HMM
-# Returns: scalar reference to hmmoutfile
+
+=head2 hmmsearch
+
+HMM-searches a sequence file using F<hmmfile>, leaving F<hmmoutfile> for later processing of the results. 
+
+Expects: Reference to sequence object, scalar string filename to F<hmmfile>. 
+
+=cut
+
 sub hmmsearch {#{{{
   my $self = shift;
   unless (scalar @_ == 1) { confess "Usage: OBJECT->hmmsearch(FILE)" }
@@ -106,8 +156,10 @@ sub hmmsearch {#{{{
     return $self;
   }
   else {
-    my @hmmsearchline = (@$hmmsearchcmd, $hmmoutfile, $hmmfile, $protfile);
-    print join " ", @hmmsearchline, "\n"
+    my @hmmsearchline = $hmmfullout ?
+      qq($hmmsearchprog -o $hmmoutfile $hmmfile $protfile) :
+      qq($hmmsearchprog --tblout $hmmoutfile $hmmfile $protfile);
+    print "@hmmsearchline\n"
       if $verbose;
     # do the search
     my $hmmresult = [ `@hmmsearchline` ];
@@ -126,9 +178,13 @@ sub hmmsearch {#{{{
   }
 }#}}}
 
-# sub: hmmhitcount
-# extracts the number of hits from a hmm search result file
-# returns: int number of hmm hits
+
+=head2 hmmhitcount
+
+Returns the number of hits from a hmmsearch result file.
+
+=cut
+
 sub hmmhitcount {#{{{
   my $self = shift;
   if ($self->{'hmmhitcount'}) { 
@@ -141,8 +197,12 @@ sub hmmhitcount {#{{{
   # dunno what do with hmmfullout yet... TODO implement!
 }#}}}
 
-# sub: hmmresult
-# returns: the hmmsearch result as it is in the result file, sans the first 3 lines of the table (comments)
+=head2 hmmresult
+
+Returns the hmmsearch result as it is in the result file, sans the first 3 lines of the table (comments)
+
+=cut
+
 sub hmmresult {#{{{
   my $self = shift;
   if ($self->{'hmmresult'}) {
@@ -155,9 +215,12 @@ sub hmmresult {#{{{
   return $self->{'hmmresult'};
 }#}}}
 
-# sub: hmmhits_arrayref
-# returns: array reference to list of list
-# $hmmhits->[$i][0..3] (of line $i, fields 1, 3, 5, 6 of hmmsearch table output)
+=head2 hmmhits_arrayref
+
+Returns an array reference to a list of lists, e.g., like so:
+  $hmmhits->[$i][0..3]  # of line $i, fields 1, 3, 5, 6 of the hmmsearch table output
+
+=cut
 sub hmmhits_arrayref {#{{{
   my $self = shift;
   if ($self->{'hmmhits'}) {
@@ -178,19 +241,32 @@ sub hmmhits_arrayref {#{{{
   return $self->{'hmmhits'};
 }#}}}
 
-# sub: hmmname
-# returns: name of the HMM that was used (may differ from the HMM file)
+=head2 hmmname
+
+Sets or returns the name of the HMM that was used (may differ from the HMM filename).
+
+=cut
 sub hmmname {#{{{
   my $self = shift;
   if ($self->{'hmmname'}) {
     return $self->{'hmmname'};
   }
-  return ${$self->hmmresult}[1];
+  $self->{'hmmname'} = ${$self->hmmresult}[1];
+  return $self->{'hmmname'};
 }#}}}
 
-# hmm file used for searching
+=head2 hmmfile
+
+Sets or returns the HMM filename.
+
+=cut
+
 sub hmmfile {#{{{
   my $self = shift;
+  if (scalar @_ == 1) {
+    $self->{'hmmfile'} = shift;
+    return 1;
+  }
   return $self->{'hmmfile'};
 }#}}}
 
@@ -200,7 +276,12 @@ sub protfile {#{{{
   return $self->{'protfile'};
 }#}}}
 
-# hmmsearch result file (table or fullout)
+=head2 hmmresultfile
+
+Sets or returns the HMMsearch result filename.
+
+=cut
+
 sub hmmresultfile {#{{{
   my $self = shift;
   if (scalar @_ == 1) {

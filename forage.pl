@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #--------------------------------------------------
 # This file is part of Forage.
-# Copyright 2011 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Forage is free software: you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
@@ -29,6 +29,7 @@ use IO::File; # object-oriented access to files
 use IO::Dir;  # object-oriented access to dirs
 use Tie::File;
 use Forage::Hmmsearch;
+use Forage::Blast;
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
 (my $libdir = $0) =~ s/forage\.pl$//; 
@@ -139,10 +140,7 @@ my $num_ests;
 my $preparedb;
 my $protfile            = '';
 my $timestamp           = time();
-my @eval_option;
 my @hmmfiles;
-my @hmmsearchcmd;
-my @score_option;
 my @seqobjs;
 my $i;#}}}
 
@@ -211,7 +209,8 @@ print "done.\n" unless $quiet;
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
 # Create temporary csv file for high-speed reading into database
-my $tmpfh = File::Temp->new('UNLINK' => 1);
+my $tmpdir = File::Temp->newdir('UNLINK' => 1, 'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
+my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
 
 # load data from csv file into database
@@ -252,11 +251,22 @@ Forage::Hmmsearch->hmmoutdir($hmmoutdir);
 # the hmmsearch program
 # Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
 
+if ($hmmfullout) {
+	Forage::Hmmsearch->hmmfullout(1);
+}
+else {
+	Forage::Hmmsearch->hmmfullout(0);
+}
+
 # the hmmsearch command
-Forage::Hmmsearch->hmmsearchcmd(\@hmmsearchcmd);
+Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
 
 # whether or not we want full output
 Forage::Hmmsearch->hmmfullout(0);#}}}
+
+Forage::Blast->outdir($blastoutdir);
+
+Forage::Blast->verbose(1) if $verbose;
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
@@ -341,15 +351,17 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# # run blastp on it:
 		#-------------------------------------------------- 
 		# setup a temporary file that will not be preserved
-		my $tmpfh = File::Temp->new('UNLINK' => 1);	# will be unlinked when out of scope
+		my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));	# will be unlinked when out of scope
+		print "using blastp tempfile $tmpfh\n" if $verbose;
 		# write fasta header and sequence to the tempfile
 		print $tmpfh '>' . $hmmobj->hmmhits_arrayref->[0]{'query'} . ':' . $result->[0] . "\n"; 
-		print $tmpfh $result[1] . "\n";
+		print $tmpfh $result->[1] . "\n";
 
-		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmhits_arrayref->[0]{'query'} . '_' . $count . '.out');
-		my @blastp_cmdline = qq(blastp -db /home/malty/thesis/hamstr/blast_dir/dappu_1391/dappu_1391_prot -query $tmpfh -outfmt 7 -max_target_seqs 3 -out $blastoutfile);
-		print "      running @blastp_cmdline\n" if $verbose;
-		if (system(@blastp_cmdline)) { die "blastp for result $count failed: $!\n" }
+		my $blastdb = '/home/mpetersen/hamstr/blast_dir/dappu_1391/dappu_1391_prot';
+		my $blastobj = Forage::Blast->new();
+		$blastobj->blastp($blastdb, $tmpfh);
+
+		#my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmhits_arrayref->[0]{'query'} . '_' . $count . '.out');
 	}
 
 
@@ -375,9 +387,7 @@ exit;
 # Returns: Reference to array of arrays (result lines->fields)
 sub mysql_get {#{{{
 	my $query = shift;
-	unless ($query) {
-		croak "Usage: mysql_get(QUERY)\n";
-	}
+	unless ($query) { croak "Usage: mysql_get(QUERY)\n" }
   # prepare anonymous array
 	my $results = [ ];
   # connect and fetch stuff
@@ -391,6 +401,14 @@ sub mysql_get {#{{{
 	$dbh->disconnect; # disconnect ASAP
 	return $results;
 }#}}}
+
+sub mysql_do {
+	my $query = shift;
+	unless ($query) { croak "Usage: mysql_do(QUERY)\n" }
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	$dbh->do($query) or die;
+	$dbh->disconnect();
+}
 
 # Sub: parse_config
 # Parse a simple, ini-style config file where keys are separated from values by '='.
@@ -445,21 +463,6 @@ sub intro {#{{{
 	$outdir = defined($outdir) ? $outdir : $species_name;
 	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearchprog));
   $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blastprog));
-
-	# build hmmsearch command line
-	# full output only if desired, table otherwise
-	if ($eval_threshold) {
-		@eval_option = ('-E', $eval_threshold);
-	}
-	if ($score_threshold) {
-		@score_option = ('-T', $score_threshold);
-	}
-	if ($hmmfullout) {
-		@hmmsearchcmd = ($hmmsearchprog, @eval_option, @score_option, '-o');
-	}
-	else {
-		@hmmsearchcmd = ($hmmsearchprog, @eval_option, @score_option, '--tblout');
-	}
 
 	# the HMM directory
 	if (-d $hmmdir) {
