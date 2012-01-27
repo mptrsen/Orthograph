@@ -16,20 +16,19 @@
 # Forage. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
 
-use strict;   # make me write good code
-use warnings; # cry if something seems odd
-use Data::Dumper;
-use Config;   # allows checking for system configuration
-use Getopt::Long;
-use Carp;   # alternative warn and die
+use strict;         # make me write good code
+use warnings;       # cry if something seems odd
+use Data::Dumper;   # great for debugging
+use Config;         # allows checking for system configuration
+use Getopt::Long;   # parsing of command line arguments
+use Carp;           # alternative warn and die
 use File::Path qw(make_path); # mkdir with parent dirs; this also uses File::Spec
 use File::Basename; # parsing path names
-use File::Temp; # temporary files
-use IO::File; # object-oriented access to files
-use IO::Dir;  # object-oriented access to dirs
-use Tie::File;
-use Forage::Hmmsearch;
-use Forage::Blast;
+use File::Temp;     # temporary files
+use IO::File;       # object-oriented access to files
+use IO::Dir;        # object-oriented access to dirs
+use Forage::Hmmsearch;  # object-oriented interface to hmmsearch
+use Forage::Blastp;     # object-oriented interface to blastp
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
 (my $libdir = $0) =~ s/forage\.pl$//; 
@@ -95,7 +94,7 @@ my $blast_max_hits = $config->{'blast_max_hits'}               ? $config->{'blas
 my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
 my $estfile        = $config->{'estfile'}               ? $config->{'estfile'}              : '';
-my $eval_threshold = $config->{'eval_threshold'}        ? $config->{'eval_threshold'}       : undef;
+my $evalue_threshold = $config->{'evalue_threshold'}        ? $config->{'evalue_threshold'}       : undef;
 my $hmmdir         = $config->{'hmmdir'}                ? $config->{'hmmdir'}               : '';
 my $hmmfile        = $config->{'hmmfile'}               ? $config->{'hmmfile'}              : '';
 my $hmmoutdir      = $config->{'hmmsearch_output_dir'}  ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
@@ -119,16 +118,17 @@ my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}  
 # # More variables
 #-------------------------------------------------- 
 my $count               = 0;#{{{
+my $blastdb = '/home/malty/thesis/hamstr/blast_dir/dappu_1391/dappu_1391_prot';
 my $hmmresultfileref;
 my $hmmfullout          = 0;
-my $hitcount;
 my $hmmhitcount;
+my $hmmhitcount_total;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
+my $mysql_col_blastdb   = 'blastdb';
 my $mysql_col_date      = 'date';
-my $mysql_col_eval      = 'eval';
+my $mysql_col_evalue      = 'evalue';
 my $mysql_col_hdr       = 'hdr';
 my $mysql_col_hmm       = 'hmm';
-my $mysql_col_hmmhit    = 'hmmhit';
 my $mysql_col_id        = 'id';
 my $mysql_col_query     = 'query';
 my $mysql_col_score     = 'score';
@@ -142,7 +142,9 @@ my $protfile            = '';
 my $timestamp           = time();
 my @hmmfiles;
 my @seqobjs;
-my $i;#}}}
+my $i;
+my $j;
+#}}}
 
 #--------------------------------------------------
 # # Get command line options. These may override variables set via the config file.
@@ -152,7 +154,7 @@ GetOptions( 'v'     => \$verbose,#{{{
 	'threads'         => \$use_threads,   # make using threads optional
 	'estfile=s'       => \$estfile,
 	'E=s'             => \$estfile,
-	'eval=s'          => \$eval_threshold,
+	'evalue=s'        => \$evalue_threshold,
 	'score=s'         => \$score_threshold,
 	'H=s'             => \$hmmfile,
 	'hmmdir=s'        => \$hmmdir,
@@ -185,12 +187,12 @@ if ($preparedb) {#{{{
 @hmmfiles = &hmmlist;
 
 unless ($quiet) {#{{{
-  print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMMs\n" 
+  print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMM files.\n" 
     if $hmmdir;
   print "Using HMM file $hmmfile.\n" 
     if $hmmfile;
-  print "e-Value cutoff: $eval_threshold.\n" 
-    if $eval_threshold;
+  print "e-Value cutoff: $evalue_threshold.\n" 
+    if $evalue_threshold;
   print "Score cutoff: $score_threshold.\n"
     if $score_threshold;
 }#}}}
@@ -209,8 +211,8 @@ print "done.\n" unless $quiet;
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
 # Create temporary csv file for high-speed reading into database
-my $tmpdir = File::Temp->newdir('UNLINK' => 1, 'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
-my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+my $tmpdir = File::Temp->newdir('UNLINK' => 0, 'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
+my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
 
 # load data from csv file into database
@@ -237,56 +239,37 @@ printf "%d sequences stored to database '%s' on %s.\n",
   $mysql_dbserver unless $quiet;
 
 #--------------------------------------------------
-# # Setup the Forage module
+# # Setup the Forage modules. These are all class methods.
 #-------------------------------------------------- 
 
-# These are all class methods#{{{
-
-# verbose output; this is a class method
-Forage::Hmmsearch->verbose(1) if $verbose;
+# verbose output; this is a class method#{{{
+if ($verbose) {
+	Forage::Hmmsearch->verbose(1);
+	Forage::Blastp->verbose(1);
+}
 
 # the output directory
 Forage::Hmmsearch->hmmoutdir($hmmoutdir);
 
 # the hmmsearch program
-# Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
-
-if ($hmmfullout) {
-	Forage::Hmmsearch->hmmfullout(1);
-}
-else {
-	Forage::Hmmsearch->hmmfullout(0);
-}
-
-# the hmmsearch command
 Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
 
-# whether or not we want full output
-Forage::Hmmsearch->hmmfullout(0);#}}}
+# full hmmsearch output if desired
+$hmmfullout ? Forage::Hmmsearch->hmmfullout(1) : Forage::Hmmsearch->hmmfullout(0);
 
-Forage::Blast->outdir($blastoutdir);
+# the blastp output directory
+Forage::Blastp->outdir($blastoutdir);
 
-Forage::Blast->verbose(1) if $verbose;
+# maximum number of BLAST hits to save
+Forage::Blastp->max_hits(10);
+#}}}
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
 print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n" unless $quiet;
 $i = 0;
-$hitcount = 0;
-
-# SQL query for pushing HMMsearch results to the db
-my $query_insert_hmmresult = "INSERT INTO $mysql_table_hmmsearch (
-  $mysql_col_spec,
-  $mysql_col_hmmhit,
-  $mysql_col_hmm,
-  $mysql_col_score,
-  $mysql_col_eval) VALUES (
-  ?,
-  ?,
-  ?,
-  ?,
-  ?)";
+$hmmhitcount = 0;
 
 #--------------------------------------------------
 # # Do the HMM search - this may be pipelined in the future
@@ -295,41 +278,34 @@ my $query_insert_hmmresult = "INSERT INTO $mysql_table_hmmsearch (
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
 	++$i;
+
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
 	my $hmmobj = Forage::Hmmsearch->new($hmmfile); 
+
 	# now do the hmmsearch on the protfile
 	$hmmobj->hmmsearch($protfile);
+
 	# count the hmmsearch hits
 	unless ($hmmobj->hmmhitcount()) { # do not care further with HMM files that did not return any result
 		printf "%4d hits detected for %s.\n", 0, basename($hmmobj->hmmfile) unless $quiet;
 		next;
 	}
 	printf "%4d hits detected for %s:\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) unless $quiet;
+
+	# add hitcount to total number of hmm hits,
 	# print list of hits if verbose
+	$hmmhitcount_total += $hmmobj->hmmhitcount;
 	if ($verbose) {
-		printf "     %s\n", $_->{'target'} foreach (@{$hmmobj->hmmhits_arrayref});
+		my $j;
+		printf "     (%d) %s\n", ++$j, $_->{'target'} foreach (@{$hmmobj->hmmhits_arrayref});
 	}
 
 	#--------------------------------------------------
-	# # push results to database
+	# # push results to database 
 	#-------------------------------------------------- 
-	$dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	my $sql = $dbh->prepare($query_insert_hmmresult);
-
-	# this is a reference to an array of hashes
-	foreach my $hmmhit (@{$hmmobj->hmmhits_arrayref}) {
-		$sql->execute(
-		  $species_name,
-		  $hmmhit->{'target'}, # target (header)
-		  $hmmhit->{'query'},  # query (HMM)
-		  $hmmhit->{'score'},  # score
-		  $hmmhit->{'eval'}    # evalue
-		) or die "Fatal: Could not push to database!\n";
-		++$hmmhitcount;
-	}
-	$dbh->disconnect;
-	print "       ... pushed to database.\n" if $verbose;;
-	++$hitcount;
+	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hmmhits_arrayref);
+	print "     ... pushed to database.\n" if $verbose;
+	++$hmmhitcount;
 	
 
 	#--------------------------------------------------
@@ -340,28 +316,44 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	my $query_get_sequences = "SELECT $mysql_col_hdr, $mysql_col_seq
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
-		ON $mysql_table_hmmsearch.$mysql_col_hmmhit = $mysql_table_ests.$mysql_col_hdr 
-		WHERE $mysql_table_hmmsearch.$mysql_col_hmm = " . $hmmobj->hmmhits_arrayref->[0]{'query'};
-
+		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_hdr 
+		WHERE $mysql_table_hmmsearch.$mysql_col_query = " . $hmmobj->hmmhits_arrayref->[0]{'query'};
 	# get the sequences from the database (as array->array reference)
-	$count = 0;
-	foreach my $result (@{&mysql_get($query_get_sequences)}) {
-		++$count;
-		#--------------------------------------------------
-		# # run blastp on it:
-		#-------------------------------------------------- 
-		# setup a temporary file that will not be preserved
-		my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));	# will be unlinked when out of scope
-		print "using blastp tempfile $tmpfh\n" if $verbose;
+	HMMRESULT:
+	foreach my $hmmresult (@{&mysql_get($query_get_sequences)}) {
+ 		++$count;
+
+		# setup a temporary file that will be unlinked when this object goes out of scope
+		my $tmpfile = File::Temp->new(
+			'UNLINK' => 1, 
+			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));	
 		# write fasta header and sequence to the tempfile
-		print $tmpfh '>' . $hmmobj->hmmhits_arrayref->[0]{'query'} . ':' . $result->[0] . "\n"; 
-		print $tmpfh $result->[1] . "\n";
+		print $tmpfile '>' . $hmmresult->[0] . "\n"; 
+		print $tmpfile $hmmresult->[1] . "\n";
 
-		my $blastdb = '/home/mpetersen/hamstr/blast_dir/dappu_1391/dappu_1391_prot';
-		my $blastobj = Forage::Blast->new();
-		$blastobj->blastp($blastdb, $tmpfh);
+		#--------------------------------------------------
+		# # run blastp with it:
+		#-------------------------------------------------- 
+		# shiny new blastp object
+		my $blastobj = Forage::Blastp->new($blastdb);
 
-		#my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmhits_arrayref->[0]{'query'} . '_' . $count . '.out');
+		# generate a blast output file name from the HMM name and the hit number
+		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . sprintf("%04d", $count) . '.blast');
+
+		# do the blastp search; skip if no hits obtained
+		$blastobj->blastp($tmpfile, $blastoutfile);
+
+		unless ($blastobj->hitcount()) {
+			printf "       %s BLASTP hits detected for (%d) against %s\n", 0, $count, basename($blastdb) 
+				unless $quiet;
+			next HMMRESULT;
+		}
+ 		printf "       %4d BLASTP hits detected for (%d) against %s\n", $blastobj->hitcount, $count, basename($blastdb)
+			unless $quiet;
+
+		# insert the blast results into the db. 3-argument form.
+		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+		print "            ... pushed to database.\n";
 	}
 
 
@@ -372,8 +364,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 }#}}}
 
 # report, end the program
-printf "%d HMMs hit something.   %d HMM files processed. \n", $hitcount, $i unless $quiet;
-printf "Forage analysis complete. Searched %d EST sequences using %d HMMs and obtained %d hits.\n", $num_ests, $i, $hmmhitcount;
+printf "%d HMMs hit something.   %d HMM files processed. \n", $hmmhitcount, $i unless $quiet;
+printf "Forage analysis complete. Searched %d EST sequences using %d HMMs and obtained %d total hits.\n", $num_ests, $i, $hmmhitcount_total;
 exit;
 
 
@@ -402,13 +394,21 @@ sub mysql_get {#{{{
 	return $results;
 }#}}}
 
-sub mysql_do {
+# Sub: mysql_do
+# Connect to a database, execute a single query (for repetitive queries, you better do that by hand).
+# Expects: scalar string SQL query. 
+# Returns 1 on result, dies otherwise.
+
+sub mysql_do {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_do(QUERY)\n" }
+	my @fields = @_;
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	$dbh->do($query) or die;
+	my $sql = $dbh->prepare($query);
+	$sql->execute(@fields) or die;
 	$dbh->disconnect();
-}
+	return 1;
+}#}}}
 
 # Sub: parse_config
 # Parse a simple, ini-style config file where keys are separated from values by '='.
@@ -456,7 +456,7 @@ sub intro {#{{{
 
 	# mutually exclusive options
 	die "Fatal: Can't use both e-value and score thresholds\n"
-		if ($eval_threshold and $score_threshold);
+		if ($evalue_threshold and $score_threshold);
 
 	# construct output directory paths
 	# outdir may be defined in the config file
@@ -545,15 +545,7 @@ sub translate_est {#{{{
   return $outfile;
 }#}}}
 
-# Sub: gethmmscores
-# Parse the hmmsearch result, populate the data structure
-# Expects: scalar reference to hmmresult file
-# Returns: reference to result object
-sub gethmmscores {#{{{
-  my $hmmresultref = shift;
-}#}}}
-
-# sub: clean_up_old_output_files
+# sub: backup_up_old_output_files
 # input: reference to list of relevant contigs
 sub backup_old_output_files {#{{{
   my ($outfile) = shift @_;
@@ -596,51 +588,44 @@ sub createdir {#{{{
 # Returns: True on success
 sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
-		$mysql_col_id   INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		$mysql_col_spec VARCHAR(255) NOT NULL,
-		$mysql_col_date INT(11) UNSIGNED,
-		$mysql_col_hdr  VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
-		$mysql_col_seq  MEDIUMBLOB DEFAULT NULL)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
+		$mysql_col_id        INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec      VARCHAR(255) NOT NULL,
+		$mysql_col_date      INT(11) UNSIGNED,
+		$mysql_col_hdr       VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
+		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
 		$mysql_col_id        INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
 		$mysql_col_spec      VARCHAR(255) NOT NULL,
-		$mysql_col_hmm       VARCHAR(255) NOT NULL,
-		$mysql_col_hmmhit    VARCHAR(255) NOT NULL, INDEX ($mysql_col_hmmhit),
+		$mysql_col_query     VARCHAR(255) NOT NULL,
+		$mysql_col_target    VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
 		$mysql_col_score     FLOAT NOT NULL,
-		$mysql_col_eval      FLOAT NOT NULL)";
+		$mysql_col_evalue    FLOAT NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		$mysql_col_id     INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		$mysql_col_spec   VARCHAR(255) NOT NULL,
-		$mysql_col_query  VARCHAR(255) NOT NULL, INDEX ($mysql_col_query),
-		$mysql_col_target VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
-		$mysql_col_score  FLOAT NOT NULL,
-		$mysql_col_eval   FLOAT NOT NULL)";
+		$mysql_col_id        INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_spec      VARCHAR(255) NOT NULL,
+		$mysql_col_blastdb   VARCHAR(255) NOT NULL,
+		$mysql_col_query     VARCHAR(255) NOT NULL, INDEX ($mysql_col_query),
+		$mysql_col_target    VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
+		$mysql_col_score     FLOAT NOT NULL,
+		$mysql_col_evalue    FLOAT NOT NULL)";
 	
-	my $query_create_core_orthologs = "CREATE TABLE $mysql_table_core_orthologs (
-		$mysql_col_id     INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		$mysql_col_spec   VARCHAR(255) NOT NULL,
-		$mysql_col_taxon  VARCHAR(25) NOT NULL,
-		$mysql_col_hmm    VARCHAR(255) NOT NULL,
-		$mysql_col_hdr    VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
-		$mysql_col_seq    MEDIUMBLOB DEFAULT NULL)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
-
 	# open connection
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
 
 	# drop all tables
 	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast, $mysql_table_core_orthologs) {
 		my $query_drop = "DROP TABLE IF EXISTS $_";
-		print "$query_drop\n" if $verbose;
+		print "$query_drop;\n" if $verbose;
 		my $sql = $dbh->prepare($query_drop);
 		$sql->execute()
 		  or die "Could not execute SQL query: $!\n";
 	}
 
 	# create all tables
-	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, $query_create_core_orthologs) {
-		printf "$query\n" if $verbose;
+	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast) {
+		printf "$query;\n" if $verbose;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
 		  or die "Could not execute SQL query: $!\n";
@@ -652,6 +637,27 @@ sub preparedb {#{{{
 	return 1;
 } #}}}
 
+# Sub: prep_core_orthologs_db
+# Prepares the core orthologs database. This one is persistent and does not
+# change when you run Forage.
+sub prepare_core_orthologs_db {
+	my $query_create_core_orthologs = "CREATE TABLE $mysql_table_core_orthologs (
+		$mysql_col_id       INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		$mysql_col_taxon    VARCHAR(255) NOT NULL, INDEX ($mysql_col_taxon),
+		$mysql_col_hmm      VARCHAR(255) NOT NULL,
+		$mysql_col_blastdb  VARCHAR(255) NOT NULL,
+		$mysql_col_hdr      VARCHAR(255) NOT NULL, 
+		$mysql_col_seq      MEDIUMBLOB DEFAULT NULL)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
+
+	# open connection
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	print "$query_create_core_orthologs;\n" if $verbose;
+	my $sql = $dbh->prepare($query_create_core_orthologs);
+	$sql->execute();
+		or die;
+}
+
+
 # Sub: clear_db
 # clears the database of previous results from the same species 
 sub clear_db {#{{{
@@ -661,8 +667,6 @@ sub clear_db {#{{{
 	my $query_clear_hmmsearch      = "DELETE FROM $mysql_table_hmmsearch 
 		                                WHERE $mysql_col_spec = '$species_name'";
 	my $query_clear_blast          = "DELETE FROM $mysql_table_blast 
-		                                WHERE $mysql_col_spec = '$species_name'";
-	my $query_clear_core_orthologs = "DELETE FROM $mysql_table_core_orthologs 
 		                                WHERE $mysql_col_spec = '$species_name'";
 
 	# open connection
@@ -674,12 +678,87 @@ sub clear_db {#{{{
 	$sql->execute() or die "$!\n";
 	$sql = $dbh->prepare($query_clear_blast);
 	$sql->execute() or die "$!\n";
-	$sql = $dbh->prepare($query_clear_core_orthologs);
-	$sql->execute() or die "$!\n";
 
 	# disconnect ASAP
 	$dbh->disconnect;
 	return 1;
+}#}}}
+
+# Sub: insert_results_into_table
+#
+sub insert_results_into_table {#{{{
+	my $table = shift;
+	my $hits  = shift;
+	# may have been called with 3 args, then we are dealing with a blast result
+	my $blastdb = (scalar @_ == 1) ? shift : undef;
+	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
+	my $hitcount;
+	
+	# this is a BLASTP result, we need the addtnl column 'blastdb'
+	if ($blastdb) {
+		my $query_insert_result = "INSERT INTO $table (
+			$mysql_col_spec,
+			$mysql_col_blastdb,
+			$mysql_col_query,
+			$mysql_col_target,
+			$mysql_col_score,
+			$mysql_col_evalue) VALUES (
+			?,
+			?,
+			?,
+			?,
+			?,
+			?)";
+		my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+		my $sql = $dbh->prepare($query_insert_result);
+
+		# this is a reference to an array of hashes
+		foreach my $hit (@$hits) {
+			$sql->execute(
+				$species_name,
+				$blastdb,
+				$hit->{'query'},  # query (HMM)
+				$hit->{'target'}, # target (header)
+				$hit->{'score'},  # score
+				$hit->{'evalue'}  # evalue
+			) or die "Fatal: Could not push to database!\n";
+			++$hitcount;
+		}
+		$dbh->disconnect;
+		return $hitcount;
+	}
+	# this is a HMMsearch result, only need 5 columns
+	else {
+		# SQL query for pushing HMMsearch results to the db
+		my $query_insert_result = "INSERT INTO $table (
+			$mysql_col_spec,
+			$mysql_col_query,
+			$mysql_col_target,
+			$mysql_col_score,
+			$mysql_col_evalue) VALUES (
+			?,
+			?,
+			?,
+			?,
+			?)";
+
+		my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+		my $sql = $dbh->prepare($query_insert_result);
+
+		# this is a reference to an array of hashes
+		foreach my $hit (@$hits) {
+			$sql->execute(
+				$species_name,
+				$hit->{'query'},  # query (HMM)
+				$hit->{'target'}, # target (header)
+				$hit->{'score'},  # score
+				$hit->{'evalue'}    # evalue
+			) or die "Fatal: Could not push to database!\n";
+			++$hitcount;
+		}
+		$dbh->disconnect;
+		return $hitcount;
+	}
 }#}}}
 
 # Documentation#{{{
@@ -725,7 +804,7 @@ etc. Empty lines and comments are ignored, keys and values have to be separated 
 
 The fasta file containing the EST sequence database.
 
-=head2 eval_threshold
+=head2 evalue_threshold
 
 e-Value threshold for the HMM search. Must be a number in scientific notation like 1e-05 or something.
 
@@ -814,4 +893,4 @@ This program is free software; you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 =cut
-#}}}
+#}}}}

@@ -44,27 +44,30 @@ package without the immense overhead of the entire Bioperl backend.
 
 =cut
 
-package Forage::Blast;
+package Forage::Blastp;
 use strict;
 use warnings;
 use File::Basename; # basename of files
 use IO::File; # object-oriented access to files
 use Carp; # extended dying functions
+use Data::Dumper;
 my $verbose = 0;
+my $debug = 0;
 my $blastoutdir = File::Spec->catdir('.');
 my $blastprog = 'blastp';
 my $blast_cmd;
-my $eval_threshold;
-my $score_threshold;
+my $eval_threshold  = 10;
+my $score_threshold = 0;
+my $max_hits        = 100;
 
 
 sub new {
-	my ($class, $db, $queryfile) = @_;
+	my ($class, $db) = @_;
 
 	my $self = {
 		'db'       => $db,
-		'query'    => $queryfile,
-		'hitcount' => undef
+		'query'    => undef,
+		'hitcount' => undef,
 	};
 
 	bless($self, $class);
@@ -79,12 +82,25 @@ Sets $verbose. Defaults to 0.
 
 =cut
 
-sub verbose {
+sub verbose {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
 	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->verbose(1)\n" }
 	$verbose = shift;
-}
+}#}}}
+
+=head3 debug
+
+Sets $debug. Defaults to 0.
+
+=cut
+
+sub debug {#{{{
+	my $class = shift;
+	if (ref $class) { confess "Class method used as object method\n" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->debug(1)\n" }
+	$debug = shift;
+}#}}}
 
 =head3 blast_cmdline()
 
@@ -92,12 +108,12 @@ Sets up the blast command line to use
 
 =cut
 
-sub blastprog {
+sub blastprog {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
 	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->blast_cmdline(COMMAND)\n" }
 	$blastprog = shift;
-}
+}#}}}
 
 =head3 outdir
 
@@ -105,40 +121,65 @@ Sets the blast output directory. Defaults to 'F<.>'.
 
 =cut
 
-sub outdir {
+sub outdir {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
 	unless (@_ == 1) { confess "Usage: Forage::Blast->outdir(FILENAME)\n" }
 	my $blastoutdir = shift;
-}
+}#}}}
 
 =head3 eval_threshold
 
-Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
+Sets the e-value threshold to use for the blastp search. Defaults to 10.
 
 =cut
 
-sub eval_threshold {
+sub eval_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
 	unless (@_ == 1) { confess "Usage: Forage::Blast->eval_threshold(N)\n" }
 	$eval_threshold = shift;
-}
+}#}}}
 
 =head3 score_threshold
 
-Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
+Sets the e-value threshold to use for the blastp search. Defaults to 10.
 
 =cut
 
-sub score_threshold {
+sub score_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
 	unless (@_ == 1) { confess "Usage: Forage::Blast->score_threshold(N)\n" }
 	$score_threshold = shift;
-}
+}#}}}
+
+=head3 max_hits
+
+Sets the maximum number of hits to be returned. Defaults to 100.
+
+=cut
+
+sub max_hits {#{{{
+	my $class = shift;
+	if (ref $class) { confess "Class method used as object method\n" }
+	unless (@_ == 1) { confess "Usage: Forage::Blastp->max_hits(N)\n" }
+	$max_hits = shift;
+}#}}}
 
 =head1 OBJECT METHODS
+
+=head3 db()
+
+Returns the BLAST database that was selected upon creating a new object
+
+=cut
+
+sub db {#{{{
+	my $self = shift;
+	unless ($self->{'db'}) { confess "I do not have a BLAST db\n" }
+	return $self->{'db'};
+}#}}}
 
 =head3 blastp
 
@@ -149,18 +190,100 @@ score_threshold(), respectively.
 
 =cut
 
-sub blastp {
+sub blastp {#{{{
 	my $self = shift;
-	unless (scalar @_ == 2) { confess "Usage: Forage::Blast->blastp(FILE)\n" }
-	my $blastdb = shift;
+	unless (scalar @_ == 2) { confess "Usage: Forage::Blast->blastp(FILE, OUTFILE)\n" }
 	my $queryfile = shift;
-	my $blastoutfile = File::Temp->new('UNLINK' => 1);
-	my @blastcmd = qq($blastprog -outfmt 6 -db $blastdb -query $queryfile);
-	print "running @blastcmd\n" if $verbose;
-	my $blastresult = [ `@blastcmd` ];
-	print "@$blastresult\n" if $verbose;
-	# TODO save the result in a file if possible - oh wait, just store it to the database!
-}
+	my $outfile = shift;
+	my $db = $self->db;
+	# return right away if this search has been conducted before
+	if (-e $outfile) {
+		$self->resultfile($outfile);
+		return $self;
+	}
+	my @blastcmd = qq($blastprog -outfmt '6 qseqid sseqid evalue bitscore' -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
+
+	# do the search or die
+	print "\n@blastcmd\n\n"
+		if $debug;
+	die "Fatal: BLAST search failed: $!\n"
+		if system(@blastcmd);
+
+	# store the resultfile path
+	$self->{'resultfile'} = $outfile;
+	return $self;
+}#}}}
+
+=head3 resultfile
+
+Sets or returns the BLAST result filename as a path.
+
+=cut
+
+sub resultfile {#{{{
+	my $self = shift;
+	if (scalar @_ == 1) {
+		$self->{'resultfile'} = shift;
+		return 1;
+	}
+	return $self->{'resultfile'};
+}#}}}
+
+=head3 hitcount
+
+Returns the number of BLAST hits
+
+=cut
+
+sub hitcount {#{{{
+	my $self = shift;
+	if ($self->{'hitcount'}) {
+		return $self->{'hitcount'};
+	}
+	$self->{'hitcount'} = scalar @{$self->result};
+	return $self->{'hitcount'};
+}#}}}
+
+=head3 result
+
+Returns the BLAST result as an array of strings, just as it is in the output file. 
+
+=cut
+
+sub result {#{{{
+	my $self = shift;
+	if ($self->{'result'}) {
+		return $self->{'result'};
+	}
+	my $fh = IO::File->new($self->resultfile);
+	$self->{'result'} = [ <$fh> ];
+	$fh->close;
+	return $self->{'result'};
+}#}}}
+
+=head3 blasthits_arrayref
+
+Returns the BLAST result as an array of arrays.
+
+=cut
+
+sub blasthits_arrayref {#{{{
+	my $self = shift;
+	if ($self->{'blasthits'}) {
+		return $self->{'blasthits'};
+	}
+	$self->{'blasthits'} = [ ];
+	foreach (@{$self->result}) {
+		my @line = split(/\s+/);
+		push(@{$self->{'blasthits'}}, {
+			'query'  => $line[0],
+			'target' => $line[1],
+			'evalue' => $line[2],
+			'score'  => $line[3]
+		});
+	}
+	return $self->{'blasthits'};
+}#}}}
 
 # return true
 1;

@@ -20,17 +20,19 @@ use warnings;
 use File::Basename; # basename of files
 use IO::File; # object-oriented access to files
 use Carp; # extended dying functions
+use Data::Dumper;
 my $verbose = 0;
+my $debug = 0;
 my $hmmoutdir = File::Spec->catdir('.');
 my $hmmsearchprog = 'hmmsearch';
 my @hmmsearchcmd;
 my $hmmfullout = 0;
-my $eval_threshold = 10;
+my $evalue_threshold = 10;
 my $score_threshold = 0;
 1;
 
 sub new {
-  my ($class, $hmmfile, $protfile) = @_;
+  my ($class, $hmmfile) = @_;
 
   my $self = {
     'hmmfile'       => $hmmfile,
@@ -57,6 +59,19 @@ sub verbose {#{{{
   if (ref $class) { confess "Class method called as object method" }
   unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->verbose(1|0)" }
   $verbose = shift;
+}#}}}
+
+=head2 debug
+
+Sets debug output on (TRUE) or off (FALSE). Default is FALSE.
+
+=cut
+
+sub debug {#{{{
+  my $class = shift;
+  if (ref $class) { confess "Class method called as object method" }
+  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->debug(1|0)" }
+  $debug = shift;
 }#}}}
 
 =head2 outdir
@@ -97,22 +112,22 @@ sub hmmfullout {#{{{
   unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmfullout(1|0)" }
   $hmmfullout = shift;
   if ($hmmfullout) { 
-    @hmmsearchcmd = qq($hmmsearchprog -E $eval_threshold -T $score_threshold);
+    @hmmsearchcmd = qq($hmmsearchprog -E $evalue_threshold -T $score_threshold);
   }
-  else { @hmmsearchcmd = qq($hmmsearchprog -E $eval_threshold -T $score_threshold) }
+  else { @hmmsearchcmd = qq($hmmsearchprog -E $evalue_threshold -T $score_threshold) }
 }#}}}
 
-=head3 eval_threshold
+=head3 evalue_threshold
 
 Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
 
 =cut
 
-sub eval_threshold {#{{{
+sub evalue_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blast->eval_threshold(N)\n" }
-	$eval_threshold = shift;
+	unless (@_ == 1) { confess "Usage: Forage::Blast->evalue_threshold(N)\n" }
+	$evalue_threshold = shift;
 }#}}}
 
 =head3 score_threshold
@@ -150,7 +165,7 @@ sub hmmsearch {#{{{
   my $hmmoutfile = $hmmfullout ? 
     File::Spec->catfile($hmmoutdir, basename($hmmfile).'.out') : 
     File::Spec->catfile($hmmoutdir, basename($hmmfile).'.tbl');
-  # e-value and score options if desired
+  # return right away if this search has been conducted before
   if (-e $hmmoutfile) {
     $self->hmmresultfile($hmmoutfile);
     return $self;
@@ -159,8 +174,8 @@ sub hmmsearch {#{{{
     my @hmmsearchline = $hmmfullout ?
       qq($hmmsearchprog -o $hmmoutfile $hmmfile $protfile) :
       qq($hmmsearchprog --tblout $hmmoutfile $hmmfile $protfile);
-    print "@hmmsearchline\n"
-      if $verbose;
+    print "\n@hmmsearchline\n\n"
+      if $debug;
     # do the search
     my $hmmresult = [ `@hmmsearchline` ];
     croak "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!\n" 
@@ -208,7 +223,7 @@ sub hmmresult {#{{{
   if ($self->{'hmmresult'}) {
     return $self->{'hmmresult'};
   }
-  my $fh = IO::File->new($self->{'hmmresultfile'});
+  my $fh = IO::File->new($self->hmmresultfile());
   $self->{'hmmresult'} = [ <$fh> ];
   $fh->close;
   splice(@{$self->{'hmmresult'}}, 0, 3);
@@ -233,7 +248,7 @@ sub hmmhits_arrayref {#{{{
     push(@{$self->{'hmmhits'}}, {
       'target' => $line[0],
       'query'  => $line[2],
-      'eval'   => $line[4],
+      'evalue' => $line[4],
       'score'  => $line[5],
     });
   }
@@ -251,7 +266,8 @@ sub hmmname {#{{{
   if ($self->{'hmmname'}) {
     return $self->{'hmmname'};
   }
-  $self->{'hmmname'} = ${$self->hmmresult}[1];
+	my @line = split(/\s+/, ${$self->hmmresult}[0]);
+  $self->{'hmmname'} = $line[2];
   return $self->{'hmmname'};
 }#}}}
 
@@ -288,6 +304,6 @@ sub hmmresultfile {#{{{
     $self->{'hmmresultfile'} = shift; 
     return 1;
   }
-  return ${$self->{'hmmresultfile'}};
+  return $self->{'hmmresultfile'};
 }#}}}
 
