@@ -185,7 +185,7 @@ sub db {#{{{
 
 performs the blastp search with the command line set via blast_cmdline(), using
 the F<queryfile> on the blast db previously set via db() and with respect to
-the e-value and score thresholds set via eval_threshold() and
+the e-value and score thresholds set via evalue_threshold() and
 score_threshold(), respectively.
 
 =cut

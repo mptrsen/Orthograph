@@ -1,0 +1,183 @@
+#!/usr/bin/perl
+# Documentation before the code#{{{
+=head1 NAME 
+
+coreload - prepare a MySQL database for running Forage
+
+=head1 SYNOPSIS
+
+coreload FASTAFILE
+
+=head1 DESCRIPTION
+
+Prepares a core orthologs table for running Forage. Basically, reads a fasta file
+and loads its content into the database. Due to the usage of the MySQL LOAD
+INFILE command, this process is pretty fast. 
+
+The fasta headers need to be formatted in a certain way:
+
+  >HMM|TAXON|ID
+
+where HMM is the name of the pHMM that will be used for searching, TAXON the taxon name of the sequence in question, and ID a sequence identifier. None of these need to be unique, but the combination of all three must be.
+
+coreload expects a certain table structure. You may create it yourself by hand
+using the following SQL statement or whatever you fancy, or you may run
+coreload with the B<-c> switch once, which does the same thing.
+
+  CREATE TABLE core_orthologs (
+		id          INT(11) AUTO_INCREMENT PRIMARY KEY,
+		taxon       VARCHAR(255) NOT NULL,
+		orthoset    VARCHAR(255) NOT NULL,
+		hmm         VARCHAR(255) NOT NULL,
+		blastdb     VARCHAR(255) NOT NULL, INDEX (blastdb),
+		header      VARCHAR(255) NOT NULL, INDEX (header),
+		sequence    MEDIUMBLOB)";
+
+=cut#}}}
+
+use strict;
+use warnings;
+use Carp;
+use Getopt::Long;
+use File::Temp;     # temporary files
+use File::Spec;
+use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
+use DBI;
+use DBD::mysql;
+use Seqload::Fasta;
+
+
+my $dbname   = 'forage';
+my $dbserver = '127.0.0.1';
+my $table    = 'core_orthologs';
+my $user     = undef;
+my $pwd      = undef;
+my $setname  = undef;
+my $prefix   = undef;
+my $create   = 0;
+
+#{{{POD: Options
+=head1 OPTIONS
+
+=head2 -c
+
+(Re-)creates the necessary table structure. Careful, this will wipe out everything
+you had in the table. You should not do this more than once in the process of using
+Forage unless you know what you are doing.
+
+=head2 -D database
+
+Database name to use. Defaults to 'forage'.
+
+=head2 -h host
+
+Database server. Defaults to '127.0.0.1', which is (mostly) equivalent to
+'localhost'.
+
+=head2 -b /blast/database/prefix
+
+BLAST database prefix. Must point to a directory containing the BLAST databases. These themselves must be each in its own directory, e.g., like so:
+
+  /home/user/blast/apismellifera
+  /home/user/blast/drosophilamelanogaster
+
+The directory name of each BLAST database must match with the taxon name in the fasta headers, and the BLAST database inside it must be named as F<taxon_prot>.
+
+If all is setup like described, the prefix would be specified as: B<-b /home/user/blast>.
+
+=head2 -p password
+
+Password for the connection. No default; this must be set.
+
+=head2 -t table
+
+Table name to use. Defaults to 'core_orthologs'.
+
+=head2 -u username
+
+Username for the connection. No default; this must be set.
+
+=cut#}}}
+
+GetOptions(
+	'D=s' => \$dbname,
+	'b=s' => \$prefix,
+	'c'   => \$create,
+	'h=s' => \$dbserver,
+	'p=s' => \$pwd,
+	's=s' => \$setname,
+	't=s' => \$table,
+	'u=s' => \$user,
+	);
+
+unless (defined $user and defined $pwd ) {
+	die "Fatal: You must specify database username (-u) and password (-p) AND core-ortholog set name (-s).\n";
+}
+
+if ($create) {
+	&create_table($table);
+	print "OK.\n";
+	exit;
+}
+
+unless (defined $setname) { croak "Fatal: You must specify the core-ortholog set name (-s).\n" }
+
+my $infile = shift @ARGV or die "Fatal: Argument INFILE missing\n";
+
+my $tmpfile = File::Temp->new();
+
+my $faobj = Seqload::Fasta->open($infile);
+while (my ($hdr, $seq) = $faobj->next_seq()) {
+	my @line = split(/\|/, $hdr);
+	printf $tmpfile "%s,%s,%s,%s,%s,%s\n", 
+		$line[1], 
+		$setname,
+		$line[0], 
+		File::Spec->catfile($prefix, $line[1], $line[1] . '_prot'),
+		$line[2],
+		$seq;
+}
+$faobj->close();
+
+my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE INTO TABLE $table
+	FIELDS TERMINATED BY ',' (
+		taxon,
+		orthoset,
+		hmm,
+		blastdb,
+		header,
+		sequence)";
+my $updatequery = "UPDATE $table SET orthoset = '$setname' WHERE orthoset IS NULL";
+
+my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd);
+my $sql = $dbh->prepare($loadquery);
+$sql->execute() or die;
+$sql->finish();
+$dbh->disconnect;
+
+print "Successfully loaded $infile into $dbname on $dbserver.\n";
+exit; 
+
+sub create_table {
+	my $table = shift;
+	my $query_drop = "DROP TABLE IF EXISTS $table";
+	my $query = "CREATE TABLE $table (
+		id          INT(11) AUTO_INCREMENT PRIMARY KEY,
+		taxon       VARCHAR(255) NOT NULL,
+		orthoset    VARCHAR(255) NOT NULL,
+		hmm         VARCHAR(255) NOT NULL,
+		blastdb     VARCHAR(255) NOT NULL, INDEX (blastdb),
+		header      VARCHAR(255) NOT NULL, INDEX (header),
+		sequence    MEDIUMBLOB)";
+
+	my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd);
+	print "Dropping table $table:\n$query_drop;\n";
+	my $sql = $dbh->prepare($query_drop);
+	$sql->execute();
+	$sql->finish();
+	print "Creating table $table:\n$query;\n";
+	$sql = $dbh->prepare($query);
+	$sql->execute() or die;
+	$sql->finish;
+	$dbh->disconnect;
+}
