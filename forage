@@ -109,6 +109,7 @@ my $mysql_table_ests = $config->{'mysql_table_ests'}    ? $config->{'mysql_table
 my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ? $config->{'mysql_table_hmmsearch'} : 'hmmsearch';
 my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
+my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
 my $score_threshold = $config->{'score_threshold'}      ? $config->{'score_threshold'}      : undef;
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
@@ -119,7 +120,8 @@ my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}  
 # # More variables
 #-------------------------------------------------- 
 my $count               = 0;#{{{
-my $blastdb = '/home/mpetersen/hamstr/blast_dir/dappu_1391/dappu_1391_prot';
+my $blastdb;
+my $blastcount;
 my $hmmresultfileref;
 my $hmmfullout          = 0;
 my $hmmcount;
@@ -128,13 +130,13 @@ my $hmmhitcount_total;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_blastdb   = 'blastdb';
 my $mysql_col_date      = 'date';
-my $mysql_col_evalue      = 'evalue';
-my $mysql_col_hdr       = 'hdr';
+my $mysql_col_evalue    = 'evalue';
+my $mysql_col_hdr       = 'header';
 my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
 my $mysql_col_query     = 'query';
 my $mysql_col_score     = 'score';
-my $mysql_col_seq       = 'seq';
+my $mysql_col_seq       = 'sequence';
 my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
 my $mysql_col_taxon     = 'taxon';
@@ -143,9 +145,8 @@ my $preparedb;
 my $protfile            = '';
 my $timestamp           = time();
 my @hmmfiles;
+my @reftaxa;
 my @seqobjs;
-my $i = 0;
-my $j = 0;
 #}}}
 
 #--------------------------------------------------
@@ -184,8 +185,9 @@ if ($preparedb) {#{{{
 &intro;
 
 #--------------------------------------------------
-# # create list of HMM files
+# # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
+@reftaxa = split(/,\s*/, $reftaxa);
 @hmmfiles = &hmmlist;
 
 unless ($quiet) {#{{{
@@ -197,6 +199,7 @@ unless ($quiet) {#{{{
     if $evalue_threshold;
   print "Score cutoff: $score_threshold.\n"
     if $score_threshold;
+	print "Reference taxa: " . join(', ', @reftaxa) . "\n";
 }#}}}
 
 #--------------------------------------------------
@@ -248,22 +251,22 @@ printf "%d sequences stored to database '%s' on %s.\n",
 if ($verbose) {
 	Forage::Hmmsearch->verbose(1);
 	Forage::Blastp->verbose(1);
+	Forage::Blastp->debug(1);
 }
 
-# the output directory
+# the output directories
 Forage::Hmmsearch->hmmoutdir($hmmoutdir);
+Forage::Blastp->outdir($blastoutdir);
 
 # the hmmsearch program
 Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
+Forage::Blastp->blastprog($blastprog);
 
 # full hmmsearch output if desired
 $hmmfullout ? Forage::Hmmsearch->hmmfullout(1) : Forage::Hmmsearch->hmmfullout(0);
 
-# the blastp output directory
-Forage::Blastp->outdir($blastoutdir);
-
 # maximum number of BLAST hits to save
-Forage::Blastp->max_hits(10);
+Forage::Blastp->max_hits(3);
 #}}}
 
 #--------------------------------------------------
@@ -280,7 +283,7 @@ $hmmhitcount = 0;
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
 	++$hmmcount;
-	$j = 0;	# reset counter
+	$blastcount = 0;	# reset counter
 
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
 	my $hmmobj = Forage::Hmmsearch->new($hmmfile); 
@@ -290,10 +293,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	# count the hmmsearch hits
 	unless ($hmmobj->hmmhitcount()) { # do not care further with HMM files that did not return any result
-		printf "%4d hits detected for %s.\n", 0, basename($hmmobj->hmmfile) unless $quiet;
+		printf "%4d hits detected for %s\n", 0, basename($hmmobj->hmmfile) unless $quiet;
 		next;
 	}
-	printf "%4d hits detected for %s:\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) unless $quiet;
+	printf "%4d hits detected for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) unless $quiet;
 
 	# add hitcount to total number of hmm hits,
 	# print list of hits if verbose
@@ -323,9 +326,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# # the reciprocal search
 	#-------------------------------------------------- 
 
-	HMMRESULT:
 	# get the sequences from the database (as array->array reference)
-	foreach my $hmmresult (@{&mysql_get($query_get_sequences)}) {
+	my @hmmresults = @{&mysql_get($query_get_sequences)};
+	HMMRESULT:
+	for (my $n = 0; $n < scalar @hmmresults; ++$n) {
  		++$count;
 
 		# setup a temporary file that will be unlinked when this object goes out of scope
@@ -333,31 +337,35 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			'UNLINK' => 1, 
 			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));	
 		# write fasta header and sequence to the tempfile
-		print $tmpfile '>' . $hmmresult->[0] . "\n"; 
-		print $tmpfile $hmmresult->[1] . "\n";
+		print $tmpfile '>' . $hmmresults[$n]->[0] . "\n"; 
+		print $tmpfile $hmmresults[$n]->[1] . "\n";
 
 		#--------------------------------------------------
-		# # run blastp with it:
+		# # run blastp with each reference taxon database
 		#-------------------------------------------------- 
-		# shiny new blastp object
-		my $blastobj = Forage::Blastp->new($blastdb);
+		foreach my $reftaxon (@reftaxa) {
+			$blastdb = &get_blastdb_for($reftaxon);
+			# shiny new blastp object
+			my $blastobj = Forage::Blastp->new($blastdb);
 
-		# generate a blast output file name from the HMM name and the hit number
-		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . sprintf("%04d", $count) . '.blast');
+			# generate a blast output file name from the HMM name and the hit number
+			my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . sprintf("%04d", $n + 1) . '.blast');
 
-		# do the blastp search; skip if no hits obtained
-		$blastobj->blastp($tmpfile, $blastoutfile);
-		unless ($blastobj->hitcount()) {
-			printf "       %s BLASTP hits detected for (%d) against %s\n", 0, ++$j, basename($blastdb) 
+			# do the blastp search; skip if no hits obtained
+			$blastobj->blastp($tmpfile, $blastoutfile);
+			unless ($blastobj->hitcount()) {
+				printf "       %4d BLASTP hits detected for (%d) against %s\n", 0, $n + 1, basename($blastdb) 
+					unless $quiet;
+				next HMMRESULT;
+			}
+			else {printf "       %4d BLASTP hits detected for (%d) against %s\n", $blastobj->hitcount, $n + 1, basename($blastdb)
 				unless $quiet;
-			next HMMRESULT;
-		}
- 		printf "       %4d BLASTP hits detected for (%d) against %s\n", $blastobj->hitcount, ++$j, basename($blastdb)
-			unless $quiet;
+			}
 
-		# insert the blast results into the db. 3-argument form.
-		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
-		print "            ... pushed to database.\n";
+			# insert the blast results into the db. 3-argument form.
+			&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+			print "            ... pushed to database.\n";
+		}
 	}
 
 
@@ -374,7 +382,7 @@ exit;
 
 
 ###################################################
-# # Functions follow
+# # Functions 
 ###################################################
 
 # Sub: mysql_get
@@ -641,27 +649,6 @@ sub preparedb {#{{{
 	return 1;
 } #}}}
 
-# Sub: prep_core_orthologs_db
-# Prepares the core orthologs database. This one is persistent and does not
-# change when you run Forage.
-sub prepare_core_orthologs_db {
-	my $query_create_core_orthologs = "CREATE TABLE $mysql_table_core_orthologs (
-		$mysql_col_id       INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		$mysql_col_taxon    VARCHAR(255) NOT NULL, INDEX ($mysql_col_taxon),
-		$mysql_col_hmm      VARCHAR(255) NOT NULL,
-		$mysql_col_blastdb  VARCHAR(255) NOT NULL,
-		$mysql_col_hdr      VARCHAR(255) NOT NULL, 
-		$mysql_col_seq      MEDIUMBLOB DEFAULT NULL)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
-
-	# open connection
-	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	print "$query_create_core_orthologs;\n" if $verbose;
-	my $sql = $dbh->prepare($query_create_core_orthologs);
-	$sql->execute()
-		or die;
-}
-
-
 # Sub: clear_db
 # clears the database of previous results from the same species 
 sub clear_db {#{{{
@@ -689,7 +676,9 @@ sub clear_db {#{{{
 }#}}}
 
 # Sub: insert_results_into_table
-#
+#	inserts the results of either hmmsearch or blastp into a mysql database
+# Expects: scalar string TABLENAME, reference to array HITS, scalar string BLASTDATABASE (optional)
+# Returns: Number of inserted results (hitcount)
 sub insert_results_into_table {#{{{
 	my $table = shift;
 	my $hits  = shift;
@@ -700,7 +689,7 @@ sub insert_results_into_table {#{{{
 	
 	# this is a BLASTP result, we need the addtnl column 'blastdb'
 	if ($blastdb) {
-		my $query_insert_result = "INSERT INTO $table (
+		my $query_insert_result = "INSERT IGNORE INTO $table (
 			$mysql_col_spec,
 			$mysql_col_blastdb,
 			$mysql_col_query,
@@ -734,7 +723,7 @@ sub insert_results_into_table {#{{{
 	# this is a HMMsearch result, only need 5 columns
 	else {
 		# SQL query for pushing HMMsearch results to the db
-		my $query_insert_result = "INSERT INTO $table (
+		my $query_insert_result = "INSERT IGNORE INTO $table (
 			$mysql_col_spec,
 			$mysql_col_query,
 			$mysql_col_target,
@@ -763,6 +752,17 @@ sub insert_results_into_table {#{{{
 		$dbh->disconnect;
 		return $hitcount;
 	}
+}#}}}
+
+# Sub: get_blastdb_for
+# returns the BLASTP database path for a given reference taxon
+# Expects: scalar string REFTAXON
+# Returns: scalar string PATH TO BLASTDB
+sub get_blastdb_for {#{{{
+	my $reftaxon = shift;
+	my $query = "SELECT $mysql_col_blastdb FROM $mysql_table_core_orthologs WHERE $mysql_col_taxon = '$reftaxon' LIMIT 1";
+	my $blastdb = &mysql_get($query);
+	return $blastdb->[0][0];
 }#}}}
 
 # Documentation#{{{

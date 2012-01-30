@@ -2,11 +2,11 @@
 # Documentation before the code#{{{
 =head1 NAME 
 
-coreload - prepare a MySQL database for running Forage
+B<coreload> - prepare a MySQL database for running Forage
 
 =head1 SYNOPSIS
 
-coreload FASTAFILE
+B<coreload> FASTAFILE
 
 =head1 DESCRIPTION
 
@@ -20,18 +20,19 @@ The fasta headers need to be formatted in a certain way:
 
 where HMM is the name of the pHMM that will be used for searching, TAXON the taxon name of the sequence in question, and ID a sequence identifier. None of these need to be unique, but the combination of all three must be.
 
-coreload expects a certain table structure. You may create it yourself by hand
-using the following SQL statement or whatever you fancy, or you may run
-coreload with the B<-c> switch once, which does the same thing.
+B<coreload> expects a certain table structure. You may create it yourself by hand
+using the following SQL statement or whatever workflow you fancy, or you may run
+B<coreload -c> once, which does the same thing.
 
+	DROP TABLE IF EXISTS core_orthologs;
   CREATE TABLE core_orthologs (
-		id          INT(11) AUTO_INCREMENT PRIMARY KEY,
-		taxon       VARCHAR(255) NOT NULL,
-		orthoset    VARCHAR(255) NOT NULL,
-		hmm         VARCHAR(255) NOT NULL,
-		blastdb     VARCHAR(255) NOT NULL, INDEX (blastdb),
-		header      VARCHAR(255) NOT NULL, INDEX (header),
-		sequence    MEDIUMBLOB)";
+    id          INT(11) AUTO_INCREMENT PRIMARY KEY,
+    taxon       VARCHAR(255) NOT NULL,
+    orthoset    VARCHAR(255) NOT NULL,
+    hmm         VARCHAR(255) NOT NULL,
+    blastdb     VARCHAR(255) NOT NULL, INDEX (blastdb),
+    header      VARCHAR(255) NOT NULL, INDEX (header),
+    sequence    MEDIUMBLOB);
 
 =cut#}}}
 
