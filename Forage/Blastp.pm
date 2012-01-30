@@ -56,7 +56,7 @@ my $debug = 0;
 my $blastoutdir = File::Spec->catdir('.');
 my $blastprog = 'blastp';
 my $blast_cmd;
-my $eval_threshold  = 10;
+my $evalue_threshold  = 10;
 my $score_threshold = 0;
 my $max_hits        = 100;
 
@@ -128,22 +128,22 @@ sub outdir {#{{{
 	my $blastoutdir = shift;
 }#}}}
 
-=head3 eval_threshold
+=head3 evalue_threshold
 
 Sets the e-value threshold to use for the blastp search. Defaults to 10.
 
 =cut
 
-sub eval_threshold {#{{{
+sub evalue_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blast->eval_threshold(N)\n" }
-	$eval_threshold = shift;
+	unless (@_ == 1) { confess "Usage: Forage::Blast->evalue_threshold(N)\n" }
+	$evalue_threshold = shift;
 }#}}}
 
 =head3 score_threshold
 
-Sets the e-value threshold to use for the blastp search. Defaults to 10.
+Sets the score threshold to use for the blastp search. Defaults to 10.
 
 =cut
 

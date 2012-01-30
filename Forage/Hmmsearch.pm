@@ -28,7 +28,8 @@ my $hmmsearchprog = 'hmmsearch';
 my @hmmsearchcmd;
 my $hmmfullout = 0;
 my $evalue_threshold = 10;
-my $score_threshold = 0;
+my $score_threshold = 10;
+my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
 1;
 
 sub new {
@@ -172,8 +173,8 @@ sub hmmsearch {#{{{
   }
   else {
     my @hmmsearchline = $hmmfullout ?
-      qq($hmmsearchprog -o $hmmoutfile $hmmfile $protfile) :
-      qq($hmmsearchprog --tblout $hmmoutfile $hmmfile $protfile);
+      qq($hmmsearchprog -o $hmmoutfile $threshold_option $hmmfile $protfile) :
+      qq($hmmsearchprog --tblout $hmmoutfile $threshold_option $hmmfile $protfile);
     print "\n@hmmsearchline\n\n"
       if $debug;
     # do the search
