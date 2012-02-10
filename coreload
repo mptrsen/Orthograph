@@ -50,12 +50,23 @@ use Seqload::Fasta;
 
 my $dbname   = 'forage';
 my $dbserver = '127.0.0.1';
-my $table    = 'core_orthologs';
 my $user     = undef;
 my $pwd      = undef;
 my $setname  = undef;
-my $prefix   = undef;
+my $prefix   = 'o_';
 my $create   = 0;
+my $table = 'bl';
+my @tables = qw(
+	blast_dbs
+	ogs
+	ortholog_set
+	sequence_pairs
+	sequences_aa
+	sequences_nt
+	set_details
+	taxa
+	users
+);
 
 #{{{POD: Options
 =head1 OPTIONS
@@ -101,22 +112,29 @@ Username for the connection. No default; this must be set.
 =cut#}}}
 
 GetOptions(
-	'D=s' => \$dbname,
-	'b=s' => \$prefix,
-	'c'   => \$create,
-	'h=s' => \$dbserver,
-	'p=s' => \$pwd,
-	's=s' => \$setname,
-	't=s' => \$table,
-	'u=s' => \$user,
+	'D=s'      => \$dbname,
+	'prefix=s' => \$prefix,
+	'c'        => \$create,
+	'h=s'      => \$dbserver,
+	'p=s'      => \$pwd,
+	's=s'      => \$setname,
+	't=s'      => \$table,
+	'u=s'      => \$user,
 	);
+
+# make sure there is at least one underscore at the end of the prefix
+$prefix =~ s/_$//;
+$prefix .= '_';
+# prepend the prefix to the table names
+@tables = map { $prefix.$_ } @tables;
+
 
 unless (defined $user and defined $pwd ) {
 	die "Fatal: You must specify database username (-u) and password (-p) AND core-ortholog set name (-s).\n";
 }
 
 if ($create) {
-	&create_table($table);
+	&create_tables($prefix);
 	print "OK.\n";
 	exit;
 }
@@ -159,9 +177,37 @@ $dbh->disconnect;
 print "Successfully loaded $infile into $dbname on $dbserver.\n";
 exit; 
 
-sub create_table {
-	my $table = shift;
-	my $query_drop = "DROP TABLE IF EXISTS $table";
+sub drop_tables {
+	my $prefix = shift;
+	my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd)
+		or die "Could not connect to MySQL database server: $!\n";
+	print 'Dropping tables: ', join(", $prefix", @tables), "\n";
+	foreach my $table (@tables) {
+		$dbh->do("DROP TABLE IF EXISTS $table") or die "Could not execute drop query: $!\n";
+	}
+}
+
+
+my %create_table = (
+	$prefix . 'blast_dbs' => "CREATE TABLE `" . $prefix . "blast_dbs` (
+		`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+		`taxon_id` int(10) unsigned DEFAULT NULL,
+		`blastdb_path` varchar(255) DEFAULT NULL,
+		PRIMARY KEY (`id`)
+		) ENGINE=MyISAM DEFAULT CHARSET=latin1",
+	
+	$prefix . 'ogs' => "CREATE TABLE `" . $prefix . "o_ogs` (
+			`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+			`name` varchar(255) DEFAULT NULL,
+			PRIMARY KEY (`id`)
+		) ENGINE=MyISAM DEFAULT CHARSET=latin1",
+
+);
+
+sub create_tables {
+	my $prefix = shift;
+	my $sql;
+	my $query_drop ;
 	my $query = "CREATE TABLE $table (
 		id          INT(11) AUTO_INCREMENT PRIMARY KEY,
 		taxon       VARCHAR(255) NOT NULL,
@@ -172,13 +218,69 @@ sub create_table {
 		sequence    MEDIUMBLOB)";
 
 	my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd);
-	print "Dropping table $table:\n$query_drop;\n";
-	my $sql = $dbh->prepare($query_drop);
-	$sql->execute();
-	$sql->finish();
-	print "Creating table $table:\n$query;\n";
-	$sql = $dbh->prepare($query);
-	$sql->execute() or die;
-	$sql->finish;
-	$dbh->disconnect;
+	print "Dropping tables:\n";
+	foreach my $table (@tables) {
+		$query_drop = "DROP TABLE IF EXISTS $table";
+		print "$query_drop;\n";
+		$dbh->do($query_drop) or die "$!";
+	}
+	$dbh->do($_) or die "$!" foreach values %create_table;
+		$dbh->disconnect;
 }
+
+#--------------------------------------------------
+# 
+# CREATE TABLE `o_ortholog_set` (
+#   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+#   `set_id` int(10) unsigned DEFAULT NULL,
+#   `ortholog_gene_id` int(10) unsigned DEFAULT NULL,
+#   `sequence_pair` int(10) unsigned DEFAULT NULL,
+#   PRIMARY KEY (`id`)
+# ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+# 
+# CREATE TABLE `o_sequence_pairs` (
+#   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+#   `taxon_id` int(10) unsigned DEFAULT NULL,
+#   `ogs_id` int(10) unsigned DEFAULT NULL,
+#   `aa_seq` int(10) unsigned DEFAULT NULL,
+#   `nt_seq` int(10) unsigned DEFAULT NULL,
+#   `date` int(10) unsigned DEFAULT NULL,
+#   `user` int(10) unsigned DEFAULT NULL,
+#   PRIMARY KEY (`id`)
+# ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+# 
+# CREATE TABLE `o_sequences_aa` (
+#   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+#   `sequence` mediumblob,
+#   `user` int(10) unsigned DEFAULT NULL,
+#   `date` int(10) unsigned DEFAULT NULL,
+#   PRIMARY KEY (`id`)
+# ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+# 
+# CREATE TABLE `o_sequences_nt` (
+#   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+#   `sequence` mediumblob,
+#   `user` int(10) unsigned DEFAULT NULL,
+#   `date` int(10) unsigned DEFAULT NULL,
+#   PRIMARY KEY (`id`)
+# ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+# 
+# CREATE TABLE `o_set_details` (
+#   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+#   `description` tinyblob,
+#   PRIMARY KEY (`id`)
+# ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+# 
+# CREATE TABLE `o_taxa` (
+#   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+#   `name` varchar(20) DEFAULT NULL,
+#   `longname` varchar(255) DEFAULT NULL,
+#   PRIMARY KEY (`id`)
+# ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+# 
+# CREATE TABLE `o_users` (
+#   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+#   `name` varchar(255) DEFAULT NULL,
+#   PRIMARY KEY (`id`)
+# ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+#-------------------------------------------------- 
