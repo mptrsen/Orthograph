@@ -97,6 +97,7 @@ my $blast_max_hits = $config->{'blast_max_hits'}               ? $config->{'blas
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
 my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : undef;
 my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : undef;
+my $clear_data     = $config->{'clear_data'}            ? $config->{'clear_data'}           : undef;
 my $debug          = $config->{'debug'}                 ? $config->{'debug'}                : undef;
 my $estfile        = $config->{'estfile'}               ? $config->{'estfile'}              : '';
 my $hmmdir         = $config->{'hmmdir'}                ? $config->{'hmmdir'}               : '';
@@ -145,9 +146,13 @@ my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
 my $mysql_col_taxon     = 'taxon';
 my $num_ests;
+my $num_hmms;
 my $preparedb;
 my $protfile            = '';
 my $timestamp           = time();
+my $tmpdir              = File::Temp->newdir(
+                            'UNLINK' => 0, 
+                            'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
 my @hmmfiles;
 my @reftaxa;
 my @seqobjs;
@@ -197,6 +202,7 @@ if ($preparedb) {#{{{
 #-------------------------------------------------- 
 @reftaxa = split(/,\s*/, $reftaxa);
 @hmmfiles = &hmmlist;
+$num_hmms = scalar @hmmfiles;
 
 unless ($quiet) {#{{{
   print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMM files.\n" 
@@ -207,7 +213,7 @@ unless ($quiet) {#{{{
     if $hmmsearch_evalue_threshold;
   print "Score cutoff: $hmmsearch_score_threshold.\n"
     if $hmmsearch_score_threshold;
-	print "Reference taxa: " . join(', ', @reftaxa) . "\n";
+	print "Reference taxa: " . join(', ', @reftaxa) . ".\n";
 }#}}}
 
 #--------------------------------------------------
@@ -217,39 +223,49 @@ $| = 1;
 $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
 # Clear database of data from the same species
-print "Clearing database of previous results from '$species_name'... " unless $quiet;
-&clear_db;
-print "done.\n" unless $quiet;
+if ($clear_data) {
+	print "Clearing database of previous results from '$species_name'... " unless $quiet;
+	&clear_db;
+	print "done.\n" unless $quiet;
+}
 
-print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
+if ($clear_data) {
+	print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
-# Create temporary csv file for high-speed reading into database
-my $tmpdir = File::Temp->newdir('UNLINK' => 0, 'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
-my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
-fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
+	# Create temporary csv file for high-speed reading into database
+	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+	fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
 
-# load data from csv file into database
-my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $mysql_table_ests FIELDS TERMINATED BY ',' ($mysql_col_hdr, $mysql_col_seq)";
-# add date and spec
-my $query_update = "UPDATE $mysql_table_ests SET 
-	$mysql_col_date='" . time() . "', 
-	$mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
+	# load data from csv file into database
+	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $mysql_table_ests FIELDS TERMINATED BY ',' ($mysql_col_hdr, $mysql_col_seq)";
+	# add date and spec
+	my $query_update = "UPDATE $mysql_table_ests SET 
+		$mysql_col_date='" . time() . "', 
+		$mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
 
-# open connection
-my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-$num_ests = $dbh->do($query);
-$dbh->do($query_update);
-# disconnect ASAP
-$dbh->disconnect;#}}}
+	# open connection
+	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	$num_ests = $dbh->do($query);
+	$dbh->do($query_update);
+	# disconnect ASAP
+	$dbh->disconnect;#}}}
 
-# report
-print " done.\n" unless $quiet;
-$| = 0;
+	# report
+	print " done.\n" unless $quiet;
+	$| = 0;
 
-printf "%d sequences stored to database '%s' on %s.\n",
-  $num_ests,
-  $mysql_dbname,
-  $mysql_dbserver unless $quiet;
+	printf "%d sequences stored to database '%s' on %s.\n",
+		$num_ests,
+		$mysql_dbname,
+		$mysql_dbserver unless $quiet;
+}
+else {
+	my $num_ests = scalar &mysql_get("SELECT * FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
+	printf "%d sequences in database '%s' on %s.\n", 
+		$num_ests,
+		$mysql_dbname,
+		$mysql_dbserver unless $quiet;
+}
 
 #--------------------------------------------------
 # # Setup the Forage modules. These are all class methods.
@@ -289,7 +305,7 @@ Forage::Blastp->max_hits(3);
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-print "Hmmsearching the protein file using all HMMs in $hmmdir\:\n" unless $quiet;
+print "HMMsearching the protein file using all HMMs in $hmmdir\:\n" unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
 
@@ -309,11 +325,13 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->hmmsearch($protfile);
 
 	# count the hmmsearch hits
+	printf "%4d hits detected for %s (%2d%% of the ortholog set)\n", 
+		$hmmobj->hmmhitcount,
+		basename($hmmobj->hmmfile),
+		($hmmcount * 100 / $num_hmms) unless $quiet;
 	unless ($hmmobj->hmmhitcount()) { # do not care further with HMM files that did not return any result
-		printf "%4d hits detected for %s\n", 0, basename($hmmobj->hmmfile) unless $quiet;
 		next;
 	}
-	printf "%4d hits detected for %s\n", $hmmobj->hmmhitcount, basename($hmmobj->hmmfile) unless $quiet;
 
 	# add hitcount to total number of hmm hits,
 	# print list of hits if verbose
@@ -370,18 +388,18 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 			# do the blastp search; skip if no hits obtained
 			$blastobj->blastp($tmpfile, $blastoutfile);
-			unless ($blastobj->hitcount()) {
-				printf "       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n", 0, $n + 1, basename($blastdb), $blast_evalue_threshold
-					unless $quiet;
-				next HMMRESULT;
-			}
-			else {printf "       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n", $blastobj->hitcount, $n + 1, basename($blastdb), $blast_evalue_threshold
-				unless $quiet;
-			}
+
+			printf "       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n",
+				$blastobj->hitcount,
+				$n + 1,
+				basename($blastdb),
+				$blast_evalue_threshold unless $quiet;
+			unless ($blastobj->hitcount()) { next HMMRESULT }
+			
 
 			# insert the blast results into the db. 3-argument form.
 			&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
-			print "            ... pushed to database.\n";
+			print "            ... pushed to database.\n" if $verbose;
 		}
 	}
 
@@ -396,7 +414,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 # report, end the program
 printf "%d HMMs hit something.   %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
-printf "Forage analysis complete. Searched %d EST sequences using %d HMMs and obtained %d total hits.\n", $num_ests, $hmmcount, $hmmhitcount_total;
+printf "Forage analysis for %s complete. Searched %d EST sequences using %d HMMs and obtained %d total HMMsearch hits.\n", $species_name, $num_ests, $hmmcount, $hmmhitcount_total;
 exit;
 
 
@@ -649,7 +667,7 @@ sub preparedb {#{{{
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
 
 	# drop all tables
-	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast, $mysql_table_core_orthologs) {
+	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
 		my $query_drop = "DROP TABLE IF EXISTS $_";
 		print "$query_drop;\n" if $verbose;
 		my $sql = $dbh->prepare($query_drop);
