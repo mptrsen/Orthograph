@@ -9,7 +9,7 @@ A library for handling FASTA sequences in an object-oriented fashion.
 
 =head1 SYNOPSIS
 
-  use Seqload::Fasta;
+  use Seqload::Fasta qw(fasta2csv);
   
   # open the file, return fasta file object
   my $file = Seqload::Fasta->open($filename);
@@ -23,7 +23,7 @@ A library for handling FASTA sequences in an object-oriented fashion.
   $file->close;
 
   # convert a fasta file to a csv file
-  Seqload::Fasta::fasta2csv($fastafile, $csvfile);
+  fasta2csv($fastafile, $csvfile);
 
 
 =head1 METHODS
