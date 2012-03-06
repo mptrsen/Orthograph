@@ -45,8 +45,6 @@ use File::Spec;
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use DBI;
 use DBD::mysql;
-use Seqload::Fasta;
-
 
 my $dbname       = 'forage';
 my $dbserver     = '127.0.0.1';
@@ -204,7 +202,8 @@ my %create_table = (#{{{
 	# table: users
 	'users' => "CREATE TABLE `" . $prefix . "users` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255) DEFAULT NULL)",
+    `name`         VARCHAR(255) DEFAULT NULL,
+		`surname`      VARCHAR(255) DEFAULT NULL)",
 );#}}}
 
 unless (defined $user and defined $pwd ) {
@@ -269,7 +268,7 @@ $faobj->close();
 #-------------------------------------------------- 
 my $create_temp_table_query = "CREATE TABLE $temptable (
     `name`     VARCHAR(255),
-    `langname` VARCHAR(255),
+    `longname` VARCHAR(255),
 		`orthoset` VARCHAR(255),
 		`hmm`      VARCHAR(255),
 		`blastdb`  VARCHAR(255),
@@ -279,7 +278,7 @@ my $create_temp_table_query = "CREATE TABLE $temptable (
 my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE 
   INTO TABLE $temptable FIELDS TERMINATED BY ',' (
 		name,
-		langname,
+		longname,
 		orthoset,
 		hmm,
 		blastdb,
@@ -287,24 +286,28 @@ my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE
 		sequence,
 		description)";
 
+# drop and recreate temporary table
 my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd);
-$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Could not DROP TABLE $temptable: $!\n";
-$dbh->do($create_temp_table_query) or die "Could not CREATE TABLE $temptable: $!\n";
+$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Could not DROP TABLE $temptable\n";
+$dbh->do($create_temp_table_query) or die "Could not CREATE TABLE $temptable\n";
+
+# load data into temporary table
 my $sql = $dbh->prepare($loadquery);
-$sql->execute() or die;
+$sql->execute() or die "Could not LOAD DATA INFILE to $temptable\n";
 $sql->finish();
 $dbh->disconnect;
-
 print "Successfully loaded $infile into $dbname on $dbserver.\n";
 
+# populate the taxon names hash with present species in the db
 $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd);
-$sql = $dbh->prepare("SELECT DISTINCT name, langname FROM temp");
+$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM temp WHERE longname IS NULL");
 $sql->execute();
 while (my @result = $sql->fetchrow) {
 	$names{$result[0]} = $result[1];
 }
 $dbh->disconnect;
 
+# ask for full name of the species
 foreach (keys %names) {
 	unless ($names{$_}) {
 		print "Enter complete name for the shorthand '$_': ";
@@ -314,12 +317,14 @@ foreach (keys %names) {
 }
 
 $dbh = &mysql_dbh;
-$sql = $dbh->prepare("UPDATE TABLE $temptable SET langname='?' WHERE name='?'");
 foreach (keys %names) {
-	$sql->execute($names{$_}, $_);
+	$sql = $dbh->prepare("UPDATE $temptable SET longname='" . $names{$_} . "' WHERE name LIKE '%" . $_ . "%'");
+	$sql->execute();
+	$sql->finish();
 }
 $dbh->disconnect;
 
+print "Done. Your database is now prepared to run Forage.\n";
 
 exit; 
 
@@ -335,7 +340,7 @@ sub drop_tables {
 		or die "Could not connect to MySQL database server: $!\n";
 	print 'DROPing tables: ', join(", ", @tables), "\n";
 	foreach my $table (@tables) {
-		$dbh->do("DROP TABLE IF EXISTS $table") or die "Could not execute drop query: $!\n";
+		$dbh->do("DROP TABLE IF EXISTS $table") or die "Could not DROP TABLE $table\n";
 	}
 }
 
@@ -344,9 +349,9 @@ sub drop_tables {
 sub create_tables {
 	&drop_tables;
 	my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd);
-	foreach (values %create_table) {
-		print $_, ";\n";
-		$dbh->do($_) or die "Could not exec query: $!\n";
+	foreach (keys %create_table) {
+		print $create_table{$_}, ";\n";
+		$dbh->do($create_table{$_}) or die "Could not CREATE TABLE $_\n";
 	}
 	$dbh->disconnect;
 }
