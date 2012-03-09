@@ -45,6 +45,8 @@ use File::Spec;
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use DBI;
 use DBD::mysql;
+use Seqload::Fasta;
+
 
 my $dbname       = 'forage';
 my $dbserver     = '127.0.0.1';
@@ -65,6 +67,7 @@ my @tables       = qw(
 	set_details
 	taxa
 	users
+	temp
 );
 my %names;
 my $description;
@@ -316,6 +319,7 @@ foreach (keys %names) {
 	}
 }
 
+# update the temptable with the collected info
 $dbh = &mysql_dbh;
 foreach (keys %names) {
 	$sql = $dbh->prepare("UPDATE $temptable SET longname='" . $names{$_} . "' WHERE name LIKE '%" . $_ . "%'");
@@ -324,7 +328,22 @@ foreach (keys %names) {
 }
 $dbh->disconnect;
 
-print "Done. Your database is now prepared to run Forage.\n";
+# temptable is now complete. we can insert the data into the main table now.
+my @queries = (
+	"INSERT INTO " . $prefix . "taxa (name, longname) 
+		SELECT DISTINCT $temptable.name, $temptable.longname FROM $temptable",
+	"INSERT INTO " . $prefix . "blast_dbs (taxon_id, blastdb_path) 
+		SELECT DISTINCT " . $prefix . "taxa.id, $temptable.blastdb 
+		FROM $temptable INNER JOIN " . $prefix . "taxa ON " . $prefix . "taxa.name = $temptable.name"
+);
+
+$dbh = &mysql_dbh;
+foreach (@queries) {
+	print $_ . "\n";
+	$dbh->do($_) or die;
+}
+$dbh->disconnect;
+
 
 exit; 
 
@@ -340,7 +359,7 @@ sub drop_tables {
 		or die "Could not connect to MySQL database server: $!\n";
 	print 'DROPing tables: ', join(", ", @tables), "\n";
 	foreach my $table (@tables) {
-		$dbh->do("DROP TABLE IF EXISTS $table") or die "Could not DROP TABLE $table\n";
+		$dbh->do("DROP TABLE IF EXISTS $table") or die "Could not execute drop query: $!\n";
 	}
 }
 
