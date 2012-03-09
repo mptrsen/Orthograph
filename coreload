@@ -67,6 +67,7 @@ my @tables       = qw(
 	set_details
 	taxa
 	users
+	temp
 );
 my %names;
 my $description;
@@ -269,7 +270,7 @@ $faobj->close();
 #-------------------------------------------------- 
 my $create_temp_table_query = "CREATE TABLE $temptable (
     `name`     VARCHAR(255),
-    `langname` VARCHAR(255),
+    `longname` VARCHAR(255),
 		`orthoset` VARCHAR(255),
 		`hmm`      VARCHAR(255),
 		`blastdb`  VARCHAR(255),
@@ -279,7 +280,7 @@ my $create_temp_table_query = "CREATE TABLE $temptable (
 my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE 
   INTO TABLE $temptable FIELDS TERMINATED BY ',' (
 		name,
-		langname,
+		longname,
 		orthoset,
 		hmm,
 		blastdb,
@@ -297,14 +298,16 @@ $dbh->disconnect;
 
 print "Successfully loaded $infile into $dbname on $dbserver.\n";
 
+# get name and longname from the temp table; they do not get updated automatically
 $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $user, $pwd);
-$sql = $dbh->prepare("SELECT DISTINCT name, langname FROM temp");
+$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM temp");
 $sql->execute();
 while (my @result = $sql->fetchrow) {
 	$names{$result[0]} = $result[1];
 }
 $dbh->disconnect;
 
+# ask the user for the taxon names
 foreach (keys %names) {
 	unless ($names{$_}) {
 		print "Enter complete name for the shorthand '$_': ";
@@ -313,10 +316,27 @@ foreach (keys %names) {
 	}
 }
 
+# update the temptable with the collected info
 $dbh = &mysql_dbh;
-$sql = $dbh->prepare("UPDATE TABLE $temptable SET langname='?' WHERE name='?'");
 foreach (keys %names) {
-	$sql->execute($names{$_}, $_);
+	$sql = $dbh->prepare("UPDATE $temptable SET longname='" . $names{$_} . "' WHERE name='" . $_ . "'");
+	$sql->execute();
+}
+$dbh->disconnect;
+
+# temptable is now complete. we can insert the data into the main table now.
+my @queries = (
+	"INSERT INTO " . $prefix . "taxa (name, longname) 
+		SELECT DISTINCT $temptable.name, $temptable.longname FROM $temptable",
+	"INSERT INTO " . $prefix . "blast_dbs (taxon_id, blastdb_path) 
+		SELECT DISTINCT " . $prefix . "taxa.id, $temptable.blastdb 
+		FROM $temptable INNER JOIN " . $prefix . "taxa ON " . $prefix . "taxa.name = $temptable.name"
+);
+
+$dbh = &mysql_dbh;
+foreach (@queries) {
+	print $_ . "\n";
+	$dbh->do($_) or die;
 }
 $dbh->disconnect;
 
