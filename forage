@@ -309,10 +309,6 @@ print "HMMsearching the protein file using all HMMs in $hmmdir\:\n" unless $quie
 $hmmcount = 0;
 $hmmhitcount = 0;
 
-#--------------------------------------------------
-# # Do the HMM search - this may be pipelined in the future
-#-------------------------------------------------- 
-
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
 	++$hmmcount;
