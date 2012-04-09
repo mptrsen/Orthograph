@@ -246,6 +246,9 @@ if ($create) {
 #--------------------------------------------------
 # # otherwise, continue and gather information
 #-------------------------------------------------- 
+
+# TODO stop here if db structure is not present!
+
 $infile or die "Usage: $0 FASTAFILE\n";
 print "Setting up core ortholog set in $dbname on $dbserver... (press CTRL+C to abort)\n";
 unless ($setname) {
