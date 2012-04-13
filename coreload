@@ -78,6 +78,7 @@ my @tables       = qw(
 	sequence_pairs
 	sequences_aa
 	sequences_nt
+	seqtypes
 	set_details
 	taxa
 	usernames
@@ -164,7 +165,7 @@ my %create_table = (#{{{
 	'blast_dbs' => "CREATE TABLE `" . $prefix . "blast_dbs` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `taxon_id`     INT(10) UNSIGNED DEFAULT NULL,
-    `blastdb_path` VARCHAR(255) DEFAULT NULL)",
+    `blastdb_path` VARCHAR(255)     DEFAULT NULL)",
 	
 	# table: ogs
 	'ogs' => "CREATE TABLE `" . $prefix . "ogs` (
@@ -176,24 +177,24 @@ my %create_table = (#{{{
 	# table: ortholog_set
 	'ortholog_set' => "CREATE TABLE `" . $prefix . "ortholog_set` (
     `id`               INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `setname`          INT(10) UNSIGNED,
-    `ortholog_gene_id` INT(10) UNSIGNED,
-    `sequence_pair`    INT(10) UNSIGNED)",
+    `setname`          INT(10) UNSIGNED NOT NULL,
+    `ortholog_gene_id` CHAR(10)         NOT NULL,
+    `sequence_pair`    INT(10) UNSIGNED NOT NULL)",
 
 	# table: sequence_pairs
 	'sequence_pairs' => "CREATE TABLE `" . $prefix . "sequence_pairs` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxon_id`     INT(10) UNSIGNED,
-    `ogs_id`       INT(10) UNSIGNED,
-    `aa_seq`       INT(10) UNSIGNED,
-    `nt_seq`       INT(10) UNSIGNED,
+    `taxon_id`     INT(10) UNSIGNED NOT NULL,
+    `ogs_id`       INT(10) UNSIGNED NOT NULL,
+    `aa_seq`       INT(10) UNSIGNED NOT NULL,
+    `nt_seq`       INT(10) UNSIGNED NOT NULL,
     `date`         INT(10) UNSIGNED,
     `username`     INT(10) UNSIGNED)",
 
 	# table: sequences_aa
 	'sequences_aa' => "CREATE TABLE `" . $prefix . "sequences_aa` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10),
+    `taxid`        INT(10) NOT NULL,
     `header`       VARCHAR(255), INDEX(header),
     `sequence`     MEDIUMBLOB,
     `username`     INT(10) UNSIGNED,
@@ -382,17 +383,32 @@ unless (grep(/^$name$/, @$results)) {
 	
 }
 
+# TODO check whether the proteome header format is right (protein id only)!
+# TODO import the proteome data via a second temptable
+
 my @queries = (
 	# taxa (name, longname)
 	"INSERT INTO " . $prefix . "taxa (name, longname) 
-		SELECT DISTINCT $temptable.name, $temptable.longname FROM $temptable",
+    SELECT DISTINCT $temptable.name, $temptable.longname 
+		FROM $temptable",
 	# blast databases
 	"INSERT INTO " . $prefix . "blast_dbs (taxon_id, blastdb_path) 
-		SELECT DISTINCT " . $prefix . "taxa.id, $temptable.blastdb 
-		FROM $temptable INNER JOIN " . $prefix . "taxa ON " . $prefix . "taxa.name = $temptable.name",
+    SELECT DISTINCT " . $prefix . "taxa.id, $temptable.blastdb 
+    FROM $temptable LEFT JOIN " . $prefix . "taxa 
+		ON " . $prefix . "taxa.name = $temptable.name",
 	# set name + description
 	"INSERT INTO " . $prefix . "set_details (name, description)
-		SELECT DISTINCT $temptable.name, $temptable.description FROM $temptable LIMIT 1"
+    SELECT DISTINCT $temptable.orthoset, $temptable.description 
+	  FROM $temptable LIMIT 1",
+	# aa sequences
+	"INSERT INTO " . $prefix . "sequences_aa (taxid, header, sequence) 
+  	SELECT " . $prefix . "taxa.id, $temptable.header , $temptable.sequence 
+  	FROM $temptable LEFT JOIN " . $prefix . "taxa 
+  	ON $temptable.name  = " . $prefix . "taxa.name",
+	# delete everything where header or sequence is NULL
+	"DELETE FROM " . $prefix . "sequences_aa
+    WHERE " . $prefix . "sequences_aa.header IS NULL
+    OR " . $prefix . "sequences_aa.sequence IS NULL",
 );
 
 $dbh = &mysql_dbh;
@@ -402,6 +418,7 @@ foreach (@queries) {
 }
 $dbh->disconnect;
 
+print "Done\n";
 
 exit; 
 
