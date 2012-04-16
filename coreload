@@ -87,6 +87,7 @@ my @tables       = qw(
 my %names;
 my $description;
 my $ogs_name;
+my $total_seqs;
 
 
 #{{{POD: Options
@@ -171,14 +172,14 @@ my %create_table = (#{{{
 	'ogs' => "CREATE TABLE `" . $prefix . "ogs` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `type`         CHAR(3),
-    `taxid`        INT(10) UNSIGNED,
+    `taxid`        INT(10) UNSIGNED, INDEX(taxid),
     `version`      VARCHAR(255))",
 	
 	# table: ortholog_set
 	'ortholog_set' => "CREATE TABLE `" . $prefix . "ortholog_set` (
     `id`               INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `setname`          INT(10) UNSIGNED NOT NULL,
-    `ortholog_gene_id` CHAR(10)         NOT NULL,
+    `ortholog_gene_id` VARCHAR(10)      NOT NULL,
     `sequence_pair`    INT(10) UNSIGNED NOT NULL)",
 
 	# table: sequence_pairs
@@ -186,33 +187,33 @@ my %create_table = (#{{{
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `taxon_id`     INT(10) UNSIGNED NOT NULL,
     `ogs_id`       INT(10) UNSIGNED NOT NULL,
-    `aa_seq`       INT(10) UNSIGNED NOT NULL,
-    `nt_seq`       INT(10) UNSIGNED NOT NULL,
-    `date`         INT(10) UNSIGNED,
+    `aa_seq`       INT(10) UNSIGNED NOT NULL, INDEX(aa_seq),
+    `nt_seq`       INT(10) UNSIGNED NOT NULL, INDEX(nt_seq),
+    `date`         INT(11) UNSIGNED,
     `username`     INT(10) UNSIGNED)",
 
 	# table: sequences_aa
-	'sequences_aa' => "CREATE TABLE `" . $prefix . "sequences_aa` (
+	'aa_sequences' => "CREATE TABLE `" . $prefix . "sequences_aa` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10) NOT NULL,
-    `header`       VARCHAR(255), INDEX(header),
+    `taxid`        INT(10)             NOT NULL, INDEX(taxid),
+    `header`       VARCHAR(255) UNIQUE NOT NULL, INDEX(header),
     `sequence`     MEDIUMBLOB,
     `username`     INT(10) UNSIGNED,
-    `date`         INT(10) UNSIGNED )",
+    `date`         INT(11) UNSIGNED)",
 
 	# table: sequences_nt
-	'sequences_nt' => "CREATE TABLE `" . $prefix . "sequences_nt` (
+	'nt_sequences' => "CREATE TABLE `" . $prefix . "sequences_nt` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10),
-    `header`       VARCHAR(255), INDEX(header),
+    `taxid`        INT(10)             NOT NULL, INDEX(taxid),
+    `header`       VARCHAR(255) UNIQUE NOT NULL, INDEX(header),
     `sequence`     MEDIUMBLOB,
     `username`     INT(10) UNSIGNED,
-    `date`         INT(10) UNSIGNED )",
+    `date`         INT(11) UNSIGNED)",
 
 	# table: set_details
 	'set_details' => "CREATE TABLE `" . $prefix . "set_details` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255),
+    `name`         VARCHAR(255), INDEX(name),
     `description`  TINYBLOB)",
 
 	# table: taxa
@@ -228,7 +229,7 @@ my %create_table = (#{{{
 	# table: seqtypes
 	'seqtypes' => "CREATE TABLE `" . $prefix . "seqtypes` (
 		`id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		`string`       CHAR(4))",
+		`string`       CHAR(2))",
 );#}}}
 
 unless (defined $username and defined $pwd ) {
@@ -294,6 +295,7 @@ my $tmpfile = File::Temp->new();
 my $faobj = Seqload::Fasta->open($infile);
 no warnings;	# disable warnings for printing of the NULL column
 while (my ($hdr, $seq) = $faobj->next_seq()) {
+	++$total_seqs;
 	my @line = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
 	$line[0] =~ s/:.*//;	# remove everything from the colon
 	printf $tmpfile "%s,%s,%s,%s,%s,%s,%s,%s\n", 
@@ -322,10 +324,10 @@ $faobj->close();
 my $create_temp_table_query = "CREATE TABLE $temptable (
     `name`     VARCHAR(255), INDEX(name),
     `longname` VARCHAR(255),
-		`orthoset` VARCHAR(255),
-		`hmm`      VARCHAR(255),
+		`orthoset` VARCHAR(255), INDEX(orthoset),
+		`orthoid`  VARCHAR(255), INDEX(orthoid),
 		`blastdb`  VARCHAR(255),
-		`header`   VARCHAR(255),
+		`header`   VARCHAR(255), INDEX(header),
 		`sequence` VARCHAR(255),
 		`description` VARCHAR(255))";
 my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE 
@@ -333,7 +335,7 @@ my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE
 		name,
 		longname,
 		orthoset,
-		hmm,
+		orthoid,
 		blastdb,
 		header,
 		sequence,
@@ -347,7 +349,7 @@ $sql->execute() or die;
 $sql->finish();
 $dbh->disconnect;
 
-print "Successfully loaded $infile into $temptable on $dbserver.\n";
+print "Successfully loaded $total_seqs sequences from $infile into $temptable on $dbserver.\n";
 
 # get name and longname from the temp table; they do not get updated automatically
 $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $username, $pwd);
