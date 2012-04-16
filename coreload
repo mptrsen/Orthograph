@@ -71,19 +71,21 @@ my $blastdir     = '';
 my $create       = 0;
 my $overwrite    = 0;
 my $temptable    = 'temp';
-my @tables       = qw(
-	blast_dbs
-	ogs
-	ortholog_set
-	sequence_pairs
-	sequences_aa
-	sequences_nt
-	seqtypes
-	set_details
-	taxa
-	usernames
-	temp
+# table names
+my %t            = (
+	'blast_dbs'    => 'blast_dbs',
+	'ogs'          => 'ogs',
+	'orthologs'    => 'orthologs',
+	'seqpairs'     => 'sequence_pairs',
+	'aaseqs'       => 'sequences_aa',
+	'ntseqs'       => 'sequences_nt',
+	'seqtypes'     => 'seqtypes',
+	'set_details'  => 'set_details',
+	'taxa'         => 'taxa',
+	'users'        => 'usernames',
+	'temp'         => 'temp',
 );
+	
 my %names;
 my $description;
 my $ogs_name;
@@ -152,84 +154,86 @@ my $infile = shift @ARGV;
 $prefix =~ s/_$//;
 $prefix .= '_';
 # prepend the prefix to the table names. useful for dropping all of 'em.
-@tables = map { $prefix.$_ } @tables;
+$t{$_} = $prefix.$t{$_} foreach keys(%t);
 
 # name == username unless defined name
 $name = $username unless defined($name);
 
 # to start off with nt and aa sequence types
-my $insert_seqtypes = "INSERT INTO " . $prefix . "seqtypes (string) VALUES ('nt'),('aa')";
+my $insert_seqtypes = "INSERT INTO $t{'seqtypes'} (string) VALUES ('nt'),('aa')";
 
 # the queries for the individual tables
 my %create_table = (#{{{
 	# table: blast_dbs
-	'blast_dbs' => "CREATE TABLE `" . $prefix . "blast_dbs` (
+	'blast_dbs' => "CREATE TABLE `$t{'blast_dbs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxon_id`     INT(10) UNSIGNED DEFAULT NULL,
+    `taxid`        INT(10) UNSIGNED DEFAULT NULL, UNIQUE(taxid),
     `blastdb_path` VARCHAR(255)     DEFAULT NULL)",
 	
 	# table: ogs
-	'ogs' => "CREATE TABLE `" . $prefix . "ogs` (
+	'ogs' => "CREATE TABLE `$t{'ogs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `type`         CHAR(3),
-    `taxid`        INT(10) UNSIGNED, INDEX(taxid),
+    `taxid`        INT(10) UNSIGNED, UNIQUE(taxid),
     `version`      VARCHAR(255))",
 	
 	# table: ortholog_set
-	'ortholog_set' => "CREATE TABLE `" . $prefix . "ortholog_set` (
+	'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
     `id`               INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `setname`          INT(10) UNSIGNED NOT NULL,
+    `setid`            INT(10) UNSIGNED NOT NULL,
     `ortholog_gene_id` VARCHAR(10)      NOT NULL,
-    `sequence_pair`    INT(10) UNSIGNED NOT NULL)",
+    `sequence_pair`    INT(10) UNSIGNED NOT NULL)
+		UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair)",
 
 	# table: sequence_pairs
-	'sequence_pairs' => "CREATE TABLE `" . $prefix . "sequence_pairs` (
+	'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxon_id`     INT(10) UNSIGNED NOT NULL,
+    `taxid`        INT(10) UNSIGNED NOT NULL,
     `ogs_id`       INT(10) UNSIGNED NOT NULL,
     `aa_seq`       INT(10) UNSIGNED NOT NULL, INDEX(aa_seq),
-    `nt_seq`       INT(10) UNSIGNED NOT NULL, INDEX(nt_seq),
+    `nt_seq`       INT(10) UNSIGNED NOT NULL, INDEX(nt_seq), 
+		UNIQUE INDEX (taxid, ogs_id, aa_seq, nt_seq),
     `date`         INT(11) UNSIGNED,
     `username`     INT(10) UNSIGNED)",
 
 	# table: sequences_aa
-	'aa_sequences' => "CREATE TABLE `" . $prefix . "sequences_aa` (
+	'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10)             NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(255) UNIQUE NOT NULL, INDEX(header),
+    `taxid`        INT(10) NOT NULL, INDEX(taxid),
+    `header`       VARCHAR(512) NOT NULL, UNIQUE(header),
     `sequence`     MEDIUMBLOB,
     `username`     INT(10) UNSIGNED,
     `date`         INT(11) UNSIGNED)",
 
 	# table: sequences_nt
-	'nt_sequences' => "CREATE TABLE `" . $prefix . "sequences_nt` (
+	'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10)             NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(255) UNIQUE NOT NULL, INDEX(header),
+    `taxid`        INT(10) NOT NULL, INDEX(taxid),
+    `header`       VARCHAR(512) NOT NULL, UNIQUE(header),
     `sequence`     MEDIUMBLOB,
     `username`     INT(10) UNSIGNED,
     `date`         INT(11) UNSIGNED)",
 
 	# table: set_details
-	'set_details' => "CREATE TABLE `" . $prefix . "set_details` (
+	'set_details' => "CREATE TABLE `$t{'set_details'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255), INDEX(name),
+    `name`         VARCHAR(255), UNIQUE(name),
     `description`  TINYBLOB)",
 
 	# table: taxa
-	'taxa' => "CREATE TABLE `" . $prefix . "taxa` (
+	'taxa' => "CREATE TABLE `$t{'taxa'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(20),
+    `name`         VARCHAR(20), UNIQUE(name),
     `longname`     VARCHAR(255))",
 	
 	# table: usernames
-	'usernames' => "CREATE TABLE `" . $prefix . "usernames` (
+	'usernames' => "CREATE TABLE `$t{'usernames'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255), INDEX(name))",
+    `name`         VARCHAR(255), UNIQUE(name))",
 	# table: seqtypes
-	'seqtypes' => "CREATE TABLE `" . $prefix . "seqtypes` (
-		`id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		`string`       CHAR(2))",
+	'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
+    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `string`       CHAR(2))",
 );#}}}
 
 unless (defined $username and defined $pwd ) {
@@ -258,13 +262,13 @@ unless ($setname) {
 	$setname = <STDIN>;
 	chomp $setname;
 }
-if (&mysql_check("SELECT name FROM " . $prefix . "set_details WHERE name = '$setname'")) {
+if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
 	warn "Warning: An ortholog set with this name already exists in $dbname on $dbserver.\n";
 	unless ($overwrite) {
 		die "Pick a different name or use -o for overwriting.\n";
 	}
-	print "Overwriting existing entries (may cause data disintegration)\n";
 	$| = 1;
+	print "Overwriting existing entries (may cause data disintegration). ";
 	print "Are you sure (y/n)? ";
 	$| = 0;
 	my $yn = readline(STDIN);
@@ -327,7 +331,7 @@ my $create_temp_table_query = "CREATE TABLE $temptable (
 		`orthoset` VARCHAR(255), INDEX(orthoset),
 		`orthoid`  VARCHAR(255), INDEX(orthoid),
 		`blastdb`  VARCHAR(255),
-		`header`   VARCHAR(255), INDEX(header),
+		`header`   VARCHAR(512), INDEX(header),
 		`sequence` VARCHAR(255),
 		`description` VARCHAR(255))";
 my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE 
@@ -360,7 +364,7 @@ while (my @result = $sql->fetchrow) {
 }
 $dbh->disconnect;
 
-# ask the username for the taxon names
+# ask the user for the taxon names
 foreach (sort(keys %names)) {
 	unless ($names{$_}) {
 		print "Enter complete name for the shorthand '$_': ";
@@ -380,7 +384,7 @@ $dbh->disconnect;
 # temptable is now complete. we can insert the data into the main table now.
 
 # check whether username already exists; use that one of course
-my $results = &mysql_get("SELECT name FROM " . $prefix . "usernames");
+my $results = &mysql_get("SELECT name FROM $t{'users'}");
 unless (grep(/^$name$/, @$results)) {
 	
 }
@@ -390,32 +394,41 @@ unless (grep(/^$name$/, @$results)) {
 
 my @queries = (
 	# taxa (name, longname)
-	"INSERT INTO " . $prefix . "taxa (name, longname) 
+	"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
     SELECT DISTINCT $temptable.name, $temptable.longname 
-		FROM $temptable",
+    FROM $temptable",
 	# blast databases
-	"INSERT INTO " . $prefix . "blast_dbs (taxon_id, blastdb_path) 
-    SELECT DISTINCT " . $prefix . "taxa.id, $temptable.blastdb 
-    FROM $temptable LEFT JOIN " . $prefix . "taxa 
-		ON " . $prefix . "taxa.name = $temptable.name",
+	"INSERT IGNORE INTO $t{'blast_dbs'} (taxid, blastdb_path) 
+    SELECT DISTINCT $t{'taxa'}.id, $temptable.blastdb 
+    FROM $temptable LEFT JOIN $t{'taxa'} 
+    ON $t{'taxa'}.name = $temptable.name",
 	# set name + description
-	"INSERT INTO " . $prefix . "set_details (name, description)
+	"INSERT IGNORE INTO $t{'set_details'} (name, description)
     SELECT DISTINCT $temptable.orthoset, $temptable.description 
-	  FROM $temptable LIMIT 1",
+    FROM $temptable LIMIT 1",
 	# aa sequences
-	"INSERT INTO " . $prefix . "sequences_aa (taxid, header, sequence) 
-  	SELECT " . $prefix . "taxa.id, $temptable.header , $temptable.sequence 
-  	FROM $temptable LEFT JOIN " . $prefix . "taxa 
-  	ON $temptable.name  = " . $prefix . "taxa.name",
-	# delete everything where header or sequence is NULL
-	"DELETE FROM " . $prefix . "sequences_aa
-    WHERE " . $prefix . "sequences_aa.header IS NULL
-    OR " . $prefix . "sequences_aa.sequence IS NULL",
+	"INSERT IGNORE INTO $t{'aaseqs'} (taxid, header, sequence) 
+    SELECT $t{'taxa'}.id, $temptable.header , $temptable.sequence 
+    FROM $temptable LEFT JOIN $t{'taxa'} 
+    ON $temptable.name  = $t{'taxa'}.name",
+	# delete everything where header or sequence is NULL or empty
+	"DELETE FROM $t{'aaseqs'}
+    WHERE $t{'aaseqs'}.header IS NULL
+    OR $t{'aaseqs'}.sequence IS NULL
+    OR $t{'aaseqs'}.header = ''
+    OR $t{'aaseqs'}.sequence = ''",
+	"UPDATE $t{'aaseqs'}
+    SET $t{'aaseqs'}.date = UNIX_TIMESTAMP() 
+    WHERE $t{'aaseqs'}.date IS NULL",
+	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$username')",
+	"UPDATE $t{'aaseqs'}
+    SET $t{'aaseqs'}.username = (SELECT id FROM $t{'users'} WHERE name = '$username')
+    WHERE $t{'aaseqs'}.username IS NULL",
 );
 
 $dbh = &mysql_dbh;
 foreach (@queries) {
-	print $_ . "\n";
+	print $_ . ";\n";
 	$dbh->do($_) or die;
 }
 $dbh->disconnect;
@@ -474,9 +487,9 @@ sub mysql_get {#{{{
 sub drop_tables {
 	my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $username, $pwd)
 		or die "Could not connect to MySQL database server: $!\n";
-	print 'DROPing tables: ', join(", ", @tables), "\n";
-	foreach my $table (@tables) {
-		$dbh->do("DROP TABLE IF EXISTS $table") or die "Could not execute drop query: $!\n";
+	print 'DROPing tables: ', join(", ", values(%t)), "\n";
+	foreach my $table (keys(%t)) {
+		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
 	}
 }
 
@@ -498,65 +511,11 @@ sub create_tables {
 
 =head2 SQL Statement for creating the database structure
 
-  -- table: blast_dbs
-  CREATE TABLE `blast_dbs` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxon_id`     INT(10) UNSIGNED DEFAULT NULL,
-    `blastdb_path` VARCHAR(255) DEFAULT NULL);
-	
-  -- table: ogs
-  CREATE TABLE `ogs` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255) DEFAULT NULL);
-	
-  -- table: ortholog_set
-  CREATE TABLE `ortholog_set` (
-    `id`               INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `set_id`           INT(10) UNSIGNED DEFAULT NULL,
-    `ortholog_gene_id` INT(10) UNSIGNED DEFAULT NULL,
-    `sequence_pair`    INT(10) UNSIGNED DEFAULT NULL);
+	TODO include mysqldump --no-data --database forage
 
-  -- table: sequence_pairs
-  CREATE TABLE `sequence_pairs` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxon_id`     INT(10) UNSIGNED DEFAULT NULL,
-    `ogs_id`       INT(10) UNSIGNED DEFAULT NULL,
-    `aa_seq`       INT(10) UNSIGNED DEFAULT NULL,
-    `nt_seq`       INT(10) UNSIGNED DEFAULT NULL,
-    `date`         INT(10) UNSIGNED DEFAULT NULL,
-    `username`         INT(10) UNSIGNED DEFAULT NULL);
+=cut
 
-  -- table: sequences_aa
-  CREATE TABLE `sequences_aa` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		`header`       VARCHAR(255),
-    `sequence`     MEDIUMBLOB,
-    `username`         INT(10) UNSIGNED DEFAULT NULL,
-    `date`         INT(10) UNSIGNED DEFAULT NULL);
-
-  -- table: sequences_nt
-  CREATE TABLE `sequences_nt` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		`header`       VARCHAR(255),
-    `sequence`     MEDIUMBLOB,
-    `username`         INT(10) UNSIGNED DEFAULT NULL,
-    `date`         INT(10) UNSIGNED DEFAULT NULL);
-
-  -- table: set_details
-  CREATE TABLE `set_details` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `description`  TINYBLOB);
-
-  -- table: taxa
-  CREATE TABLE `taxa` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(20) DEFAULT NULL,
-    `longname`     VARCHAR(255) DEFAULT NULL);
-	
-  -- table: usernames
-  CREATE TABLE `usernames` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255) DEFAULT NULL);
+=pod
 
 =head1 AUTHOR
 
