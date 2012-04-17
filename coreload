@@ -70,6 +70,8 @@ my $prefix       = 'forage_';
 my $blastdir     = '';
 my $create       = 0;
 my $overwrite    = 0;
+my $reassignorthologs = 0;
+my $isnucleotide = 0;
 my $temptable    = 'temp';
 # table names
 my %t            = (
@@ -82,7 +84,7 @@ my %t            = (
 	'seqtypes'     => 'seqtypes',
 	'set_details'  => 'set_details',
 	'taxa'         => 'taxa',
-	'users'        => 'usernames',
+	'users'        => 'users',
 	'temp'         => 'temp',
 );
 	
@@ -99,39 +101,62 @@ my $total_seqs;
 
 Password for the connection. No default; this must be set.
 
-=head2 -t temptable
+=head2 -t TEMPTABLE
 
 Temporary table name to use. Defaults to 'temp'.
 
-=head2 -u usernamename
+=head2 -u USERNAME
 
 Username for the connection. No default; this must be set.
 
 =head2 -c
 
-(Re-)creates the necessary table structure. Careful, this will wipe out everything
-you had in the table. You should not do this more than once in the process of using
+(Re-)creates the necessary table structure. B<Careful, this will wipe out everything
+you had in the table.> You should not do this more than once in the process of using
 Forage unless you know what you are doing.
 
-=head2 -D database
+=head2 -D DATABASE
 
 Database name to use. Defaults to 'forage'.
 
-=head2 -h host
+=head2 -h HOST
 
 Database server. Defaults to '127.0.0.1', which is (mostly) equivalent to
 'localhost'.
 
-=head2 -b /blast/database/prefix
+=head2 -blastdir /BLAST/DATABASE/PREFIX
 
-BLAST database prefix. Must point to a directory containing the BLAST databases. These themselves must be each in its own directory, e.g., like so:
+BLAST database prefix. Must point to a directory containing the BLAST
+databases. These themselves must be each in its own directory, e.g., like so:
 
   /home/username/blast/apismellifera
   /home/username/blast/drosophilamelanogaster
 
-The directory name of each BLAST database must match with the taxon name in the fasta headers, and the BLAST database inside it must be named as F<taxon_prot>.
+The directory name of each BLAST database must match with the taxon name in the
+fasta headers, and the BLAST database inside it must be named as F<taxon_prot>.
 
 If all is setup like described, the prefix would be specified as: B<-b /home/username/blast>.
+
+=head2 -prefix PREFIX
+
+Table name prefix. Useful if you want to employ multiple forage instances on
+the same database. Tables will be named 'prefix_tablename'. The underscore is
+added automatically. Defaults to 'forage'.
+
+=head2 -o
+
+Overwrite existing data. This is necessary when re-loading an ortholog set with
+a name that already exists in the database. Be cautious; this may cause data
+disintegration (duplicates and orphan entries and stuff like that). Unless you
+know what you are doing, prefer deleting and re-creating to overwriting.
+
+=head2 -r
+
+Reassign orthologs. May be called manually after proteome data has been added
+to establish orthology relationships between nucleotide and peptide sequences.
+This is called automatically when adding an ortholog set from OrthoDB.
+
+### Not implemented yet ###
 
 =cut#}}}
 
@@ -147,6 +172,8 @@ GetOptions(
 	's=s'      => \$setname,
 	't=s'      => \$temptable,
 	'u=s'      => \$username,
+	'r'        => \$reassignorthologs,
+	'nt'       => \$isnucleotide,
 	);
 my $infile = shift @ARGV;
 
@@ -160,7 +187,7 @@ $t{$_} = $prefix.$t{$_} foreach keys(%t);
 $name = $username unless defined($name);
 
 # to start off with nt and aa sequence types
-my $insert_seqtypes = "INSERT INTO $t{'seqtypes'} (string) VALUES ('nt'),('aa')";
+my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (string) VALUES ('nt'),('aa')";
 
 # the queries for the individual tables
 my %create_table = (#{{{
@@ -182,8 +209,8 @@ my %create_table = (#{{{
     `id`               INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `setid`            INT(10) UNSIGNED NOT NULL,
     `ortholog_gene_id` VARCHAR(10)      NOT NULL,
-    `sequence_pair`    INT(10) UNSIGNED NOT NULL)
-		UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair)",
+    `sequence_pair`    INT(10) UNSIGNED NOT NULL,
+    UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair))",
 
 	# table: sequence_pairs
 	'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
@@ -192,9 +219,9 @@ my %create_table = (#{{{
     `ogs_id`       INT(10) UNSIGNED NOT NULL,
     `aa_seq`       INT(10) UNSIGNED NOT NULL, INDEX(aa_seq),
     `nt_seq`       INT(10) UNSIGNED NOT NULL, INDEX(nt_seq), 
-		UNIQUE INDEX (taxid, ogs_id, aa_seq, nt_seq),
     `date`         INT(11) UNSIGNED,
-    `username`     INT(10) UNSIGNED)",
+    `user`         INT(10) UNSIGNED,
+    UNIQUE INDEX (taxid, ogs_id, aa_seq, nt_seq))",
 
 	# table: sequences_aa
 	'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
@@ -202,7 +229,7 @@ my %create_table = (#{{{
     `taxid`        INT(10) NOT NULL, INDEX(taxid),
     `header`       VARCHAR(512) NOT NULL, UNIQUE(header),
     `sequence`     MEDIUMBLOB,
-    `username`     INT(10) UNSIGNED,
+    `user`         INT(10) UNSIGNED,
     `date`         INT(11) UNSIGNED)",
 
 	# table: sequences_nt
@@ -211,33 +238,33 @@ my %create_table = (#{{{
     `taxid`        INT(10) NOT NULL, INDEX(taxid),
     `header`       VARCHAR(512) NOT NULL, UNIQUE(header),
     `sequence`     MEDIUMBLOB,
-    `username`     INT(10) UNSIGNED,
+    `user`         INT(10) UNSIGNED,
     `date`         INT(11) UNSIGNED)",
 
 	# table: set_details
 	'set_details' => "CREATE TABLE `$t{'set_details'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name`         VARCHAR(255), UNIQUE(name),
-    `description`  TINYBLOB)",
+    `description`  BLOB)",
 
 	# table: taxa
 	'taxa' => "CREATE TABLE `$t{'taxa'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(20), UNIQUE(name),
+    `name`         VARCHAR(20),  UNIQUE(name),
     `longname`     VARCHAR(255))",
 	
-	# table: usernames
-	'usernames' => "CREATE TABLE `$t{'usernames'}` (
+	# table: users
+	'users' => "CREATE TABLE `$t{'users'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name`         VARCHAR(255), UNIQUE(name))",
 	# table: seqtypes
 	'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `string`       CHAR(2))",
+    `type`         CHAR(3)),     UNIQUE(string)",
 );#}}}
 
 unless (defined $username and defined $pwd ) {
-	die "Fatal: You must specify database usernamename (-u) and password (-p) AND core-ortholog set name (-s).\n";
+	die "Fatal: You must specify database username (-u) and password (-p) AND core-ortholog set name (-s).\n";
 }
 
 #--------------------------------------------------
@@ -312,18 +339,12 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		$seq,         # sequence
 		$description; # set description
 }
-use warnings;
+use warnings;	# resume yelling 
 $faobj->close();
 
 #--------------------------------------------------
 # # create a temporary table for high-speed loading of the data. we can sort it out later.
 #-------------------------------------------------- 
-
-# for each sequence, load into the db, taking into account the following:
-# a) record its id
-# b) where it comes from (orthodb set id)
-# c) etc
-# btw fuck you
 
 my $create_temp_table_query = "CREATE TABLE $temptable (
     `name`     VARCHAR(255), INDEX(name),
@@ -346,11 +367,10 @@ my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' IGNORE
 		description)";
 
 my $dbh = DBI->connect("DBI:mysql:$dbname:$dbserver", $username, $pwd);
-$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Could not DROP TABLE $temptable: $!\n";
-$dbh->do($create_temp_table_query) or die "Could not CREATE TABLE $temptable: $!\n";
+$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
+$dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
 my $sql = $dbh->prepare($loadquery);
 $sql->execute() or die;
-$sql->finish();
 $dbh->disconnect;
 
 print "Successfully loaded $total_seqs sequences from $infile into $temptable on $dbserver.\n";
@@ -364,7 +384,7 @@ while (my @result = $sql->fetchrow) {
 }
 $dbh->disconnect;
 
-# ask the user for the taxon names
+# ask the user for the taxon names that aren't complete
 foreach (sort(keys %names)) {
 	unless ($names{$_}) {
 		print "Enter complete name for the shorthand '$_': ";
@@ -381,18 +401,16 @@ foreach (keys %names) {
 }
 $dbh->disconnect;
 
-# temptable is now complete. we can insert the data into the main table now.
-
-# check whether username already exists; use that one of course
-my $results = &mysql_get("SELECT name FROM $t{'users'}");
-unless (grep(/^$name$/, @$results)) {
-	
-}
+#--------------------------------------------------
+# # temptable is now complete. going to insert the data into the main table 
+#-------------------------------------------------- 
 
 # TODO check whether the proteome header format is right (protein id only)!
 # TODO import the proteome data via a second temptable
 
 my @queries = (
+	# user name
+	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$username')",
 	# taxa (name, longname)
 	"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
     SELECT DISTINCT $temptable.name, $temptable.longname 
@@ -407,33 +425,55 @@ my @queries = (
     SELECT DISTINCT $temptable.orthoset, $temptable.description 
     FROM $temptable LIMIT 1",
 	# aa sequences
-	"INSERT IGNORE INTO $t{'aaseqs'} (taxid, header, sequence) 
-    SELECT $t{'taxa'}.id, $temptable.header , $temptable.sequence 
+	"INSERT IGNORE INTO $t{'aaseqs'} (taxid, header, sequence, user, date) 
+    SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence, $t{'users'}.id, UNIX_TIMESTAMP()
     FROM $temptable LEFT JOIN $t{'taxa'} 
-    ON $temptable.name  = $t{'taxa'}.name",
+    ON $temptable.name  = $t{'taxa'}.name
+    INNER JOIN $t{'users'}
+    ON $t{'users'}.name = '$username'",
 	# delete everything where header or sequence is NULL or empty
 	"DELETE FROM $t{'aaseqs'}
     WHERE $t{'aaseqs'}.header IS NULL
     OR $t{'aaseqs'}.sequence IS NULL
     OR $t{'aaseqs'}.header = ''
     OR $t{'aaseqs'}.sequence = ''",
-	"UPDATE $t{'aaseqs'}
-    SET $t{'aaseqs'}.date = UNIX_TIMESTAMP() 
-    WHERE $t{'aaseqs'}.date IS NULL",
-	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$username')",
-	"UPDATE $t{'aaseqs'}
-    SET $t{'aaseqs'}.username = (SELECT id FROM $t{'users'} WHERE name = '$username')
-    WHERE $t{'aaseqs'}.username IS NULL",
+	"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user) 
+    SELECT $t{'taxa'}.id, $t{'ogs'}.id, $t{'aaseqs'}.id, $t{'ntseqs'}.id, UNIX_TIMESTAMP(), $t{'users'}.id
+    FROM $t{'taxa'} 
+    INNER JOIN $t{'aaseqs'} 
+    ON $t{'aaseqs'}.taxid = $t{'taxa'}.id 
+    INNER JOIN $t{'ogs'} 
+    ON $t{'taxa'}.id = $t{'ogs'}.taxid 
+    INNER JOIN $t{'ntseqs'} 
+    ON $t{'aaseqs'}.header = $t{'ntseqs'}.header
+    INNER JOIN $t{'users'}
+    ON $t{'users'}.name = '$username'",
+	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
+    SELECT $t{'set_details'}.id, $temptable.orthoid, $t{'seqpairs'}.id 
+    FROM $t{'aaseqs'} 
+    INNER JOIN $temptable 
+    ON $t{'aaseqs'}.header = $temptable.header 
+    INNER JOIN $t{'seqpairs'} 
+    ON $t{'seqpairs'}.aa_seq = $t{'aaseqs'}.id 
+    INNER JOIN $t{'set_details'} 
+    ON $t{'set_details'}.name = $temptable.orthoset",
+
 );
 
 $dbh = &mysql_dbh;
+my $nrows;
 foreach (@queries) {
 	print $_ . ";\n";
-	$dbh->do($_) or die;
+	$nrows = $dbh->do($_) or die();
+	($nrows >= 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
 }
 $dbh->disconnect;
 
-print "Done\n";
+if ($nrows == 0) {	# the last one 
+	print "No orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for.\n";
+}
+
+print "Done.\n";
 
 exit; 
 
