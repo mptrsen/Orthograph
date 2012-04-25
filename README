@@ -25,6 +25,13 @@ run FORAGE single-threadedly, of course.
 
 At the moment, threads are not implemented anyway.
 
+SETUP
+=====
+
+The MySQL database must be setup prior to running Forage and must contain both
+peptide and nucleotide data. The script coreload is provided for your
+convenience. Refer to its perldoc documentation for further instructions.
+
 INVOCATION
 ==========
 
