@@ -467,9 +467,9 @@ my @queries = (
     FROM $t{'taxa'} 
     INNER JOIN $t{'aaseqs'} 
     ON $t{'aaseqs'}.taxid = $t{'taxa'}.id 
-    INNER JOIN $t{'ogs'} 
+    LEFT JOIN $t{'ogs'} 
     ON $t{'taxa'}.id = $t{'ogs'}.taxid 
-    INNER JOIN $t{'ntseqs'} 
+    LEFT JOIN $t{'ntseqs'} 
     ON $t{'aaseqs'}.header = $t{'ntseqs'}.header
     INNER JOIN $t{'users'}
     ON $t{'users'}.name = '$username'",
@@ -593,9 +593,7 @@ sub load_nucleotides {
 		print $tmpfh "$fields[0],$fields[1],$seq\n";
 		++$total_seqs;
 	}
-	my $nrecords = 999;
-	$nrecords = `cat $tmpfh | wc -l`;
-	print "tmpf: $tmpfh, $nrecords\n";
+	$tmpfh->close();
 
 	# queries:
 	my @queries = (
@@ -614,8 +612,8 @@ sub load_nucleotides {
 	"INSERT IGNORE INTO $t{'ntseqs'} (taxid, header, sequence)
   SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
   FROM $temptable 
-  INNER JOIN $t{'taxa'} 
-  ON $t{'taxa'}.name = $temptable.taxsh",
+  LEFT JOIN $t{'taxa'} 
+  ON $temptable.taxsh = $t{'taxa'}.name",
 	# insert sequence pairs relationships
 	"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user) 
   SELECT $t{'taxa'}.id, $t{'ogs'}.id, $t{'aaseqs'}.id, $t{'ntseqs'}.id, UNIX_TIMESTAMP(), '$username'
@@ -628,7 +626,7 @@ sub load_nucleotides {
   ON $t{'aaseqs'}.header = $t{'ntseqs'}.header",
 	# insert ortholog set groups
 	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, seqpairs) 
-  SELECT $t{'set_details'}.id, $temptable.hmm, $t{'seqpairs'}.id
+  SELECT $t{'set_details'}.id, $t{'orthologs'}.ortholog_gene_id, $t{'seqpairs'}.id
   FROM $t{'aaseqs'}
   INNER JOIN $temptable
   ON $t{'aaseqs'}.header = $temptable.header
@@ -639,11 +637,11 @@ sub load_nucleotides {
 	);
 	# get taxon shorthand
 	my $list = &mysql_get("SELECT * FROM $t{'taxa'}");
-	print "This is a list of present taxa in the database.\n";
+	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
-		printf("%2d. %s %s\n", $i + 1, $$list[$i][0], $$list[$i][1], $$list[$i][2]);
+		printf("%2d. %s %s\n", $$list[$i][0], $$list[$i][1], $$list[$i][2]);
 	}
-	print "Please enter a number to select one of the taxa (don't fuck around with this, as no error-catching has been implemented yet): ";
+	print "Please enter a number to select one of the taxa (don't fuck around with this, no error-catching has been implemented yet): ";
 	my $in = <STDIN>;
 	chomp $in;
 	my $taxon;
@@ -663,7 +661,9 @@ sub load_nucleotides {
 	$dbh = &mysql_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or return 0;
 	foreach (@queries) {
-		$dbh->do($_) or return 0;
+		print "$_\n";
+		my $nrows = $dbh->do($_) or return 0;
+		printf("Query OK, %d rows affected.\n", $nrows);
 	}
 	$dbh->disconnect();
 	printf "Query OK. Loaded %d sequences into %s on %s.\n", $total_seqs, $dbname, $dbserver;
