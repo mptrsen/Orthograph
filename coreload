@@ -81,7 +81,7 @@ my $create       = 0;
 my $overwrite    = 0;
 my $reassignorthologs = 0;
 my $isnucleotide = 0;
-my $ispeptide    = 0;
+my $isproteome    = 0;
 my $temptable    = 'temp';
 my $sql;
 # table names
@@ -191,8 +191,8 @@ GetOptions(
 	't=s'      => \$temptable,
 	'u=s'      => \$username,
 	'r'        => \$reassignorthologs,
-	'nuc'       => \$isnucleotide,
-	'pep'      => \$ispeptide,
+	'nuc'      => \$isnucleotide,
+	'prot'     => \$isproteome,
 	);
 my $infile = shift @ARGV;
 
@@ -295,8 +295,27 @@ if ($create) {
 	exit;
 }
 
-if ($isnucleotide) {
-	&load_nucleotides($infile) or die("Fatal: Nucleotide loading failed\n");
+($infile) or die "Usage: $0 [-nt|-pep] FASTAFILE\n";
+unless (-f $infile) {
+	die "Error: $infile does not exist or is not a file\n";
+}
+
+# this is a proteome file
+if ($isproteome) {
+	&load_proteomes($infile)
+		or die("Fatal: Loading of proteome file failed\n");
+	exit;
+}
+# this is a nucleotide (genome) file
+elsif ($isnucleotide) {
+	&load_nucleotides($infile)
+		or die("Fatal: Loading of nucleotide file failed\n");
+	exit;
+}
+# this is a file from orthodb
+else {
+	&load_orthodbfile($infile)
+		or die("Fatal: Loading of OrthoDB file failed\n");
 	exit;
 }
 
@@ -304,204 +323,202 @@ if ($isnucleotide) {
 # # otherwise, continue and gather information
 #-------------------------------------------------- 
 
-($infile and ($isnucleotide or $ispeptide)) or die "Usage: $0 [-nt|-pep] FASTAFILE\n";
-
 # TODO stop here if db structure is not present!
 
-print "Setting up core ortholog set in $dbname on $dbserver... (press CTRL+C to abort)\n";
-unless ($setname) {
-	print "Enter a name for the set (required): ";
-	$setname = <STDIN>;
-	chomp $setname;
-}
-if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
-	warn "Warning: An ortholog set with this name already exists in $dbname on $dbserver.\n";
-	unless ($overwrite) {
-		die "Pick a different name or use -o for overwriting.\n";
+sub load_orthodbfile {
+	my $infile = shift;
+	print "Setting up core ortholog set in $dbname on $dbserver... (press CTRL+C to abort)\n";
+	do {
+		print "Enter a name for the set (required): ";
+		$setname = <STDIN>;
+		chomp $setname;
+	} until ($setname);
+
+	if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
+		warn "Warning: An ortholog set with this name already exists in $dbname on $dbserver.\n";
+		unless ($overwrite) {
+			die "Pick a different name or use -o for overwriting.\n";
+		}
+		$| = 1;
+		print "Overwriting existing entries (may cause data disintegration). ";
+		print "Are you sure (y/n)? ";
+		$| = 0;
+		my $yn = readline(STDIN);
+		chomp $yn;
+		unless ($yn eq 'y') {
+			print "OK, exiting.\n";
+			exit;
+		}
 	}
-	$| = 1;
-	print "Overwriting existing entries (may cause data disintegration). ";
-	print "Are you sure (y/n)? ";
-	$| = 0;
-	my $yn = readline(STDIN);
-	chomp $yn;
-	unless ($yn eq 'y') {
-		print "OK, exiting.\n";
-		exit;
+
+	do {
+		print "Enter the location where the BLAST database directories are located (required): ";
+		$blastdir = <STDIN>;
+		chomp $blastdir;
+	} until ($blastdir);
+
+	print "Enter a description for the set (optional but recommended): "; 
+	$description = <STDIN>;
+	chomp $description;
+
+	#--------------------------------------------------
+	# # read the input file and create a CSV file with everything we know 
+	#-------------------------------------------------- 
+	print "Loading data into temporary database, this may take a while...\n";
+
+	my $tmpfile = File::Temp->new();
+
+	my $faobj = Seqload::Fasta->open($infile);
+	no warnings;	# disable warnings for printing of the NULL column
+	while (my ($hdr, $seq) = $faobj->next_seq()) {
+		++$total_seqs;
+		my @line = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
+		$line[0] =~ s/:.*//;	# remove everything from the colon
+		printf $tmpfile "%s,%s,%s,%s,%s,%s,%s,%s\n", 
+			$line[0],     # taxon shorthand
+			undef,        # this will later be the full name
+			$setname,	    # set name
+			$line[2],     # orthodb id, e.g. EOG500001
+			File::Spec->catfile($blastdir, $line[0], $line[0] . '_prot'), # blast database for this taxon, may change later
+			$line[3],     # original proteome id
+			$seq,         # sequence
+			$description; # set description
 	}
-}
+	use warnings;	# resume yelling 
+	$faobj->close();
 
-unless ($blastdir) {
-	print "Enter the location where the BLAST database directories are located (required): ";
-	$blastdir = <STDIN>;
-	chomp $blastdir;
-}
-print "Enter a description for the set (optional but recommended): "; 
-$description = <STDIN>;
-chomp $description;
+	#--------------------------------------------------
+	# # create a temporary table for high-speed loading of the data. we can sort it out later.
+	#-------------------------------------------------- 
 
-unless (defined $setname) { croak "Fatal: You must specify the core-ortholog set name (-s).\n" }
+	my $create_temp_table_query = "CREATE TABLE $temptable (
+			`name`     VARCHAR(255), INDEX(name),
+			`longname` VARCHAR(255),
+			`orthoset` VARCHAR(255), INDEX(orthoset),
+			`orthoid`  VARCHAR(255), INDEX(orthoid),
+			`blastdb`  VARCHAR(255),
+			`header`   VARCHAR(512), INDEX(header),
+			`sequence` VARCHAR(255),
+			`description` VARCHAR(255))";
+	my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' 
+		INTO TABLE $temptable FIELDS TERMINATED BY ',' (
+			name,
+			longname,
+			orthoset,
+			orthoid,
+			blastdb,
+			header,
+			sequence,
+			description)";
 
-#--------------------------------------------------
-# # read the input file and create a CSV file with everything we know 
-#-------------------------------------------------- 
+	my $dbh = &mysql_dbh();
+	$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
+	$dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
+	$dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
+	$dbh->disconnect;
 
-my $tmpfile = File::Temp->new();
+	print "Successfully loaded $total_seqs sequences from $infile into $temptable on $dbserver.\n";
 
-my $faobj = Seqload::Fasta->open($infile);
-no warnings;	# disable warnings for printing of the NULL column
-while (my ($hdr, $seq) = $faobj->next_seq()) {
-	++$total_seqs;
-	my @line = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
-	$line[0] =~ s/:.*//;	# remove everything from the colon
-	printf $tmpfile "%s,%s,%s,%s,%s,%s,%s,%s\n", 
-		$line[0],     # taxon shorthand
-		undef,        # this will later be the full name
-		$setname,	    # set name
-		$line[2],     # orthodb id, e.g. EOG500001
-		File::Spec->catfile($blastdir, $line[0], $line[0] . '_prot'), # blast database for this taxon, may change later
-		$line[3],     # original proteome id
-		$seq,         # sequence
-		$description; # set description
-}
-use warnings;	# resume yelling 
-$faobj->close();
-
-#--------------------------------------------------
-# # create a temporary table for high-speed loading of the data. we can sort it out later.
-#-------------------------------------------------- 
-
-my $create_temp_table_query = "CREATE TABLE $temptable (
-    `name`     VARCHAR(255), INDEX(name),
-    `longname` VARCHAR(255),
-		`orthoset` VARCHAR(255), INDEX(orthoset),
-		`orthoid`  VARCHAR(255), INDEX(orthoid),
-		`blastdb`  VARCHAR(255),
-		`header`   VARCHAR(512), INDEX(header),
-		`sequence` VARCHAR(255),
-		`description` VARCHAR(255))";
-my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' 
-  INTO TABLE $temptable FIELDS TERMINATED BY ',' (
-		name,
-		longname,
-		orthoset,
-		orthoid,
-		blastdb,
-		header,
-		sequence,
-		description)";
-
-my $dbh = &mysql_dbh();
-$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
-$dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
-$dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
-$dbh->disconnect;
-
-print "Successfully loaded $total_seqs sequences from $infile into $temptable on $dbserver.\n";
-
-# get name and longname from the temp table; they do not get updated automatically
-$dbh = &mysql_dbh();
-$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM temp");
-$sql->execute();
-while (my @result = $sql->fetchrow) {
-	$names{$result[0]} = '';
-}
-$dbh->disconnect;
-
-# ask the user for the taxon names that aren't complete
-foreach (sort(keys %names)) {
-	unless ($names{$_}) {
-		print "Enter complete name for the shorthand '$_': ";
-		$names{$_} = <STDIN>;
-		chomp $names{$_};
-	}
-}
-
-# update the temptable with the collected info
-$dbh = &mysql_dbh;
-foreach (keys %names) {
-	$sql = $dbh->prepare("UPDATE $temptable SET longname='" . $names{$_} . "' WHERE name='" . $_ . "'");
+	# get name and longname from the temp table; they do not get updated automatically
+	$dbh = &mysql_dbh();
+	$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM temp");
 	$sql->execute();
+	while (my @result = $sql->fetchrow) {
+		$names{$result[0]} = '';
+	}
+	$dbh->disconnect;
+
+	# ask the user for the taxon names that aren't complete
+	foreach (sort(keys %names)) {
+		unless ($names{$_}) {
+			print "Enter complete name for the shorthand '$_': ";
+			$names{$_} = <STDIN>;
+			chomp $names{$_};
+		}
+	}
+
+	# update the temptable with the collected info
+	$dbh = &mysql_dbh;
+	foreach (keys %names) {
+		$sql = $dbh->prepare("UPDATE $temptable SET longname='" . $names{$_} . "' WHERE name='" . $_ . "'");
+		$sql->execute();
+	}
+	$dbh->disconnect;
+
+	#--------------------------------------------------
+	# # temptable is now complete. going to insert the data into the main table 
+	#-------------------------------------------------- 
+
+	my @queries = (
+		# user name
+		"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$username')",
+		# taxa (name, longname)
+		"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
+			SELECT DISTINCT $temptable.name, $temptable.longname 
+			FROM $temptable",
+		# blast databases
+		"INSERT IGNORE INTO $t{'blast_dbs'} (taxid, blastdb_path) 
+			SELECT DISTINCT $t{'taxa'}.id, $temptable.blastdb 
+			FROM $temptable LEFT JOIN $t{'taxa'} 
+			ON $t{'taxa'}.name = $temptable.name",
+		# set name + description
+		"INSERT IGNORE INTO $t{'set_details'} (name, description)
+			SELECT DISTINCT $temptable.orthoset, $temptable.description 
+			FROM $temptable LIMIT 1",
+		# pep sequences
+		"INSERT IGNORE INTO $t{'aaseqs'} (taxid, header, sequence, user, date) 
+			SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence, $t{'users'}.id, UNIX_TIMESTAMP()
+			FROM $temptable LEFT JOIN $t{'taxa'} 
+			ON $temptable.name  = $t{'taxa'}.name
+			INNER JOIN $t{'users'}
+			ON $t{'users'}.name = '$username'",
+		# delete everything where header or sequence is NULL or empty
+		"DELETE FROM $t{'aaseqs'}
+			WHERE $t{'aaseqs'}.header IS NULL
+			OR $t{'aaseqs'}.sequence IS NULL
+			OR $t{'aaseqs'}.header = ''
+			OR $t{'aaseqs'}.sequence = ''",
+		# sequence pairs (pep-nuc)
+		"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user) 
+			SELECT $t{'taxa'}.id, $t{'ogs'}.id, $t{'aaseqs'}.id, $t{'ntseqs'}.id, UNIX_TIMESTAMP(), $t{'users'}.id
+			FROM $t{'taxa'} 
+			INNER JOIN $t{'aaseqs'} 
+			ON $t{'aaseqs'}.taxid = $t{'taxa'}.id 
+			LEFT JOIN $t{'ogs'} 
+			ON $t{'taxa'}.id = $t{'ogs'}.taxid 
+			LEFT JOIN $t{'ntseqs'} 
+			ON $t{'aaseqs'}.header = $t{'ntseqs'}.header
+			INNER JOIN $t{'users'}
+			ON $t{'users'}.name = '$username'",
+		# orthologous groups
+		"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
+			SELECT $t{'set_details'}.id, $temptable.orthoid, $t{'seqpairs'}.id 
+			FROM $t{'aaseqs'} 
+			INNER JOIN $temptable 
+			ON $t{'aaseqs'}.header = $temptable.header 
+			INNER JOIN $t{'seqpairs'} 
+			ON $t{'seqpairs'}.aa_seq = $t{'aaseqs'}.id 
+			INNER JOIN $t{'set_details'} 
+			ON $t{'set_details'}.name = $temptable.orthoset",
+
+	);
+
+	$dbh = &mysql_dbh;
+	my $nrows;
+	foreach (@queries) {
+		print $_ . ";\n";
+		$nrows = $dbh->do($_) or die();
+		($nrows >= 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
+	}
+	$dbh->disconnect;
+
+	if ($nrows == 0) {	# the last one 
+		print "No orthology relationships have been established. This is most likely because you uploaded a file that does not contain data from OrthoDB (i.e. no orthologous groups), or because you re-loaded the same data again, in which case no additional relationships will be detected.\n";
+	}
+
+	print "Done.\n";
+	exit; 
 }
-$dbh->disconnect;
-
-#--------------------------------------------------
-# # temptable is now complete. going to insert the data into the main table 
-#-------------------------------------------------- 
-
-# TODO check whether the proteome header format is right (protein id only)!
-# TODO import the proteome data via a second temptable
-
-my @queries = (
-	# user name
-	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$username')",
-	# taxa (name, longname)
-	"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
-    SELECT DISTINCT $temptable.name, $temptable.longname 
-    FROM $temptable",
-	# blast databases
-	"INSERT IGNORE INTO $t{'blast_dbs'} (taxid, blastdb_path) 
-    SELECT DISTINCT $t{'taxa'}.id, $temptable.blastdb 
-    FROM $temptable LEFT JOIN $t{'taxa'} 
-    ON $t{'taxa'}.name = $temptable.name",
-	# set name + description
-	"INSERT IGNORE INTO $t{'set_details'} (name, description)
-    SELECT DISTINCT $temptable.orthoset, $temptable.description 
-    FROM $temptable LIMIT 1",
-	# pep sequences
-	"INSERT IGNORE INTO $t{'aaseqs'} (taxid, header, sequence, user, date) 
-    SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence, $t{'users'}.id, UNIX_TIMESTAMP()
-    FROM $temptable LEFT JOIN $t{'taxa'} 
-    ON $temptable.name  = $t{'taxa'}.name
-    INNER JOIN $t{'users'}
-    ON $t{'users'}.name = '$username'",
-	# delete everything where header or sequence is NULL or empty
-	"DELETE FROM $t{'aaseqs'}
-    WHERE $t{'aaseqs'}.header IS NULL
-    OR $t{'aaseqs'}.sequence IS NULL
-    OR $t{'aaseqs'}.header = ''
-    OR $t{'aaseqs'}.sequence = ''",
-	# sequence pairs (pep-nuc)
-	"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user) 
-    SELECT $t{'taxa'}.id, $t{'ogs'}.id, $t{'aaseqs'}.id, $t{'ntseqs'}.id, UNIX_TIMESTAMP(), $t{'users'}.id
-    FROM $t{'taxa'} 
-    INNER JOIN $t{'aaseqs'} 
-    ON $t{'aaseqs'}.taxid = $t{'taxa'}.id 
-    LEFT JOIN $t{'ogs'} 
-    ON $t{'taxa'}.id = $t{'ogs'}.taxid 
-    LEFT JOIN $t{'ntseqs'} 
-    ON $t{'aaseqs'}.header = $t{'ntseqs'}.header
-    INNER JOIN $t{'users'}
-    ON $t{'users'}.name = '$username'",
-	# orthologous groups
-	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
-    SELECT $t{'set_details'}.id, $temptable.orthoid, $t{'seqpairs'}.id 
-    FROM $t{'aaseqs'} 
-    INNER JOIN $temptable 
-    ON $t{'aaseqs'}.header = $temptable.header 
-    INNER JOIN $t{'seqpairs'} 
-    ON $t{'seqpairs'}.aa_seq = $t{'aaseqs'}.id 
-    INNER JOIN $t{'set_details'} 
-    ON $t{'set_details'}.name = $temptable.orthoset",
-
-);
-
-$dbh = &mysql_dbh;
-my $nrows;
-foreach (@queries) {
-	print $_ . ";\n";
-	$nrows = $dbh->do($_) or die();
-	($nrows >= 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
-}
-$dbh->disconnect;
-
-if ($nrows == 0) {	# the last one 
-	print "No orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for.\n";
-}
-
-print "Done.\n";
-
-exit; 
 
 #--------------------------------------------------
 # # Functions follow 
@@ -521,7 +538,7 @@ sub mysql_check {
 	my @results;
 	my $dbh = &mysql_dbh;
 	my $sql = $dbh->prepare($query);
-	$sql->execute();
+	$sql->execute() or die("Fatal: Could not execute query\n");
 	if ($sql->fetchrow_array()) {
 		return 1;
 	}
@@ -578,7 +595,7 @@ sub create_tables {
 sub load_nucleotides {
 	my $inf = shift(@_);
 	my $total_seqs = 0;
-	my $diemsg = "Fatal: Nucleotide file header format wrong in line %d. Expected format must be '>TAXSH Identifier'. See documentation for more information.\n";
+	my $diemsg = "Fatal: Unexpected header format in line %d. The format must be '>TAXSH Identifier'. See documentation for more information.\n";
 
 	my $tmpfh = File::Temp->new(UNLINK => 1);
 	my $infh = Seqload::Fasta->open($inf);
@@ -608,7 +625,7 @@ sub load_nucleotides {
   INTO TABLE $temptable 
   FIELDS TERMINATED BY ',' 
   (taxsh, header, sequence)",
-	# insert data into main table. IGNORE is important to avoid duplicates.
+	# insert data into main tables. IGNORE is important to avoid duplicates
 	"INSERT IGNORE INTO $t{'ntseqs'} (taxid, header, sequence)
   SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
   FROM $temptable 
