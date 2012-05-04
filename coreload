@@ -63,7 +63,7 @@ use Carp;
 use Getopt::Long;
 use File::Temp;     # temporary files
 use File::Spec;
-use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
+use Seqload::Fasta qw(fasta2csv check_if_fasta); # object-oriented access to fasta files, fasta2csv converter
 use DBI;
 use DBD::mysql;
 use Seqload::Fasta;
@@ -213,7 +213,7 @@ my %create_table = (#{{{
 	# table: blast_dbs
 	'blast_dbs' => "CREATE TABLE `$t{'blast_dbs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10) UNSIGNED DEFAULT NULL, UNIQUE(taxid),
+    `setid`        INT(10) UNSIGNED DEFAULT NULL, UNIQUE(setid),
     `blastdb_path` VARCHAR(255)     DEFAULT NULL)",
 	
 	# table: ogs
@@ -296,24 +296,31 @@ if ($create) {
 }
 
 if ($isnucleotide) {
-	&load_nucleotides($infile) or die("Fatal: Nucleotide loading failed\n");
+	# 0 for nucleotide
+	&load_taxon($infile, 0) or die("Fatal: Nucleotide loading failed\n");
 	exit;
+}
+
+if ($ispeptide) {
+	unless ($blastdir) {
+		$blastdir = &getblastdir();
+	}
+	# 1 for amino-acid
+	&load_taxon($infile, 1, $blastdir) or die("Fatal: Peptide loading failed\n");
 }
 
 #--------------------------------------------------
 # # otherwise, continue and gather information
 #-------------------------------------------------- 
 
-($infile and ($isnucleotide or $ispeptide)) or die "Usage: $0 [-nt|-pep] FASTAFILE\n";
+($infile) or die "Usage: $0 [-nt|-pep] FASTAFILE\n";
 
 # TODO stop here if db structure is not present!
 
 print "Setting up core ortholog set in $dbname on $dbserver... (press CTRL+C to abort)\n";
-unless ($setname) {
-	print "Enter a name for the set (required): ";
-	$setname = <STDIN>;
-	chomp $setname;
-}
+
+if (!$setname) { $setname = &get_setname() }
+
 if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
 	warn "Warning: An ortholog set with this name already exists in $dbname on $dbserver.\n";
 	unless ($overwrite) {
@@ -331,11 +338,6 @@ if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) 
 	}
 }
 
-unless ($blastdir) {
-	print "Enter the location where the BLAST database directories are located (required): ";
-	$blastdir = <STDIN>;
-	chomp $blastdir;
-}
 print "Enter a description for the set (optional but recommended): "; 
 $description = <STDIN>;
 chomp $description;
@@ -359,7 +361,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		undef,        # this will later be the full name
 		$setname,	    # set name
 		$line[2],     # orthodb id, e.g. EOG500001
-		File::Spec->catfile($blastdir, $line[0], $line[0] . '_prot'), # blast database for this taxon, may change later
+		File::Spec->catdir($blastdir), # blast database directory
 		$line[3],     # original proteome id
 		$seq,         # sequence
 		$description; # set description
@@ -439,15 +441,15 @@ my @queries = (
 	"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
     SELECT DISTINCT $temptable.name, $temptable.longname 
     FROM $temptable",
-	# blast databases
-	"INSERT IGNORE INTO $t{'blast_dbs'} (taxid, blastdb_path) 
-    SELECT DISTINCT $t{'taxa'}.id, $temptable.blastdb 
-    FROM $temptable LEFT JOIN $t{'taxa'} 
-    ON $t{'taxa'}.name = $temptable.name",
 	# set name + description
 	"INSERT IGNORE INTO $t{'set_details'} (name, description)
     SELECT DISTINCT $temptable.orthoset, $temptable.description 
     FROM $temptable LIMIT 1",
+	# blast databases
+	"INSERT IGNORE INTO $t{'blast_dbs'} (setid, blastdb_path) 
+    SELECT DISTINCT $t{'set_details'}.id, $temptable.blastdb 
+    FROM $temptable LEFT JOIN $t{'set_details'} 
+    ON $t{'set_details'}.name = $temptable.orthoset",
 	# pep sequences
 	"INSERT IGNORE INTO $t{'aaseqs'} (taxid, header, sequence, user, date) 
     SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence, $t{'users'}.id, UNIX_TIMESTAMP()
@@ -497,25 +499,26 @@ $dbh->disconnect;
 
 if ($nrows == 0) {	# the last one 
 	print "No orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for.\n";
+	print "Done.\n";
+	exit; 
 }
-
-print "Done.\n";
-
-exit; 
+else {	# something has changed
+}
 
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
-sub mysql_dbh {
+# Sub: mysql_dbh
+# Returns a MySQL database handle
+sub mysql_dbh {#{{{
 	return DBI->connect("DBI:mysql:$dbname:$dbserver", $username, $pwd);
-}
-
+}#}}}
 
 # Sub: mysql_check
 # Check whether the result of a query is present or not, return appropriate
-# Expects: Scalar string QUERY
+# Arguments: Scalar string QUERY
 # Returns: 1 or 0 depending on presence of result
-sub mysql_check {
+sub mysql_check {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_check(QUERY)\n"; }
 	my @results;
@@ -526,11 +529,11 @@ sub mysql_check {
 		return 1;
 	}
 	return 0;
-}
+}#}}}
 
 # Sub: mysql_get
 # Get from the database the result of a SQL query
-# Expects: QUERY as a string literal
+# Arguments: QUERY as a string literal
 # Returns: Reference to array of arrays (result lines->fields)
 sub mysql_get {#{{{
 	my $query = shift;
@@ -550,17 +553,17 @@ sub mysql_get {#{{{
 }#}}}
 
 # drop all tables. no really, all that start with $prefix.
-sub drop_tables {
+sub drop_tables {#{{{
 	my $dbh = &mysql_dbh() or die "Could not connect to MySQL database server: $!\n";
 	print 'DROPing tables: ', join(", ", values(%t)), "\n";
 	foreach my $table (keys(%t)) {
 		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
 	}
-}
+}#}}}
 
 
 # create tables. makes use of the %create_table hash.
-sub create_tables {
+sub create_tables {#{{{
 	&drop_tables;
 	my $dbh = &mysql_dbh();
 	foreach (values %create_table) {
@@ -569,14 +572,23 @@ sub create_tables {
 	}
 	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
 	$dbh->disconnect;
-}
+}#}}}
 
 # Sub: load_nucleotides
 # Loads nucleotide data into the database.
-# Expects: scalar string filename to nucleotide fasta file.
+# Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
+#		scalar string BLAST directory for creating the BLAST database
 # Returns: 1 on success, 0 otherwise
-sub load_nucleotides {
+sub load_taxon {#{{{
 	my $inf = shift(@_);
+	my $mode = shift(@_);
+	my $seqtable = $mode ? $t{'aaseqs'} : $t{'ntseqs'};
+	my $otherseqtable = $mode ? $t{'ntseqs'} : $t{'aaseqs'};
+	my $seqcol = $mode ? 'aa_seq' : 'nt_seq';
+	my $otherseqcol = $mode ? 'nt_seq' : 'aa_seq';
+	if ($mode) {
+		my $blastdb = shift(@_) or croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n"); 
+	}
 	my $total_seqs = 0;
 	my $diemsg = "Fatal: Nucleotide file header format wrong in line %d. Expected format must be '>TAXSH Identifier'. See documentation for more information.\n";
 
@@ -609,29 +621,29 @@ sub load_nucleotides {
   FIELDS TERMINATED BY ',' 
   (taxsh, header, sequence)",
 	# insert data into main table. IGNORE is important to avoid duplicates.
-	"INSERT IGNORE INTO $t{'ntseqs'} (taxid, header, sequence)
+	"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
   SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
   FROM $temptable 
   LEFT JOIN $t{'taxa'} 
   ON $temptable.taxsh = $t{'taxa'}.name",
 	# insert sequence pairs relationships
-	"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user) 
-  SELECT $t{'taxa'}.id, $t{'ogs'}.id, $t{'aaseqs'}.id, $t{'ntseqs'}.id, UNIX_TIMESTAMP(), '$username'
+	"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
+  SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$username'
   FROM $t{'taxa'}
-  INNER JOIN $t{'aaseqs'}
-  ON $t{'aaseqs'}.taxid = $t{'taxa'}.id
+  INNER JOIN $otherseqtable
+  ON $otherseqtable.taxid = $t{'taxa'}.id
   INNER JOIN $t{'ogs'}
   ON $t{'taxa'}.id = $t{'ogs'}.taxid
-  INNER JOIN $t{'ntseqs'}
-  ON $t{'aaseqs'}.header = $t{'ntseqs'}.header",
+  INNER JOIN $seqtable
+  ON $otherseqtable.header = $seqtable.header",
 	# insert ortholog set groups
 	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, seqpairs) 
   SELECT $t{'set_details'}.id, $t{'orthologs'}.ortholog_gene_id, $t{'seqpairs'}.id
-  FROM $t{'aaseqs'}
+  FROM $otherseqtable
   INNER JOIN $temptable
-  ON $t{'aaseqs'}.header = $temptable.header
+  ON $otherseqtable.header = $temptable.header
   INNER JOIN $t{'seqpairs'}
-  ON $t{'seqpairs'}.aa_seq = $t{'aaseqs'}.id
+  ON $t{'seqpairs'}.$otherseqcol = $otherseqtable.id
   INNER JOIN $t{'set_details'}
   ON $t{'set_details'}.name = $temptable.orthoset",
 	);
@@ -641,7 +653,7 @@ sub load_nucleotides {
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $$list[$i][0], $$list[$i][1], $$list[$i][2]);
 	}
-	print "Please enter a number to select one of the taxa (don't fuck around with this, no error-catching has been implemented yet): ";
+	print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
 	my $in = <STDIN>;
 	chomp $in;
 	my $taxon;
@@ -668,6 +680,61 @@ sub load_nucleotides {
 	$dbh->disconnect();
 	printf "Query OK. Loaded %d sequences into %s on %s.\n", $total_seqs, $dbname, $dbserver;
 	return 1;
+}#}}}
+
+# Sub: load_peptides
+# Loads peptide data into the database and re-generates the BLAST databases
+# Arguments: scalar string filename
+# Returns: true on success, false otherwise
+sub load_peptides {
+	my $inf = shift;
+}
+
+# Sub: create_blastdb
+# Generates a BLAST database 
+# Expects: scalar string dirname
+# Returns: File::Spec path object for the BLAST database
+sub create_blastdb {#{{{
+	my $infiles = shift;
+	my $taxsh = '';
+	if (scalar(@_) > 0) {
+		$taxsh = shift;
+	}
+	else {
+		($taxsh = $infile) =~ s/\.(fa|fas|fasta|fsta|fsa)$//;
+	}
+	if (&check_if_fasta == 0) {
+		return 0;
+	}
+	# TODO
+	my $blastdir = &mysql_get("SELECT blastdb_path FROM $t{'blast_dbs'} WHERE ");
+	my $outfile = File::Spec->catfile($taxsh);
+	my @makeblastdbcmd = qq(makeblastdb -in $infile -out $outfile -input_type fasta -title $taxsh);
+}#}}}
+
+sub get_setname {#{{{
+	print "Enter the set name (required; ASCII only): ";
+	$setname = <STDIN>;
+	chomp $setname;
+	if ($setname =~ /[^a-zA-Z0-9_]/) {
+		die "Error: Must be alphanumeric (a-z, 0-9, and underscore).\n";
+	}
+	return $setname;
+}#}}}
+
+sub getblastdir {
+	my $bd = &mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} LIMIT 1");
+	if (!$bd) {
+		print "Enter the location where the BLAST database directories are located (required): ";
+		$blastdir = <STDIN>;
+		chomp $blastdir;
+	}
+	else {
+		print Dumper($bd);
+		exit;
+		$blastdir = 0;	# array of arrays, only element
+	}
+	return $blastdir;
 }
 
 #{{{ POD: Appendix
