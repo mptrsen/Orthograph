@@ -81,6 +81,7 @@ if (-e $configfile) {
   $config = &parse_config($configfile);
 }#}}}
 
+
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
@@ -104,18 +105,35 @@ my $hmmdir         = $config->{'hmmdir'}                ? $config->{'hmmdir'}   
 my $hmmfile        = $config->{'hmmfile'}               ? $config->{'hmmfile'}              : '';
 my $hmmoutdir      = $config->{'hmmsearch_output_dir'}  ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
+my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
 my $mysql_dbname   = $config->{'mysql_dbname'}          ? $config->{'mysql_dbname'}         : 'forage';
 my $mysql_dbpwd    = $config->{'mysql_dbpassword'}      ? $config->{'mysql_dbpassword'}     : 'root';
 my $mysql_dbserver = $config->{'mysql_dbserver'}        ? $config->{'mysql_dbserver'}       : 'localhost';
 my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
-my $mysql_table_blast = $config->{'mysql_table_blast'}  ? $config->{'mysql_table_blast'}    : 'blast';
-my $mysql_table_core_orthologs = $config->{'mysql_table_core_orthologs'}    ? $config->{'mysql_table_core_orthologs'}     : 'core_orthologs';
-my $mysql_table_ests = $config->{'mysql_table_ests'}    ? $config->{'mysql_table_ests'}     : 'ests';
-my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ? $config->{'mysql_table_hmmsearch'} : 'hmmsearch';
+my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'forage';
+# make sure there is exactly one underscore at the end of the prefix
+$mysql_table_prefix =~ s/_*$/_/;
+
+my $mysql_table_blast = $config->{'mysql_table_blast'}  ? $mysql_table_prefix . $config->{'mysql_table_blast'}    : $mysql_table_prefix . 'blast';
+my $mysql_table_core_orthologs = $config->{'mysql_table_core_orthologs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_core_orthologs'} :
+	$mysql_table_prefix . 'core_orthologs';
+my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
+	$mysql_table_prefix . 'blastdbs';
+my $mysql_table_ests = $config->{'mysql_table_ests'} ?
+	$mysql_table_prefix . $config->{'mysql_table_ests'} :
+	$mysql_table_prefix . 'ests';
+my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ?
+	$mysql_table_prefix . $config->{'mysql_table_hmmsearch'} :
+	$mysql_table_prefix . 'hmmsearch';
+my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
+	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
+	$mysql_table_prefix . 'set_details';
 my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
+my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
 my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
-my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
 #}}}
@@ -186,9 +204,11 @@ GetOptions( 'v'        => \$verbose,
 # # tables if requested, then exit
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
-  print "Setting MySQL database $mysql_dbname to a clean slate...\n";
+	$| = 1;
+  print "Setting MySQL database $mysql_dbname to a clean slate... ";
+	$| = 0;
   &preparedb;
-  print "OK; MySQL database now ready to run Forage.\n";
+  print "OK\nMySQL database now ready to run Forage.\n";
   exit;
 }#}}}
 
@@ -227,9 +247,8 @@ if ($clear_data) {
 	print "Clearing database of previous results from '$species_name'... " unless $quiet;
 	&clear_db;
 	print "done.\n" unless $quiet;
-}
 
-if ($clear_data) {
+	# store est data into the database:
 	print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
 	# Create temporary csv file for high-speed reading into database
@@ -248,7 +267,7 @@ if ($clear_data) {
 	$num_ests = $dbh->do($query);
 	$dbh->do($query_update);
 	# disconnect ASAP
-	$dbh->disconnect;#}}}
+	$dbh->disconnect;
 
 	# report
 	print " done.\n" unless $quiet;
@@ -375,7 +394,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# # run blastp with each reference taxon database
 		#-------------------------------------------------- 
 		foreach my $reftaxon (@reftaxa) {
-			$blastdb = &get_blastdb_for($reftaxon);
+			$blastdb = &get_blastdb_for($orthoset);
 			# shiny new blastp object
 			my $blastobj = Forage::Blastp->new($blastdb);
 
@@ -494,6 +513,9 @@ sub intro {#{{{
 	
 	die "Fatal: Species name needed (-taxon NAME)!\n"
 		unless ($species_name);
+	
+	die "Fatal: Ortholog set name required (ortholog_set)!\n"
+		unless ($orthoset);
 
 	# mutually exclusive options
 	die "Fatal: Can't operate in both verbose and quiet mode\n"
@@ -797,10 +819,33 @@ sub insert_results_into_table {#{{{
 # Returns: scalar string PATH TO BLASTDB
 sub get_blastdb_for {#{{{
 	my $reftaxon = shift;
-	my $query = "SELECT $mysql_col_blastdb FROM $mysql_table_core_orthologs WHERE $mysql_col_taxon = '$reftaxon' LIMIT 1";
-	my $blastdb = &mysql_get($query);
-	return $blastdb->[0][0];
+	my $query = "SELECT $mysql_table_blastdbs.blastdb_path FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.id = $mysql_table_blastdbs.setid LIMIT 1";
+	#--------------------------------------------------
+	# my $query = "SELECT $mysql_col_blastdb FROM $mysql_table_core_orthologs WHERE $mysql_col_taxon = '$reftaxon' LIMIT 1";
+	#-------------------------------------------------- 
+	my $result = &mysql_get($query);
+	my $blastdb = File::Spec->catfile($$result[0][0], $orthoset);
+	return $blastdb;
 }#}}}
+
+# Sub: make_hmms
+# Generate HMMs for a given core-ortholog set
+# Arguments: scalar string ortholog set name
+# Returns: True if successful
+sub make_hmms {
+	my $set = shift;
+	#--------------------------------------------------
+	# my $orthologs = &mysql_get("SELECT $mysql_table_aaseqs.header, $mysql_table_aaseqs.sequence
+	# 	FROM $mysql_table_aaseqs 
+	# 	INNER JOIN $mysql_table_seqpairs
+	# 	ON $mysql_table_seqpairs.aa_seq = f_aaseqs.id
+	# 	INNER JOIN f_orthologs
+	# 	ON f_orthologs.sequence_pair = f_sequence_pairs.id
+	# 	INNER JOIN f_set_details
+	# 	ON f_set_details.id = f_orthologs.setid
+	# 	WHERE f_set_details.name = 'notmany'");
+	#-------------------------------------------------- 
+}
 
 # Documentation#{{{
 =head1 NAME
