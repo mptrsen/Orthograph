@@ -36,11 +36,11 @@ package without the immense overhead of the entire Bioperl backend.
   # set up the blast program
   Forage::Blast->blastprog('blastp');
 
-  # set the database
-  Forage::Blast->db('/path/to/blast/database');
+  # create a new blast object
+  my $blastobj = Forage::Blast->new('/path/to/blast/database');
 
-  # do the blastp search; this will return an object
-  my $blastobj = Forage::Blast->blastp($queryfile);
+  # do the blastp search
+  $blastobj->blastp($infile, $outfile);
 
 =cut
 
@@ -55,6 +55,7 @@ my $verbose = 0;
 my $debug = 0;
 my $blastoutdir = File::Spec->catdir('.');
 my $blastprog = 'blastp';
+my $makeblastdbprog = 'makeblastdb';
 my $blast_cmd;
 my $evalue_threshold  = 10;
 my $score_threshold = 0;
@@ -76,7 +77,7 @@ sub new {
 
 =head1 CLASS METHODS
 
-=head3 verbose
+=head3 verbose()
 
 Sets $verbose. Defaults to 0.
 
@@ -89,7 +90,7 @@ sub verbose {#{{{
 	$verbose = shift;
 }#}}}
 
-=head3 debug
+=head3 debug()
 
 Sets $debug. Defaults to 0.
 
@@ -102,20 +103,34 @@ sub debug {#{{{
 	$debug = shift;
 }#}}}
 
-=head3 blast_cmdline()
+=head3 set_blast()
 
-Sets up the blast command line to use
+Sets the blast program. Defaults to B<blastp>.
 
 =cut
 
-sub blastprog {#{{{
+sub set_blast {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->blast_cmdline(COMMAND)\n" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->set_blast(COMMAND)\n" }
 	$blastprog = shift;
 }#}}}
 
-=head3 outdir
+=head3 set_makeblastdb()
+
+Sets the makeblastdb program. Defaults to B<makeblastdb>.
+
+=cut
+
+sub set_makeblastdb {#{{{
+	my $class = shift;
+	if (ref $class) { confess "Class method used as object method\n" }
+	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->set_makeblastdb(COMMAND)\n" }
+	$makeblastdbprog = shift;
+}#}}}
+
+
+=head3 outdir()
 
 Sets the blast output directory. Defaults to 'F<.>'.
 
@@ -128,7 +143,7 @@ sub outdir {#{{{
 	my $blastoutdir = shift;
 }#}}}
 
-=head3 evalue_threshold
+=head3 evalue_threshold()
 
 Sets the e-value threshold to use for the blastp search. Defaults to 10.
 
@@ -141,7 +156,7 @@ sub evalue_threshold {#{{{
 	$evalue_threshold = shift;
 }#}}}
 
-=head3 score_threshold
+=head3 score_threshold()
 
 Sets the score threshold to use for the blastp search. Defaults to 10.
 
@@ -154,7 +169,7 @@ sub score_threshold {#{{{
 	$score_threshold = shift;
 }#}}}
 
-=head3 max_hits
+=head3 max_hits()
 
 Sets the maximum number of hits to be returned. Defaults to 100.
 
@@ -181,7 +196,7 @@ sub db {#{{{
 	return $self->{'db'};
 }#}}}
 
-=head3 blastp
+=head3 blastp()
 
 performs the blastp search with the command line set via blast_cmdline(), using
 the F<queryfile> on the blast db previously set via db() and with respect to
@@ -206,7 +221,7 @@ sub blastp {#{{{
 	# do the search or die
 	print "\n@blastcmd\n\n"
 		if $debug;
-	die "Fatal: BLAST search failed: $!\n"
+	croak "Fatal: BLAST search failed: $!\n"
 		if system(@blastcmd);
 
 	# store the resultfile path
@@ -214,7 +229,7 @@ sub blastp {#{{{
 	return $self;
 }#}}}
 
-=head3 resultfile
+=head3 resultfile()
 
 Sets or returns the BLAST result filename as a path.
 
@@ -229,7 +244,7 @@ sub resultfile {#{{{
 	return $self->{'resultfile'};
 }#}}}
 
-=head3 hitcount
+=head3 hitcount()
 
 Returns the number of BLAST hits
 
@@ -244,7 +259,7 @@ sub hitcount {#{{{
 	return $self->{'hitcount'};
 }#}}}
 
-=head3 result
+=head3 result()
 
 Returns the BLAST result as an array of strings, just as it is in the output file. 
 
@@ -261,7 +276,7 @@ sub result {#{{{
 	return $self->{'result'};
 }#}}}
 
-=head3 blasthits_arrayref
+=head3 blasthits_arrayref()
 
 Returns the BLAST result as an array of arrays.
 
@@ -283,6 +298,22 @@ sub blasthits_arrayref {#{{{
 		});
 	}
 	return $self->{'blasthits'};
+}#}}}
+
+=head1 INDEPENDENT FUNCTIONS
+
+=head3 makeblastdb()
+
+Create a BLAST database from a (fasta) file.
+
+=cut
+
+sub makeblastdb {#{{{
+	croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n") unless scalar(@_) == 3;
+	my $infile = shift or croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n");
+	my $outfile = shift or croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n");
+	my $title = shift or croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n");
+	my @makeblastdbcmd = qw($makeblastdbprog -in $infile -out $outfile -input_type fasta -title $title);
 }#}}}
 
 # return true

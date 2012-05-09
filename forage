@@ -88,6 +88,7 @@ if (-e $configfile) {
 my $translateprog = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';#{{{
 my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';
 my $blastprog     = $config->{'blast_program'}     ? $config->{'blast_program'}     : 'blastp';#}}}
+my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'}     : 'makeblastdb';#}}}
 
 #--------------------------------------------------
 # # These variables can be set in the config file
@@ -130,6 +131,15 @@ my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ?
 my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
 	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
 	$mysql_table_prefix . 'set_details';
+my $mysql_table_aaseqs = $config->{'aaseqs'} ?
+	$mysql_table_prefix . $config->{'aaseqs'} :
+	$mysql_table_prefix . 'aaseqs';
+my $mysql_table_seqpairs       = $config->{'sequence_pairs'} ?
+	$mysql_table_prefix . $config->{'sequence_pairs'} :
+	$mysql_table_prefix . 'sequence_pairs';
+my $mysql_table_orthologs      = $config->{'orthologs'} ?
+	$mysql_table_prefix . $config->{'orthologs'} :
+	$mysql_table_prefix . 'orthologs';
 my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
 my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
@@ -151,7 +161,7 @@ my $hmmcount;
 my $hmmhitcount;
 my $hmmhitcount_total;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
-my $mysql_col_blastdb   = 'blastdb';
+my $mysql_col_blastdbpath   = 'blastdb_path';
 my $mysql_col_date      = 'date';
 my $mysql_col_evalue    = 'evalue';
 my $mysql_col_hdr       = 'header';
@@ -310,15 +320,18 @@ Forage::Blastp->score_threshold($blast_score_threshold) if $blast_score_threshol
 Forage::Hmmsearch->hmmoutdir($hmmoutdir);
 Forage::Blastp->outdir($blastoutdir);
 
-# the hmmsearch program
+# the programs
 Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
-Forage::Blastp->blastprog($blastprog);
+Forage::Blastp->set_blast($blastprog);
 
 # full hmmsearch output if desired
 $hmmfullout ? Forage::Hmmsearch->hmmfullout(1) : Forage::Hmmsearch->hmmfullout(0);
 
 # maximum number of BLAST hits to save
 Forage::Blastp->max_hits(3);
+
+# prepare the BLAST database
+$blastdb = &make_blastdb($orthoset);
 #}}}
 
 #--------------------------------------------------
@@ -340,7 +353,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->hmmsearch($protfile);
 
 	# count the hmmsearch hits
-	printf "%4d hits detected for %s (%2d%% of the ortholog set)\n", 
+	printf "%4d hits detected for %s (%d%% of the ortholog set)\n", 
 		$hmmobj->hmmhitcount,
 		basename($hmmobj->hmmfile),
 		($hmmcount * 100 / $num_hmms) unless $quiet;
@@ -393,29 +406,28 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		#--------------------------------------------------
 		# # run blastp with each reference taxon database
 		#-------------------------------------------------- 
-		foreach my $reftaxon (@reftaxa) {
-			$blastdb = &get_blastdb_for($orthoset);
-			# shiny new blastp object
-			my $blastobj = Forage::Blastp->new($blastdb);
+		# TODO this must be re-organized: no longer is there a blast db for every reftaxon,
+		# but instead one blastdb for the entire set.
+		# shiny new blastp object
+		my $blastobj = Forage::Blastp->new($blastdb);
 
-			# generate a blast output file name from the HMM name and the hit number
-			my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . sprintf("%04d", $n + 1) . '-' . basename($blastdb) .  '.blast');
+		# generate a blast output file name from the HMM name and the hit number
+		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . sprintf("%04d", $n + 1) . '-' . basename($blastdb) .  '.blast');
 
-			# do the blastp search; skip if no hits obtained
-			$blastobj->blastp($tmpfile, $blastoutfile);
+		# do the blastp search; skip if no hits obtained
+		$blastobj->blastp($tmpfile, $blastoutfile);
 
-			printf "       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n",
-				$blastobj->hitcount,
-				$n + 1,
-				basename($blastdb),
-				$blast_evalue_threshold unless $quiet;
-			unless ($blastobj->hitcount()) { next HMMRESULT }
-			
+		printf "       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n",
+			$blastobj->hitcount,
+			$n + 1,
+			basename($blastdb),
+			$blast_evalue_threshold unless $quiet;
+		unless ($blastobj->hitcount()) { next HMMRESULT }
+		
 
-			# insert the blast results into the db. 3-argument form.
-			&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
-			print "            ... pushed to database.\n" if $verbose;
-		}
+		# insert the blast results into the db. 3-argument form.
+		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+		print "            ... pushed to database.\n" if $verbose;
 	}
 
 	#--------------------------------------------------
@@ -436,6 +448,14 @@ exit;
 ###################################################
 # # Functions 
 ###################################################
+
+# Sub: mysql_dbh
+# Get a database handle
+# Arguments: -
+# Returns: Database handle
+sub mysql_dbh {#{{{
+	return DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+}#}}}
 
 # Sub: mysql_get
 # Get from the database the result of a SQL query
@@ -675,7 +695,7 @@ sub preparedb {#{{{
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX ($mysql_col_id),
 		$mysql_col_spec      VARCHAR(255) NOT NULL, INDEX ($mysql_col_spec),
-		$mysql_col_blastdb   VARCHAR(255) NOT NULL,
+		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
 		$mysql_col_query     VARCHAR(255) NOT NULL, INDEX ($mysql_col_query),
 		$mysql_col_target    VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
 		$mysql_col_score     FLOAT NOT NULL,
@@ -750,7 +770,7 @@ sub insert_results_into_table {#{{{
 	if ($blastdb) {
 		my $query_insert_result = "INSERT IGNORE INTO $table (
 			$mysql_col_spec,
-			$mysql_col_blastdb,
+			$mysql_col_blastdbpath,
 			$mysql_col_query,
 			$mysql_col_target,
 			$mysql_col_score,
@@ -813,19 +833,15 @@ sub insert_results_into_table {#{{{
 	}
 }#}}}
 
-# Sub: get_blastdb_for
+# Sub: get_blastdir_for
 # returns the BLASTP database path for a given reference taxon
 # Expects: scalar string REFTAXON
 # Returns: scalar string PATH TO BLASTDB
-sub get_blastdb_for {#{{{
-	my $reftaxon = shift;
+sub get_blastdir_for {#{{{
 	my $query = "SELECT $mysql_table_blastdbs.blastdb_path FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.id = $mysql_table_blastdbs.setid LIMIT 1";
-	#--------------------------------------------------
-	# my $query = "SELECT $mysql_col_blastdb FROM $mysql_table_core_orthologs WHERE $mysql_col_taxon = '$reftaxon' LIMIT 1";
-	#-------------------------------------------------- 
 	my $result = &mysql_get($query);
-	my $blastdb = File::Spec->catfile($$result[0][0], $orthoset);
-	return $blastdb;
+	my $blastdir = File::Spec->catfile($$result[0][0], $orthoset);
+	return $blastdir;
 }#}}}
 
 # Sub: make_hmms
@@ -834,18 +850,56 @@ sub get_blastdb_for {#{{{
 # Returns: True if successful
 sub make_hmms {
 	my $set = shift;
-	#--------------------------------------------------
-	# my $orthologs = &mysql_get("SELECT $mysql_table_aaseqs.header, $mysql_table_aaseqs.sequence
-	# 	FROM $mysql_table_aaseqs 
-	# 	INNER JOIN $mysql_table_seqpairs
-	# 	ON $mysql_table_seqpairs.aa_seq = f_aaseqs.id
-	# 	INNER JOIN f_orthologs
-	# 	ON f_orthologs.sequence_pair = f_sequence_pairs.id
-	# 	INNER JOIN f_set_details
-	# 	ON f_set_details.id = f_orthologs.setid
-	# 	WHERE f_set_details.name = 'notmany'");
-	#-------------------------------------------------- 
 }
+
+# Sub: make_blastdb 
+# Create a BLAST database from a file. Pulls everything from the MySQL database.
+# Arguments: Scalar string ortholog set name
+# Returns: Scalar string path_to_blastdbfile
+sub make_blastdb {#{{{
+	my $setname = shift or croak('Usage: make_blastdb($setname)');
+
+	# build the paths for input and output
+	my $blastpath = &mysql_get("SELECT DISTINCT $mysql_col_blastdbpath FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.name = '$setname' LIMIT 1");
+	my $infile = File::Spec->catfile($$blastpath[0][0], $setname . ".fa");
+	my $outfile = File::Spec->catfile($$blastpath[0][0], $setname);
+
+	# check whether a database already exists
+	if (-e File::Spec->catfile($outfile . '.psq')) {
+		print "BLAST DB exists in $outfile.\n";
+		return $outfile;
+	}
+
+	# database not extant, we have to create it
+	print "BLAST DB does not exist, creating...\n";
+	# get the sequences from the database
+	my $query = "SELECT $mysql_table_aaseqs.id, $mysql_table_aaseqs.sequence
+		FROM $mysql_table_aaseqs
+		INNER JOIN $mysql_table_seqpairs
+		ON $mysql_table_seqpairs.aa_seq = $mysql_table_aaseqs.id
+		INNER JOIN $mysql_table_orthologs
+		ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id
+		INNER JOIN $mysql_table_set_details
+		ON $mysql_table_set_details.id = $mysql_table_orthologs.setid
+		WHERE $mysql_table_set_details.name = '$setname'";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute();
+
+	# write to output file
+	my $infh = IO::File->new($infile, 'w');
+	while (my ($h, $s) = $sth->fetchrow_array()) {
+		printf($infh ">%s\n%s\n", $h, $s) or croak("Fatal: Could not write to file $infile\: $!\n");
+	}
+	$infh->close();
+	$dbh->disconnect();
+
+	# make blast database
+	my @makeblastdbcmd = qq($makeblastdbprog -in $infile -out $outfile -input_type fasta -title $orthoset);
+	system(@makeblastdbcmd) and croak("Fatal: makeblastdb failed: $!\n");
+	print "BLAST DB created in $outfile.\n\n";
+	return $outfile;
+}#}}}
 
 # Documentation#{{{
 =head1 NAME
