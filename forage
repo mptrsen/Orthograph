@@ -95,27 +95,29 @@ my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastd
 #-------------------------------------------------- 
 #{{{
 my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
-my $blast_max_hits = $config->{'blast_max_hits'}               ? $config->{'blast_max_hits'}              : 3;
+my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 3;
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
-my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : undef;
-my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : undef;
-my $clear_data     = $config->{'clear_data'}            ? $config->{'clear_data'}           : undef;
-my $debug          = $config->{'debug'}                 ? $config->{'debug'}                : undef;
-my $estfile        = $config->{'estfile'}               ? $config->{'estfile'}              : '';
-my $hmmdir         = $config->{'hmmdir'}                ? $config->{'hmmdir'}               : '';
-my $hmmfile        = $config->{'hmmfile'}               ? $config->{'hmmfile'}              : '';
-my $hmmoutdir      = $config->{'hmmsearch_output_dir'}  ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
+my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
+my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
+my $clear_data     = defined($config->{'clear_data'})  ? $config->{'clear_data'}           : 1;
+my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
+my $estfile        = $config->{'estfile'}              ? $config->{'estfile'}              : '';
+my $hmmdir         = $config->{'hmmdir'}               ? $config->{'hmmdir'}               : '';
+my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}              : '';
+my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
 my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
-my $mysql_dbname   = $config->{'mysql_dbname'}          ? $config->{'mysql_dbname'}         : 'forage';
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'}      ? $config->{'mysql_dbpassword'}     : 'root';
-my $mysql_dbserver = $config->{'mysql_dbserver'}        ? $config->{'mysql_dbserver'}       : 'localhost';
+my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'forage';
+my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
+my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
 my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
 my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'forage';
 # make sure there is exactly one underscore at the end of the prefix
 $mysql_table_prefix =~ s/_*$/_/;
 
-my $mysql_table_blast = $config->{'mysql_table_blast'}  ? $mysql_table_prefix . $config->{'mysql_table_blast'}    : $mysql_table_prefix . 'blast';
+my $mysql_table_blast = $config->{'mysql_table_blast'} ?
+	$mysql_table_prefix . $config->{'mysql_table_blast'} :
+	$mysql_table_prefix . 'blast';
 my $mysql_table_core_orthologs = $config->{'mysql_table_core_orthologs'} ?
 	$mysql_table_prefix . $config->{'mysql_table_core_orthologs'} :
 	$mysql_table_prefix . 'core_orthologs';
@@ -249,10 +251,10 @@ unless ($quiet) {#{{{
 #--------------------------------------------------
 # # translate the ESTs to protein, feed that shit to the database
 #-------------------------------------------------- 
-$| = 1;
 $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
 # Clear database of data from the same species
+$| = 1;
 if ($clear_data) {
 	print "Clearing database of previous results from '$species_name'... " unless $quiet;
 	&clear_db;
@@ -261,25 +263,8 @@ if ($clear_data) {
 	# store est data into the database:
 	print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
-	# Create temporary csv file for high-speed reading into database
-	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
-	fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
-
-	# load data from csv file into database
-	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $mysql_table_ests FIELDS TERMINATED BY ',' ($mysql_col_hdr, $mysql_col_seq)";
-	# add date and spec
-	my $query_update = "UPDATE $mysql_table_ests SET 
-		$mysql_col_date='" . time() . "', 
-		$mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
-
-	# open connection
-	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	$num_ests = $dbh->do($query);
-	$dbh->do($query_update);
-	# disconnect ASAP
-	$dbh->disconnect;
-
-	# report
+	# third arg must be array ref
+	my $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_hdr, $mysql_col_seq ]);
 	print " done.\n" unless $quiet;
 	$| = 0;
 
@@ -289,12 +274,18 @@ if ($clear_data) {
 		$mysql_dbserver unless $quiet;
 }
 else {
-	my $num_ests = scalar &mysql_get("SELECT * FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
+	$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
+	$num_ests = $$num_ests[0][0];
 	printf "%d sequences in database '%s' on %s.\n", 
 		$num_ests,
 		$mysql_dbname,
 		$mysql_dbserver unless $quiet;
 }
+$| = 0;
+
+# get the transcripts with their new ID back from the database. is this efficient?
+$protfile = &get_transcripts();
+#}}}
 
 #--------------------------------------------------
 # # Setup the Forage modules. These are all class methods.
@@ -374,15 +365,15 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
-	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hmmhits_arrayref);
-	print "     ... pushed to database.\n" if $verbose;
+	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hmmhits_arrayref)
+		and print "     ... pushed to database.\n" if $verbose;
 	++$hmmhitcount;
 	
 	# setup SQL query; use the first array item since they all share the query (HMM) ID 
-	my $query_get_sequences = "SELECT $mysql_col_hdr, $mysql_col_seq
+	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_hdr, $mysql_table_ests.$mysql_col_seq
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
-		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_hdr 
+		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.id
 		WHERE $mysql_table_hmmsearch.$mysql_col_query = " . $hmmobj->hmmhits_arrayref->[0]{'query'};
 
 	#--------------------------------------------------
@@ -391,8 +382,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	# get the sequences from the database (as array->array reference)
 	my @hmmresults = @{&mysql_get($query_get_sequences)};
+	print Dumper(@hmmresults);
+
 	HMMRESULT:
-	for (my $n = 0; $n < scalar @hmmresults; ++$n) {
+	for (my $n = 0; $n < scalar(@hmmresults); ++$n) { #{{{
  		++$count;
 
 		# setup a temporary file that will be unlinked when this object goes out of scope
@@ -422,13 +415,15 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			$n + 1,
 			basename($blastdb),
 			$blast_evalue_threshold unless $quiet;
+
+		# skip to next if BLAST finds nothing
 		unless ($blastobj->hitcount()) { next HMMRESULT }
 		
 
 		# insert the blast results into the db. 3-argument form.
-		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
-		print "            ... pushed to database.\n" if $verbose;
-	}
+		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb)) 
+			and print "            ... pushed to database.\n" if $verbose;
+	} #}}}
 
 	#--------------------------------------------------
 	# # TODO now: implement the new, more sensible database structure
@@ -866,7 +861,7 @@ sub make_blastdb {#{{{
 
 	# check whether a database already exists
 	if (-e File::Spec->catfile($outfile . '.psq')) {
-		print "BLAST DB exists in $outfile.\n";
+		print "BLAST DB exists in $outfile.\n" unless $quiet;
 		return $outfile;
 	}
 
@@ -900,6 +895,61 @@ sub make_blastdb {#{{{
 	print "BLAST DB created in $outfile.\n\n";
 	return $outfile;
 }#}}}
+
+# Sub: load_data_infile
+# LOAD DATA LOCAL INFILE into a table
+# Arguments: scalar string filename, scalar string tablename, reference to list of columns
+# Returns: scalar int number of loaded rows
+sub load_data_infile {#{{{
+	my $protfile = shift(@_);
+	my $table = shift(@_) or croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
+	my $columns;
+	my $list;
+	if (scalar(@_)) {
+		$columns = shift(@_);
+		unless (ref($columns)) {
+			croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
+		}
+		$list = join(', ', @$columns);
+	}
+
+	# Create temporary csv file for high-speed reading into database
+	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+	fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
+
+	# load data from csv file into database
+	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table FIELDS TERMINATED BY ',' ($list)";
+	# add date and spec
+	my $query_update = "UPDATE $table SET 
+		$mysql_col_date='" . time() . "', 
+		$mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
+
+	# open connection
+	my $dbh = &mysql_dbh();
+	$num_ests = $dbh->do($query);
+	$dbh->do($query_update);
+	# disconnect ASAP
+	$dbh->disconnect;
+	return $num_ests;
+}#}}}
+
+
+# Sub: get_transcripts 
+# Get transcript sequences from the database, using their ID as header
+# Arguments: None
+# Returns: Filehandle
+sub get_transcripts {
+	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+	my $query = "SELECT id, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute();
+	while (my ($h, $s) = $sth->fetchrow_array()) {
+		printf($tmpfh ">%s\n%s\n", $h, $s) or croak("Fatal: Could not print to file $tmpfh\: $!\n");
+	}
+	$dbh->disconnect();
+	return $tmpfh;
+}
 
 # Documentation#{{{
 =head1 NAME
