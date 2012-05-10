@@ -302,13 +302,18 @@ unless (-f $infile) {
 
 # this is a proteome file
 if ($isproteome) {
-	&load_proteomes($infile)
+	unless ($blastdir) {
+		$blastdir = &getblastdir();
+	}
+	# 1 for amino-acid
+	&load_taxon($infile, 1, $blastdir) 
 		or die("Fatal: Loading of proteome file failed\n");
 	exit;
 }
 # this is a nucleotide (genome) file
 elsif ($isnucleotide) {
-	&load_nucleotides($infile)
+	# 0 for nucleotide
+	&load_taxon($infile, 0)
 		or die("Fatal: Loading of nucleotide file failed\n");
 	exit;
 }
@@ -319,13 +324,6 @@ else {
 	exit;
 }
 
-if ($ispeptide) {
-	unless ($blastdir) {
-		$blastdir = &getblastdir();
-	}
-	# 1 for amino-acid
-	&load_taxon($infile, 1, $blastdir) or die("Fatal: Peptide loading failed\n");
-}
 
 #--------------------------------------------------
 # # otherwise, continue and gather information
@@ -465,10 +463,10 @@ sub load_orthodbfile {
 			SELECT DISTINCT $temptable.name, $temptable.longname 
 			FROM $temptable",
 		# blast databases
-		"INSERT IGNORE INTO $t{'blast_dbs'} (taxid, blastdb_path) 
-			SELECT DISTINCT $t{'taxa'}.id, $temptable.blastdb 
-			FROM $temptable LEFT JOIN $t{'taxa'} 
-			ON $t{'taxa'}.name = $temptable.name",
+		"INSERT IGNORE INTO $t{'blast_dbs'} (setid, blastdb_path) 
+			SELECT DISTINCT $t{'set_details'}.id, $temptable.blastdb 
+			FROM $temptable LEFT JOIN $t{'set_details'} 
+			ON $t{'set_details'}.name = $temptable.name",
 		# set name + description
 		"INSERT IGNORE INTO $t{'set_details'} (name, description)
 			SELECT DISTINCT $temptable.orthoset, $temptable.description 
@@ -597,8 +595,8 @@ sub create_tables {#{{{
 	$dbh->disconnect;
 }#}}}
 
-# Sub: load_nucleotides
-# Loads nucleotide data into the database.
+# Sub: load_taxon
+# Loads taxon data into the database (nucleotide or peptide).
 # Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
 #		scalar string BLAST directory for creating the BLAST database
 # Returns: 1 on success, 0 otherwise
@@ -746,18 +744,16 @@ sub get_setname {#{{{
 }#}}}
 
 sub getblastdir {
-	my $bd = &mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} LIMIT 1");
+	my $bd = &mysql_get("SELECT blastdb_path FROM $t{'blast_dbs'} LIMIT 1");
 	if (!$bd) {
 		print "Enter the location where the BLAST database directories are located (required): ";
 		$blastdir = <STDIN>;
 		chomp $blastdir;
+		return $blastdir;
 	}
 	else {
-		print Dumper($bd);
-		exit;
-		$blastdir = 0;	# array of arrays, only element
+		return $blastdir;
 	}
-	return $blastdir;
 }
 
 #{{{ POD: Appendix
