@@ -125,6 +125,7 @@ sub fasta2csv {
   return 1;
 }
 
+<<<<<<< HEAD
 sub check_if_fasta {
 	my $fastafile = shift;
 	my $fastafh = Seqload::Fasta->open($fastafile);
@@ -133,5 +134,16 @@ sub check_if_fasta {
 	return 1;
 }
 
+=======
+# validates a fasta file by looking at the FIRST (header, sequence) pair
+# arguments: scalar string path to file
+# returns: true on validation, false otherwise
+sub check_if_fasta {
+	my $infile = shift;
+	my $infh = Seqload::Fasta->open($infile);
+	my ($h, $s) = $infh->next_seq() or return 0;
+	return 1;
+}
+>>>>>>> ea89b6cabdde5bed09c8b423fe2486bbc6c77d5a
 # return true
 1;
