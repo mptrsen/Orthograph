@@ -370,11 +370,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	++$hmmhitcount;
 	
 	# setup SQL query; use the first array item since they all share the query (HMM) ID 
-	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_hdr, $mysql_table_ests.$mysql_col_seq
+	my $query_get_sequences = "SELECT $mysql_table_ests.id, $mysql_table_ests.$mysql_col_seq
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
 		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.id
-		WHERE $mysql_table_hmmsearch.$mysql_col_query = " . $hmmobj->hmmhits_arrayref->[0]{'query'};
+		WHERE $mysql_table_hmmsearch.$mysql_col_query = '" . $hmmobj->hmmhits_arrayref->[0]{'query'} . "'";
 
 	#--------------------------------------------------
 	# # the reciprocal search
@@ -382,7 +382,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	# get the sequences from the database (as array->array reference)
 	my @hmmresults = @{&mysql_get($query_get_sequences)};
-	print Dumper(@hmmresults);
 
 	HMMRESULT:
 	for (my $n = 0; $n < scalar(@hmmresults); ++$n) { #{{{
@@ -565,22 +564,42 @@ sub intro {#{{{
 	# the HMMsearch output directory
 	if (-d $hmmoutdir) {
 		print "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
+		if ($clear_data) {
+			opendir(my $dirh, $hmmoutdir) or croak("Fatal: Couldn't opendir $hmmoutdir\: $!\n");
+			foreach (readdir($dirh)) {
+				next if $_ =~ /^\.\.?$/;
+				unlink(File::Spec->catfile($hmmoutdir, $_))
+					or carp("Fatal: Could not delete file " . File::Spec->catfile($hmmoutdir, $_) . ": $!\n");
+			}
+			closedir($dirh);
+			print "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
+		}
 	}
 	else {
 		$| = 1;
 		print "HMMsearch output dir $hmmoutdir does not exist, creating... " unless $quiet;
-		&createdir($hmmoutdir) and print "done.\n";
+		&makedir($hmmoutdir) and print "done.\n";
 		$| = 0;
 	}
 
   # the BLASTP output directory
   if (-d $blastoutdir) {
     print "BLASTP output dir $blastoutdir exists.\n" unless $quiet;
+		if ($clear_data) {
+			opendir(my $dirh, $blastoutdir) or croak("Fatal: Couldn't opendir $blastoutdir\: $!\n");
+			foreach (readdir($dirh)) {
+				next if $_ =~ /^\.\.?$/;
+				unlink(File::Spec->catfile($blastoutdir, $_)) 
+					or carp("Fatal: Could not delete file " . File::Spec->catfile($blastoutdir, $_) . ": $!\n");
+			}
+			closedir($dirh);
+			print "Purged HMMsearch output dir $blastoutdir of old result files.\n" unless $quiet;
+		}
   }
   else {
     $| = 1;
     print "BLASTP output dir $blastoutdir does not exist, creating... " unless $quiet;
-    &createdir($blastoutdir) and print "done.\n";
+    &makedir($blastoutdir) and print "done.\n";
     $| = 0;
   }
 
@@ -650,11 +669,11 @@ EOF
   print $helpmessage;
 }#}}}
 
-# Sub: createdir
+# Sub: makedir
 # Creates a directory with parent directories if it does not already exist
 # Expects: scalar string dirname
 # Returns: True if successful
-sub createdir {#{{{
+sub makedir {#{{{
   my $dir = shift;
   if (-e $dir and not -d $dir) {
     die "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later.\n";
@@ -938,7 +957,7 @@ sub load_data_infile {#{{{
 # Get transcript sequences from the database, using their ID as header
 # Arguments: None
 # Returns: Filehandle
-sub get_transcripts {
+sub get_transcripts {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 	my $query = "SELECT id, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'";
 	my $dbh = &mysql_dbh();
@@ -949,7 +968,7 @@ sub get_transcripts {
 	}
 	$dbh->disconnect();
 	return $tmpfh;
-}
+}#}}}
 
 # Documentation#{{{
 =head1 NAME
