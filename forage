@@ -174,6 +174,7 @@ my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
 my $mysql_col_md5       = 'md5';
 my $mysql_col_name      = 'name';
+my $mysql_col_orthoid   = 'ortholog_gene_id';
 my $mysql_col_query     = 'query';
 my $mysql_col_score     = 'score';
 my $mysql_col_seq       = 'sequence';
@@ -331,7 +332,7 @@ Forage::Blastp->max_hits(3);
 
 # prepare the BLAST database
 $blastdb = &make_blastdb($orthoset);
-&make_hmms($orthoset);
+$hmmdir = &make_hmms($orthoset);
 #}}}
 
 #--------------------------------------------------
@@ -877,23 +878,72 @@ sub get_blastdir_for {#{{{
 # Returns: True if successful
 sub make_hmms {
 	my $set = shift;
-	my $row;
-	my $query = "SELECT a.$mysql_col_hdr, a.$mysql_col_seq
+	my $n;
+	my $fafile = '';
+	my $query_count = "SELECT COUNT(*)
     FROM $mysql_table_aaseqs AS a
     INNER JOIN $mysql_table_seqpairs AS p
     ON p.$mysql_col_aaseq = a.id
     INNER JOIN $mysql_table_orthologs AS o
     ON o.$mysql_col_seqpair = p.id
-    INNER JOIN $mysql_table_set_details as d
+    INNER JOIN $mysql_table_set_details AS d
     ON d.id = o.$mysql_col_setid
     WHERE d.$mysql_col_name = '$set'";
-	my $dbh = &mysql_dbh();
-	my $sql = $dbh->prepare($query);
-	$sql->execute() or croak();
-	while (my @row = $sql->fetchrow_array()) {
-		++$row;
-		print "@row\n";
-		exit if $row > 10;
+	my $query = "SELECT o.$mysql_col_orthoid, a.id, a.$mysql_col_seq
+    FROM $mysql_table_aaseqs AS a
+    INNER JOIN $mysql_table_seqpairs AS p
+    ON p.$mysql_col_aaseq = a.id
+    INNER JOIN $mysql_table_orthologs AS o
+    ON o.$mysql_col_seqpair = p.id
+    INNER JOIN $mysql_table_set_details AS d
+    ON d.id = o.$mysql_col_setid
+    WHERE d.$mysql_col_name = '$set'";
+
+	# does this dir exist yet?
+	if (!-e $hmmdir) {
+		&makedir($hmmdir);
+	}
+	
+	if (!-e File::Spec->catdir($hmmdir, $set)) {
+		&makedir(File::Spec->catdir($hmmdir, $set));
+	}
+	else {
+		my $dirh = IO::Dir->new(File::Spec->catdir($hmmdir, $set));
+		while (my $file = $dirh->read()) {
+			next if $file =~ /^\./;
+			$n++;
+		}
+	}
+
+	my $orthocount = &mysql_get($query_count);
+	$orthocount = $$orthocount[0][0];
+	if ($orthocount != $n) {	# ok something is missing from this set, look closer
+		my $dirh = IO::Dir->new(File::Spec->catdir($hmmdir, $set));
+		while (my $file = $dirh->read()) {
+			next if $file =~ /^\.(.)?/;
+			unlink(File::Spec->catfile($hmmdir, $set, $file))
+				or carp("Warning: Could not unlink file $file\: $!\n");
+		}
+		my $dbh = &mysql_dbh();
+		my $sql = $dbh->prepare($query);
+		$sql->execute() or croak();
+		while (my @row = $sql->fetchrow_array()) {
+			# does this HMM already exist?
+			if (-e File::Spec->catfile($hmmdir, $set, $row[0] . '.hmm')) {
+				next;
+			}
+			# file object for appending
+			$fafile = File::Spec->catfile($hmmdir, $set, $row[0] . '.fa');
+			my $fafh = IO::File->new($fafile, 'a');
+			printf($fafh ">%s\n%s\n", $row[1], $row[2])
+				or carp("Warning: Could not write to file $fafile\: $!\n");
+			$fafh->close();
+		}
+		$dbh->disconnect();
+		return(File::Spec->catdir($hmmdir, $set));
+	}
+	else {
+		return(File::Spec->catdir($hmmdir, $set));
 	}
 }
 
