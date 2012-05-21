@@ -14,9 +14,9 @@ MySQL            http://www.mysql.com
 
 The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
 IO::Dir (used for platform-independent path handling) as well as DBI and
-DBD::Mysql for database handling should be present in your Perl distribution.
-Update your Perl installation if not and see [1] and [2] if you are installing
-Forage on a Windows system under Cygwin (http://www.cygwin.com). 
+DBD::Mysql for database handling and Digest::SHA should be present in your Perl
+distribution. Update your Perl installation if not and see [1] and [2] if you
+are installing Forage on a Windows system under Cygwin (http://www.cygwin.com). 
 
 If your Perl installation was not compiled with thread support, but you would
 like to use FORAGE with multithreading emulation on multiprocessor platforms,
@@ -36,7 +36,7 @@ INVOCATION
 ==========
 
 Forage allows parsing a config file, which by default is named 'forage.conf'.
-Available options can be obtained using 'perldoc forage.pl'. Many options can
+Available options can be obtained using 'perldoc forage'. Many options can
 be set or overridden on the command line. For those switches, also see
 'perldoc forage.pl'.
 

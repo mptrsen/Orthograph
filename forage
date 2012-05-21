@@ -27,7 +27,7 @@ use File::Basename; # parsing path names
 use File::Temp;     # temporary files
 use IO::File;       # object-oriented access to files
 use IO::Dir;        # object-oriented access to dirs
-use Digest::MD5;
+use Digest::SHA;    # SHA hashing: good idea or not?
 use Forage::Hmmsearch;  # object-oriented interface to hmmsearch
 use Forage::Blastp;     # object-oriented interface to blastp
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
@@ -88,7 +88,7 @@ if (-e $configfile) {
 #-------------------------------------------------- 
 my $translateprog = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';#{{{
 my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';
-my $blastprog     = $config->{'blast_program'}     ? $config->{'blast_program'}     : 'blastp';#}}}
+my $blastprog     = $config->{'blast_program'}     ? $config->{'blast_program'}     : 'blastp';
 my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'}     : 'makeblastdb';#}}}
 
 #--------------------------------------------------
@@ -158,21 +158,28 @@ my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}  
 my $count               = 0;
 my $blastdb;
 my $blastcount;
+my $blasthitcount_total;
 my $hmmresultfileref;
 my $hmmfullout          = 0;
 my $hmmcount;
 my $hmmhitcount;
 my $hmmhitcount_total;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
+my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
 my $mysql_col_date      = 'date';
 my $mysql_col_evalue    = 'evalue';
 my $mysql_col_hdr       = 'header';
 my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
+my $mysql_col_md5       = 'md5';
+my $mysql_col_name      = 'name';
+my $mysql_col_orthoid   = 'ortholog_gene_id';
 my $mysql_col_query     = 'query';
 my $mysql_col_score     = 'score';
 my $mysql_col_seq       = 'sequence';
+my $mysql_col_seqpair   = 'sequence_pair';
+my $mysql_col_setid     = 'setid';
 my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
 my $mysql_col_taxon     = 'taxon';
@@ -265,10 +272,11 @@ if ($clear_data) {
 	print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
 
 	# third arg must be array ref
-	my $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_hdr, $mysql_col_seq ]);
+	my $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_md5, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 	print " done.\n" unless $quiet;
 	$| = 0;
 
+	print "Identifiers have been replaced with SHA1 hashes of the combination (header, sequence). These are used for internal purposes.\n";
 	printf "%d sequences stored to database '%s' on %s.\n",
 		$num_ests,
 		$mysql_dbname,
@@ -324,6 +332,7 @@ Forage::Blastp->max_hits(3);
 
 # prepare the BLAST database
 $blastdb = &make_blastdb($orthoset);
+$hmmdir = &make_hmms($orthoset);
 #}}}
 
 #--------------------------------------------------
@@ -345,11 +354,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->hmmsearch($protfile);
 
 	# count the hmmsearch hits
-	printf "%4d hits detected for %s (%d%% of the ortholog set)\n", 
+	printf("%4d hits detected for %s (%d%% of the ortholog set)\n", 
 		$hmmobj->hmmhitcount,
 		basename($hmmobj->hmmfile),
-		($hmmcount * 100 / $num_hmms) unless $quiet;
-	unless ($hmmobj->hmmhitcount()) { # do not care further with HMM files that did not return any result
+		($hmmcount * 100 / $num_hmms)) unless $quiet;
+	if ($hmmobj->hmmhitcount() == 0) { # do not care further with HMM files that did not return any result
 		next;
 	}
 
@@ -371,10 +380,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	++$hmmhitcount;
 	
 	# setup SQL query; use the first array item since they all share the query (HMM) ID 
-	my $query_get_sequences = "SELECT $mysql_table_ests.id, $mysql_table_ests.$mysql_col_seq
+	my $query_get_sequences = "SELECT $mysql_table_ests.md5, $mysql_table_ests.$mysql_col_seq
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
-		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.id
+		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_md5
 		WHERE $mysql_table_hmmsearch.$mysql_col_query = '" . $hmmobj->hmmhits_arrayref->[0]{'query'} . "'";
 
 	#--------------------------------------------------
@@ -416,6 +425,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			basename($blastdb),
 			$blast_evalue_threshold unless $quiet;
 
+		$blasthitcount_total += $blastobj->hitcount();
+
 		# skip to next if BLAST finds nothing
 		unless ($blastobj->hitcount()) { next HMMRESULT }
 		
@@ -425,9 +436,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			and print "            ... pushed to database.\n" if $verbose;
 	} #}}}
 
-	#--------------------------------------------------
-	# # TODO now: implement the new, more sensible database structure
-	#-------------------------------------------------- 
+	if ($hmmcount <= scalar(@hmmfiles) / 100) {
+		print "\n(Don't be alarmed, the sequence identifiers are SHA1-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
+			unless $quiet;
+	}
+
 	#--------------------------------------------------
 	# # TODO then:
 	#-------------------------------------------------- 
@@ -692,30 +705,30 @@ sub makedir {#{{{
 sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX($mysql_col_id),
-		$mysql_col_spec      VARCHAR(255) NOT NULL, INDEX($mysql_col_spec),
+		$mysql_col_md5       CHAR(32) NOT NULL,           INDEX($mysql_col_md5),
+		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX($mysql_col_spec),
 		$mysql_col_date      INT(11) UNSIGNED,
-		$mysql_col_hdr       VARCHAR(255) NOT NULL, INDEX ($mysql_col_hdr),
-		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL)
-		PARTITION BY KEY($mysql_col_spec)";  # BLOB data is stored independently of the row data and does not fall into the 65535 B limit.
+		$mysql_col_hdr       VARCHAR(255) NOT NULL,       INDEX ($mysql_col_hdr),
+		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX($mysql_col_id),
-		$mysql_col_spec      VARCHAR(255) NOT NULL, INDEX($mysql_col_spec),
-		$mysql_col_query     VARCHAR(255) NOT NULL, INDEX($mysql_col_query),
-		$mysql_col_target    VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
+		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX($mysql_col_spec),
+		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX($mysql_col_query),
+		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
+		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     FLOAT NOT NULL,
-		$mysql_col_evalue    FLOAT NOT NULL) 
-		PARTITION BY KEY($mysql_col_spec)";
+		$mysql_col_evalue    FLOAT NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX ($mysql_col_id),
-		$mysql_col_spec      VARCHAR(255) NOT NULL, INDEX ($mysql_col_spec),
+		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX ($mysql_col_spec),
 		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
-		$mysql_col_query     VARCHAR(255) NOT NULL, INDEX ($mysql_col_query),
-		$mysql_col_target    VARCHAR(255) NOT NULL, INDEX ($mysql_col_target),
+		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX ($mysql_col_query),
+		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
+		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     FLOAT NOT NULL,
-		$mysql_col_evalue    FLOAT NOT NULL)
-		PARTITION BY KEY($mysql_col_spec)";
+		$mysql_col_evalue    FLOAT NOT NULL)";
 	
 	# open connection
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
@@ -865,6 +878,73 @@ sub get_blastdir_for {#{{{
 # Returns: True if successful
 sub make_hmms {
 	my $set = shift;
+	my $n;
+	my $fafile = '';
+	my $query_count = "SELECT COUNT(*)
+    FROM $mysql_table_aaseqs AS a
+    INNER JOIN $mysql_table_seqpairs AS p
+    ON p.$mysql_col_aaseq = a.id
+    INNER JOIN $mysql_table_orthologs AS o
+    ON o.$mysql_col_seqpair = p.id
+    INNER JOIN $mysql_table_set_details AS d
+    ON d.id = o.$mysql_col_setid
+    WHERE d.$mysql_col_name = '$set'";
+	my $query = "SELECT o.$mysql_col_orthoid, a.id, a.$mysql_col_seq
+    FROM $mysql_table_aaseqs AS a
+    INNER JOIN $mysql_table_seqpairs AS p
+    ON p.$mysql_col_aaseq = a.id
+    INNER JOIN $mysql_table_orthologs AS o
+    ON o.$mysql_col_seqpair = p.id
+    INNER JOIN $mysql_table_set_details AS d
+    ON d.id = o.$mysql_col_setid
+    WHERE d.$mysql_col_name = '$set'";
+
+	# does this dir exist yet?
+	if (!-e $hmmdir) {
+		&makedir($hmmdir);
+	}
+	
+	if (!-e File::Spec->catdir($hmmdir, $set)) {
+		&makedir(File::Spec->catdir($hmmdir, $set));
+	}
+	else {
+		my $dirh = IO::Dir->new(File::Spec->catdir($hmmdir, $set));
+		while (my $file = $dirh->read()) {
+			next if $file =~ /^\./;
+			$n++;
+		}
+	}
+
+	my $orthocount = &mysql_get($query_count);
+	$orthocount = $$orthocount[0][0];
+	if ($orthocount != $n) {	# ok something is missing from this set, look closer
+		my $dirh = IO::Dir->new(File::Spec->catdir($hmmdir, $set));
+		while (my $file = $dirh->read()) {
+			next if $file =~ /^\.(.)?/;
+			unlink(File::Spec->catfile($hmmdir, $set, $file))
+				or carp("Warning: Could not unlink file $file\: $!\n");
+		}
+		my $dbh = &mysql_dbh();
+		my $sql = $dbh->prepare($query);
+		$sql->execute() or croak();
+		while (my @row = $sql->fetchrow_array()) {
+			# does this HMM already exist?
+			if (-e File::Spec->catfile($hmmdir, $set, $row[0] . '.hmm')) {
+				next;
+			}
+			# file object for appending
+			$fafile = File::Spec->catfile($hmmdir, $set, $row[0] . '.fa');
+			my $fafh = IO::File->new($fafile, 'a');
+			printf($fafh ">%s\n%s\n", $row[1], $row[2])
+				or carp("Warning: Could not write to file $fafile\: $!\n");
+			$fafh->close();
+		}
+		$dbh->disconnect();
+		return(File::Spec->catdir($hmmdir, $set));
+	}
+	else {
+		return(File::Spec->catdir($hmmdir, $set));
+	}
 }
 
 # Sub: make_blastdb 
@@ -935,19 +1015,26 @@ sub load_data_infile {#{{{
 
 	# Create temporary csv file for high-speed reading into database
 	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
-	fasta2csv($protfile, $tmpfh) or die "Could not fasta2csv $protfile into $tmpfh\: $!\n";
+	my $protfh = Seqload::Fasta->open($protfile);
+	while (my ($h, $s) = $protfh->next_seq()) {
+		printf($tmpfh "%s,%s,%d,%s,%s\n", 
+			# good idea or not?
+			Digest::SHA->sha256_hex($h, $s),
+			$species_name,
+			time(),
+			$h,
+			$s
+		);
+	}
+	$protfh->close();
+	$tmpfh->close();
 
 	# load data from csv file into database
 	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table FIELDS TERMINATED BY ',' ($list)";
-	# add date and spec
-	my $query_update = "UPDATE $table SET 
-		$mysql_col_date='" . time() . "', 
-		$mysql_col_spec='$species_name' WHERE $mysql_col_date IS NULL";
 
 	# open connection
 	my $dbh = &mysql_dbh();
 	$num_ests = $dbh->do($query);
-	$dbh->do($query_update);
 	# disconnect ASAP
 	$dbh->disconnect;
 	return $num_ests;
@@ -960,7 +1047,7 @@ sub load_data_infile {#{{{
 # Returns: Filehandle
 sub get_transcripts {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
-	my $query = "SELECT id, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'";
+	my $query = "SELECT $mysql_col_md5, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute();
