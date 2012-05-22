@@ -45,9 +45,7 @@ sub new {
   return $self;
 }
 
-#--------------------------------------------------
-# # Class methods
-#-------------------------------------------------- 
+=head1 Class methods
 
 =head2 verbose
 
@@ -118,7 +116,7 @@ sub hmmfullout {#{{{
   else { @hmmsearchcmd = qq($hmmsearchprog -E $evalue_threshold -T $score_threshold) }
 }#}}}
 
-=head3 evalue_threshold
+=head2 evalue_threshold
 
 Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
 
@@ -131,7 +129,7 @@ sub evalue_threshold {#{{{
 	$evalue_threshold = shift;
 }#}}}
 
-=head3 score_threshold
+=head2 score_threshold
 
 Sets or returns the e-value threshold to use for the blastp search. Defaults to 0.
 
@@ -144,10 +142,7 @@ sub score_threshold {#{{{
 	$score_threshold = shift;
 }#}}}
 
-#--------------------------------------------------
-# # Object methods
-#-------------------------------------------------- 
-
+=head1 Object methods
 
 =head2 hmmsearch
 
@@ -234,6 +229,7 @@ sub hmmresult {#{{{
 =head2 hmmhits_arrayref
 
 Returns an array reference to a list of lists, e.g., like so:
+
   $hmmhits->[$i][0..3]  # of line $i, fields 1, 3, 5, 6 of the hmmsearch table output
 
 =cut
