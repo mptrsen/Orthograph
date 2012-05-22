@@ -86,7 +86,9 @@ if (-e $configfile) {
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
-my $translateprog = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';#{{{
+my $alignment_program = $config->{'alignment_program'} ? $config->{'alignment_program'} : 'mafft --localpair --maxiterate 1000';
+my $hmmbuild_program = $config->{'hmmbuild_program'} ? $config->{'hmmbuild_program'} : 'hmmbuild';#{{{
+my $translateprog = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';
 my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';
 my $blastprog     = $config->{'blast_program'}     ? $config->{'blast_program'}     : 'blastp';
 my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'}     : 'makeblastdb';#}}}
@@ -880,6 +882,7 @@ sub make_hmms {
 	my $set = shift;
 	my $n;
 	my $fafile = '';
+	my %set = ();
 	my $query_count = "SELECT COUNT(*)
     FROM $mysql_table_aaseqs AS a
     INNER JOIN $mysql_table_seqpairs AS p
@@ -928,23 +931,67 @@ sub make_hmms {
 		my $sql = $dbh->prepare($query);
 		$sql->execute() or croak();
 		while (my @row = $sql->fetchrow_array()) {
+			# load the whole set into memory, i don't give a frak
+			$set{'orthoid'} = $row[0];
+			$set{'id'}      = $row[1];
+			$set{'seq'}     = $row[2];
+		}
+		$dbh->disconnect();	# disc asap
+		foreach my $orthoid (keys %set) {
+			print "$orthoid\n";
 			# does this HMM already exist?
-			if (-e File::Spec->catfile($hmmdir, $set, $row[0] . '.hmm')) {
+			if (-e File::Spec->catfile($hmmdir, $set, $set{'orthoid'} . '.hmm')) {
 				next;
 			}
-			# file object for appending
-			$fafile = File::Spec->catfile($hmmdir, $set, $row[0] . '.fa');
+			# no, create new fasta file and so on
+			$fafile = File::Spec->catfile($hmmdir, $set, $set{'orthoid'} . '.fa');
+			print "$fafile\n";
 			my $fafh = IO::File->new($fafile, 'a');
-			printf($fafh ">%s\n%s\n", $row[1], $row[2])
+			printf($fafh ">%s\n%s\n", $set{'id'}, $set{'seq'})
 				or carp("Warning: Could not write to file $fafile\: $!\n");
 			$fafh->close();
+			my $alnfile = &align($fafile)
+				or croak("Warning: Alignment failed for $fafile\: $!\n");
+			&hmmbuild($alnfile, $set)
+				or croak("Warning: HMM generation failed for $alnfile\: $!\n");
 		}
-		$dbh->disconnect();
 		return(File::Spec->catdir($hmmdir, $set));
 	}
 	else {
 		return(File::Spec->catdir($hmmdir, $set));
 	}
+}
+
+# Sub: align
+# Generate a fasta alignment from a fasta file
+# Arguments: Scalar string filename, scalar string setname
+# Returns: Scalar string alignment filename on success, false otherwise
+sub align {
+	my $fafile = shift;
+	my $set = shift;
+	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
+	my $alnsuffix = '.aln';
+	my @alignment_cmd = qq($alignment_program $fafile);	# this prints the alignment to STDOUT, must be captured somehow
+	print "@alignment_cmd\n";
+	my $tmpf = File::Temp->new(UNLINK => 0);
+	print $tmpf `@alignment_cmd`
+		or croak("Warning: Could not write to file $tmpf\: $!\n");
+	exit;
+}
+
+# Sub: hmmbuild
+# Generates a hidden Markov model (HMM) file from an alignment (fasta) file.
+# Arguments: Scalar string filename, scalar string setname
+# Returns: True on success, false otherwise
+sub hmmbuild {
+	my $alnfile = shift;
+	my $set = shift;
+	my $alnsuffix = '.aln';
+	my $hmmsuffix = '.hmm';
+	my $hmmname = File::Spec->catfile($hmmdir, $set, basename($alnfile, $alnsuffix) . $hmmsuffix);
+	my @hmmbuild_cmd = qq($hmmbuild_program $hmmname $alnfile);
+	print "@hmmbuild_cmd\n";
+	exit;
 }
 
 # Sub: make_blastdb 
