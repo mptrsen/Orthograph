@@ -1029,8 +1029,7 @@ sub make_blastdb {#{{{
 	# build the paths for input and output
 	my $blastpath = &mysql_get("SELECT DISTINCT $mysql_col_blastdbpath FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.name = '$setname' LIMIT 1");
 	my $dbfile = File::Spec->catfile($sets_dir, 'blast', $setname);
-	my $infile = File::Spec->catfile($$blastpath[0][0], $setname . ".fa");
-	my $outfile = File::Spec->catfile($$blastpath[0][0], $setname);
+	my $infile = File::Spec->catfile($dbfile . ".fa");
 
 	# check whether a database already exists
 	if (-e File::Spec->catfile($dbfile . '.psq')) {
