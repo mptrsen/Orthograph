@@ -149,6 +149,7 @@ my $outdir         = $config->{'output_directory'}      ? $config->{'output_dire
 my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
 my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
+my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
 #}}}
@@ -165,7 +166,7 @@ my $hmmresultfileref;
 my $hmmfullout          = 0;
 my $hmmcount;
 my $hmmhitcount;
-my $hmmhitcount_total;
+my $hmmhitcount_total   = 0;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
@@ -239,12 +240,19 @@ if ($preparedb) {#{{{
 #-------------------------------------------------- 
 &intro;
 
+# prepare the BLAST database
+$blastdb = &make_blastdb($orthoset);
+unless (-e $hmmdir) {
+	$hmmdir = &make_hmms($orthoset);
+}
+
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
 @reftaxa = split(/,\s*/, $reftaxa);
-@hmmfiles = &hmmlist;
+@hmmfiles = &hmmlist(File::Spec->catdir($hmmdir, $orthoset));
 $num_hmms = scalar @hmmfiles;
+
 
 unless ($quiet) {#{{{
   print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMM files.\n" 
@@ -332,15 +340,13 @@ $hmmfullout ? Forage::Hmmsearch->hmmfullout(1) : Forage::Hmmsearch->hmmfullout(0
 # maximum number of BLAST hits to save
 Forage::Blastp->max_hits(3);
 
-# prepare the BLAST database
-$blastdb = &make_blastdb($orthoset);
-$hmmdir = &make_hmms($orthoset);
 #}}}
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-print "HMMsearching the protein file using all HMMs in $hmmdir\:\n" unless $quiet;
+printf("HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmfiles), $hmmdir)
+	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
 
@@ -625,7 +631,8 @@ sub intro {#{{{
 # Expects: nothing (?)
 # Returns: array hmmfiles
 sub hmmlist {#{{{
-	if ($hmmdir) {
+	my $hmmdir = shift;
+	if (-e $hmmdir) {
 		my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
 		while (my $file = $dir->read) {
 		  push(@hmmfiles, File::Spec->catfile($hmmdir, $file)) if ($file =~ /\.hmm$/);
@@ -882,7 +889,7 @@ sub make_hmms {
 	my $set = shift;
 	my $n;
 	my $fafile = '';
-	my %set = ();
+	my $orthoset = {};
 	my $query_count = "SELECT COUNT(*)
     FROM $mysql_table_aaseqs AS a
     INNER JOIN $mysql_table_seqpairs AS p
@@ -907,6 +914,7 @@ sub make_hmms {
 		&makedir($hmmdir);
 	}
 	
+	# does the set dir exist?
 	if (!-e File::Spec->catdir($hmmdir, $set)) {
 		&makedir(File::Spec->catdir($hmmdir, $set));
 	}
@@ -930,30 +938,37 @@ sub make_hmms {
 		my $dbh = &mysql_dbh();
 		my $sql = $dbh->prepare($query);
 		$sql->execute() or croak();
+		my $i = 0;
 		while (my @row = $sql->fetchrow_array()) {
 			# load the whole set into memory, i don't give a frak
-			$set{'orthoid'} = $row[0];
-			$set{'id'}      = $row[1];
-			$set{'seq'}     = $row[2];
+			$$orthoset{$row[0]}{$row[1]} = $row[2];
 		}
 		$dbh->disconnect();	# disc asap
-		foreach my $orthoid (keys %set) {
-			print "$orthoid\n";
+		foreach my $orthoid (keys %$orthoset) {
 			# does this HMM already exist?
-			if (-e File::Spec->catfile($hmmdir, $set, $set{'orthoid'} . '.hmm')) {
+			if (-e File::Spec->catfile($hmmdir, $set, $orthoid . '.hmm')) {
 				next;
 			}
 			# no, create new fasta file and so on
-			$fafile = File::Spec->catfile($hmmdir, $set, $set{'orthoid'} . '.fa');
+			$fafile = File::Spec->catfile($hmmdir, $set, $orthoid . '.fa');
 			print "$fafile\n";
-			my $fafh = IO::File->new($fafile, 'a');
-			printf($fafh ">%s\n%s\n", $set{'id'}, $set{'seq'})
-				or carp("Warning: Could not write to file $fafile\: $!\n");
+			
+			# write to file
+			my $fafh = IO::File->new($fafile, 'w');
+			foreach my $id (keys %{$orthoset->{$orthoid}}) {
+			printf($fafh ">%s\n%s\n", $id, $$orthoset{$orthoid}{$id})
+				or croak("Fatal: Could not write to file $fafile\: $!");
+			}
 			$fafh->close();
+
 			my $alnfile = &align($fafile)
-				or croak("Warning: Alignment failed for $fafile\: $!\n");
-			&hmmbuild($alnfile, $set)
-				or croak("Warning: HMM generation failed for $alnfile\: $!\n");
+				or croak("Fatal: Alignment failed for $fafile\: $!");
+
+			my $stockhfile = &fasta2stockholm($alnfile)
+				or croak("Fatal: Conversion to Stockholm format failed for $alnfile\: $!");
+
+			&hmmbuild($stockhfile, $orthoid, $set)
+				or croak("Fatal: HMM generation failed for $alnfile\: $!");
 		}
 		return(File::Spec->catdir($hmmdir, $set));
 	}
@@ -975,8 +990,28 @@ sub align {
 	print "@alignment_cmd\n";
 	my $tmpf = File::Temp->new(UNLINK => 0);
 	print $tmpf `@alignment_cmd`
-		or croak("Warning: Could not write to file $tmpf\: $!\n");
-	exit;
+		or croak("Fatal: Could not write to file $tmpf\: $!\n");
+	$tmpf->close();
+	return $tmpf;
+}
+
+# Sub: fasta2stockholm
+# Converts a fasta file into a stockholm file
+# Arguments: Scalar string filename
+# Returns: Scalar string filename
+sub fasta2stockholm {
+	my $fafile = shift;
+	my $fh = Seqload::Fasta->open($fafile);
+	my $tmpfh = File::Temp->new(UNLINK => 0);
+	print $tmpfh "# STOCKHOLM 1.0\n";
+	while (my ($h, $s) = $fh->next_seq()) {
+		printf($tmpfh "%-50s %s\n", $h, $s)
+			or croak("Fatal: Could not write to file $tmpfh\: $!");
+	}
+	print $tmpfh "//";
+	close($tmpfh);
+	$fh->close();
+	return $tmpfh;
 }
 
 # Sub: hmmbuild
@@ -985,13 +1020,15 @@ sub align {
 # Returns: True on success, false otherwise
 sub hmmbuild {
 	my $alnfile = shift;
+	my $orthoid = shift;
 	my $set = shift;
 	my $alnsuffix = '.aln';
 	my $hmmsuffix = '.hmm';
-	my $hmmname = File::Spec->catfile($hmmdir, $set, basename($alnfile, $alnsuffix) . $hmmsuffix);
+	my $hmmname = File::Spec->catfile($hmmdir, $set, $orthoid . $hmmsuffix);
 	my @hmmbuild_cmd = qq($hmmbuild_program $hmmname $alnfile);
-	print "@hmmbuild_cmd\n";
-	exit;
+	system(@hmmbuild_cmd) 
+		and croak("Fatal: Could not build HMM from file $alnfile");
+	return $hmmname;
 }
 
 # Sub: make_blastdb 
