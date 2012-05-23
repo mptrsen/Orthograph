@@ -86,7 +86,7 @@ my $temptable    = 'temp';
 my $sql;
 # table names
 my %t            = (
-	'blastdbs'    => 'blastdbs',
+	'blastdbs'     => 'blastdbs',
 	'ogs'          => 'ogs',
 	'orthologs'    => 'orthologs',
 	'seqpairs'     => 'sequence_pairs',
@@ -305,7 +305,9 @@ elsif ($ispeptide) {
 		$blastdir = &getblastdir();
 	}
 	# 1 for amino-acid
+	print "$blastdir\n";
 	&load_taxon($infile, 1, $blastdir) or die("Fatal: Peptide loading failed\n");
+	exit;
 }
 
 # otherwise, this must be an orthodb file
@@ -598,10 +600,10 @@ sub load_taxon {#{{{
 	while (my ($hdr, $seq) = $infh->next_seq()) {
 		my @fields = split(/\s+/, $hdr);
 		if (scalar(@fields) < 2) {
-			die(sprintf("$diemsg", $.));
+			croak(sprintf("$diemsg", $.));
 		}
 		elsif (length($fields[0]) != 5 or $fields[0] !~ /^\w+$/) {
-			die(sprintf("$diemsg", $.));
+			croak(sprintf("$diemsg", $.));
 		}
 		print $tmpfh "$fields[0],$fields[1],$seq\n";
 		++$total_seqs;
@@ -731,7 +733,7 @@ sub getblastdir {
 		chomp $blastdir;
 	}
 	else {
-		$blastdir = 0;	# array of arrays, only element
+		$blastdir = $$bd[0][0];	# array of arrays, only element
 	}
 	return $blastdir;
 }

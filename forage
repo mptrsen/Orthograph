@@ -949,7 +949,7 @@ sub make_hmms {
 			my $fafh = IO::File->new($fafile, 'a');
 			printf($fafh ">%s\n%s\n", $set{'id'}, $set{'seq'})
 				or carp("Warning: Could not write to file $fafile\: $!\n");
-			$fafh->close();
+			undef($fafh);
 			my $alnfile = &align($fafile)
 				or croak("Warning: Alignment failed for $fafile\: $!\n");
 			&hmmbuild($alnfile, $set)
@@ -1029,11 +1029,14 @@ sub make_blastdb {#{{{
 	$sth->execute();
 
 	# write to output file
+	print $infile, "\n";
+	exit;
 	my $infh = IO::File->new($infile, 'w');
 	while (my ($h, $s) = $sth->fetchrow_array()) {
-		printf($infh ">%s\n%s\n", $h, $s) or croak("Fatal: Could not write to file $infile\: $!\n");
+		printf($infh ">%s\n%s\n", $h, $s)
+			or croak("Fatal: Could not write to file $infile\: $!\n");
 	}
-	$infh->close();
+	undef($infh);
 	$dbh->disconnect();
 
 	# make blast database
