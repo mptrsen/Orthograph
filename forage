@@ -908,75 +908,62 @@ sub make_hmms {#{{{
 	if (!-e $hmmdir) {
 		&makedir($hmmdir);
 	}
-	else {
-		my $dirh = IO::Dir->new($hmmdir);
-		while (my $file = $dirh->read()) {
-			next if $file =~ /^\./;
-			next unless $file =~ /\.hmm$/;
-			$n++;
-		}
+	#--------------------------------------------------
+	# else {
+	# 	my $dirh = IO::Dir->new($hmmdir);
+	# 	while (my $file = $dirh->read()) {
+	# 		next if $file =~ /^\./;
+	# 		next unless $file =~ /\.hmm$/;
+	# 		$n++;
+	# 	}
+	# }
+	#-------------------------------------------------- 
+
+	#--------------------------------------------------
+	# my $orthocount = &mysql_get($query_count);
+	# $orthocount = $$orthocount[0][0];
+	# print "$orthocount orthologous sequences in the set $orthoset\n" if $verbose;
+	# if ($orthocount != $n) {	# ok something is missing from this set, generate a new one
+	# 	my $dirh = IO::Dir->new($hmmdir);
+	# 	while (my $file = $dirh->read()) {
+	# 		next if $file =~ /^\.(.)?/;
+	# 		unlink(File::Spec->catfile($hmmdir, $file))
+	# 			or carp("Warning: Could not unlink file $file\: $!\n");
+	# 	}
+	#-------------------------------------------------- 
+	my $dbh = &mysql_dbh();
+	my $sql = $dbh->prepare($query);
+	$sql->execute() or croak();
+	my $i = 0;
+	while (my @row = $sql->fetchrow_array()) {
+		# load the whole set into memory, i don't give a frak
+		$$data{$row[0]}{$row[1]} = $row[2];
 	}
-
-	my $orthocount = &mysql_get($query_count);
-	$orthocount = $$orthocount[0][0];
-	print "$orthocount orthologous sequences in the set $orthoset\n" if $verbose;
-	if ($orthocount != $n) {	# ok something is missing from this set, generate a new one
-		my $dirh = IO::Dir->new($hmmdir);
-		while (my $file = $dirh->read()) {
-			next if $file =~ /^\.(.)?/;
-			unlink(File::Spec->catfile($hmmdir, $file))
-				or carp("Warning: Could not unlink file $file\: $!\n");
+	$dbh->disconnect();	# disc asap
+	foreach my $orthoid (keys %$data) {
+		# does this HMM already exist?
+		if (-e File::Spec->catfile($hmmdir, $orthoid . '.hmm')) {
+			next;
 		}
-		my $dbh = &mysql_dbh();
-		my $sql = $dbh->prepare($query);
-		$sql->execute() or croak();
-		my $i = 0;
-		while (my @row = $sql->fetchrow_array()) {
-			# load the whole set into memory, i don't give a frak
-			$$data{$row[0]}{$row[1]} = $row[2];
+		# no, create new fasta file and so on
+		my $fafh = File::Temp->new($fafile, 'w');
+		foreach my $id (keys %{$data->{$orthoid}}) {
+		printf($fafh ">%s\n%s\n", $id, $$data{$orthoid}{$id})
+			or croak("Fatal: Could not write to file $fafile\: $!");
 		}
-		$dbh->disconnect();	# disc asap
-		foreach my $orthoid (keys %$data) {
-			# does this HMM already exist?
-			if (-e File::Spec->catfile($hmmdir, $orthoid . '.hmm')) {
-				next;
-			}
-			# no, create new fasta file and so on
-<<<<<<< HEAD
-			$fafile = File::Spec->catfile($hmmdir, $set, $set{'orthoid'} . '.fa');
-			print "$fafile\n";
-			my $fafh = IO::File->new($fafile, 'a');
-			printf($fafh ">%s\n%s\n", $set{'id'}, $set{'seq'})
-				or carp("Warning: Could not write to file $fafile\: $!\n");
-			undef($fafh);
-			my $alnfile = &align($fafile)
-				or croak("Warning: Alignment failed for $fafile\: $!\n");
-			&hmmbuild($alnfile, $set)
-				or croak("Warning: HMM generation failed for $alnfile\: $!\n");
-=======
-			my $fafh = File::Temp->new($fafile, 'w');
-			foreach my $id (keys %{$data->{$orthoid}}) {
-			printf($fafh ">%s\n%s\n", $id, $$data{$orthoid}{$id})
-				or croak("Fatal: Could not write to file $fafile\: $!");
-			}
-			$fafh->close();
+		$fafh->close();
 
-			my $alnfile = &align($fafh)
-				or croak("Fatal: Alignment failed for $fafile\: $!");
+		my $alnfile = &align($fafh)
+			or croak("Fatal: Alignment failed for $fafile\: $!");
 
-			my $stockhfile = &fasta2stockholm($alnfile)
-				or croak("Fatal: Conversion to Stockholm format failed for $alnfile\: $!");
+		my $stockhfile = &fasta2stockholm($alnfile)
+			or croak("Fatal: Conversion to Stockholm format failed for $alnfile\: $!");
 
-			&hmmbuild($stockhfile, $orthoid, $set)
-				or croak("Fatal: HMM generation failed for $alnfile\: $!");
->>>>>>> 1db92c3f8feb710e66288c4ead964de7b6701ebc
-		}
-		return($hmmdir);
+		&hmmbuild($stockhfile, $orthoid, $set)
+			or croak("Fatal: HMM generation failed for $alnfile\: $!");
 	}
-	else {
-		return($hmmdir);
-	}
-}#}}}
+	return($hmmdir);
+}
 
 # Sub: align
 # Generate a fasta alignment from a fasta file
@@ -1026,6 +1013,7 @@ sub hmmbuild {#{{{
 	my $alnsuffix = '.aln';
 	my $hmmsuffix = '.hmm';
 	my $hmmname = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
+	if (-e $hmmname) { return $hmmname }
 	my @hmmbuild_cmd = qq($hmmbuild_program $hmmname $alnfile);
 	system(@hmmbuild_cmd) 
 		and croak("Fatal: Could not build HMM from file $alnfile");
@@ -1041,7 +1029,7 @@ sub make_blastdb {#{{{
 
 	# build the paths for input and output
 	my $blastpath = &mysql_get("SELECT DISTINCT $mysql_col_blastdbpath FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.name = '$setname' LIMIT 1");
-	my $dbfile = File::Spec->catfile($sets_dir, 'blast', $setname);
+	my $dbfile = File::Spec->catfile($sets_dir, $setname, 'blast', $setname);
 	my $infile = File::Spec->catfile($dbfile . ".fa");
 
 	# check whether a database already exists
@@ -1062,23 +1050,20 @@ sub make_blastdb {#{{{
 		INNER JOIN $mysql_table_set_details
 		ON $mysql_table_set_details.id = $mysql_table_orthologs.setid
 		WHERE $mysql_table_set_details.name = '$setname'";
+	my $infh = File::Temp->new($infile, 'w');
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute();
-
 	# write to output file
-	print $infile, "\n";
-	exit;
-	my $infh = IO::File->new($infile, 'w');
 	while (my ($h, $s) = $sth->fetchrow_array()) {
 		printf($infh ">%s\n%s\n", $h, $s)
 			or croak("Fatal: Could not write to file $infile\: $!\n");
 	}
-	undef($infh);
+	close($infh);
 	$dbh->disconnect();
 
 	# make blast database
-	my @makeblastdbcmd = qq($makeblastdbprog -in $infile -out $dbfile -input_type fasta -title $orthoset);
+	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -title $orthoset);
 	system(@makeblastdbcmd) and croak("Fatal: makeblastdb failed: $!\n");
 	print "BLAST DB created in $dbfile.\n\n";
 	return $dbfile;
