@@ -219,7 +219,8 @@ sub hmmresult {#{{{
   if ($self->{'hmmresult'}) {
     return $self->{'hmmresult'};
   }
-  my $fh = IO::File->new($self->hmmresultfile());
+  my $fh = IO::File->new($self->hmmresultfile())
+		or croak("Fatal: Could not open hmmresultfile");
   $self->{'hmmresult'} = [ <$fh> ];
   $fh->close;
   splice(@{$self->{'hmmresult'}}, 0, 3);

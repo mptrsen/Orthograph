@@ -105,7 +105,6 @@ my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $confi
 my $clear_data     = defined($config->{'clear_data'})  ? $config->{'clear_data'}           : 1;
 my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
 my $estfile        = $config->{'estfile'}              ? $config->{'estfile'}              : '';
-my $hmmdir         = $config->{'hmmdir'}               ? $config->{'hmmdir'}               : '';
 my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}              : '';
 my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
@@ -149,6 +148,7 @@ my $outdir         = $config->{'output_directory'}      ? $config->{'output_dire
 my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
 my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
+my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
 #}}}
@@ -161,11 +161,12 @@ my $count               = 0;
 my $blastdb;
 my $blastcount;
 my $blasthitcount_total;
+my $hmmdir              = '';
 my $hmmresultfileref;
 my $hmmfullout          = 0;
 my $hmmcount;
 my $hmmhitcount;
-my $hmmhitcount_total;
+my $hmmhitcount_total   = 0;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
@@ -213,7 +214,6 @@ GetOptions( 'v'        => \$verbose,
 	'hmmsearch_evalue=s' => \$hmmsearch_evalue_threshold,
 	'hmmsearch_score=s'  => \$hmmsearch_score_threshold,
 	'H=s'                => \$hmmfile,
-	'hmmdir=s'           => \$hmmdir,
 	'hmmsearchprog=s'    => \$hmmsearchprog,
 	'hmmfullout'         => \$hmmfullout,
 	'preparedb'          => \$preparedb,
@@ -239,12 +239,17 @@ if ($preparedb) {#{{{
 #-------------------------------------------------- 
 &intro;
 
+# prepare the BLAST database
+$blastdb = &make_blastdb($orthoset);
+$hmmdir = &make_hmms($orthoset);
+
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
 @reftaxa = split(/,\s*/, $reftaxa);
-@hmmfiles = &hmmlist;
+@hmmfiles = &hmmlist($hmmdir);
 $num_hmms = scalar @hmmfiles;
+
 
 unless ($quiet) {#{{{
   print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMM files.\n" 
@@ -332,15 +337,13 @@ $hmmfullout ? Forage::Hmmsearch->hmmfullout(1) : Forage::Hmmsearch->hmmfullout(0
 # maximum number of BLAST hits to save
 Forage::Blastp->max_hits(3);
 
-# prepare the BLAST database
-$blastdb = &make_blastdb($orthoset);
-$hmmdir = &make_hmms($orthoset);
 #}}}
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-print "HMMsearching the protein file using all HMMs in $hmmdir\:\n" unless $quiet;
+printf("HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmfiles), $hmmdir)
+	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
 
@@ -538,9 +541,6 @@ sub parse_config {#{{{
 # Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
 sub intro {#{{{
-	die "Fatal: At least two arguments required: EST file (-E) and HMM file/dir (-H or -hmmdir)!\n"
-		unless ($estfile and ($hmmdir or $hmmfile));
-	
 	die "Fatal: Species name needed (-taxon NAME)!\n"
 		unless ($species_name);
 	
@@ -562,11 +562,12 @@ sub intro {#{{{
   $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blastprog));
 
 	# the HMM directory
+	unless ($hmmdir) { $hmmdir = File::Spec->catdir($sets_dir, $orthoset, 'hmms') }
 	if (-d $hmmdir) {
 		print "HMM dir $hmmdir exists.\n" unless $quiet;
 	}
 	else {
-		die "Fatal: HMM dir $hmmdir does not exist or is not a directory!\n";
+		carp "Warning: HMM dir $hmmdir does not exist or is not a directory!\n";
 	}
 
 	# the EST file
@@ -625,7 +626,8 @@ sub intro {#{{{
 # Expects: nothing (?)
 # Returns: array hmmfiles
 sub hmmlist {#{{{
-	if ($hmmdir) {
+	my $hmmdir = shift;
+	if (-e $hmmdir) {
 		my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
 		while (my $file = $dir->read) {
 		  push(@hmmfiles, File::Spec->catfile($hmmdir, $file)) if ($file =~ /\.hmm$/);
@@ -878,11 +880,11 @@ sub get_blastdir_for {#{{{
 # Generate HMMs for a given core-ortholog set
 # Arguments: scalar string ortholog set name
 # Returns: True if successful
-sub make_hmms {
+sub make_hmms {#{{{
 	my $set = shift;
 	my $n;
 	my $fafile = '';
-	my %set = ();
+	my $data = {};
 	my $query_count = "SELECT COUNT(*)
     FROM $mysql_table_aaseqs AS a
     INNER JOIN $mysql_table_seqpairs AS p
@@ -902,48 +904,45 @@ sub make_hmms {
     ON d.id = o.$mysql_col_setid
     WHERE d.$mysql_col_name = '$set'";
 
-	# does this dir exist yet?
+	# does the set dir exist?
 	if (!-e $hmmdir) {
 		&makedir($hmmdir);
 	}
-	
-	if (!-e File::Spec->catdir($hmmdir, $set)) {
-		&makedir(File::Spec->catdir($hmmdir, $set));
-	}
 	else {
-		my $dirh = IO::Dir->new(File::Spec->catdir($hmmdir, $set));
+		my $dirh = IO::Dir->new($hmmdir);
 		while (my $file = $dirh->read()) {
 			next if $file =~ /^\./;
+			next unless $file =~ /\.hmm$/;
 			$n++;
 		}
 	}
 
 	my $orthocount = &mysql_get($query_count);
 	$orthocount = $$orthocount[0][0];
-	if ($orthocount != $n) {	# ok something is missing from this set, look closer
-		my $dirh = IO::Dir->new(File::Spec->catdir($hmmdir, $set));
+	print "$orthocount orthologous sequences in the set $orthoset\n" if $verbose;
+	if ($orthocount != $n) {	# ok something is missing from this set, generate a new one
+		my $dirh = IO::Dir->new($hmmdir);
 		while (my $file = $dirh->read()) {
 			next if $file =~ /^\.(.)?/;
-			unlink(File::Spec->catfile($hmmdir, $set, $file))
+			unlink(File::Spec->catfile($hmmdir, $file))
 				or carp("Warning: Could not unlink file $file\: $!\n");
 		}
 		my $dbh = &mysql_dbh();
 		my $sql = $dbh->prepare($query);
 		$sql->execute() or croak();
+		my $i = 0;
 		while (my @row = $sql->fetchrow_array()) {
 			# load the whole set into memory, i don't give a frak
-			$set{'orthoid'} = $row[0];
-			$set{'id'}      = $row[1];
-			$set{'seq'}     = $row[2];
+			$$data{$row[0]}{$row[1]} = $row[2];
 		}
 		$dbh->disconnect();	# disc asap
-		foreach my $orthoid (keys %set) {
-			print "$orthoid\n";
+		foreach my $orthoid (keys %$data) {
 			# does this HMM already exist?
-			if (-e File::Spec->catfile($hmmdir, $set, $set{'orthoid'} . '.hmm')) {
+			if (-e File::Spec->catfile($hmmdir, $orthoid . '.hmm')) {
 				next;
 			}
 			# no, create new fasta file and so on
+<<<<<<< HEAD
 			$fafile = File::Spec->catfile($hmmdir, $set, $set{'orthoid'} . '.fa');
 			print "$fafile\n";
 			my $fafh = IO::File->new($fafile, 'a');
@@ -954,45 +953,84 @@ sub make_hmms {
 				or croak("Warning: Alignment failed for $fafile\: $!\n");
 			&hmmbuild($alnfile, $set)
 				or croak("Warning: HMM generation failed for $alnfile\: $!\n");
+=======
+			my $fafh = File::Temp->new($fafile, 'w');
+			foreach my $id (keys %{$data->{$orthoid}}) {
+			printf($fafh ">%s\n%s\n", $id, $$data{$orthoid}{$id})
+				or croak("Fatal: Could not write to file $fafile\: $!");
+			}
+			$fafh->close();
+
+			my $alnfile = &align($fafh)
+				or croak("Fatal: Alignment failed for $fafile\: $!");
+
+			my $stockhfile = &fasta2stockholm($alnfile)
+				or croak("Fatal: Conversion to Stockholm format failed for $alnfile\: $!");
+
+			&hmmbuild($stockhfile, $orthoid, $set)
+				or croak("Fatal: HMM generation failed for $alnfile\: $!");
+>>>>>>> 1db92c3f8feb710e66288c4ead964de7b6701ebc
 		}
-		return(File::Spec->catdir($hmmdir, $set));
+		return($hmmdir);
 	}
 	else {
-		return(File::Spec->catdir($hmmdir, $set));
+		return($hmmdir);
 	}
-}
+}#}}}
 
 # Sub: align
 # Generate a fasta alignment from a fasta file
 # Arguments: Scalar string filename, scalar string setname
 # Returns: Scalar string alignment filename on success, false otherwise
-sub align {
+sub align {#{{{
 	my $fafile = shift;
 	my $set = shift;
 	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
 	my $alnsuffix = '.aln';
 	my @alignment_cmd = qq($alignment_program $fafile);	# this prints the alignment to STDOUT, must be captured somehow
 	print "@alignment_cmd\n";
-	my $tmpf = File::Temp->new(UNLINK => 0);
+	my $tmpf = File::Temp->new();
 	print $tmpf `@alignment_cmd`
-		or croak("Warning: Could not write to file $tmpf\: $!\n");
-	exit;
-}
+		or croak("Fatal: Could not write to file $tmpf\: $!\n");
+	$tmpf->close();
+	return $tmpf;
+}#}}}
+
+# Sub: fasta2stockholm
+# Converts a fasta file into a stockholm file
+# Arguments: Scalar string filename
+# Returns: Scalar string filename
+sub fasta2stockholm {#{{{
+	my $fafile = shift;
+	my $fh = Seqload::Fasta->open($fafile);
+	my $tmpfh = File::Temp->new();
+	print $tmpfh "# STOCKHOLM 1.0\n";
+	while (my ($h, $s) = $fh->next_seq()) {
+		printf($tmpfh "%-50s %s\n", $h, $s)
+			or croak("Fatal: Could not write to file $tmpfh\: $!");
+	}
+	print $tmpfh "//";
+	close($tmpfh);
+	$fh->close();
+	return $tmpfh;
+}#}}}
 
 # Sub: hmmbuild
 # Generates a hidden Markov model (HMM) file from an alignment (fasta) file.
 # Arguments: Scalar string filename, scalar string setname
 # Returns: True on success, false otherwise
-sub hmmbuild {
+sub hmmbuild {#{{{
 	my $alnfile = shift;
+	my $orthoid = shift;
 	my $set = shift;
 	my $alnsuffix = '.aln';
 	my $hmmsuffix = '.hmm';
-	my $hmmname = File::Spec->catfile($hmmdir, $set, basename($alnfile, $alnsuffix) . $hmmsuffix);
+	my $hmmname = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
 	my @hmmbuild_cmd = qq($hmmbuild_program $hmmname $alnfile);
-	print "@hmmbuild_cmd\n";
-	exit;
-}
+	system(@hmmbuild_cmd) 
+		and croak("Fatal: Could not build HMM from file $alnfile");
+	return $hmmname;
+}#}}}
 
 # Sub: make_blastdb 
 # Create a BLAST database from a file. Pulls everything from the MySQL database.
@@ -1003,13 +1041,13 @@ sub make_blastdb {#{{{
 
 	# build the paths for input and output
 	my $blastpath = &mysql_get("SELECT DISTINCT $mysql_col_blastdbpath FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.name = '$setname' LIMIT 1");
-	my $infile = File::Spec->catfile($$blastpath[0][0], $setname . ".fa");
-	my $outfile = File::Spec->catfile($$blastpath[0][0], $setname);
+	my $dbfile = File::Spec->catfile($sets_dir, 'blast', $setname);
+	my $infile = File::Spec->catfile($dbfile . ".fa");
 
 	# check whether a database already exists
-	if (-e File::Spec->catfile($outfile . '.psq')) {
-		print "BLAST DB exists in $outfile.\n" unless $quiet;
-		return $outfile;
+	if (-e File::Spec->catfile($dbfile . '.psq')) {
+		print "BLAST DB exists in $dbfile.\n" unless $quiet;
+		return $dbfile;
 	}
 
 	# database not extant, we have to create it
@@ -1040,10 +1078,10 @@ sub make_blastdb {#{{{
 	$dbh->disconnect();
 
 	# make blast database
-	my @makeblastdbcmd = qq($makeblastdbprog -in $infile -out $outfile -input_type fasta -title $orthoset);
+	my @makeblastdbcmd = qq($makeblastdbprog -in $infile -out $dbfile -input_type fasta -title $orthoset);
 	system(@makeblastdbcmd) and croak("Fatal: makeblastdb failed: $!\n");
-	print "BLAST DB created in $outfile.\n\n";
-	return $outfile;
+	print "BLAST DB created in $dbfile.\n\n";
+	return $dbfile;
 }#}}}
 
 # Sub: load_data_infile
