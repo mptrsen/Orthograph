@@ -216,7 +216,8 @@ sub blastp {#{{{
 		$self->resultfile($outfile);
 		return $self;
 	}
-	my @blastcmd = qq($blastprog -outfmt '6 qseqid sseqid evalue bitscore' -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
+	# use outfmt 7 for comment lines
+	my @blastcmd = qq($blastprog -outfmt '7 qseqid sseqid evalue bitscore' -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
 
 	# do the search or die
 	print "\n@blastcmd\n\n"
@@ -272,6 +273,9 @@ sub result {#{{{
 	}
 	my $fh = IO::File->new($self->resultfile);
 	$self->{'result'} = [ <$fh> ];
+	# remove comment lines
+	splice(@{$self->{'result'}}, 0, 5);
+	pop(@{$self->{'result'}});
 	$fh->close;
 	return $self->{'result'};
 }#}}}

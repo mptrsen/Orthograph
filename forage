@@ -97,6 +97,7 @@ my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastd
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
+my $aaoutdir       = $config->{'aaoutdir'}              ? $config->{'aaoutdir'}             : 'aa';
 my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
 my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 3;
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
@@ -141,6 +142,9 @@ my $mysql_table_aaseqs = $config->{'aaseqs'} ?
 my $mysql_table_seqpairs       = $config->{'sequence_pairs'} ?
 	$mysql_table_prefix . $config->{'sequence_pairs'} :
 	$mysql_table_prefix . 'sequence_pairs';
+my $mysql_table_taxa       = $config->{'taxa'} ?
+	$mysql_table_prefix . $config->{'taxa'} :
+	$mysql_table_prefix . 'taxa';
 my $mysql_table_orthologs      = $config->{'orthologs'} ?
 	$mysql_table_prefix . $config->{'orthologs'} :
 	$mysql_table_prefix . 'orthologs';
@@ -185,9 +189,11 @@ my $mysql_col_seqpair   = 'sequence_pair';
 my $mysql_col_setid     = 'setid';
 my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
+my $mysql_col_taxid     = 'taxid';
 my $mysql_col_taxon     = 'taxon';
 my $num_ests;
 my $num_hmms;
+my $orthocount = 0;
 my $preparedb;
 my $protfile            = '';
 my $timestamp           = time();
@@ -243,13 +249,6 @@ if ($preparedb) {#{{{
 $blastdb = &make_blastdb($orthoset);
 $hmmdir = &make_hmms($orthoset);
 
-#--------------------------------------------------
-# # create list of reference taxa and HMM files 
-#-------------------------------------------------- 
-@reftaxa = split(/,\s*/, $reftaxa);
-@hmmfiles = &hmmlist($hmmdir);
-$num_hmms = scalar @hmmfiles;
-
 
 unless ($quiet) {#{{{
   print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMM files.\n" 
@@ -283,8 +282,8 @@ if ($clear_data) {
 	print " done.\n" unless $quiet;
 	$| = 0;
 
-	print "Identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n";
-	printf "%d sequences stored to database '%s' on %s.\n",
+	print 
+	printf "%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
 		$num_ests,
 		$mysql_dbname,
 		$mysql_dbserver unless $quiet;
@@ -342,10 +341,17 @@ Forage::Blastp->max_hits(3);
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-printf("HMMsearching the protein file %s using all %d HMMs in %s\:\n", $protfile, scalar(@hmmfiles), $hmmdir)
+printf("HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmfiles), $hmmdir)
 	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
+
+#--------------------------------------------------
+# # create list of reference taxa and HMM files 
+#-------------------------------------------------- 
+# @reftaxa = split(/,\s*/, $reftaxa);	# no more reference taxa for now
+@hmmfiles = &hmmlist($hmmdir);
+$num_hmms = scalar @hmmfiles;
 
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
@@ -402,7 +408,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	for (my $n = 0; $n < scalar(@hmmresults); ++$n) { #{{{
  		++$count;
 
-		# setup a temporary file that will be unlinked when this object goes out of scope
+		# setup a temporary file to hold the sequence to be blast'ed
 		my $tmpfile = File::Temp->new(
 			'UNLINK' => 1, 
 			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));	
@@ -411,10 +417,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		print $tmpfile $hmmresults[$n]->[1] . "\n";
 
 		#--------------------------------------------------
-		# # run blastp with each reference taxon database
+		# # run blastp 
 		#-------------------------------------------------- 
-		# TODO this must be re-organized: no longer is there a blast db for every reftaxon,
-		# but instead one blastdb for the entire set.
 		# shiny new blastp object
 		my $blastobj = Forage::Blastp->new($blastdb);
 
@@ -429,7 +433,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			$n + 1,
 			basename($blastdb),
 			$blast_evalue_threshold unless $quiet;
-		print Dumper($blastobj->blasthits_arrayref) if $verbose;
+		#print Dumper($blastobj->blasthits_arrayref) if $verbose;
 
 		$blasthitcount_total += $blastobj->hitcount();
 
@@ -446,16 +450,26 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		print "\n(Don't be alarmed, the sequence identifiers are SHA1-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
 			unless $quiet;
 	}
-
-	#--------------------------------------------------
-	# # TODO then:
-	#-------------------------------------------------- 
-	# for the re-hits, gather nuc seq and compile everything that Karen wants output :)
+	# write the result to output file
+	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hmmhits_arrayref()->[0]->{'target'});
+	next unless defined $$orthologs[0];	# skip empty results
+	my $outfh = IO::File->new(File::Spec->catfile($aaoutdir, $$orthologs[0][0] . '.fa'), 'w');
+	for (0..$#{$orthologs}) { 
+		printf $outfh ">%s:%s\n%s\n", 
+			$$orthologs[$_][1],
+			$$orthologs[$_][3],
+			$$orthologs[$_][4]
+				or croak "Fatal: Could not write to output file $outfh: $!";
+	}
+	printf $outfh ">%s\n%s\n", $$orthologs[0][5], $$orthologs[0][6];
+	$outfh->close();
+	# yay
+	++$orthocount;
 }#}}}
 
 # report, end the program
 printf "%d HMMs hit something.   %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
-printf "Forage analysis for %s complete. Searched %d EST sequences using %d HMMs and obtained %d total HMMsearch hits.\n", $species_name, $num_ests, $hmmcount, $hmmhitcount_total;
+printf "Forage analysis for %s complete. Searched %d EST sequences using %d HMMs and obtained %d total ortholog hits.\n", $species_name, $num_ests, $hmmcount, $orthocount;
 exit;
 
 
@@ -559,6 +573,7 @@ sub intro {#{{{
 	# construct output directory paths
 	# outdir may be defined in the config file
 	$outdir = defined($outdir) ? $outdir : $species_name;
+	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
 	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearchprog));
   $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blastprog));
 
@@ -608,10 +623,11 @@ sub intro {#{{{
 			foreach (readdir($dirh)) {
 				next if $_ =~ /^\.\.?$/;
 				unlink(File::Spec->catfile($blastoutdir, $_)) 
-					or carp("Fatal: Could not delete file " . File::Spec->catfile($blastoutdir, $_) . ": $!\n");
+					or carp("Warning: Could not delete file " . File::Spec->catfile($blastoutdir, $_) . ": $!\n");
 			}
 			closedir($dirh);
-			print "Purged HMMsearch output dir $blastoutdir of old result files.\n" unless $quiet;
+			print "Purged HMMsearch output dir $blastoutdir of old result files.\n"
+				unless $quiet;
 		}
   }
   else {
@@ -620,6 +636,29 @@ sub intro {#{{{
     &makedir($blastoutdir) and print "done.\n";
     $| = 0;
   }
+	# the aa output directory
+	if (-d $aaoutdir) {
+		print "AA output dir $aaoutdir exists.\n" unless $quiet;
+		if ($clear_data) {
+			opendir(my $dirh, $aaoutdir)
+				or croak("Fatal: Couldn't opendir $aaoutdir\: $!");
+			foreach (readdir($dirh)) {
+				next if $_ =~ /^\.\.?$/;
+				unlink(File::Spec->catfile($aaoutdir, $_))
+					or carp("Warning: Could not delete file " . File::Spec->catfile($aaoutdir, $_) . ": $!");
+			}
+			closedir($dirh);
+			print "Purged AA output dir $aaoutdir of old result files.\n"
+				unless $quiet;
+		}
+	}
+	else {
+		$| = 1;
+		print "AA output dir $aaoutdir does not exist, creating... "
+			unless $quiet;
+		&makedir($aaoutdir) and print "done.\n";
+		$| = 0;
+	}
 
 }#}}}
 
@@ -1104,6 +1143,45 @@ sub get_transcripts {#{{{
 	}
 	$dbh->disconnect();
 	return $tmpfh;
+}#}}}
+
+# Sub: get_orthologs
+# Get orthologous sequences from the database, the final result handler
+# Arguments: ortholog id
+# Returns: filename
+sub get_orthologs {#{{{
+	my $orthoid = shift;
+	my $estdigest = shift;
+	# what do we want from the database?
+	my $query = "SELECT DISTINCT $mysql_table_orthologs.$mysql_col_orthoid AS orthogroup,
+			$mysql_table_taxa.$mysql_col_name AS name,
+			$mysql_table_ests.$mysql_col_digest AS EST_digest,
+      $mysql_table_aaseqs.$mysql_col_hdr AS AA_header,
+      $mysql_table_aaseqs.$mysql_col_seq AS AA_seq,
+      $mysql_table_ests.$mysql_col_hdr as EST_hdr,
+      $mysql_table_ests.$mysql_col_seq AS EST_seq
+    FROM $mysql_table_aaseqs
+		INNER JOIN $mysql_table_taxa
+		ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.id
+    INNER JOIN $mysql_table_blast 
+    ON $mysql_table_aaseqs.id = $mysql_table_blast.$mysql_col_target 
+    INNER JOIN $mysql_table_hmmsearch 
+    ON $mysql_table_blast.$mysql_col_query = $mysql_table_hmmsearch.$mysql_col_target  
+    INNER JOIN $mysql_table_ests 
+    ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest 
+    INNER JOIN $mysql_table_orthologs 
+    ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
+		INNER JOIN $mysql_table_seqpairs
+		ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.id 
+		WHERE $mysql_table_orthologs.$mysql_col_orthoid = '$orthoid'
+		AND $mysql_table_ests.$mysql_col_digest = '$estdigest'
+		ORDER BY $mysql_table_hmmsearch.$mysql_col_evalue, $mysql_table_blast.$mysql_col_evalue";
+	my $dbh = &mysql_dbh();
+	my $sql = $dbh->prepare($query);
+	$sql->execute();
+	my $result = $sql->fetchall_arrayref();
+	$dbh->disconnect();
+	return $result;
 }#}}}
 
 # Documentation#{{{
