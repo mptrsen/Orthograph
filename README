@@ -1,5 +1,76 @@
 FORAGE: Find Orthologs using Reciprocity Among Genes and ESTs
 
+QUICKSTART
+==========
+
+For a fast start into analysis using Forage, follow these steps. If anything
+doesn't work, you'll have to read the rest of this document to find out why :-)
+
+1. Set up the MySQL database. There must exist a table for your perusal and a
+	database user must have permissions to DROP and CREATE tables and of course to
+	SELECT and INSERT into them. Google "mysql create table" if you don't know how.
+
+2. Create the tables. Use the coreload script for this:
+
+		coreload -u USERNAME -p PASSWORD -c
+
+	Supply MySQL username and password. The -c switch tells the script to setup the
+	database structure for Forage. It will create a number of tables, all of which
+	start with the prefix 'forage_'. This may be changed in the config file.
+
+3. Load the database with orthologous groups:
+
+		coreload -u USERNAME -p PASSWORD FASTAFILE
+
+	Supply username and password and the fasta file. You will be asked for
+	information about the ortholog set you are uploading. The fasta file must have
+	an OrthoDB-style header format as in the following example:
+
+	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
+
+	That is, there must exist five space-separated fields, the last one of which may
+	contain whitespace as well. This is output by OrthoDB by default, so you don't
+	have to worry about that if you got your orthology data from OrthoDB. If not,
+	read 'perldoc coreload' for further information.
+
+4. Load proteome sequences into the database for as many taxa as possible that
+	were used in the orthologs file:
+
+		coreload -u USERNAME -p PASSWORD -pep FASTAFILE
+		
+	You need to upload data for every taxon separately (this may change in the
+	future). You will be asked for information about the file you are uploading.
+	These sequences are used for the BLAST databases. If you don't upload any
+	peptide data, the reciprocal search will almost always be successful and your
+	analysis flawed. The sequences must be in fasta files with the following
+	header format:
+
+	>TAXSH ID foo bar
+
+	The TAXSH must be a five-character taxon shorthand that is used in the
+	OrthoDB data. At least some of the IDs must correspond to the fourth header
+	field in the OrthoDB file. Also, the peptide sequences should be of a taxon
+	that occurs in the orthologous groups. Repeat this step for as many taxa as
+	you have peptide sequences for.
+
+5. Load nucleotide data into the database. They must have the same header format
+	as the peptide sequences and are loaded as follows:
+		
+		coreload -u USERNAME -p PASSWORD -nuc FASTAFILE
+
+6. Run Forage for the first time with the -prepare option to create the required
+	database structure:
+
+		forage -prepare
+
+7. Create a config file. Edit the supplied file forage.conf.example, it's
+	commented to help you start off.
+
+8. Start Forage! If you didn't save your config file as forage.conf, you must
+	guide Forage to it with the -c option:
+
+		forage -c forage.conf.example
+
 SYSTEM REQUIREMENTS
 ===================
 
@@ -29,8 +100,8 @@ SETUP
 =====
 
 The MySQL database must be setup prior to running Forage and must contain both
-peptide and nucleotide data. The script coreload is provided for your
-convenience. Refer to its perldoc documentation for further instructions.
+orthology information and peptide data. The script coreload is provided for
+your convenience. Refer to its perldoc documentation for further instructions.
 
 INVOCATION
 ==========
@@ -38,7 +109,7 @@ INVOCATION
 Forage allows parsing a config file, which by default is named 'forage.conf'.
 Available options can be obtained using 'perldoc forage'. Many options can
 be set or overridden on the command line. For those switches, also see
-'perldoc forage.pl'.
+'perldoc forage'.
 
 MySQL PERFORMANCE
 =================

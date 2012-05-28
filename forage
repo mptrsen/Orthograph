@@ -32,6 +32,8 @@ use Forage::Hmmsearch;  # object-oriented interface to hmmsearch
 use Forage::Blastp;     # object-oriented interface to blastp
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
+use DBI;	# MySQL database interface 
+use DBD::mysql;	# database driver for MySQL
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
 # you might want to look into Log::Message.
@@ -86,8 +88,8 @@ if (-e $configfile) {
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
-my $alignment_program = $config->{'alignment_program'} ? $config->{'alignment_program'} : 'mafft --localpair --maxiterate 1000';
-my $hmmbuild_program = $config->{'hmmbuild_program'} ? $config->{'hmmbuild_program'} : 'hmmbuild';#{{{
+my $alignment_program = $config->{'alignment_program'} ? $config->{'alignment_program'} : 'mafft --localpair --maxiterate 1000';#{{{
+my $hmmbuild_program = $config->{'hmmbuild_program'} ? $config->{'hmmbuild_program'} : 'hmmbuild';
 my $translateprog = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';
 my $hmmsearchprog = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';
 my $blastprog     = $config->{'blast_program'}     ? $config->{'blast_program'}     : 'blastp';
@@ -259,7 +261,6 @@ unless ($quiet) {#{{{
     if $hmmsearch_evalue_threshold;
   print "Score cutoff: $hmmsearch_score_threshold.\n"
     if $hmmsearch_score_threshold;
-	print "Reference taxa: " . join(', ', @reftaxa) . ".\n";
 }#}}}
 
 #--------------------------------------------------

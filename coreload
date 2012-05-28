@@ -67,6 +67,7 @@ use Seqload::Fasta qw(fasta2csv check_if_fasta); # object-oriented access to fas
 use DBI;
 use DBD::mysql;
 use Seqload::Fasta;
+use Data::Dumper;
 
 
 my $dbname       = 'forage';
@@ -240,7 +241,7 @@ my %create_table = (#{{{
     `nt_seq`       INT(10) UNSIGNED NOT NULL, INDEX(nt_seq), 
     `date`         INT(11) UNSIGNED,
     `user`         INT(10) UNSIGNED,
-    UNIQUE INDEX (taxid, ogs_id, aa_seq, nt_seq))",
+		UNIQUE(aa_seq))",
 
 	# table: sequences_aa
 	'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
@@ -305,7 +306,6 @@ elsif ($ispeptide) {
 		$blastdir = &getblastdir();
 	}
 	# 1 for amino-acid
-	print "$blastdir\n";
 	&load_taxon($infile, 1, $blastdir) or die("Fatal: Peptide loading failed\n");
 	exit;
 }
@@ -577,8 +577,8 @@ sub create_tables {#{{{
 	$dbh->disconnect;
 }#}}}
 
-# Sub: load_nucleotides
-# Loads nucleotide data into the database.
+# Sub: load_taxon
+# Loads sequence data into the database.
 # Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
 #		scalar string BLAST directory for creating the BLAST database
 # Returns: 1 on success, 0 otherwise
@@ -589,16 +589,18 @@ sub load_taxon {#{{{
 	my $otherseqtable = $mode ? $t{'ntseqs'} : $t{'aaseqs'};
 	my $seqcol = $mode ? 'aa_seq' : 'nt_seq';
 	my $otherseqcol = $mode ? 'nt_seq' : 'aa_seq';
+	my $type = $mode ? 'nt' : 'aa';
 	if ($mode) {
 		my $blastdb = shift(@_) or croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n"); 
 	}
 	my $total_seqs = 0;
-	my $diemsg = "Fatal: Nucleotide file header format wrong in line %d. Expected format must be '>TAXSH Identifier'. See documentation for more information.\n";
+	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information";
 
 	my $tmpfh = File::Temp->new(UNLINK => 1);
 	my $infh = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $infh->next_seq()) {
 		my @fields = split(/\s+/, $hdr);
+		#for (0..$#fields) { printf "%d %s\n", $_, $fields[$_]; }
 		if (scalar(@fields) < 2) {
 			croak(sprintf("$diemsg", $.));
 		}
@@ -610,46 +612,6 @@ sub load_taxon {#{{{
 	}
 	$tmpfh->close();
 
-	# queries:
-	my @queries = (
-	# create the temporary table
-	"CREATE TABLE $temptable (
-  `id`       INT(11)      NOT NULL PRIMARY KEY AUTO_INCREMENT,
-	`taxsh`    CHAR(5)      NOT NULL,
-	`header`   VARCHAR(255) NOT NULL,
-	`sequence` MEDIUMBLOB)",
-	# load data into temp table
-	"LOAD DATA LOCAL INFILE '$tmpfh' 
-  INTO TABLE $temptable 
-  FIELDS TERMINATED BY ',' 
-  (taxsh, header, sequence)",
-	# insert data into main table. IGNORE is important to avoid duplicates.
-	"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
-  SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
-  FROM $temptable 
-  LEFT JOIN $t{'taxa'} 
-  ON $temptable.taxsh = $t{'taxa'}.name",
-	# insert sequence pairs relationships
-	"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-  SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$username'
-  FROM $t{'taxa'}
-  INNER JOIN $otherseqtable
-  ON $otherseqtable.taxid = $t{'taxa'}.id
-  INNER JOIN $t{'ogs'}
-  ON $t{'taxa'}.id = $t{'ogs'}.taxid
-  INNER JOIN $seqtable
-  ON $otherseqtable.header = $seqtable.header",
-	# insert ortholog set groups
-	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, seqpairs) 
-  SELECT $t{'set_details'}.id, $t{'orthologs'}.ortholog_gene_id, $t{'seqpairs'}.id
-  FROM $otherseqtable
-  INNER JOIN $temptable
-  ON $otherseqtable.header = $temptable.header
-  INNER JOIN $t{'seqpairs'}
-  ON $t{'seqpairs'}.$otherseqcol = $otherseqtable.id
-  INNER JOIN $t{'set_details'}
-  ON $t{'set_details'}.name = $temptable.orthoset",
-	);
 	# get taxon shorthand
 	my $list = &mysql_get("SELECT * FROM $t{'taxa'}");
 	print "This is a list of present taxa in the database:\n";
@@ -661,7 +623,7 @@ sub load_taxon {#{{{
 	chomp $in;
 	my $taxon;
 	if ($in =~ /^\d+$/) {
-		$taxon = $$list[$in-1];
+		$taxon = $$list[$in-1][0];
 	}
 	print "Please enter the OGS version for the data you just uploaded: ";
 	my $ogsversion = <STDIN>;
@@ -669,9 +631,40 @@ sub load_taxon {#{{{
 
 	# ok; insert ogs version into database
 	my $dbh = &mysql_dbh();
-	$dbh->do("INSERT IGNORE INTO $t{'ogs'} (type, taxid, version) VALUES ('nt', $$taxon[0], $ogsversion)");
+	$dbh->do("INSERT IGNORE INTO $t{'ogs'} (type, taxid, version) VALUES ('$type', '$taxon', '$ogsversion')");
 	$dbh->disconnect();
 
+	# queries:
+	my @queries = (
+		# create the temporary table
+		"CREATE TABLE $temptable (
+		`id`       INT(11)      NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		`taxsh`    CHAR(5)      NOT NULL,
+		`header`   VARCHAR(255) NOT NULL,
+		`sequence` MEDIUMBLOB)",
+		# load data into temp table
+		"LOAD DATA LOCAL INFILE '$tmpfh' 
+		INTO TABLE $temptable 
+		FIELDS TERMINATED BY ',' 
+		(taxsh, header, sequence)",
+		# insert data into main table. IGNORE is important to avoid duplicates.
+		"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
+		SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
+		FROM $temptable 
+		LEFT JOIN $t{'taxa'} 
+		ON $temptable.taxsh = $t{'taxa'}.name",
+		# insert sequence pairs relationships
+		"REPLACE INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
+		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$username'
+		FROM $t{'taxa'}
+		RIGHT JOIN $seqtable
+		ON $seqtable.taxid = $t{'taxa'}.id
+		LEFT JOIN $t{'ogs'}
+		ON $t{'taxa'}.id = $t{'ogs'}.taxid
+		LEFT JOIN $otherseqtable
+		ON $otherseqtable.header = $seqtable.header
+		WHERE $t{'taxa'}.id = $taxon",
+	);
 	# execute all queries
 	$dbh = &mysql_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or return 0;
@@ -681,7 +674,8 @@ sub load_taxon {#{{{
 		printf("Query OK, %d rows affected.\n", $nrows);
 	}
 	$dbh->disconnect();
-	printf "Query OK. Loaded %d sequences into %s on %s.\n", $total_seqs, $dbname, $dbserver;
+	my $seqpairs = &mysql_get("SELECT COUNT(*) FROM $t{'seqpairs'} WHERE $t{'seqpairs'}.taxid = $taxon");
+	printf "Query OK. Loaded %d new sequences into %s on %s.\n", $$seqpairs[0][0], $dbname, $dbserver;
 	return 1;
 }#}}}
 
