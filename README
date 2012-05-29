@@ -73,7 +73,8 @@ start off. Most options are self-explanatory.
 
 8. Start Forage! 
 
-If you didn't save your config file as forage.conf, you must guide Forage to it with the -c option:
+If you didn't save your config file as forage.conf, you must guide Forage to
+it with the -c option:
 
 	forage -c forage.conf.example
 
@@ -85,18 +86,20 @@ SYSTEM REQUIREMENTS
 
 FORAGE requires the following software packages to be installed on the system:
 
-Package          Download from
+Package      Version Download from
 -------------------------------------------------------------------------------
-MySQL            http://www.mysql.com
-HMMer3           http://hmmer.janelia.org
-NCBI BLAST+      ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-Exonerate        http://www.ebi.ac.uk/~guy/exonerate/ 
+MySQL        5.1     http://www.mysql.com
+HMMer3       3.0     http://hmmer.janelia.org
+NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
 
 The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
 IO::Dir (used for platform-independent path handling) as well as DBI and
-DBD::Mysql for database handling and Digest::SHA should be present in your Perl
-distribution. Update your Perl installation if not and see [1] and [2] if you
-are installing Forage on a Windows system under Cygwin (http://www.cygwin.com). 
+DBD::Mysql for database handling and Digest::SHA should be present in your
+Perl distribution. Update your Perl installation if not and see [1] and [2] if
+you are installing Forage on a Windows system under Cygwin. You might run into
+problems getting the MySQL driver, HMMer3 and Exonerate to work. Don't use
+Windows.
 
 If your Perl installation was not compiled with thread support, but you would
 like to use FORAGE with multithreading emulation on multiprocessor platforms,
@@ -105,9 +108,10 @@ run FORAGE single-threadedly, of course.
 
 At the moment, threads are not implemented anyway.
 
-+++++++++++++++++++++++++++++++++++++++++
-+ The rest of this document is outdated +
-+++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++ The rest of this document is outdated! So is `perldoc forage`. +++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 SETUP
 =====
 
@@ -119,9 +123,9 @@ INVOCATION
 ==========
 
 Forage allows parsing a config file, which by default is named 'forage.conf'.
-Available options can be obtained using 'perldoc forage'. Many options can
-be set or overridden on the command line. For those switches, also see
-'perldoc forage'.
+Available options can be obtained using 'perldoc forage'. Many options can be
+set or overridden on the command line. For those switches, also see 'perldoc
+forage'.
 
 MySQL PERFORMANCE
 =================
