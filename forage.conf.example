@@ -1,28 +1,57 @@
-# Comments start with a hash sign and are ignored by the parser
-
-# Options
-
-# Clear pre-existing data prior to the analysis. Useful if you plan to run the
-# same analysis multiple times, but doesn't hurt otherwise.
-clear_data = 1
+# Comments start with a hash sign (#) and are ignored by the parser.
+# This way you can 'comment out' lines you don't need, but would like to keep
+# in your config file because they might be important later.
 #
-# Verbose output. More information about the HMMsearch and BLAST hits. Normally
-# you don't want to see this.
-verbose    = 0
+# Settings in UPPER-CASE must be changed to your local environment. Settings
+# in lower-case are sane defaults.
 
-# Species name
+#--------------------------------------------------
+# Important stuff first. These settings are mandatory.
+#-------------------------------------------------- 
+#
+# MySQL database stuff
+#
+# Prefix for your Forage tables. Useful to set if you are running multiple
+# instances of Forage on the same database but don't want the data to be mixed
+# up. Defaults to 'forage'.
+#mysql_table_prefix = forage
 
-# Supply this, it's useful.
-species_name = Test_species
+# Connection settings.
+mysql_dbname       = DATABASE
+mysql_dbserver     = 127.0.0.1
+mysql_dbuser       = USERNAME
+mysql_dbpassword   = PASSWORD
 
-# Ortholog set
+# The path to your transcriptome data file. Best to use absolute paths.
+estfile            = FASTAFILE
 
 # The ortholog set you created earlier.
-ortholog_set = 100seqs
+ortholog_set       = SETNAME
 
-# Programs
+# This is where your results are placed. Will be created if it doesn't exist.
+output_directory   = /PATH/TO/OUTPUT_DIR
 
+
+#--------------------------------------------------
+# Options. These settings are optional, but may be required if the defaults
+# don't do.
+#-------------------------------------------------- 
+#
+# Species name
+#
+# Supply this, it's nice.
+species_name = TEST_SPECIES
+
+#
 # Paths to the programs. It's best to set absolute paths.
+#
+# Alignment program; used to create the ortholog set. Must accept a fasta
+# input file as input and produce fasta-formatted output on STDOUT.
+alignment_program    = mafft --localpair --maxiterate 1000 --anysymbol
+
+# HMMbuild is used to build the profile HMMs.
+hmmbuild_program     = hmmbuild
+
 # fastatranslate is part of the Exonerate package (which you will need at a
 # later point, too) and translates the transcript sequences into all six reading
 # frames. You are free to use different programs, though.
@@ -35,26 +64,34 @@ hmmsearch_program    = hmmsearch
 blast_program        = blastp
 
 # exonerate. Not used yet.
-exonerate_program    = exonerate
+#exonerate_program    = exonerate
+ 
+#
+# Settings that affect the HMM and BLAST searches.
+#
+# e-Value threshold 
+hmmsearch_evalue_threshold = 1e-05
+blast_evalue_threshold     = 1e-05
 
-# File paths
+# You can also set a score threshold, but never both.
+#hmmsearch_score_threshold = 10
+#blast_score_threshold     = 10
+ 
+# Maximum number of BLAST hits to scan for orthologs. No effect at the moment,
+# as only the best hit is considered.
+blast_max_hits             = 10
 
-# This is the path to your transcriptome data file.
-estfile          = /home/malty/thesis/forage/Mengenilla_subset.fa
+# 
+# Other options
+#
+# Clear pre-existing data prior to the analysis. Useful if you plan to run the
+# same analysis multiple times, but doesn't hurt otherwise.
+clear_data = 1
+ 
+# Verbose output. More information about the HMMsearch and BLAST hits. Normally
+# you don't want to see this.
+#verbose    = 1
 
-# Output directory. This is where your results are placed. Will be created if it
-# doesn't exist yet.
-output_directory = /home/malty/thesis/forage/Test_species
-
-# MySQL database stuff
-
-# Prefix for your Forage tables. Useful to set if you are running multiple
-# instances of Forage on the same database but don't want the data to be mixed
-# up. Defaults to 'forage'.
-#mysql_table_prefix         = forage
-
-# Everything below is mandatory.
-mysql_dbname               = forage
-mysql_dbserver             = 127.0.0.1
-mysql_dbuser               = malty
-mysql_dbpassword           = malty
+# Quiet output. If you don't want to be bothered during the analysis. Verbose
+# and quiet are mutually exclusive.
+#quiet      = 1
