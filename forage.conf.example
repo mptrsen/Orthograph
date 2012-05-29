@@ -39,12 +39,21 @@ exonerate_program    = exonerate
 
 # File paths
 
+# This is the path to your transcriptome data file.
 estfile          = /home/malty/thesis/forage/Mengenilla_subset.fa
+
+# Output directory. This is where your results are placed. Will be created if it
+# doesn't exist yet.
 output_directory = /home/malty/thesis/forage/Test_species
 
 # MySQL database stuff
 
-mysql_table_prefix         = forage
+# Prefix for your Forage tables. Useful to set if you are running multiple
+# instances of Forage on the same database but don't want the data to be mixed
+# up. Defaults to 'forage'.
+#mysql_table_prefix         = forage
+
+# Everything below is mandatory.
 mysql_dbname               = forage
 mysql_dbserver             = 127.0.0.1
 mysql_dbuser               = malty
