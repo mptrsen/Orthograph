@@ -9,8 +9,8 @@ doesn't work, you'll have to read the rest of this document to find out why :-)
 1. Set up the MySQL database. 
 
 There must exist a table for your perusal and a database user must have
-permissions to DROP and CREATE tables and of course to SELECT and INSERT into
-them. Google "mysql create table" if you don't know how.
+permissions to DROP and CREATE tables and of course to SELECT, DELETE and INSERT
+into them. Google "mysql create table" if you don't know how.
 
 2. Create the tables. Use the coreload script for this:
 

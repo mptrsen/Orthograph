@@ -340,19 +340,19 @@ Forage::Blastp->max_hits(3);
 #}}}
 
 #--------------------------------------------------
+# # create list of reference taxa and HMM files 
+#-------------------------------------------------- 
+# @reftaxa = split(/,\s*/, $reftaxa);	# no more reference taxa for now
+@hmmfiles = &hmmlist($hmmdir);
+$num_hmms = scalar @hmmfiles;
+
+#--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
 printf("HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmfiles), $hmmdir)
 	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
-
-#--------------------------------------------------
-# # create list of reference taxa and HMM files 
-#-------------------------------------------------- 
-# @reftaxa = split(/,\s*/, $reftaxa);	# no more reference taxa for now
-@hmmfiles = &hmmlist($hmmdir);
-$num_hmms = scalar @hmmfiles;
 
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
@@ -466,6 +466,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$outfh->close();
 	# yay
 	++$orthocount;
+	printf "^----- Orthology detected for %s!\n", $$orthologs[0][0];
 }#}}}
 
 # report, end the program
@@ -584,7 +585,10 @@ sub intro {#{{{
 		print "HMM dir $hmmdir exists.\n" unless $quiet;
 	}
 	else {
-		carp "Warning: HMM dir $hmmdir does not exist or is not a directory!\n";
+		$| = 1;
+		print "HMM dir $hmmdir does not exist, creating... " unless $quiet;
+		&makedir($hmmdir) and print "done.\n";
+		$| = 0;
 	}
 
 	# the EST file
@@ -926,11 +930,11 @@ sub make_hmms {#{{{
 	my $hmmsuffix = '.hmm';
 	my $data = {};
 	my $query = "SELECT o.$mysql_col_orthoid, a.id, a.$mysql_col_seq
-    FROM $mysql_table_aaseqs AS a
+		FROM $mysql_table_orthologs AS o
     INNER JOIN $mysql_table_seqpairs AS p
-    ON p.$mysql_col_aaseq = a.id
-    INNER JOIN $mysql_table_orthologs AS o
     ON o.$mysql_col_seqpair = p.id
+    INNER JOIN $mysql_table_aaseqs AS a
+    ON a.id = p.$mysql_col_aaseq
     INNER JOIN $mysql_table_set_details AS d
     ON d.id = o.$mysql_col_setid
     WHERE d.$mysql_col_name = '$set'";
