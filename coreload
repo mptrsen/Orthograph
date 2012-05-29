@@ -240,7 +240,7 @@ my %create_table = (#{{{
     `taxid`        INT(10) UNSIGNED NOT NULL,
     `ogs_id`       INT(10) UNSIGNED NOT NULL,
     `aa_seq`       INT(10) UNSIGNED NOT NULL, INDEX(aa_seq),
-    `nt_seq`       INT(10) UNSIGNED NOT NULL, INDEX(nt_seq), 
+    `nt_seq`       INT(10) UNSIGNED, INDEX(nt_seq), 
     `date`         INT(11) UNSIGNED,
     `user`         INT(10) UNSIGNED,
 		UNIQUE(aa_seq))",

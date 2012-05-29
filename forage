@@ -251,6 +251,13 @@ if ($preparedb) {#{{{
 $blastdb = &make_blastdb($orthoset);
 $hmmdir = &make_hmms($orthoset);
 
+#--------------------------------------------------
+# # create list of reference taxa and HMM files 
+#-------------------------------------------------- 
+# @reftaxa = split(/,\s*/, $reftaxa);	# no more reference taxa for now
+@hmmfiles = &hmmlist($hmmdir);
+$num_hmms = scalar @hmmfiles;
+
 
 unless ($quiet) {#{{{
   print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMM files.\n" 
@@ -336,13 +343,6 @@ $hmmfullout ? Forage::Hmmsearch->hmmfullout(1) : Forage::Hmmsearch->hmmfullout(0
 Forage::Blastp->max_hits(3);
 
 #}}}
-
-#--------------------------------------------------
-# # create list of reference taxa and HMM files 
-#-------------------------------------------------- 
-# @reftaxa = split(/,\s*/, $reftaxa);	# no more reference taxa for now
-@hmmfiles = &hmmlist($hmmdir);
-$num_hmms = scalar @hmmfiles;
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs

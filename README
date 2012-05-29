@@ -25,7 +25,7 @@ start with the prefix 'forage_'. This may be changed in the config file.
 	coreload -u USERNAME -p PASSWORD FASTAFILE
 
 Supply username and password and a fasta file. You will be asked for information
-about the ortholog set you are uploading. The fasta file must have an
+about the ortholog set you are loading. The fasta file must have an
 OrthoDB-style header format as in the following example:
 
 	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
@@ -39,10 +39,10 @@ read `perldoc coreload` for further information.
 
 	coreload -u USERNAME -p PASSWORD -pep FASTAFILE
 		
-You need to upload data for every taxon separately (this may change in the
-future), and you should upload data for as many taxa in the orthologs file as
-possible. You will be asked for information about the file you are uploading.
-These sequences are used for the BLAST databases. If you don't upload any
+You need to load data for every taxon separately (this may change in the
+future), and you should load data for as many taxa in the orthologs file as
+possible. You will be asked for information about the file you are loading.
+These sequences are used for the BLAST databases. If you don't load any
 peptide data, the reciprocal search will almost always be successful and your
 analysis will be flawed. The sequences must be in fasta files with the following
 header format:
@@ -77,6 +77,9 @@ If you didn't save your config file as forage.conf, you must guide Forage to it 
 
 	forage -c forage.conf.example
 
+9. Examine results in the output directory.
+
+
 SYSTEM REQUIREMENTS
 ===================
 
@@ -84,10 +87,10 @@ FORAGE requires the following software packages to be installed on the system:
 
 Package          Download from
 -------------------------------------------------------------------------------
-HMMer3           http://hmmer.janelia.org
-Exonerate        http://www.ebi.ac.uk/~guy/exonerate/ 
-NCBI BLAST+      ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 MySQL            http://www.mysql.com
+HMMer3           http://hmmer.janelia.org
+NCBI BLAST+      ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+Exonerate        http://www.ebi.ac.uk/~guy/exonerate/ 
 
 The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
 IO::Dir (used for platform-independent path handling) as well as DBI and
@@ -102,6 +105,9 @@ run FORAGE single-threadedly, of course.
 
 At the moment, threads are not implemented anyway.
 
++++++++++++++++++++++++++++++++++++++++++
++ The rest of this document is outdated +
++++++++++++++++++++++++++++++++++++++++++
 SETUP
 =====
 
