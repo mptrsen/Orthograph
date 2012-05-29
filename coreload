@@ -79,6 +79,7 @@ my $setname      = undef;
 my $prefix       = 'forage_';
 my $blastdir     = '';
 my $create       = 0;
+my $delete       = 0;
 my $overwrite    = 0;
 my $reassignorthologs = 0;
 my $isnucleotide = 0;
@@ -184,6 +185,7 @@ GetOptions(
 	'prefix=s' => \$prefix,
 	'blastdir=s' => \$blastdir,
 	'c'        => \$create,
+	'delete'   => \$delete,
 	'h=s'      => \$dbserver,
 	'n=s'      => \$name,
 	'o'        => \$overwrite,
@@ -288,9 +290,18 @@ unless (defined $username and defined $pwd ) {
 }
 
 #--------------------------------------------------
+# # if you really want to delete everything...
+#-------------------------------------------------- 
+if ($delete) {
+	&drop_tables;
+	print "OK.\n";
+	exit;
+}
+#--------------------------------------------------
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 if ($create) {
+	&drop_tables;
 	&create_tables;
 	print "OK.\n";
 	exit;
@@ -567,7 +578,6 @@ sub drop_tables {#{{{
 
 # create tables. makes use of the %create_table hash.
 sub create_tables {#{{{
-	&drop_tables;
 	my $dbh = &mysql_dbh();
 	foreach (values %create_table) {
 		print $_, ";\n";
@@ -719,7 +729,7 @@ sub get_setname {#{{{
 	return $setname;
 }#}}}
 
-sub getblastdir {
+sub getblastdir {#{{{
 	my $bd = &mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} LIMIT 1");
 	if (!$bd) {
 		print "Enter the location where the BLAST database directories are located (required): ";
@@ -730,7 +740,7 @@ sub getblastdir {
 		$blastdir = $$bd[0][0];	# array of arrays, only element
 	}
 	return $blastdir;
-}
+}#}}}
 
 #{{{ POD: Appendix
 =head1 APPENDIX 

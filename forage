@@ -1180,6 +1180,7 @@ sub get_orthologs {#{{{
 		ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.id 
 		WHERE $mysql_table_orthologs.$mysql_col_orthoid = '$orthoid'
 		AND $mysql_table_ests.$mysql_col_digest = '$estdigest'
+		AND $mysql_table_seqpairs.$mysql_col_aaseq = $mysql_table_aaseqs.id
 		ORDER BY $mysql_table_hmmsearch.$mysql_col_evalue, $mysql_table_blast.$mysql_col_evalue";
 	my $dbh = &mysql_dbh();
 	my $sql = $dbh->prepare($query);
