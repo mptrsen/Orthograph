@@ -105,7 +105,7 @@ my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_h
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
 my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
 my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
-my $clear_data     = $config->{'clear_data'}  ? $config->{'clear_data'}           : 0;
+my $clear_data     = defined($config->{'clear_data'})  ? $config->{'clear_data'}           : 1;
 my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
 my $estfile        = $config->{'estfile'}              ? $config->{'estfile'}              : '';
 my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}              : '';
@@ -274,29 +274,27 @@ if ($clear_data) {
 	print "Clearing database of previous results from '$species_name'... " unless $quiet;
 	&clear_db;
 	print "done.\n" unless $quiet;
-
-	# store est data into the database:
-	print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
-
-	# third arg must be array ref
-	my $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
-	print " done.\n" unless $quiet;
-	$| = 0;
-
-	print 
-	printf "%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
-		$num_ests,
-		$mysql_dbname,
-		$mysql_dbserver unless $quiet;
 }
-else {
-	$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
-	$num_ests = $$num_ests[0][0];
-	printf "%d sequences in database '%s' on %s.\n", 
-		$num_ests,
-		$mysql_dbname,
-		$mysql_dbserver unless $quiet;
-}
+# store est data into the database:
+print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
+
+# third arg must be array ref
+my $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+print " done.\n" unless $quiet;
+$| = 0;
+
+printf "%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
+	$num_ests,
+	$mysql_dbname,
+	$mysql_dbserver unless $quiet;
+
+# number of existing transcript sequences
+$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
+$num_ests = $$num_ests[0][0];
+printf "%d sequences in database '%s' on %s.\n", 
+	$num_ests,
+	$mysql_dbname,
+	$mysql_dbserver unless $quiet;
 $| = 0;
 
 # get the transcripts with their new ID back from the database. is this efficient?
@@ -448,7 +446,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	if ($hmmcount <= scalar(@hmmfiles) / 100) {
 		print "\n(Don't be alarmed, the sequence identifiers are SHA1-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
-			unless $quiet;
+			if $verbose;
 	}
 	# write the result to output file
 	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hmmhits_arrayref()->[0]->{'target'});
@@ -470,7 +468,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 # report, end the program
 printf "%d HMMs hit something.   %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
-printf "Forage analysis for %s complete. Searched %d EST sequences using %d HMMs and obtained %d total ortholog hits.\n", $species_name, $num_ests, $hmmcount, $orthocount;
+printf "Forage analysis for %s complete. Searched %d EST sequences using %d HMMs and obtained %d total ortholog hits. Now go look in your output directory %s.\n", $species_name, $num_ests, $hmmcount, $orthocount, $outdir;
 exit;
 
 

@@ -664,7 +664,7 @@ sub load_taxon {#{{{
 		LEFT JOIN $t{'taxa'} 
 		ON $temptable.taxsh = $t{'taxa'}.name",
 		# insert sequence pairs relationships
-		"REPLACE INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
+		"INSERT INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
 		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$username'
 		FROM $t{'taxa'}
 		RIGHT JOIN $seqtable
@@ -673,7 +673,9 @@ sub load_taxon {#{{{
 		ON $t{'taxa'}.id = $t{'ogs'}.taxid
 		LEFT JOIN $otherseqtable
 		ON $otherseqtable.header = $seqtable.header
-		WHERE $t{'taxa'}.id = $taxon",
+		WHERE $t{'taxa'}.id = $taxon
+		ON DUPLICATE KEY UPDATE $t{'seqpairs'}.$seqcol = $seqtable.id,
+		$t{'seqpairs'}.$otherseqcol = $otherseqtable.id",
 	);
 	# execute all queries
 	$dbh = &mysql_dbh();

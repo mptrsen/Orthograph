@@ -174,7 +174,7 @@ sub hmmsearch {#{{{
       if $debug;
     # do the search
     my $hmmresult = [ `@hmmsearchline` ];
-    croak "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!\n" 
+    confess "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!" 
       unless (scalar @$hmmresult);
     # only save those results that actually match something
     unless (grep( /No hits detected/, @$hmmresult )) {

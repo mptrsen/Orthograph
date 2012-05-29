@@ -69,11 +69,12 @@ blast_program        = blastp
 #
 # Settings that affect the HMM and BLAST searches.
 #
-# e-Value threshold 
+# E-value threshold 
 hmmsearch_evalue_threshold = 1e-05
 blast_evalue_threshold     = 1e-05
 
-# You can also set a score threshold, but never both.
+# You can also set a score threshold. E-value and score thresholds are
+# mutually exclusive.
 #hmmsearch_score_threshold = 10
 #blast_score_threshold     = 10
  
@@ -85,11 +86,12 @@ blast_max_hits             = 10
 # Other options
 #
 # Clear pre-existing data prior to the analysis. Useful if you plan to run the
-# same analysis multiple times, but doesn't hurt otherwise.
-clear_data = 1
+# same analysis multiple times, but doesn't hurt otherwise. This is the
+# default, uncomment if you want to turn it off.
+#clear_data = 0
  
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
-# you don't want to see this.
+# you don't want to see this. Verbose and quiet are mutually exclusive.
 #verbose    = 1
 
 # Quiet output. If you don't want to be bothered during the analysis. Verbose
