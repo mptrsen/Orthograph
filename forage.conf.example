@@ -1,0 +1,51 @@
+# Comments start with a hash sign and are ignored by the parser
+
+# Options
+
+# Clear pre-existing data prior to the analysis. Useful if you plan to run the
+# same analysis multiple times, but doesn't hurt otherwise.
+clear_data = 1
+#
+# Verbose output. More information about the HMMsearch and BLAST hits. Normally
+# you don't want to see this.
+verbose    = 0
+
+# Species name
+
+# Supply this, it's useful.
+species_name = Test_species
+
+# Ortholog set
+
+# The ortholog set you created earlier.
+ortholog_set = 100seqs
+
+# Programs
+
+# Paths to the programs. It's best to set absolute paths.
+# fastatranslate is part of the Exonerate package (which you will need at a
+# later point, too) and translates the transcript sequences into all six reading
+# frames. You are free to use different programs, though.
+translate_program    = fastatranslate
+
+# hmmsearch, of course.
+hmmsearch_program    = hmmsearch
+
+# blast. Should be blastp from the NCBI BLAST+ package.
+blast_program        = blastp
+
+# exonerate. Not used yet.
+exonerate_program    = exonerate
+
+# File paths
+
+estfile          = /home/malty/thesis/forage/Mengenilla_subset.fa
+output_directory = /home/malty/thesis/forage/Test_species
+
+# MySQL database stuff
+
+mysql_table_prefix         = forage
+mysql_dbname               = forage
+mysql_dbserver             = 127.0.0.1
+mysql_dbuser               = malty
+mysql_dbpassword           = malty

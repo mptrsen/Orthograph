@@ -8,9 +8,9 @@ doesn't work, you'll have to read the rest of this document to find out why :-)
 
 1. Set up the MySQL database. 
 
-There must exist a table for your perusal and a database user must have
+There must exist a database for your perusal and a database user must have
 permissions to DROP and CREATE tables and of course to SELECT, DELETE and INSERT
-into them. Google "mysql create table" if you don't know how.
+into them. Google "mysql create database" or something if you don't know how.
 
 2. Create the tables. Use the coreload script for this:
 
@@ -24,28 +24,28 @@ start with the prefix 'forage_'. This may be changed in the config file.
 
 	coreload -u USERNAME -p PASSWORD FASTAFILE
 
-Supply username and password and the fasta file. You will be asked for
-information about the ortholog set you are uploading. The fasta file must have
-an OrthoDB-style header format as in the following example:
+Supply username and password and a fasta file. You will be asked for information
+about the ortholog set you are uploading. The fasta file must have an
+OrthoDB-style header format as in the following example:
 
 	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
 
 That is, there must exist five space-separated fields, the last one of which may
 contain whitespace as well. This is output by OrthoDB by default, so you don't
 have to worry about that if you got your orthology data from OrthoDB. If not,
-read 'perldoc coreload' for further information.
+read `perldoc coreload` for further information.
 
-4. Load proteome sequences into the database for as many taxa as possible that
-were used in the orthologs file:
+4. Load proteome sequences into the database :
 
 	coreload -u USERNAME -p PASSWORD -pep FASTAFILE
 		
 You need to upload data for every taxon separately (this may change in the
-future). You will be asked for information about the file you are uploading.
+future), and you should upload data for as many taxa in the orthologs file as
+possible. You will be asked for information about the file you are uploading.
 These sequences are used for the BLAST databases. If you don't upload any
 peptide data, the reciprocal search will almost always be successful and your
-analysis flawed. The sequences must be in fasta files with the following header
-format:
+analysis will be flawed. The sequences must be in fasta files with the following
+header format:
 
 	>TAXSH ID foo bar
 
@@ -55,11 +55,12 @@ OrthoDB file. Also, the peptide sequences should be of a taxon that occurs in
 the orthologous groups. Repeat this step for as many taxa as you have peptide
 sequences for.
 
-5. Load nucleotide data into the database:
+4a. Optional: Load nucleotide data into the database:
 
 	coreload -u USERNAME -p PASSWORD -nuc FASTAFILE
 
-They must have the same header format as the peptide sequences.
+They must have the same header format as the peptide sequences. At the moment,
+output of nucleotide data is not implemented anyway. 
 
 6. Create the required database structure for Forage:
 
@@ -67,7 +68,8 @@ They must have the same header format as the peptide sequences.
 
 7. Create a config file. 
 
-Edit the supplied file forage.conf.example, it's commented to help you start off.
+Edit the supplied config file forage.conf.example, it's commented to help you
+start off. Most options are self-explanatory.
 
 8. Start Forage! 
 

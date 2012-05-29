@@ -387,8 +387,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
-	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hmmhits_arrayref)
-		and print "     ... pushed to database.\n" if $verbose;
+	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hmmhits_arrayref);
+	print "     ... pushed to database.\n" if $verbose;
 	++$hmmhitcount;
 	
 	# setup SQL query; use the first array item since they all share the query (HMM) ID 
@@ -433,8 +433,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			$blastobj->hitcount,
 			$n + 1,
 			basename($blastdb),
-			$blast_evalue_threshold unless $quiet;
-		#print Dumper($blastobj->blasthits_arrayref) if $verbose;
+			$blast_evalue_threshold if $verbose;
 
 		$blasthitcount_total += $blastobj->hitcount();
 
@@ -443,8 +442,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		
 
 		# insert the blast results into the db. 3-argument form.
-		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb)) 
-			and print "            ... pushed to database.\n" if $verbose;
+		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+		print "            ... pushed to database.\n" if $verbose;
 	} #}}}
 
 	if ($hmmcount <= scalar(@hmmfiles) / 100) {
@@ -466,7 +465,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$outfh->close();
 	# yay
 	++$orthocount;
-	printf "^----- Orthology detected for %s!\n", $$orthologs[0][0];
+	printf "!! ^-------Orthology detected for %s!\n", $$orthologs[0][0];
 }#}}}
 
 # report, end the program
@@ -525,10 +524,9 @@ sub mysql_do {#{{{
 }#}}}
 
 # Sub: parse_config
-# Parse a simple, ini-style config file where keys are separated from values by '='.
-# E.g.
+# Parse a simple, ini-style config file where keys are separated from values by '='. 
+# Sections are not supported. E.g.
 # outputdir = /home/foo/bar
-# translateprog=/usr/bin/translate
 sub parse_config {#{{{
 	my $file = shift;
 	my $conf = { };
