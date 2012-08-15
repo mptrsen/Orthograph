@@ -38,7 +38,7 @@ sub new {
   my $self = {
     'hmmfile'       => $hmmfile,
     'hmmresultfile' => '',
-    'hmmhitcount'   => 0,
+    'hitcount'   => 0,
   };
 
   bless ($self, $class);
@@ -79,7 +79,7 @@ Sets output directory for the hmmsearch output files. Expects a reference to sca
 
 =cut
 
-sub hmmoutdir {#{{{
+sub outdir {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
   unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmoutdir(OUTDIR)" }
@@ -152,7 +152,7 @@ Expects: Reference to sequence object, scalar string filename to F<hmmfile>.
 
 =cut
 
-sub hmmsearch {#{{{
+sub search {#{{{
   my $self = shift;
   unless (scalar @_ == 1) { confess "Usage: OBJECT->hmmsearch(FILE)" }
   my $protfile  = shift;
@@ -190,20 +190,20 @@ sub hmmsearch {#{{{
 }#}}}
 
 
-=head2 hmmhitcount
+=head2 hitcount
 
 Returns the number of hits from a hmmsearch result file.
 
 =cut
 
-sub hmmhitcount {#{{{
+sub hitcount {#{{{
   my $self = shift;
-  if ($self->{'hmmhitcount'}) { 
-    return $self->{'hmmhitcount'};
+  if ($self->{'hitcount'}) { 
+    return $self->{'hitcount'};
   }
   unless ($hmmfullout) {
-    $self->{'hmmhitcount'} = scalar(@{$self->hmmresult}); 
-    return $self->{'hmmhitcount'};
+    $self->{'hitcount'} = scalar(@{$self->result}); 
+    return $self->{'hitcount'};
   }
   # dunno what do with hmmfullout yet... TODO implement!
 }#}}}
@@ -214,12 +214,12 @@ Returns the hmmsearch result as it is in the result file, sans the first 3 lines
 
 =cut
 
-sub hmmresult {#{{{
+sub result {#{{{
   my $self = shift;
   if ($self->{'hmmresult'}) {
     return $self->{'hmmresult'};
   }
-  my $fh = IO::File->new($self->hmmresultfile())
+  my $fh = IO::File->new($self->resultfile())
 		or croak("Fatal: Could not open hmmresultfile");
   $self->{'hmmresult'} = [ <$fh> ];
   $fh->close;
@@ -234,13 +234,13 @@ Returns an array reference to a list of lists, e.g., like so:
   $hmmhits->[$i][0..3]  # of line $i, fields 1, 3, 5, 6 of the hmmsearch table output
 
 =cut
-sub hmmhits_arrayref {#{{{
+sub hits_arrayref {#{{{
   my $self = shift;
   if ($self->{'hmmhits'}) {
     return $self->{'hmmhits'};
   }
   $self->{'hmmhits'} = [ ];
-  foreach (@{$self->hmmresult}) {
+  foreach (@{$self->result}) {
     # maximum of 19 columns, the last one may contain whitespace
     my @line = split(/\s+/);  
     push(@{$self->{'hmmhits'}}, {
@@ -264,7 +264,7 @@ sub hmmname {#{{{
   if ($self->{'hmmname'}) {
     return $self->{'hmmname'};
   }
-	my @line = split(/\s+/, ${$self->hmmresult}[0]);
+	my @line = split(/\s+/, ${$self->result}[0]);
   $self->{'hmmname'} = $line[2];
   return $self->{'hmmname'};
 }#}}}
@@ -296,7 +296,7 @@ Sets or returns the HMMsearch result filename.
 
 =cut
 
-sub hmmresultfile {#{{{
+sub resultfile {#{{{
   my $self = shift;
   if (scalar @_ == 1) {
     $self->{'hmmresultfile'} = shift; 

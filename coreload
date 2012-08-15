@@ -499,7 +499,6 @@ my @queries = (
     ON $t{'seqpairs'}.aa_seq = $t{'aaseqs'}.id 
     INNER JOIN $t{'set_details'} 
     ON $t{'set_details'}.name = $temptable.orthoset",
-
 );
 
 $dbh = &mysql_dbh;
@@ -507,7 +506,7 @@ my $nrows;
 foreach (@queries) {
 	print $_ . ";\n";
 	$nrows = $dbh->do($_) or die();
-	($nrows >= 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
+	($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
 }
 $dbh->disconnect;
 

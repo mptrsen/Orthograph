@@ -276,19 +276,15 @@ unless ($quiet) {#{{{
 $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
 # Clear database of data from the same species
-$| = 1;
 if ($clear_data) {
-	print "Clearing database of previous results from '$species_name'... " unless $quiet;
+	print "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	&clear_db;
-	print "done.\n" unless $quiet;
 }
 # store est data into the database:
-print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver... " unless $quiet;
+print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 # third arg must be array ref
 my $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
-print " done.\n" unless $quiet;
-$| = 0;
 
 printf "%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
 	$num_ests,
@@ -302,7 +298,6 @@ printf "%d sequences in database '%s' on %s.\n",
 	$num_ests,
 	$mysql_dbname,
 	$mysql_dbserver unless $quiet;
-$| = 0;
 
 # get the transcripts with their new ID back from the database. is this efficient?
 $protfile = &get_transcripts();
@@ -329,7 +324,7 @@ Forage::Blastp->evalue_threshold($blast_evalue_threshold) if $blast_evalue_thres
 Forage::Blastp->score_threshold($blast_score_threshold) if $blast_score_threshold;
 
 # the output directories
-Forage::Hmmsearch->hmmoutdir($hmmoutdir);
+Forage::Hmmsearch->outdir($hmmoutdir);
 Forage::Blastp->outdir($blastoutdir);
 
 # the programs
@@ -361,22 +356,22 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	my $hmmobj = Forage::Hmmsearch->new($hmmfile); 
 
 	# now do the hmmsearch on the protfile
-	$hmmobj->hmmsearch($protfile);
+	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
 	printf("%4d hits detected for %s (%d%% of the ortholog set)\n", 
-		$hmmobj->hmmhitcount,
+		$hmmobj->hitcount,
 		basename($hmmobj->hmmfile),
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
-	if ($hmmobj->hmmhitcount() == 0) { # do not care further with HMM files that did not return any result
-		next;
+	if ($hmmobj->hitcount() == 0) { # do not care further with HMM files that did not return any result
+		next HMMFILE;
 	}
 
 	# add hitcount to total number of hmm hits,
 	# print list of hits if verbose
-	$hmmhitcount_total += $hmmobj->hmmhitcount;
+	$hmmhitcount_total += $hmmobj->hitcount;
 	if ($verbose) {
-		my $hits = $hmmobj->hmmhits_arrayref();
+		my $hits = $hmmobj->hits_arrayref();
 		for (my $i = 0; $i < scalar @$hits; $i++) {
 			printf "     (%d) %s, e-value %2.1e\n", $i + 1, $hits->[$i]->{'target'}, $hits->[$i]->{'evalue'};
 		}
@@ -385,7 +380,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
-	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hmmhits_arrayref);
+	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref);
 	print "     ... pushed to database.\n" if $verbose;
 	++$hmmhitcount;
 	
@@ -394,7 +389,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
 		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
-		WHERE $mysql_table_hmmsearch.$mysql_col_query = '" . $hmmobj->hmmhits_arrayref->[0]{'query'} . "'";
+		WHERE $mysql_table_hmmsearch.$mysql_col_query = '" . $hmmobj->hits_arrayref->[0]{'query'} . "'";
 
 	#--------------------------------------------------
 	# # the reciprocal search
@@ -449,8 +444,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			if $verbose;
 	}
 	# write the result to output file
-	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hmmhits_arrayref()->[0]->{'target'});
-	next unless defined $$orthologs[0];	# skip empty results
+	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
+	next HMMFILE unless defined $$orthologs[0];	# skip empty results
 	my $outfh = IO::File->new(File::Spec->catfile($aaoutdir, $$orthologs[0][0] . '.fa'), 'w');
 	for (0..$#{$orthologs}) { 
 		printf $outfh ">%s:%s\n%s\n", 
@@ -468,7 +463,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 # report, end the program
 printf "%d HMMs hit something.   %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
-printf "Forage analysis for %s complete. Searched %d EST sequences using %d HMMs and obtained %d total ortholog hits. Now go look in your output directory %s.\n", $species_name, $num_ests, $hmmcount, $orthocount, $outdir;
+printf "Forage analysis for %s complete.\nSearched %d EST sequences using %d HMMs and obtained %d total ortholog hits.\nNow go look in your output directory %s.\n", $species_name, $num_ests, $hmmcount, $orthocount, $outdir;
 exit;
 
 
@@ -550,6 +545,18 @@ sub parse_config {#{{{
 	return $conf;
 }#}}}
 
+# Sub: progress_bar
+# Returns a wget-style progress bar.
+# Arguments: 
+sub progress_bar {
+	my ($got, $total, $width, $char) = @_;
+	$width ||= 25;
+	$char ||= '=';
+	my $num_width = length($total);
+	$| = 1;
+	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r", $char x (($width-1)*$got/$total) . '>', $got, $total, 100*$got/$total);
+	$| = 0;
+}
 # Sub: intro
 # Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
@@ -581,10 +588,8 @@ sub intro {#{{{
 		print "HMM dir $hmmdir exists.\n" unless $quiet;
 	}
 	else {
-		$| = 1;
-		print "HMM dir $hmmdir does not exist, creating... " unless $quiet;
-		&makedir($hmmdir) and print "done.\n";
-		$| = 0;
+		print "HMM dir $hmmdir does not exist, creating...\n" unless $quiet;
+		&makedir($hmmdir);
 	}
 
 	# the EST file
@@ -610,10 +615,8 @@ sub intro {#{{{
 		}
 	}
 	else {
-		$| = 1;
-		print "HMMsearch output dir $hmmoutdir does not exist, creating... " unless $quiet;
-		&makedir($hmmoutdir) and print "done.\n";
-		$| = 0;
+		print "HMMsearch output dir $hmmoutdir does not exist, creating...\n" unless $quiet;
+		&makedir($hmmoutdir);
 	}
 
   # the BLASTP output directory
@@ -627,15 +630,13 @@ sub intro {#{{{
 					or carp("Warning: Could not delete file " . File::Spec->catfile($blastoutdir, $_) . ": $!\n");
 			}
 			closedir($dirh);
-			print "Purged HMMsearch output dir $blastoutdir of old result files.\n"
+			print "Purged BLAST output dir $blastoutdir of old result files.\n"
 				unless $quiet;
 		}
   }
   else {
-    $| = 1;
-    print "BLASTP output dir $blastoutdir does not exist, creating... " unless $quiet;
-    &makedir($blastoutdir) and print "done.\n";
-    $| = 0;
+    print "BLASTP output dir $blastoutdir does not exist, creating...\n" unless $quiet;
+    &makedir($blastoutdir);
   }
 	# the aa output directory
 	if (-d $aaoutdir) {
@@ -654,11 +655,9 @@ sub intro {#{{{
 		}
 	}
 	else {
-		$| = 1;
-		print "AA output dir $aaoutdir does not exist, creating... "
+		print "AA output dir $aaoutdir does not exist, creating...\n"
 			unless $quiet;
-		&makedir($aaoutdir) and print "done.\n";
-		$| = 0;
+		&makedir($aaoutdir);
 	}
 
 }#}}}
@@ -691,8 +690,7 @@ sub hmmlist {#{{{
 sub translate_est {#{{{
   my ($infile) = shift;
   (my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
-  $| = 1;
-  print "Translating $estfile in all six reading frames... " unless $quiet;
+  print "Translating $estfile in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
     print "$outfile exists, using this one.\n" unless $quiet;
     return $outfile;
@@ -701,8 +699,6 @@ sub translate_est {#{{{
   die "Fatal: Could not translate $infile: $!\n"
     if system($translateline);
 
-  print "done.\n";
-  $| = 0;
   return $outfile;
 }#}}}
 
@@ -939,6 +935,7 @@ sub make_hmms {#{{{
 	if (!-e $hmmdir) {
 		&makedir($hmmdir);
 	}
+	print "Generating ortholog set $set...  This may take a long time.\n" unless $quiet;
 
 	# get the ortholog set from the database
 	my $dbh = &mysql_dbh();
@@ -950,7 +947,11 @@ sub make_hmms {#{{{
 	}
 	$dbh->disconnect();	# disc asap
 
+	my $num_orthoids = keys(%$data);
+	my $o = 0;
 	foreach my $orthoid (keys %$data) {
+		&progress_bar($o, $num_orthoids, 25, '-');
+		++$o;
 		my $hmmfile = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
 		# does this HMM already exist?
 		next if (-e $hmmfile);	
@@ -988,9 +989,9 @@ sub align {#{{{
 	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
 	my $alnsuffix = '.aln';
 	my @alignment_cmd = qq($alignment_program $fafile);	# this prints the alignment to STDOUT, must be captured somehow
-	print "@alignment_cmd\n";
+	print "@alignment_cmd\n" if $debug;
 	my $tmpf = File::Temp->new();
-	print $tmpf `@alignment_cmd`
+	print $tmpf `@alignment_cmd 2> /dev/null`
 		or croak("Fatal: Could not write to file $tmpf\: $!\n");
 	$tmpf->close();
 	return $tmpf;
@@ -1026,9 +1027,9 @@ sub hmmbuild {#{{{
 	my $hmmsuffix = '.hmm';
 	my $hmmname = basename($hmmfile, $hmmsuffix);
 	if (-e $hmmfile) { return $hmmfile }
-	my @hmmbuild_cmd = qq($hmmbuild_program -n $hmmname $hmmfile $alnfile);
-	system(@hmmbuild_cmd) 
-		and croak("Fatal: Could not build HMM from file $alnfile");
+	my @hmmbuild_cmd = qq($hmmbuild_program -n $hmmname $hmmfile $alnfile > /dev/null);
+	system(@hmmbuild_cmd) and
+		return 0;
 	return $hmmfile;
 }#}}}
 
@@ -1052,8 +1053,10 @@ sub make_blastdb {#{{{
 	}
 
 	# database not extant, we have to create it
-	print "BLAST DB for set $setname does not exist, creating in $dbfile..."
+	$| = 1;
+	print "BLAST DB for set $setname does not exist, creating in $dbfile... "
 		unless $quiet;
+	$| = 0;
 	# get the sequences from the database
 	my $query = "SELECT $mysql_table_aaseqs.id, $mysql_table_aaseqs.sequence
 		FROM $mysql_table_aaseqs
@@ -1077,9 +1080,9 @@ sub make_blastdb {#{{{
 	$dbh->disconnect();
 
 	# make blast database
-	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -title $orthoset);
+	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -title $orthoset > /dev/null);
 	system(@makeblastdbcmd) and croak("Fatal: makeblastdb failed: $!\n");
-	print "BLAST DB created in $dbfile.\n\n";
+	print "\n";
 	return $dbfile;
 }#}}}
 
