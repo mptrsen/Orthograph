@@ -284,7 +284,7 @@ if ($clear_data) {
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 # third arg must be array ref
-my $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+$num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 
 printf "%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
 	$num_ests,
@@ -359,7 +359,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
-	printf("%4d hits detected for %s (%d%% of the ortholog set)\n", 
+	printf("%4d hits for %s (%d%% complete)\n", 
 		$hmmobj->hitcount,
 		basename($hmmobj->hmmfile),
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
@@ -422,11 +422,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# do the blastp search; skip if no hits obtained
 		$blastobj->blastp($tmpfile, $blastoutfile);
 
-		printf "       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n",
+		printf("       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n",
 			$blastobj->hitcount,
 			$n + 1,
 			basename($blastdb),
-			$blast_evalue_threshold if $verbose;
+			$blast_evalue_threshold) if $verbose;
 
 		$blasthitcount_total += $blastobj->hitcount();
 
@@ -443,17 +443,19 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		print "\n(Don't be alarmed, the sequence identifiers are SHA1-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
 			if $verbose;
 	}
-	# write the result to output file
+	# get the ortholog results from the db
 	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	next HMMFILE unless defined $$orthologs[0];	# skip empty results
+	# write the result to output file
 	my $outfh = IO::File->new(File::Spec->catfile($aaoutdir, $$orthologs[0][0] . '.fa'), 'w');
 	for (0..$#{$orthologs}) { 
 		printf $outfh ">%s:%s\n%s\n", 
-			$$orthologs[$_][1],
-			$$orthologs[$_][3],
-			$$orthologs[$_][4]
+			$$orthologs[$_][1],	# the taxon shorthand of the ortholog sequence
+			$$orthologs[$_][3],	# the sequence id of the ortholog sequence
+			$$orthologs[$_][4]  # the sequence
 				or croak "Fatal: Could not write to output file $outfh: $!";
 	}
+	# the header and sequence of the hit
 	printf $outfh ">%s\n%s\n", $$orthologs[0][5], $$orthologs[0][6];
 	$outfh->close();
 	# yay
@@ -518,7 +520,7 @@ sub mysql_do {#{{{
 
 # Sub: parse_config
 # Parse a simple, ini-style config file where keys are separated from values by '='. 
-# Sections are not supported. E.g.
+# Sections are not supported. 
 # outputdir = /home/foo/bar
 sub parse_config {#{{{
 	my $file = shift;
@@ -528,6 +530,9 @@ sub parse_config {#{{{
 	while (my $line = <$fh>) {
 		next if $line =~ /^\s*$/; # skip empty lines
 		next if $line =~ /^\s*#/; # skip comment lines starting with '#'
+		if ($line !~ /^\s*\w+\s*=\s*[\/]?\w+/) {
+			die "Fatal: Invalid format in line $. of config file $file:\n$line\n"
+		}
 		
 		# split by '=' producing a maximum of two items
 		my ($key, $val) = split('=', $line, 2);
@@ -548,7 +553,7 @@ sub parse_config {#{{{
 # Sub: progress_bar
 # Returns a wget-style progress bar.
 # Arguments: 
-sub progress_bar {
+sub progress_bar {#{{{
 	my ($got, $total, $width, $char) = @_;
 	$width ||= 25;
 	$char ||= '=';
@@ -556,7 +561,8 @@ sub progress_bar {
 	$| = 1;
 	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r", $char x (($width-1)*$got/$total) . '>', $got, $total, 100*$got/$total);
 	$| = 0;
-}
+}#}}}
+
 # Sub: intro
 # Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
@@ -604,13 +610,7 @@ sub intro {#{{{
 	if (-d $hmmoutdir) {
 		print "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
 		if ($clear_data) {
-			opendir(my $dirh, $hmmoutdir) or croak("Fatal: Couldn't opendir $hmmoutdir\: $!\n");
-			foreach (readdir($dirh)) {
-				next if $_ =~ /^\.\.?$/;
-				unlink(File::Spec->catfile($hmmoutdir, $_))
-					or carp("Fatal: Could not delete file " . File::Spec->catfile($hmmoutdir, $_) . ": $!\n");
-			}
-			closedir($dirh);
+			&cleardir($hmmoutdir);
 			print "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
 		}
 	}
@@ -623,13 +623,7 @@ sub intro {#{{{
   if (-d $blastoutdir) {
     print "BLASTP output dir $blastoutdir exists.\n" unless $quiet;
 		if ($clear_data) {
-			opendir(my $dirh, $blastoutdir) or croak("Fatal: Couldn't opendir $blastoutdir\: $!\n");
-			foreach (readdir($dirh)) {
-				next if $_ =~ /^\.\.?$/;
-				unlink(File::Spec->catfile($blastoutdir, $_)) 
-					or carp("Warning: Could not delete file " . File::Spec->catfile($blastoutdir, $_) . ": $!\n");
-			}
-			closedir($dirh);
+			&cleardir($blastoutdir);
 			print "Purged BLAST output dir $blastoutdir of old result files.\n"
 				unless $quiet;
 		}
@@ -642,14 +636,7 @@ sub intro {#{{{
 	if (-d $aaoutdir) {
 		print "AA output dir $aaoutdir exists.\n" unless $quiet;
 		if ($clear_data) {
-			opendir(my $dirh, $aaoutdir)
-				or croak("Fatal: Couldn't opendir $aaoutdir\: $!");
-			foreach (readdir($dirh)) {
-				next if $_ =~ /^\.\.?$/;
-				unlink(File::Spec->catfile($aaoutdir, $_))
-					or carp("Warning: Could not delete file " . File::Spec->catfile($aaoutdir, $_) . ": $!");
-			}
-			closedir($dirh);
+			&cleardir($aaoutdir);
 			print "Purged AA output dir $aaoutdir of old result files.\n"
 				unless $quiet;
 		}
@@ -738,6 +725,23 @@ sub makedir {#{{{
     return 1;
   }
   return 1;
+}#}}}
+
+# Sub: cleardir
+# Empties a directory of non-dotfiles
+# Arguments: scalar string dirname
+sub cleardir {#{{{
+	my $dir = shift(@_);
+	opendir(my $dirh, $dir)
+		or croak("Fatal: Couldn't open dir $dir\: $!");
+	foreach (readdir($dirh)) {
+		next if $_ =~ /^\.\.?$/;
+		unlink(File::Spec->catfile($dir, $_))
+			or carp("Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!");
+	}
+	closedir($dirh)
+		or croak("Fatal: Couldn't close dir $dir\: $!");
+	return 1;
 }#}}}
 
 # Sub: preparedb
@@ -935,7 +939,7 @@ sub make_hmms {#{{{
 	if (!-e $hmmdir) {
 		&makedir($hmmdir);
 	}
-	print "Generating ortholog set $set...  This may take a long time.\n" unless $quiet;
+	print "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
 	# get the ortholog set from the database
 	my $dbh = &mysql_dbh();
@@ -1073,11 +1077,15 @@ sub make_blastdb {#{{{
 	$sth->execute();
 	# write to output file
 	while (my ($h, $s) = $sth->fetchrow_array()) {
+		# make sure the sequence has only valid characters
+		if ($s !~ /^[ABCDEFGHIKLMNPQRSTVWXYZUX]+$/) {
+			warn("Warning: Invalid characters in protein sequence $h. Let's hope BLAST will not choke on this one:\n$s");
+		}
 		printf($infh ">%s\n%s\n", $h, $s)
 			or croak("Fatal: Could not write to file $infile\: $!\n");
 	}
-	close($infh);
 	$dbh->disconnect();
+	close($infh);
 
 	# make blast database
 	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -title $orthoset > /dev/null);

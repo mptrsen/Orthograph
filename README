@@ -73,7 +73,7 @@ Edit the supplied config file forage.conf.example, it's commented to help you
 start off. Most options are self-explanatory.
 
 7. Create the required database structure for Forage. Make forage executable
-and run it:
+and run it with the -prepare option:
 
 	chmod +x forage
 	./forage -prepare
