@@ -6,7 +6,7 @@ B<coreload> - prepare a MySQL database for running Forage
 
 =head1 SYNOPSIS
 
-B<coreload> FASTAFILE
+B<coreload> -u USERNAME -p PASSWORD FASTAFILE
 
 =head1 DESCRIPTION
 
@@ -53,8 +53,6 @@ peptide-nucleotide pairs. Text after the Identifier will be ignored.
 B<coreload> expects a certain table structure. You may create it by hand using
 the SQL statement found at the end of this manual by or whatever workflow you
 fancy, or you may run B<coreload -c> once, which does the same thing.
-
-
 =cut#}}}
 
 use strict;
@@ -110,13 +108,9 @@ my $total_seqs;
 #{{{POD: Options
 =head1 OPTIONS
 
-=head2 -p password
+=head2 -p PASSWORD
 
 Password for the connection. No default; this must be set.
-
-=head2 -t TEMPTABLE
-
-Temporary table name to use. Defaults to 'temp'.
 
 =head2 -u USERNAME
 
@@ -148,7 +142,8 @@ databases. These themselves must be each in its own directory, e.g., like so:
 The directory name of each BLAST database must match with the taxon name in the
 fasta headers, and the BLAST database inside it must be named as F<taxon_prot>.
 
-If all is setup like described, the prefix would be specified as: B<-b /home/username/blast>.
+If all is setup like described, the prefix would be specified as: B<-b
+/home/username/blast>.
 
 =head2 -prefix PREFIX
 
@@ -170,7 +165,9 @@ to establish orthology relationships between nucleotide and peptide sequences.
 This is called automatically when adding an ortholog set from OrthoDB and when
 adding nucleotide data..
 
-### Not implemented yet ###
+=head2 -t TEMPTABLE
+
+Temporary table name to use. Defaults to 'temp'.
 
 =head2 -nuc 
 
@@ -748,7 +745,293 @@ sub getblastdir {#{{{
 
 =head2 SQL Statement for creating the database structure
 
-	TODO include mysqldump --no-data --database forage
+-- MySQL dump 10.13  Distrib 5.1.61, for redhat-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: forage
+-- ------------------------------------------------------
+-- Server version	5.1.61-log
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Current Database: `forage`
+--
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `forage` /*!40100 DEFAULT CHARACTER SET latin1 */;
+
+USE `forage`;
+
+--
+-- Table structure for table `forage_aaseqs`
+--
+
+DROP TABLE IF EXISTS `forage_aaseqs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_aaseqs` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `taxid` int(10) NOT NULL,
+  `header` varchar(512) NOT NULL,
+  `sequence` mediumblob,
+  `user` int(10) unsigned DEFAULT NULL,
+  `date` int(11) unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `header` (`header`),
+  KEY `taxid` (`taxid`)
+) ENGINE=MyISAM AUTO_INCREMENT=206817 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_blast`
+--
+
+DROP TABLE IF EXISTS `forage_blast`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_blast` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `spec` varchar(255) NOT NULL,
+  `blastdb_path` varchar(255) NOT NULL,
+  `query` varchar(255) NOT NULL,
+  `target` varchar(255) NOT NULL,
+  `score` float NOT NULL,
+  `evalue` float NOT NULL,
+  UNIQUE KEY `query_2` (`query`,`target`),
+  KEY `id` (`id`),
+  KEY `spec` (`spec`),
+  KEY `query` (`query`),
+  KEY `target` (`target`)
+) ENGINE=MyISAM AUTO_INCREMENT=9713 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_blastdbs`
+--
+
+DROP TABLE IF EXISTS `forage_blastdbs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_blastdbs` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `setid` int(10) unsigned DEFAULT NULL,
+  `blastdb_path` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `setid` (`setid`)
+) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_blastp`
+--
+
+DROP TABLE IF EXISTS `forage_blastp`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_blastp` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `spec` varchar(255) NOT NULL,
+  `blastdb_path` varchar(255) NOT NULL,
+  `query` varchar(255) NOT NULL,
+  `target` varchar(255) NOT NULL,
+  `score` float NOT NULL,
+  `evalue` float NOT NULL,
+  UNIQUE KEY `query_2` (`query`,`target`),
+  KEY `id` (`id`),
+  KEY `spec` (`spec`),
+  KEY `query` (`query`),
+  KEY `target` (`target`)
+) ENGINE=MyISAM AUTO_INCREMENT=1403 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_ests`
+--
+
+DROP TABLE IF EXISTS `forage_ests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_ests` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `digest` char(32) NOT NULL,
+  `spec` varchar(255) NOT NULL,
+  `date` int(11) unsigned DEFAULT NULL,
+  `header` varchar(255) NOT NULL,
+  `sequence` mediumblob,
+  KEY `id` (`id`),
+  KEY `digest` (`digest`),
+  KEY `spec` (`spec`),
+  KEY `header` (`header`)
+) ENGINE=MyISAM AUTO_INCREMENT=630001 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_hmmsearch`
+--
+
+DROP TABLE IF EXISTS `forage_hmmsearch`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_hmmsearch` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `spec` varchar(255) NOT NULL,
+  `query` varchar(255) NOT NULL,
+  `target` varchar(255) NOT NULL,
+  `score` float NOT NULL,
+  `evalue` float NOT NULL,
+  UNIQUE KEY `query_2` (`query`,`target`),
+  KEY `id` (`id`),
+  KEY `spec` (`spec`),
+  KEY `query` (`query`),
+  KEY `target` (`target`)
+) ENGINE=MyISAM AUTO_INCREMENT=7405 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_ntseqs`
+--
+
+DROP TABLE IF EXISTS `forage_ntseqs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_ntseqs` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `taxid` int(10) NOT NULL,
+  `header` varchar(512) NOT NULL,
+  `sequence` mediumblob,
+  `user` int(10) unsigned DEFAULT NULL,
+  `date` int(11) unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `header` (`header`),
+  KEY `taxid` (`taxid`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_ogs`
+--
+
+DROP TABLE IF EXISTS `forage_ogs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_ogs` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `type` char(3) DEFAULT NULL,
+  `taxid` int(10) unsigned DEFAULT NULL,
+  `version` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `taxid` (`taxid`)
+) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_orthologs`
+--
+
+DROP TABLE IF EXISTS `forage_orthologs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_orthologs` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `setid` int(10) unsigned NOT NULL,
+  `ortholog_gene_id` varchar(10) NOT NULL,
+  `sequence_pair` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `setid` (`setid`,`ortholog_gene_id`,`sequence_pair`)
+) ENGINE=MyISAM AUTO_INCREMENT=6853 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_seqtypes`
+--
+
+DROP TABLE IF EXISTS `forage_seqtypes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_seqtypes` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `type` char(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `type` (`type`)
+) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_sequence_pairs`
+--
+
+DROP TABLE IF EXISTS `forage_sequence_pairs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_sequence_pairs` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `taxid` int(10) unsigned NOT NULL,
+  `ogs_id` int(10) unsigned NOT NULL,
+  `aa_seq` int(10) unsigned NOT NULL,
+  `nt_seq` int(10) unsigned DEFAULT NULL,
+  `date` int(11) unsigned DEFAULT NULL,
+  `user` int(10) unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `aa_seq_2` (`aa_seq`),
+  KEY `aa_seq` (`aa_seq`),
+  KEY `nt_seq` (`nt_seq`)
+) ENGINE=MyISAM AUTO_INCREMENT=206816 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_set_details`
+--
+
+DROP TABLE IF EXISTS `forage_set_details`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_set_details` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  `description` blob,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_taxa`
+--
+
+DROP TABLE IF EXISTS `forage_taxa`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_taxa` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(20) DEFAULT NULL,
+  `longname` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `forage_users`
+--
+
+DROP TABLE IF EXISTS `forage_users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `forage_users` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 =cut
 

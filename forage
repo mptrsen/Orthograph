@@ -699,18 +699,6 @@ sub backup_old_output_files {#{{{
   }
 }#}}}
 
-# Sub: helpmessage
-# Prints the help message
-sub helpmessage {#{{{
-  my $helpmessage = <<EOF;
-estfile ESTFILE
-E ESTFILE 
-H HMMFILE
-hmmdir HMMDIR
-EOF
-  print $helpmessage;
-}#}}}
-
 # Sub: makedir
 # Creates a directory with parent directories if it does not already exist
 # Expects: scalar string dirname
