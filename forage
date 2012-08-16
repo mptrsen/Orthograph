@@ -38,7 +38,7 @@ use DBD::mysql;	# database driver for MySQL
 use lib qw($libdir);
 # you might want to look into Log::Message.
 
-my $version = 0.00002;
+my $version = 'alpha1';
 print "Forage: Find Orthologs using Reciprocity Among Genes and ESTs\n";
 print "Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n";
 print "Version $version\n\n";
@@ -57,7 +57,7 @@ elsif ($use_threads == 1 and !$Config{'useithreads'}) {
   die "Fatal: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n";
 }
 else {
-	print "Not using threads.\n";
+	print "Not using threads.\n\n";
 	$use_threads = 0;
 }#}}}
 
@@ -173,6 +173,7 @@ my $hmmfullout          = 0;
 my $hmmcount;
 my $hmmhitcount;
 my $hmmhitcount_total   = 0;
+my $listsets            = 0;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
@@ -224,6 +225,7 @@ GetOptions( 'v'        => \$verbose,
 	'H=s'                => \$hmmfile,
 	'hmmsearchprog=s'    => \$hmmsearchprog,
 	'hmmfullout'         => \$hmmfullout,
+	'listsets'           => \$listsets,
 	'preparedb'          => \$preparedb,
 	'quiet'              => \$quiet,
 	'taxon=s'            => \$species_name,
@@ -241,6 +243,27 @@ if ($preparedb) {#{{{
   print "OK\nMySQL database now ready to run Forage.\n";
   exit;
 }#}}}
+
+#--------------------------------------------------
+# Just list the present ortholog sets, then exit
+#-------------------------------------------------- 
+if ($listsets) {
+	my $sets = &get_ortholog_sets();
+	my $maxlen_set  = 0;
+	my $maxlen_desc = 0;
+	# determine maximum length of set names for the table
+	foreach (keys(%$sets)) {
+		$maxlen_set = length($_) if (length($_) > $maxlen_set);
+		$maxlen_desc = length($$sets{$_}) if (length($$sets{$_}) > $maxlen_desc);
+	}
+	print "The following ortholog sets are presently installed:\n";
+	printf("%-${maxlen_set}s  %-${maxlen_desc}s\n", 'Set name', 'description');
+	printf("%-${maxlen_set}s--%-${maxlen_desc}s\n", '-' x $maxlen_set, '-' x $maxlen_desc);
+	foreach (keys(%$sets)) {
+		printf("%-${maxlen_set}s  %s\n", $_, $$sets{$_});
+	}
+	exit;
+}
 
 #--------------------------------------------------
 # # Normal run. Input error checking, reporting etc
@@ -1183,6 +1206,20 @@ sub get_orthologs {#{{{
 	my $result = $sql->fetchall_arrayref();
 	$dbh->disconnect();
 	return $result;
+}#}}}
+
+# Sub: get_ortholog_sets
+# Get list of ortholog sets from the database
+# Arguments: none
+# Returns: hash reference of set names => description
+sub get_ortholog_sets {#{{{
+	my %sets = ();
+	my $query = "SELECT * FROM $mysql_table_set_details";
+	my $data = &mysql_get($query);
+	foreach my $item (@$data) {
+		$sets{$$item[1]} = $$item[2];
+	}
+	return(\%sets);
 }#}}}
 
 # Documentation#{{{
