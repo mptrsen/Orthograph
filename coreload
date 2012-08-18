@@ -610,7 +610,6 @@ sub load_taxon {#{{{
 	my $infh = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $infh->next_seq()) {
 		my @fields = split(/\s+/, $hdr);
-		#for (0..$#fields) { printf "%d %s\n", $_, $fields[$_]; }
 		if (scalar(@fields) < 2) {
 			croak(sprintf("$diemsg", $.));
 		}
