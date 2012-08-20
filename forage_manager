@@ -2,11 +2,11 @@
 # Documentation before the code#{{{
 =head1 NAME 
 
-B<coreload> - prepare a MySQL database for running Forage
+B<forage_manager> - prepare a MySQL database for running Forage
 
 =head1 SYNOPSIS
 
-B<coreload> -u USERNAME -p PASSWORD FASTAFILE
+B<forage_manager> -u USERNAME -p PASSWORD FASTAFILE
 
 =head1 DESCRIPTION
 
@@ -38,7 +38,7 @@ Where the following applies:
 None of these need to be unique, but the combination of all three must be.
 
 The fields must be separated by whitespace and in this particular order. The
-coreload script does not perform any recognition on the fields whatsoever. If
+forage_manager script does not perform any recognition on the fields whatsoever. If
 you download your orthologous sequences from OrthoDB, no problems should arise.
 
 Nucleotide fasta files need a similar, but simpler format:
@@ -50,9 +50,9 @@ the sequence ID. Some of these may or may not correspond to IDs that occur in
 ortholog set headers. This is later used for identification of corresponding
 peptide-nucleotide pairs. Text after the Identifier will be ignored.
 
-B<coreload> expects a certain table structure. You may create it by hand using
+B<forage> expects a certain table structure. You may create it by hand using
 the SQL statement found at the end of this manual by or whatever workflow you
-fancy, or you may run B<coreload -c> once, which does the same thing.
+fancy, or you may run B<forage_manager -c> once, which does the same thing.
 =cut#}}}
 
 use strict;
@@ -82,6 +82,8 @@ my $overwrite    = 0;
 my $reassignorthologs = 0;
 my $isnucleotide = 0;
 my $ispeptide    = 0;
+my $listogs      = 0;
+my $listsets     = 0;
 my $temptable    = 'temp';
 my $sql;
 # table names
@@ -193,6 +195,8 @@ GetOptions(
 	'c'        => \$create,
 	'delete'   => \$delete,
 	'h=s'      => \$dbserver,
+	'lo'       => \$listogs,
+	'ls'       => \$listsets,
 	'n=s'      => \$name,
 	'o'        => \$overwrite,
 	'p=s'      => \$pwd,
@@ -200,7 +204,7 @@ GetOptions(
 	't=s'      => \$temptable,
 	'u=s'      => \$username,
 	'r'        => \$reassignorthologs,
-	'nuc'       => \$isnucleotide,
+	'nuc'      => \$isnucleotide,
 	'pep'      => \$ispeptide,
 	);
 my $infile = shift @ARGV;
@@ -310,6 +314,45 @@ if ($create) {
 	&drop_tables;
 	&create_tables;
 	print "OK.\n";
+	exit;
+}
+
+#--------------------------------------------------
+# Just list the present ortholog sets, then exit
+# TODO make this less redundant!
+#-------------------------------------------------- 
+if ($listsets) {
+	my $sets = &get_ortholog_sets();
+	my $maxlen_set  = 0;
+	my $maxlen_desc = 0;
+	# determine maximum length of set names for the table
+	foreach (keys(%$sets)) {
+		$maxlen_set = length($_) if (length($_) > $maxlen_set);
+		$maxlen_desc = length($$sets{$_}) if (length($$sets{$_}) > $maxlen_desc);
+	}
+	print "The following ortholog sets are presently installed:\n";
+	printf("%-${maxlen_set}s  %-${maxlen_desc}s\n", 'Set name', 'description');
+	printf("%-${maxlen_set}s--%-${maxlen_desc}s\n", '-' x $maxlen_set, '-' x $maxlen_desc);
+	foreach (keys(%$sets)) {
+		printf("%-${maxlen_set}s  %s\n", $_, $$sets{$_});
+	}
+	exit;
+}
+
+if ($listogs) {
+	my $ogs = &list_ogs();
+	my $maxlen_longname = 0;
+	my $maxlen_version  = 0;
+	foreach (keys %$ogs) {
+		$maxlen_version = length($_) if (length($_) > $maxlen_version);
+		$maxlen_longname = length($$ogs{$_}) if (length($$ogs{$_}) > $maxlen_longname);
+	}
+	print "The following OGS are presently installed:\n";
+	printf("%-${maxlen_longname}s  %s\n", 'Taxon', 'OGS version');
+	printf("%s  %11s\n", '-' x 5, '-' x 11);
+	foreach (keys(%$ogs)) {
+		printf("%-${maxlen_longname}s  %s\n", $_, $$ogs{$_});
+	}
 	exit;
 }
 
@@ -725,6 +768,10 @@ sub create_blastdb {#{{{
 	my @makeblastdbcmd = qq(makeblastdb -in $infile -out $outfile -input_type fasta -title $taxsh);
 }#}}}
 
+# Sub: get_setname
+# Listens for the set name on STDIN
+# Arguments: none
+# Returns: scalar string setname
 sub get_setname {#{{{
 	print "Enter the set name (required; ASCII only): ";
 	$setname = <STDIN>;
@@ -746,6 +793,34 @@ sub getblastdir {#{{{
 		$blastdir = $$bd[0][0];	# array of arrays, only element
 	}
 	return $blastdir;
+}#}}}
+
+# Sub: get_ortholog_sets
+# Get list of ortholog sets from the database
+# Arguments: none
+# Returns: hash reference of set names => description
+sub get_ortholog_sets {#{{{
+	my %sets = ();
+	my $query = "SELECT * FROM $t{'set_details'}";
+	my $data = &mysql_get($query);
+	foreach my $item (@$data) {
+		$sets{$$item[1]} = $$item[2];
+	}
+	return(\%sets);
+}#}}}
+
+#TODO merge with get_ortholog_sets() into one function that accepts a query
+# Sub: list_ogs
+# Get list of OGS in the database
+# Arguments: none
+# Returns: array reference (list of OGS)
+sub list_ogs {#{{{
+	my %ogslist = ();
+	my $data = &mysql_get("SELECT DISTINCT $t{'taxa'}.name , $t{'ogs'}.version from $t{'aaseqs'} inner join $t{'seqpairs'} on $t{'aaseqs'}.id  = $t{'seqpairs'}.aa_seq inner join $t{'taxa'} on $t{'seqpairs'}.taxid = $t{'taxa'}.id inner join $t{'ogs'} on $t{'taxa'}.id = $t{'ogs'}.taxid");
+	foreach my $item (@$data) {
+		$ogslist{$$item[0]} = $$item[1];
+	}
+	return(\%ogslist);
 }#}}}
 
 #{{{ POD: Appendix
