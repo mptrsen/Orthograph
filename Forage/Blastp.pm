@@ -1,20 +1,19 @@
 #--------------------------------------------------
-# This file is part of Forage.
+# This file is part of Orthograph.
 # Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
 # 
-# Forage is free software: you can redistribute it and/or modify it under the
+# Orthograph is free software: you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later
 # version.
 # 
-# Forage is distributed in the hope that it will be useful, but WITHOUT ANY
+# Orthograph is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 # A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License along with
-# Forage. If not, see http://www.gnu.org/licenses/.
+# Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
-=pod
 
 =head1 NAME 
 
@@ -51,16 +50,15 @@ use File::Basename; # basename of files
 use IO::File; # object-oriented access to files
 use Carp; # extended dying functions
 use Data::Dumper;
-my $verbose = 0;
-my $debug = 0;
-my $blastoutdir = File::Spec->catdir('.');
-my $blastprog = 'blastp';
-my $makeblastdbprog = 'makeblastdb';
+my $verbose          = 0;
+my $debug            = 0;
+my $blastoutdir      = File::Spec->catdir('.');
+my $blastprog        = 'blastp';
+my $makeblastdbprog  = 'makeblastdb';
+my $evalue_threshold = 10;
+my $score_threshold  = 0;
+my $max_hits         = 100;
 my $blast_cmd;
-my $evalue_threshold  = 10;
-my $score_threshold = 0;
-my $max_hits        = 100;
-
 
 sub new {
 	my ($class, $db) = @_;
