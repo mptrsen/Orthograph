@@ -23,9 +23,9 @@ use Carp; # extended dying functions
 use Data::Dumper;
 my $verbose = 0;
 my $debug = 0;
-my $hmmoutdir = File::Spec->catdir('.');
-my $hmmsearchprog = 'hmmsearch';
-my @hmmsearchcmd;
+my $outdir = File::Spec->catdir('.');
+my $searchprog = 'hmmsearch';
+my @searchcmd;
 my $evalue_threshold = 10;
 my $score_threshold = 10;
 my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
@@ -36,7 +36,7 @@ sub new {
 
   my $self = {
     'hmmfile'       => $hmmfile,
-    'hmmresultfile' => '',
+    'resultfile' => '',
     'hitcount'      => 0,
   };
 
@@ -81,21 +81,21 @@ Sets output directory for the hmmsearch output files. Expects a reference to sca
 sub outdir {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmoutdir(OUTDIR)" }
-  $hmmoutdir = shift;
+  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->outdir(OUTDIR)" }
+  $outdir = shift;
 }#}}}
 
-=head2 hmmsearchprog
+=head2 searchprog
 
 Sets the HMMsearch program. Expects a string. Defaults to 'F<hmmsearch>'.
 
 =cut
 
-sub hmmsearchprog {#{{{
+sub searchprog {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmsearchcmd(COMMAND)" }
-  $hmmsearchprog = shift;
+  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->searchcmd(COMMAND)" }
+  $searchprog = shift;
 }#}}}
 
 =head2 evalue_threshold
@@ -126,9 +126,9 @@ sub score_threshold {#{{{
 
 =head1 Object methods
 
-=head2 hmmsearch
+=head2 search
 
-HMM-searches a sequence file using F<hmmfile>, leaving F<hmmoutfile> for later processing of the results. 
+HMM-searches a sequence file using F<hmmfile>, leaving F<outfile> for later processing of the results. 
 
 Expects: Reference to sequence object, scalar string filename to F<hmmfile>. 
 
@@ -136,32 +136,32 @@ Expects: Reference to sequence object, scalar string filename to F<hmmfile>.
 
 sub search {#{{{
   my $self = shift;
-  unless (scalar @_ == 1) { confess "Usage: OBJECT->hmmsearch(FILE)" }
+  unless (scalar @_ == 1) { confess "Usage: OBJECT->search(FILE)" }
   my $protfile  = shift;
   my $hmmfile   = $self->hmmfile;
   # full output if desired, table only otherwise; reflects in outfile extension
-  my $hmmoutfile = File::Spec->catfile($hmmoutdir, basename($hmmfile).'.tbl');
+  my $outfile = File::Spec->catfile($outdir, basename($hmmfile).'.tbl');
   # return right away if this search has been conducted before
-  if (-e $hmmoutfile) {
-    $self->hmmresultfile($hmmoutfile);
+  if (-e $outfile) {
+    $self->resultfile($outfile);
     return $self;
   }
   else {
-    my @hmmsearchline = qq($hmmsearchprog --domtblout $hmmoutfile $threshold_option $hmmfile $protfile);
+    my @hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option $hmmfile $protfile);
     print "\n@hmmsearchline\n\n"
       if $debug;
     # do the search
-    my $hmmresult = [ `@hmmsearchline` ];
+    my $result = [ `@hmmsearchline` ];
     confess "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!" 
-      unless (scalar @$hmmresult);
+      unless (scalar @$result);
     # only save those results that actually match something
-    unless (grep( /No hits detected/, @$hmmresult )) {
-      $self->{'hmmresultfile'} = $hmmoutfile;
+    unless (grep( /No hits detected/, @$result )) {
+      $self->{'resultfile'} = $outfile;
       return $self;
     }
     # empty result
     else {
-      $self->{'hmmresultfile'} = $hmmoutfile;
+      $self->{'resultfile'} = $outfile;
       return $self;
     }
   }
@@ -183,7 +183,7 @@ sub hitcount {#{{{
 	return $self->{'hitcount'};
 }#}}}
 
-=head2 hmmresult
+=head2 result
 
 Returns the hmmsearch result as it is in the result file, sans the first 3 lines of the table (comments)
 
@@ -191,15 +191,15 @@ Returns the hmmsearch result as it is in the result file, sans the first 3 lines
 
 sub result {#{{{
   my $self = shift;
-  if ($self->{'hmmresult'}) {
-    return $self->{'hmmresult'};
+  if ($self->{'result'}) {
+    return $self->{'result'};
   }
   my $fh = IO::File->new($self->resultfile())
-		or croak("Fatal: Could not open hmmresultfile");
-  $self->{'hmmresult'} = [ <$fh> ];
+		or croak("Fatal: Could not open resultfile");
+  $self->{'result'} = [ <$fh> ];
   $fh->close;
-  splice(@{$self->{'hmmresult'}}, 0, 3);
-  return $self->{'hmmresult'};
+  splice(@{$self->{'result'}}, 0, 3);
+  return $self->{'result'};
 }#}}}
 
 =head2 hmmhits_arrayref
@@ -211,24 +211,24 @@ Returns an array reference to a list of lists, e.g., like so:
 =cut
 sub hits_arrayref {#{{{
   my $self = shift;
-  if ($self->{'hmmhits'}) {
-    return $self->{'hmmhits'};
+  if ($self->{'hits'}) {
+    return $self->{'hits'};
   }
-  $self->{'hmmhits'} = [ ];
+  $self->{'hits'} = [ ];
   foreach (@{$self->result}) {
     # maximum of 19 columns, the last one may contain whitespace
     my @line = split(/\s+/);  
-    push(@{$self->{'hmmhits'}}, {
+    push(@{$self->{'hits'}}, {
       'target' => $line[0],		# target ID
       'query'  => $line[3],		# query ID
       'evalue' => $line[12],	# e-value of the best domain
       'score'  => $line[13],	# score of the best domain
-			'from'   => $line[15],	# beginning of domain
-			'to'     => $line[16],	# end of domain
+      'start'  => $line[15],	# beginning of domain
+      'end'    => $line[16],	# end of domain
     });
   }
   # this is an array reference
-  return $self->{'hmmhits'};
+  return $self->{'hits'};
 }#}}}
 
 =head2 hmmname
@@ -242,7 +242,7 @@ sub hmmname {#{{{
     return $self->{'hmmname'};
   }
 	my @line = split(/\s+/, ${$self->result}[0]);
-  $self->{'hmmname'} = $line[2];
+  $self->{'hmmname'} = $line[3];
   return $self->{'hmmname'};
 }#}}}
 
@@ -267,7 +267,7 @@ sub protfile {#{{{
   return $self->{'protfile'};
 }#}}}
 
-=head2 hmmresultfile
+=head2 resultfile
 
 Sets or returns the HMMsearch result filename.
 
@@ -276,9 +276,9 @@ Sets or returns the HMMsearch result filename.
 sub resultfile {#{{{
   my $self = shift;
   if (scalar @_ == 1) {
-    $self->{'hmmresultfile'} = shift; 
+    $self->{'resultfile'} = shift; 
     return 1;
   }
-  return $self->{'hmmresultfile'};
+  return $self->{'resultfile'};
 }#}}}
 
