@@ -1205,8 +1205,8 @@ forage.pl [OPTIONS]
 
 Forage expects a certain table structure for the core-ortholog set. You may
 create it yourself by hand using the following SQL statement or whatever you
-fancy, or you may run the provided script coreload with the B<-c> switch once,
-which does the same thing.
+fancy, or you may run the provided script forage_manager with the B<-c> switch
+once, which does the same thing.
 
   CREATE TABLE core_orthologs (
 		id          INT(11) AUTO_INCREMENT PRIMARY KEY,

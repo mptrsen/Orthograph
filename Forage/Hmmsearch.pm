@@ -38,7 +38,7 @@ sub new {
   my $self = {
     'hmmfile'       => $hmmfile,
     'hmmresultfile' => '',
-    'hitcount'   => 0,
+    'hitcount'      => 0,
   };
 
   bless ($self, $class);
