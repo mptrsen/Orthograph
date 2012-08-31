@@ -1,23 +1,26 @@
 #!/usr/bin/perl
 #--------------------------------------------------
-# This file is part of Forage.
+# This file is part of Orthograph.
 # Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
 # 
-# Forage is free software: you can redistribute it and/or modify it under the
+# Orthograph is free software: you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later
 # version.
 # 
-# Forage is distributed in the hope that it will be useful, but WITHOUT ANY
+# Orthograph is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 # A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License along with
-# Forage. If not, see http://www.gnu.org/licenses/.
+# Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
 
+# Pragmas
 use strict;         # make me write good code
 use warnings;       # cry if something seems odd
+
+# Core modules
 use Data::Dumper;   # great for debugging
 use Config;         # allows checking for system configuration
 use Getopt::Long;   # parsing of command line arguments
@@ -28,18 +31,21 @@ use File::Temp;     # temporary files
 use IO::File;       # object-oriented access to files
 use IO::Dir;        # object-oriented access to dirs
 use Digest::SHA;    # SHA hashing: good idea or not?
-use Forage::Hmmsearch;  # object-oriented interface to hmmsearch
-use Forage::Blastp;     # object-oriented interface to blastp
-use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
-use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
 use DBI;	# MySQL database interface 
 use DBD::mysql;	# database driver for MySQL
 (my $libdir = $0) =~ s/forage\.pl$//; 
 use lib qw($libdir);
 # you might want to look into Log::Message.
 
+# Custom modules
+use Forage::Hmmsearch;  # object-oriented interface to hmmsearch
+use Forage::Blastp;     # object-oriented interface to blastp
+use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
+use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
+
+my $program_name = 'Orthograph';
 my $version = 'alpha1';
-print "Forage: Find Orthologs using Reciprocity Among Genes and ESTs\n";
+print "Orthograph: Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models\n";
 print "Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n";
 print "Version $version\n\n";
 
@@ -169,7 +175,6 @@ my $blastcount;
 my $blasthitcount_total;
 my $hmmdir              = '';
 my $hmmresultfileref;
-my $hmmfullout          = 0;
 my $hmmcount;
 my $hmmhitcount;
 my $hmmhitcount_total   = 0;
@@ -178,6 +183,7 @@ my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
 my $mysql_col_date      = 'date';
 my $mysql_col_evalue    = 'evalue';
+my $mysql_col_from      = 'from';
 my $mysql_col_hdr       = 'header';
 my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
@@ -191,6 +197,7 @@ my $mysql_col_seqpair   = 'sequence_pair';
 my $mysql_col_setid     = 'setid';
 my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
+my $mysql_col_to        = 'to';
 my $mysql_col_taxid     = 'taxid';
 my $mysql_col_taxon     = 'taxon';
 my $num_ests;
@@ -223,7 +230,6 @@ GetOptions( 'v'        => \$verbose,
 	'hmmsearch_score=s'  => \$hmmsearch_score_threshold,
 	'H=s'                => \$hmmfile,
 	'hmmsearchprog=s'    => \$hmmsearchprog,
-	'hmmfullout'         => \$hmmfullout,
 	'preparedb'          => \$preparedb,
 	'quiet'              => \$quiet,
 	'taxon=s'            => \$species_name,
@@ -238,7 +244,7 @@ if ($preparedb) {#{{{
   print "Setting MySQL database $mysql_dbname to a clean slate... ";
 	$| = 0;
   &preparedb;
-  print "OK\nMySQL database now ready to run Forage.\n";
+  print "OK\nMySQL database now ready to run $program_name.\n";
   exit;
 }#}}}
 
@@ -305,7 +311,7 @@ $protfile = &get_transcripts();
 #}}}
 
 #--------------------------------------------------
-# # Setup the Forage modules. These are all class methods.
+# # Setup the $program_name modules. These are all class methods.
 #-------------------------------------------------- 
 
 # verbose output; this is a class method#{{{
@@ -331,9 +337,6 @@ Forage::Blastp->outdir($blastoutdir);
 # the programs
 Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
 Forage::Blastp->set_blast($blastprog);
-
-# full hmmsearch output if desired
-$hmmfullout ? Forage::Hmmsearch->hmmfullout(1) : Forage::Hmmsearch->hmmfullout(0);
 
 # maximum number of BLAST hits to save
 Forage::Blastp->max_hits(3);
@@ -469,7 +472,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 # report, end the program
 printf "%d HMMs hit something.   %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
-printf "Forage analysis for %s complete.\nSearched %d EST sequences using %d HMMs and obtained %d total ortholog hits (%2.2f%%).\nNow go look in your output directory %s.\n", $species_name, $num_ests, $hmmcount, $orthocount, ($orthocount / 100 * $hmmcount), $outdir;
+printf "%s analysis for %s complete.\nSearched %d EST sequences using %d HMMs and obtained %d total ortholog hits (%2.2f%%).\nNow go look in your output directory %s.\n", $program_name, $species_name, $num_ests, $hmmcount, $orthocount, ($orthocount / (100 * $hmmcount)), $outdir;
 exit;
 
 
@@ -755,7 +758,9 @@ sub preparedb {#{{{
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     FLOAT NOT NULL,
-		$mysql_col_evalue    FLOAT NOT NULL)";
+		$mysql_col_evalue    FLOAT NOT NULL,
+		$mysql_col_from      INT(4) NOT NULL,
+		$mysql_col_to        INT(4) NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX ($mysql_col_id),
@@ -831,15 +836,15 @@ sub insert_results_into_table {#{{{
 	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
 	my $hitcount;
 	
-	# this is a BLASTP result, we need the addtnl column 'blastdb'
+	# this is a BLASTP result, we need the column 'blastdb'
 	if ($blastdb) {
 		my $query_insert_result = "INSERT IGNORE INTO $table (
-			$mysql_col_spec,
-			$mysql_col_blastdbpath,
-			$mysql_col_query,
-			$mysql_col_target,
-			$mysql_col_score,
-			$mysql_col_evalue) VALUES (
+			`$mysql_col_spec`,
+			`$mysql_col_blastdbpath`,
+			`$mysql_col_query`,
+			`$mysql_col_target`,
+			`$mysql_col_score`,
+			`$mysql_col_evalue`) VALUES (
 			?,
 			?,
 			?,
@@ -864,15 +869,19 @@ sub insert_results_into_table {#{{{
 		$dbh->disconnect;
 		return $hitcount;
 	}
-	# this is a HMMsearch result, only need 5 columns
+	# this is a HMMsearch result, need 7 columns
 	else {
 		# SQL query for pushing HMMsearch results to the db
 		my $query_insert_result = "INSERT IGNORE INTO $table (
-			$mysql_col_spec,
-			$mysql_col_query,
-			$mysql_col_target,
-			$mysql_col_score,
-			$mysql_col_evalue) VALUES (
+			`$mysql_col_spec`,
+			`$mysql_col_query`,
+			`$mysql_col_target`,
+			`$mysql_col_score`,
+			`$mysql_col_evalue`,
+			`$mysql_col_from`,
+			`$mysql_col_to`) VALUES (
+			?,
+			?,
 			?,
 			?,
 			?,
@@ -889,7 +898,9 @@ sub insert_results_into_table {#{{{
 				$hit->{'query'},  # query (HMM)
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
-				$hit->{'evalue'}    # evalue
+				$hit->{'evalue'}, # evalue
+				$hit->{'from'},		# start of hit domain
+				$hit->{'to'}			# end of hit domain
 			) or die "Fatal: Could not push to database!\n";
 			++$hitcount;
 		}
@@ -1191,11 +1202,11 @@ sub get_orthologs {#{{{
 # Documentation#{{{
 =head1 NAME
 
-Forage
+Orthograph
 
 =head1 DESCRIPTION
 
-F<F>ind F<O>rthologs using F<R>eciprocity F<A>mong F<G>enes and F<E>STs
+F<Ortho>logy prediction using a F<G>raph-based, F<R>eciprocal F<A>pproach with F<P>rofile F<H>idden F<M>odels
 
 =head1 SYNOPSIS
 
@@ -1203,7 +1214,7 @@ forage.pl [OPTIONS]
 
 =head1 DESCRIPTION
 
-Forage expects a certain table structure for the core-ortholog set. You may
+Orthograph expects a certain table structure for the core-ortholog set. You may
 create it yourself by hand using the following SQL statement or whatever you
 fancy, or you may run the provided script forage_manager with the B<-c> switch
 once, which does the same thing.
@@ -1259,7 +1270,7 @@ The directory containing the HMM files that are used to search the EST database.
 
 =head2 hmmfile
 
-The HMM file to use if you want to run Forage on a single HMM.
+The HMM file to use if you want to run Orthograph on a single HMM.
 
 =head2 hmmsearch_output_dir
 
@@ -1303,11 +1314,11 @@ MySQL: Table name for the core ortholog sequences. Ask your administrator if you
 
 =head2 output_directory
 
-Output directory to use by Forage. It will be created if it does not exist.
+Output directory to use by Orthograph. It will be created if it does not exist.
 
 =head2 quiet
 
-Quiet operation: Forage will retain most of the status messages.
+Quiet operation: Orthograph will retain most of the status messages.
 
 =head2 species_name
 
@@ -1319,7 +1330,7 @@ Score threshold for the HMM search. Must be a number.
 
 =head2 translate_program
 
-The tool to use for translation of the EST sequence file. The program must accept a fasta file name as input and provide its output on STDOUT, which is then being redirected into a file that Forage uses.
+The tool to use for translation of the EST sequence file. The program must accept a fasta file name as input and provide its output on STDOUT, which is then being redirected into a file that Orthograph uses.
 
 =head2 verbose
 

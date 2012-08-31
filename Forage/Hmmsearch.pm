@@ -1,18 +1,18 @@
 #--------------------------------------------------
-# This file is part of Forage.
+# This file is part of Orthograph.
 # Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
 # 
-# Forage is free software: you can redistribute it and/or modify it under the
+# Orthograph is free software: you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later
 # version.
 # 
-# Forage is distributed in the hope that it will be useful, but WITHOUT ANY
+# Orthograph is distributed in the hope that it will be useful, but WITHOUT ANY
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 # A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License along with
-# Forage. If not, see http://www.gnu.org/licenses/.
+# Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
 package Forage::Hmmsearch;
 use strict;
@@ -26,7 +26,6 @@ my $debug = 0;
 my $hmmoutdir = File::Spec->catdir('.');
 my $hmmsearchprog = 'hmmsearch';
 my @hmmsearchcmd;
-my $hmmfullout = 0;
 my $evalue_threshold = 10;
 my $score_threshold = 10;
 my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
@@ -99,23 +98,6 @@ sub hmmsearchprog {#{{{
   $hmmsearchprog = shift;
 }#}}}
 
-=head2 hmmfullout
-
-Sets the option for full hmmsearch output (parsing of which is not yet implemented). Can be TRUE or FALSE. Defaults to FALSE.
-
-=cut
-
-sub hmmfullout {#{{{
-  my $class = shift;
-  if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->hmmfullout(1|0)" }
-  $hmmfullout = shift;
-  if ($hmmfullout) { 
-    @hmmsearchcmd = qq($hmmsearchprog -E $evalue_threshold -T $score_threshold);
-  }
-  else { @hmmsearchcmd = qq($hmmsearchprog -E $evalue_threshold -T $score_threshold) }
-}#}}}
-
 =head2 evalue_threshold
 
 Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
@@ -158,18 +140,14 @@ sub search {#{{{
   my $protfile  = shift;
   my $hmmfile   = $self->hmmfile;
   # full output if desired, table only otherwise; reflects in outfile extension
-  my $hmmoutfile = $hmmfullout ? 
-    File::Spec->catfile($hmmoutdir, basename($hmmfile).'.out') : 
-    File::Spec->catfile($hmmoutdir, basename($hmmfile).'.tbl');
+  my $hmmoutfile = File::Spec->catfile($hmmoutdir, basename($hmmfile).'.tbl');
   # return right away if this search has been conducted before
   if (-e $hmmoutfile) {
     $self->hmmresultfile($hmmoutfile);
     return $self;
   }
   else {
-    my @hmmsearchline = $hmmfullout ?
-      qq($hmmsearchprog -o $hmmoutfile $threshold_option $hmmfile $protfile) :
-      qq($hmmsearchprog --tblout $hmmoutfile $threshold_option $hmmfile $protfile);
+    my @hmmsearchline = qq($hmmsearchprog --domtblout $hmmoutfile $threshold_option $hmmfile $protfile);
     print "\n@hmmsearchline\n\n"
       if $debug;
     # do the search
@@ -201,11 +179,8 @@ sub hitcount {#{{{
   if ($self->{'hitcount'}) { 
     return $self->{'hitcount'};
   }
-  unless ($hmmfullout) {
-    $self->{'hitcount'} = scalar(@{$self->result}); 
-    return $self->{'hitcount'};
-  }
-  # dunno what do with hmmfullout yet... TODO implement!
+	$self->{'hitcount'} = scalar(@{$self->result}); 
+	return $self->{'hitcount'};
 }#}}}
 
 =head2 hmmresult
@@ -244,10 +219,12 @@ sub hits_arrayref {#{{{
     # maximum of 19 columns, the last one may contain whitespace
     my @line = split(/\s+/);  
     push(@{$self->{'hmmhits'}}, {
-      'target' => $line[0],
-      'query'  => $line[2],
-      'evalue' => $line[4],
-      'score'  => $line[5],
+      'target' => $line[0],		# target ID
+      'query'  => $line[3],		# query ID
+      'evalue' => $line[12],	# e-value of the best domain
+      'score'  => $line[13],	# score of the best domain
+			'from'   => $line[15],	# beginning of domain
+			'to'     => $line[16],	# end of domain
     });
   }
   # this is an array reference
