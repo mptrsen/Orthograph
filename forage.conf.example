@@ -11,8 +11,8 @@
 #
 # MySQL database stuff
 #
-# Prefix for your Forage tables. Useful to set if you are running multiple
-# instances of Forage on the same database but don't want the data to be mixed
+# Prefix for your Orthograph tables. Useful to set if you are running multiple
+# instances of Orthograph on the same database but don't want the data to be mixed
 # up. Defaults to 'forage'.
 #mysql_table_prefix = forage
 
@@ -65,7 +65,7 @@ blast_program        = blastp
 
 # exonerate. Not used yet.
 #exonerate_program    = exonerate
- 
+
 #
 # Settings that affect the HMM and BLAST searches.
 #
@@ -77,7 +77,7 @@ blast_evalue_threshold     = 1e-05
 # mutually exclusive.
 #hmmsearch_score_threshold = 10
 #blast_score_threshold     = 10
- 
+
 # Maximum number of BLAST hits to scan for orthologs. No effect at the moment,
 # as only the best hit is considered.
 blast_max_hits             = 10
@@ -89,7 +89,7 @@ blast_max_hits             = 10
 # same analysis multiple times, but doesn't hurt otherwise. This is the
 # default, uncomment if you want to turn it off.
 #clear_data = 0
- 
+
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
 # you don't want to see this. Verbose and quiet are mutually exclusive.
 #verbose    = 1

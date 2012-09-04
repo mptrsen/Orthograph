@@ -183,7 +183,7 @@ my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
 my $mysql_col_date      = 'date';
 my $mysql_col_evalue    = 'evalue';
-my $mysql_col_from      = 'from';
+my $mysql_col_start     = 'start';
 my $mysql_col_hdr       = 'header';
 my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
@@ -197,7 +197,7 @@ my $mysql_col_seqpair   = 'sequence_pair';
 my $mysql_col_setid     = 'setid';
 my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
-my $mysql_col_to        = 'to';
+my $mysql_col_end       = 'end';
 my $mysql_col_taxid     = 'taxid';
 my $mysql_col_taxon     = 'taxon';
 my $num_ests;
@@ -335,7 +335,7 @@ Forage::Hmmsearch->outdir($hmmoutdir);
 Forage::Blastp->outdir($blastoutdir);
 
 # the programs
-Forage::Hmmsearch->hmmsearchprog($hmmsearchprog);
+Forage::Hmmsearch->searchprog($hmmsearchprog);
 Forage::Blastp->set_blast($blastprog);
 
 # maximum number of BLAST hits to save
@@ -351,8 +351,10 @@ printf("HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmf
 $hmmcount = 0;
 $hmmhitcount = 0;
 
+$DB::single=2; # debugging breakpoint
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
+	$DB::single=2; # debugging breakpoint
 	++$hmmcount;
 	$blastcount = 0;	# reset counter
 
@@ -377,7 +379,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
 		for (my $i = 0; $i < scalar @$hits; $i++) {
-			printf "     (%d) %s, e-value %2.1e\n", $i + 1, $hits->[$i]->{'target'}, $hits->[$i]->{'evalue'};
+			printf "     [%d] %s, e-value %2.1e\n", $i + 1, $hits->[$i]->{'target'}, $hits->[$i]->{'evalue'};
 		}
 	}
 
@@ -409,10 +411,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# setup a temporary file to hold the sequence to be blast'ed
 		my $tmpfile = File::Temp->new(
 			'UNLINK' => 1, 
-			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));	
+			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));
 		# write fasta header and sequence to the tempfile
-		print $tmpfile '>' . $hmmresults[$n]->[0] . "\n"; 
-		print $tmpfile $hmmresults[$n]->[1] . "\n";
+		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], $hmmresults[$n]->[1]);
 
 		#--------------------------------------------------
 		# # run blastp 
@@ -426,7 +427,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# do the blastp search; skip if no hits obtained
 		$blastobj->blastp($tmpfile, $blastoutfile);
 
-		printf("       %4d BLASTP hits detected for (%d) against %s, e-value below %2.1e\n",
+		printf("       %4d BLASTP hits detected for [%d] against %s, e-value below %2.1e\n",
 			$blastobj->hitcount,
 			$n + 1,
 			basename($blastdb),
@@ -759,8 +760,8 @@ sub preparedb {#{{{
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     FLOAT NOT NULL,
 		$mysql_col_evalue    FLOAT NOT NULL,
-		$mysql_col_from      INT(4) NOT NULL,
-		$mysql_col_to        INT(4) NOT NULL)";
+		$mysql_col_start      INT(4) NOT NULL,
+		$mysql_col_end        INT(4) NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX ($mysql_col_id),
@@ -878,8 +879,8 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_target`,
 			`$mysql_col_score`,
 			`$mysql_col_evalue`,
-			`$mysql_col_from`,
-			`$mysql_col_to`) VALUES (
+			`$mysql_col_start`,
+			`$mysql_col_end`) VALUES (
 			?,
 			?,
 			?,
@@ -899,8 +900,8 @@ sub insert_results_into_table {#{{{
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
 				$hit->{'evalue'}, # evalue
-				$hit->{'from'},		# start of hit domain
-				$hit->{'to'}			# end of hit domain
+				$hit->{'start'},	# start of hit domain
+				$hit->{'end'}			# end of hit domain
 			) or die "Fatal: Could not push to database!\n";
 			++$hitcount;
 		}
@@ -1167,29 +1168,30 @@ sub get_orthologs {#{{{
 	my $orthoid = shift;
 	my $estdigest = shift;
 	# what do we want from the database?
-	my $query = "SELECT DISTINCT $mysql_table_orthologs.$mysql_col_orthoid AS orthogroup,
-			$mysql_table_taxa.$mysql_col_name AS name,
-			$mysql_table_ests.$mysql_col_digest AS EST_digest,
-      $mysql_table_aaseqs.$mysql_col_hdr AS AA_header,
-      $mysql_table_aaseqs.$mysql_col_seq AS AA_seq,
-      $mysql_table_ests.$mysql_col_hdr as EST_hdr,
-      $mysql_table_ests.$mysql_col_seq AS EST_seq
+	my $query = "SELECT DISTINCT
+			$mysql_table_orthologs.$mysql_col_orthoid AS orthogroup,
+			$mysql_table_taxa.$mysql_col_name	        AS name,
+			$mysql_table_ests.$mysql_col_digest       AS EST_digest,
+      $mysql_table_aaseqs.$mysql_col_hdr        AS AA_header,
+      $mysql_table_aaseqs.$mysql_col_seq        AS AA_seq,
+      $mysql_table_ests.$mysql_col_hdr          AS EST_hdr,
+      $mysql_table_ests.$mysql_col_seq          AS EST_seq
     FROM $mysql_table_aaseqs
 		INNER JOIN $mysql_table_taxa
-		ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.id
+			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.id
     INNER JOIN $mysql_table_blast 
-    ON $mysql_table_aaseqs.id = $mysql_table_blast.$mysql_col_target 
+			ON $mysql_table_aaseqs.id = $mysql_table_blast.$mysql_col_target 
     INNER JOIN $mysql_table_hmmsearch 
-    ON $mysql_table_blast.$mysql_col_query = $mysql_table_hmmsearch.$mysql_col_target  
+			ON $mysql_table_blast.$mysql_col_query = $mysql_table_hmmsearch.$mysql_col_target  
     INNER JOIN $mysql_table_ests 
-    ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest 
+			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest 
     INNER JOIN $mysql_table_orthologs 
-    ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
+			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
 		INNER JOIN $mysql_table_seqpairs
-		ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.id 
+			ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.id 
 		WHERE $mysql_table_orthologs.$mysql_col_orthoid = '$orthoid'
-		AND $mysql_table_ests.$mysql_col_digest = '$estdigest'
-		AND $mysql_table_seqpairs.$mysql_col_aaseq = $mysql_table_aaseqs.id
+			AND $mysql_table_ests.$mysql_col_digest = '$estdigest'
+			AND $mysql_table_seqpairs.$mysql_col_aaseq = $mysql_table_aaseqs.id
 		ORDER BY $mysql_table_hmmsearch.$mysql_col_evalue, $mysql_table_blast.$mysql_col_evalue";
 	my $dbh = &mysql_dbh();
 	my $sql = $dbh->prepare($query);
@@ -1216,8 +1218,8 @@ forage.pl [OPTIONS]
 
 Orthograph expects a certain table structure for the core-ortholog set. You may
 create it yourself by hand using the following SQL statement or whatever you
-fancy, or you may run the provided script coreload with the B<-c> switch once,
-which does the same thing.
+fancy, or you may run the provided script forage_manager with the B<-c> switch
+once, which does the same thing.
 
   CREATE TABLE core_orthologs (
 		id          INT(11) AUTO_INCREMENT PRIMARY KEY,

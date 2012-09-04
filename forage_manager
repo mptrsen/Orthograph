@@ -364,7 +364,7 @@ if ($listogs) {
 		$maxlen_version = length($_) if (length($_) > $maxlen_version);
 		$maxlen_longname = length($$ogs{$_}) if (length($$ogs{$_}) > $maxlen_longname);
 	}
-	print "The following OGS are presently installed:\n";
+	print "The following taxa are presently installed with OGS and proteomes:\n";
 	printf("%-${maxlen_longname}s  %s\n", 'Taxon', 'OGS version');
 	printf("%s  %11s\n", '-' x 5, '-' x 11);
 	foreach (keys(%$ogs)) {
