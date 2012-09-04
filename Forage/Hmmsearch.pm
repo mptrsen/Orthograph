@@ -35,9 +35,9 @@ sub new {
   my ($class, $hmmfile) = @_;
 
   my $self = {
-    'hmmfile'       => $hmmfile,
+    'hmmfile'    => $hmmfile,
     'resultfile' => '',
-    'hitcount'      => 0,
+    'hitcount'   => 0,
   };
 
   bless ($self, $class);
