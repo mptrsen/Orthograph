@@ -40,6 +40,7 @@ use lib qw($libdir);
 # Custom modules
 use Forage::Hmmsearch;  # object-oriented interface to hmmsearch
 use Forage::Blastp;     # object-oriented interface to blastp
+use Forage::Orthocandidate;	# manage candidate orthologs via a OO interface
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
 
@@ -253,10 +254,10 @@ if ($preparedb) {#{{{
 #-------------------------------------------------- 
 &intro;
 
-# prepare the BLAST database
-$blastdb = &make_blastdb($orthoset);
 # prepare the HMMs
 $hmmdir = &make_hmms($orthoset);
+# prepare the BLAST database
+$blastdb = &make_blastdb($orthoset);
 
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
@@ -450,6 +451,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	}
 
 	# get the ortholog results from the db
+	my $orthocand = Forage::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
+	Forage::Orthocandidate->add($orthocand);
+	printf("Added candidate for %s (%d) to candidate database.\n", $orthocand->orthoid(), Forage::Orthocandidate->getindex());
+
 	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	next HMMFILE unless defined $$orthologs[0];	# skip empty results
 
@@ -472,8 +477,12 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 }#}}}
 
 # report, end the program
-printf "%d HMMs hit something.   %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
-printf "%s analysis for %s complete.\nSearched %d EST sequences using %d HMMs and obtained %d total ortholog hits (%2.2f%%).\nNow go look in your output directory %s.\n", $program_name, $species_name, $num_ests, $hmmcount, $orthocount, ($orthocount / (100 * $hmmcount)), $outdir;
+printf "\n%s analysis for %s complete.\n", $program_name, $species_name;
+printf "%d HMMs hit something. %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
+printf "Searched %d EST sequences using %d HMMs and obtained %d total ortholog hits (%2.2f%%).\n",
+	$num_ests, $hmmcount, $orthocount, ((100 * $orthocount) / $hmmcount);
+printf "Now go look in your output directory %s.\n", $outdir;
+
 exit;
 
 
