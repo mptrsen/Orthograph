@@ -320,3 +320,16 @@ sub makeblastdb {#{{{
 
 # return true
 1;
+
+=head1 AUTHOR
+
+Written by Malte Petersen <mptrsen@uni-bonn.de>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2012 by Malte Petersen. All rights reserved.
+
+This program is free software; you may redistribute and/or modify it under the
+same terms as Forage itself.
+
+=cut

@@ -15,13 +15,45 @@
 # Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
 
-package Forage::Orthocandidates;
+=head1 NAME 
+
+B<Forage::Orthocandidate>
+
+=head1 DESCRIPTION
+
+The B<Forage::Orthocandidate> module provides a simple, object-oriented
+interface to a orthology candidate database, however managed. It provides
+methods for adding and removing candidate objects, looping through the list
+backwards and forwards as well as dumping the entire list.
+
+Note that this is only a front-end. The backend may use whatever different
+means of storage. I plan to write a MySQL database interface so that the RAM
+shall not be cluttered during large analyses.
+
+=head1 SYNOPSIS
+
+  use Forage::Orthocandidate;
+
+  # create a new candidate object
+	my $candidate = Forage::Orthocandidate->new($ortholog_id, $digest);
+
+	# add the newly created object to the candidate list
+	Forage::Orthocandidate->add($candidate);
+
+	# output all objects in the list
+	while (my $o = Forage::Orthocandidate->next()) {
+		printf("%s\t%s\n", $o->orthoid(), $o->digest());
+	}
+
+=cut
+
+package Forage::Orthocandidate;
 use strict;
 use warnings;
 require IO::File;
 require DBI;
-require DBD::Mysql;
-require Carp;
+require DBD::mysql;
+use Carp;
 require Data::Dumper;
 my $verbose   = 0;
 my $debug     = 0;
@@ -31,54 +63,161 @@ my $index     = 0;
 my $num_items = 0;
 
 sub new {
-	my $class = shift;
-	my $self = {
-		'count' => $count,
-		'list'  => $list;
-	}
+	my $class   = shift;
+	unless (scalar(@_) == 2) { confess('Usage: Forage::Orthocandidate->new($orthoid, $digest)') }
+	my ($orthoid, $digest) = splice(@_, 0, 2);
+	my $self    = {
+		'orthoid' => $orthoid,
+		'digest'  => $digest,
+	};
 	bless($self, $class);
+	#Forage::Orthocandidates->add($self);	# TODO ??
 	return $self;
 }
 
-sub list {
+=head1 OBJECT METHODS
+
+=head3 orthoid()
+
+Returns the ortholog id of the current candidate object.
+
+=cut
+
+sub orthoid {
 	my $self = shift;
+	return $$self{'orthoid'};
+}
+
+=head3 digest()
+
+Returns the SHA1 digest of the current candidate object.
+
+=cut
+
+sub digest {
+	my $self = shift;
+	return $$self{'digest'};
+}
+
+=head1 CLASS METHODS
+
+=head3 getindex()
+
+Returns the index of the current candidate object.
+
+=cut
+
+sub getindex {
+	my $class = shift;
+	if (ref($class)) { confess("Class method used as object method") }
+	return $index;
+}
+
+=head3 list()
+
+Returns all existing objects in an array of references.
+
+=cut
+
+sub getlist {
+	my $class = shift;
+	if (ref($class)) { confess("Class method used as object method") }
 	return @{$list};
 }
 
+=head3 add(OBJECT)
+
+Adds OBJECT to the list of candidate objects.
+
+=cut
+
 sub add {
-	my $self = shift;
-	unless (scalar(@_) == 1) { confess("Usage: OBJECT->add(SCALAR)") }
+	my $class = shift;
+	if (ref($class)) { confess("Class method used as object method") }
+	unless (scalar(@_) == 1) { confess("Usage: Forage::Orthocandidate->add(SCALAR)") }
 	my $cand = shift;
-	unless (ref($cand) eq 'ARRAY') { confess("Argument to add() must be array reference. RTFM") }
+	unless (ref($cand)) { confess("Argument to Forage::Orthocandidate->add() must be hash reference. RTFM") }
+	$$cand{'index'} = $index++;
 	push(@{$list}, $cand);
 	$num_items++;
 	return 1;
 }
 
+=head3 cut()
+
+Removes the current candidate object from the list and returns it.
+
+=cut
+
+sub cut {
+	my $class = shift;
+	if (ref($class)) { confess("Class method used as object method") }
+	my $item = splice(@{$list}, $index, 1);
+	--$num_items;
+	if ($index > $num_items - 1) { $index = $num_items - 1 }
+	return $item;
+}
+
+=head3 next()
+
+Returns the next candidate object in the list.
+
+=cut
+
 sub next {
 	my $class = shift;
 	if (ref($class)) { confess("Class method used as object method") }
-	if (scalar(@_) > 0) { confess("next() is called without arguments") }
-	if (++$index > $num_items - 1) {
-		--$index;
+	if ($index > $num_items - 1) {
+		$index = $num_items - 1;
 		return 0;
 	}
 	else {
-		return $$list[$index];
+		return $$list[$index++];
 	}
 }
+
+=head3 prev()
+
+Returns the previous candidate object in the list.
+
+=cut
 
 sub prev {
 	my $class = shift;
 	if (ref($class)) { confess("Class method used as object method") }
-	if (scalar(@_) > 0 { confess("pref() is called without arguments") }
-	if (--$index < 0) {
-		++$index;
+	if ($index < 0) {
+		$index = 0;
 		return 0;
 	}
 	else {
-		return $$list[$index];
+		return $$list[$index--];
 	}
 }
 
-return 1;
+=head3 rewind()
+
+Sets the list index to 0 (the first element). Useful before looping through the list again.
+
+=cut
+
+sub rewind {
+	my $class = shift;
+	if (ref($class)) { confess("Class method used as object method") }
+	$index = 0;
+	return 1;
+}
+
+1;
+
+=head1 AUTHOR
+
+Written by Malte Petersen <mptrsen@uni-bonn.de>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2012 by Malte Petersen. All rights reserved.
+
+This program is free software; you may redistribute and/or modify it under the
+same terms as Forage itself.
+
+=cut

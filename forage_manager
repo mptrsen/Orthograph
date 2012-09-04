@@ -94,7 +94,8 @@ my $setname      = undef;
 my $prefix       = 'forage_';
 my $blastdir     = '';
 my $create       = 0;
-my $delete       = 0;
+my $delete_set   = '';
+my $delete_all   = 0;
 my $overwrite    = 0;
 my $reassignorthologs = 0;
 my $isnucleotide = 0;
@@ -206,23 +207,24 @@ nucleotide/peptide pairs based on the headers (so these must correspond).
 =cut#}}}
 
 GetOptions(
-	'D=s'      => \$dbname,
-	'prefix=s' => \$prefix,
-	'blastdir=s' => \$blastdir,
-	'c'        => \$create,
-	'delete'   => \$delete,
-	'h=s'      => \$dbserver,
-	'lo'       => \$listogs,
-	'ls'       => \$listsets,
-	'n=s'      => \$name,
-	'o'        => \$overwrite,
-	'p=s'      => \$pwd,
-	's=s'      => \$setname,
-	't=s'      => \$temptable,
-	'u=s'      => \$username,
-	'r'        => \$reassignorthologs,
-	'nuc'      => \$isnucleotide,
-	'pep'      => \$ispeptide,
+	'D=s'          => \$dbname,
+	'prefix=s'     => \$prefix,
+	'blastdir=s'   => \$blastdir,
+	'c'            => \$create,
+	'delete_set=s' => \$delete_set,
+	'delete_all'   => \$delete_all,
+	'h=s'          => \$dbserver,
+	'lo'           => \$listogs,
+	'ls'           => \$listsets,
+	'n=s'          => \$name,
+	'o'            => \$overwrite,
+	'p=s'          => \$pwd,
+	's=s'          => \$setname,
+	't=s'          => \$temptable,
+	'u=s'          => \$username,
+	'r'            => \$reassignorthologs,
+	'nuc'          => \$isnucleotide,
+	'pep'          => \$ispeptide,
 	);
 my $infile = shift @ARGV;
 
@@ -319,7 +321,7 @@ unless (defined $username and defined $pwd ) {
 #--------------------------------------------------
 # # if you really want to delete everything...
 #-------------------------------------------------- 
-if ($delete) {
+if ($delete_all) {
 	&drop_tables;
 	print "OK.\n";
 	exit;
@@ -327,10 +329,16 @@ if ($delete) {
 #--------------------------------------------------
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
-if ($create) {
+elsif ($create) {
 	&drop_tables;
 	&create_tables;
 	print "OK.\n";
+	exit;
+}
+
+elsif ($delete_set) { 
+	&delete_set($delete_set);
+	print "OK, set '$delete_set' deleted.\n";
 	exit;
 }
 
@@ -392,8 +400,6 @@ elsif ($ispeptide) {
 #--------------------------------------------------
 # # continue and gather information
 #-------------------------------------------------- 
-
-($infile) or die "Usage: $0 [-nt|-pep] FASTAFILE\n";
 
 # TODO stop here if db structure is not present!
 
@@ -839,6 +845,30 @@ sub list_ogs {#{{{
 	}
 	return(\%ogslist);
 }#}}}
+
+# Sub: delete_set
+# Delete a set from the database
+# Arguments: scalar string setname
+# Returns: true if successful, false otherwise
+sub delete_set {
+	my $setname = shift or confess('Usage: delete_set($SETNAME)');
+	my $data = &mysql_get("SELECT * FROM $t{'set_details'} WHERE name = '$setname'");
+	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
+	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
+	my $setid = $$data[0][0];
+	my @queries = (
+		"DELETE FROM $t{'set_details'} WHERE $t{'set_details'}.`id`  = '$setid'",
+		"DELETE FROM $t{'orthologs'}   WHERE $t{'orthologs'}.`setid` = '$setid'",
+		"DELETE FROM $t{'blastdbs'}    WHERE $t{'blastdbs'}.`setid`  = '$setid'",
+	);
+	my $dbh = &mysql_dbh();
+	foreach (@queries) {
+		print $_, "\n";
+		$dbh->do($_) or die();
+	}
+	$dbh->disconnect();
+	return 1;
+}
 
 #{{{ POD: Appendix
 =head1 APPENDIX 
