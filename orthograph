@@ -33,14 +33,14 @@ use IO::Dir;        # object-oriented access to dirs
 use Digest::SHA;    # SHA hashing: good idea or not?
 use DBI;	# MySQL database interface 
 use DBD::mysql;	# database driver for MySQL
-(my $libdir = $0) =~ s/forage\.pl$//; 
+(my $libdir = $0) =~ s/orthograph\.pl$//; 
 use lib qw($libdir);
 # you might want to look into Log::Message.
 
 # Custom modules
-use Forage::Hmmsearch;  # object-oriented interface to hmmsearch
-use Forage::Blastp;     # object-oriented interface to blastp
-use Forage::Orthocandidate;	# manage candidate orthologs via a OO interface
+use Orthograph::Hmmsearch;  # object-oriented interface to hmmsearch
+use Orthograph::Blastp;     # object-oriented interface to blastp
+use Orthograph::Orthocandidate;	# manage candidate orthologs via a OO interface
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
 
@@ -58,7 +58,7 @@ print "Version $version\n\n";
 my $use_threads = 0;#{{{
 if ($use_threads == 1 and $Config{'useithreads'}) {
   print "Using threads.\n";
-  use Forage::Threaded;
+  use Orthograph::Threaded;
 }
 elsif ($use_threads == 1 and !$Config{'useithreads'}) {
   die "Fatal: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n";
@@ -119,11 +119,11 @@ my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}   
 my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
 my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
-my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'forage';
+my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
 my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
 my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
 my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
-my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'forage';
+my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'orthograph';
 # make sure there is exactly one underscore at the end of the prefix
 $mysql_table_prefix =~ s/_*$/_/;
 
@@ -317,30 +317,30 @@ $protfile = &get_transcripts();
 
 # verbose output; this is a class method#{{{
 if ($verbose) {
-	Forage::Hmmsearch->verbose(1);
-	Forage::Blastp->verbose(1);
+	Orthograph::Hmmsearch->verbose(1);
+	Orthograph::Blastp->verbose(1);
 }
 
 if ($debug) {
-	Forage::Hmmsearch->debug(1);
-	Forage::Blastp->debug(1);
+	Orthograph::Hmmsearch->debug(1);
+	Orthograph::Blastp->debug(1);
 }
 
-Forage::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold) if $hmmsearch_evalue_threshold;
-Forage::Hmmsearch->score_threshold($hmmsearch_score_threshold) if $hmmsearch_score_threshold;
-Forage::Blastp->evalue_threshold($blast_evalue_threshold) if $blast_evalue_threshold;
-Forage::Blastp->score_threshold($blast_score_threshold) if $blast_score_threshold;
+Orthograph::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold) if $hmmsearch_evalue_threshold;
+Orthograph::Hmmsearch->score_threshold($hmmsearch_score_threshold) if $hmmsearch_score_threshold;
+Orthograph::Blastp->evalue_threshold($blast_evalue_threshold) if $blast_evalue_threshold;
+Orthograph::Blastp->score_threshold($blast_score_threshold) if $blast_score_threshold;
 
 # the output directories
-Forage::Hmmsearch->outdir($hmmoutdir);
-Forage::Blastp->outdir($blastoutdir);
+Orthograph::Hmmsearch->outdir($hmmoutdir);
+Orthograph::Blastp->outdir($blastoutdir);
 
 # the programs
-Forage::Hmmsearch->searchprog($hmmsearchprog);
-Forage::Blastp->set_blast($blastprog);
+Orthograph::Hmmsearch->searchprog($hmmsearchprog);
+Orthograph::Blastp->set_blast($blastprog);
 
 # maximum number of BLAST hits to save
-Forage::Blastp->max_hits(3);
+Orthograph::Blastp->max_hits(3);
 
 #}}}
 
@@ -360,7 +360,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$blastcount = 0;	# reset counter
 
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
-	my $hmmobj = Forage::Hmmsearch->new($hmmfile); 
+	my $hmmobj = Orthograph::Hmmsearch->new($hmmfile); 
 
 	# now do the hmmsearch on the protfile
 	$hmmobj->search($protfile);
@@ -420,7 +420,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# # run blastp 
 		#-------------------------------------------------- 
 		# shiny new blastp object
-		my $blastobj = Forage::Blastp->new($blastdb);
+		my $blastobj = Orthograph::Blastp->new($blastdb);
 
 		# generate a blast output file name from the HMM name and the hit number
 		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . sprintf("%04d", $n + 1) . '-' . basename($blastdb) .  '.blast');
@@ -451,9 +451,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	}
 
 	# get the ortholog results from the db
-	my $orthocand = Forage::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
-	Forage::Orthocandidate->add($orthocand);
-	printf("Added candidate for %s (%d) to candidate database.\n", $orthocand->orthoid(), Forage::Orthocandidate->getindex());
+	my $orthocand = Orthograph::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
+	Orthograph::Orthocandidate->add($orthocand);
+	printf("Added candidate for %s (%d) to candidate database.\n", $orthocand->orthoid(), Orthograph::Orthocandidate->getindex());
 
 	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	next HMMFILE unless defined $$orthologs[0];	# skip empty results
@@ -1221,13 +1221,13 @@ F<Ortho>logy prediction using a F<G>raph-based, F<R>eciprocal F<A>pproach with F
 
 =head1 SYNOPSIS
 
-forage.pl [OPTIONS]
+orthograph.pl [OPTIONS]
 
 =head1 DESCRIPTION
 
 Orthograph expects a certain table structure for the core-ortholog set. You may
 create it yourself by hand using the following SQL statement or whatever you
-fancy, or you may run the provided script forage_manager with the B<-c> switch
+fancy, or you may run the provided script orthograph with the B<-c> switch
 once, which does the same thing.
 
   CREATE TABLE core_orthologs (
@@ -1243,7 +1243,7 @@ once, which does the same thing.
 
 =head2 -c CONFIGFILE
 
-Use CONFIGFILE instead of forage.conf. Any options on the command line override
+Use CONFIGFILE instead of orthograph.conf. Any options on the command line override
 options set in the config file.
 
 =head1 CONFIG FILE
@@ -1255,9 +1255,9 @@ The config file has to be in ini-style:
 
 	# this is a comment
 	translateprog  = fastatranslate
-	hmmdir         = /home/malty/thesis/forage/hmms
+	hmmdir         = /home/malty/thesis/orthograph/hmms
 	estfile        = /home/malty/data/cleaned/Andrena_vaga.fa
-	mysql_dbname   = forage
+	mysql_dbname   = orthograph
 	mysql_dbserver = localhost
 	mysql_dbuser   = root
 	mysql_dbpwd    = root

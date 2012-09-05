@@ -17,11 +17,11 @@
 
 =head1 NAME 
 
-B<Forage::Blast>
+B<Orthograph::Blast>
 
 =head1 DESCRIPTION
 
-The B<Forage::Blast> module provides an object-oriented interface to the NCBI
+The B<Orthograph::Blast> module provides an object-oriented interface to the NCBI
 blastp sequence search algorithm. It does not conform to the Guidelines of the
 BioPerl package and as such does not return or handle Bioperl's Bio::Seq or
 Bio::Search objects. Instead, it is designed to be a lot simpler and more
@@ -30,20 +30,20 @@ package without the immense overhead of the entire Bioperl backend.
 
 =head1 SYNOPSIS
 
-  use Forage::Blast;
+  use Orthograph::Blast;
 
   # set up the blast program
-  Forage::Blast->blastprog('blastp');
+  Orthograph::Blast->blastprog('blastp');
 
   # create a new blast object
-  my $blastobj = Forage::Blast->new('/path/to/blast/database');
+  my $blastobj = Orthograph::Blast->new('/path/to/blast/database');
 
   # do the blastp search
   $blastobj->blastp($infile, $outfile);
 
 =cut
 
-package Forage::Blastp;
+package Orthograph::Blastp;
 use strict;
 use warnings;
 use File::Basename; # basename of files
@@ -84,7 +84,7 @@ Sets $verbose. Defaults to 0.
 sub verbose {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->verbose(1)\n" }
+	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->verbose(1)\n" }
 	$verbose = shift;
 }#}}}
 
@@ -97,7 +97,7 @@ Sets $debug. Defaults to 0.
 sub debug {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->debug(1)\n" }
+	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->debug(1)\n" }
 	$debug = shift;
 }#}}}
 
@@ -110,7 +110,7 @@ Sets the blast program. Defaults to B<blastp>.
 sub set_blast {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->set_blast(COMMAND)\n" }
+	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->set_blast(COMMAND)\n" }
 	$blastprog = shift;
 }#}}}
 
@@ -123,7 +123,7 @@ Sets the makeblastdb program. Defaults to B<makeblastdb>.
 sub set_makeblastdb {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Forage::Blast->set_makeblastdb(COMMAND)\n" }
+	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->set_makeblastdb(COMMAND)\n" }
 	$makeblastdbprog = shift;
 }#}}}
 
@@ -137,7 +137,7 @@ Sets the blast output directory. Defaults to 'F<.>'.
 sub outdir {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blast->outdir(FILENAME)\n" }
+	unless (@_ == 1) { confess "Usage: Orthograph::Blast->outdir(FILENAME)\n" }
 	my $blastoutdir = shift;
 }#}}}
 
@@ -150,7 +150,7 @@ Sets the e-value threshold to use for the blastp search. Defaults to 10.
 sub evalue_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blast->evalue_threshold(N)\n" }
+	unless (@_ == 1) { confess "Usage: Orthograph::Blast->evalue_threshold(N)\n" }
 	$evalue_threshold = shift;
 }#}}}
 
@@ -163,7 +163,7 @@ Sets the score threshold to use for the blastp search. Defaults to 10.
 sub score_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blast->score_threshold(N)\n" }
+	unless (@_ == 1) { confess "Usage: Orthograph::Blast->score_threshold(N)\n" }
 	$score_threshold = shift;
 }#}}}
 
@@ -176,7 +176,7 @@ Sets the maximum number of hits to be returned. Defaults to 100.
 sub max_hits {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blastp->max_hits(N)\n" }
+	unless (@_ == 1) { confess "Usage: Orthograph::Blastp->max_hits(N)\n" }
 	$max_hits = shift;
 }#}}}
 
@@ -205,7 +205,7 @@ score_threshold(), respectively.
 
 sub blastp {#{{{
 	my $self = shift;
-	unless (scalar @_ == 2) { confess "Usage: Forage::Blast->blastp(FILE, OUTFILE)\n" }
+	unless (scalar @_ == 2) { confess "Usage: Orthograph::Blast->blastp(FILE, OUTFILE)\n" }
 	my $queryfile = shift;
 	my $outfile = shift;
 	my $db = $self->db;
@@ -330,6 +330,6 @@ Written by Malte Petersen <mptrsen@uni-bonn.de>.
 Copyright (c) 2012 by Malte Petersen. All rights reserved.
 
 This program is free software; you may redistribute and/or modify it under the
-same terms as Forage itself.
+same terms as Orthograph itself.
 
 =cut
