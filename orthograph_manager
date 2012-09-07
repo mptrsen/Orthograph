@@ -19,11 +19,11 @@
 # Documentation before the code#{{{
 =head1 NAME 
 
-B<forage_manager> - prepare a MySQL database for running Orthograph
+B<orthograph_manager> - prepare a MySQL database for running Orthograph
 
 =head1 SYNOPSIS
 
-B<forage_manager> -u USERNAME -p PASSWORD FASTAFILE
+B<orthograph_manager> -u USERNAME -p PASSWORD FASTAFILE
 
 =head1 DESCRIPTION
 
@@ -55,7 +55,7 @@ Where the following applies:
 None of these need to be unique, but the combination of all three must be.
 
 The fields must be separated by whitespace and in this particular order. The
-forage_manager script does not perform any recognition on the fields whatsoever. If
+orthograph_manager script does not perform any recognition on the fields whatsoever. If
 you download your orthologous sequences from OrthoDB, no problems should arise.
 
 Nucleotide fasta files need a similar, but simpler format:
@@ -67,9 +67,9 @@ the sequence ID. Some of these may or may not correspond to IDs that occur in
 ortholog set headers. This is later used for identification of corresponding
 peptide-nucleotide pairs. Text after the Identifier will be ignored.
 
-B<forage> expects a certain table structure. You may create it by hand using
+B<orthograph> expects a certain table structure. You may create it by hand using
 the SQL statement found at the end of this manual by or whatever workflow you
-fancy, or you may run B<forage_manager -c> once, which does the same thing.
+fancy, or you may run B<orthograph_manager -c> once, which does the same thing.
 =cut#}}}
 
 use strict;
@@ -85,13 +85,13 @@ use Seqload::Fasta;
 use Data::Dumper;
 
 
-my $dbname       = 'forage';
+my $dbname       = 'orthograph';
 my $dbserver     = '127.0.0.1';
 my $username     = undef;
 my $name         = undef;
 my $pwd          = undef;
 my $setname      = undef;
-my $prefix       = 'forage_';
+my $prefix       = 'orthograph_';
 my $blastdir     = '';
 my $create       = 0;
 my $delete_set   = '';
@@ -144,7 +144,7 @@ Orthograph unless you know what you are doing.
 
 =head2 -D DATABASE
 
-Database name to use. Defaults to 'forage'.
+Database name to use. Defaults to 'orthograph'.
 
 =head2 -h HOST
 
@@ -167,9 +167,9 @@ If all is setup like described, the prefix would be specified as: B<-b
 
 =head2 -prefix PREFIX
 
-Table name prefix. Useful if you want to employ multiple forage instances on
+Table name prefix. Useful if you want to employ multiple orthograph instances on
 the same database. Tables will be named 'prefix_tablename'. The underscore is
-added automatically. Defaults to 'forage'.
+added automatically. Defaults to 'orthograph'.
 
 =head2 -o
 
@@ -877,7 +877,7 @@ sub delete_set {
 
 -- MySQL dump 10.13  Distrib 5.1.61, for redhat-linux-gnu (x86_64)
 --
--- Host: localhost    Database: forage
+-- Host: localhost    Database: orthograph
 -- ------------------------------------------------------
 -- Server version	5.1.61-log
 
@@ -893,21 +893,21 @@ sub delete_set {
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Current Database: `forage`
+-- Current Database: `orthograph`
 --
 
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `forage` /*!40100 DEFAULT CHARACTER SET latin1 */;
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `orthograph` /*!40100 DEFAULT CHARACTER SET latin1 */;
 
-USE `forage`;
+USE `orthograph`;
 
 --
--- Table structure for table `forage_aaseqs`
+-- Table structure for table `orthograph_aaseqs`
 --
 
-DROP TABLE IF EXISTS `forage_aaseqs`;
+DROP TABLE IF EXISTS `orthograph_aaseqs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_aaseqs` (
+CREATE TABLE `orthograph_aaseqs` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `taxid` int(10) NOT NULL,
   `header` varchar(512) NOT NULL,
@@ -921,13 +921,13 @@ CREATE TABLE `forage_aaseqs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_blast`
+-- Table structure for table `orthograph_blast`
 --
 
-DROP TABLE IF EXISTS `forage_blast`;
+DROP TABLE IF EXISTS `orthograph_blast`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_blast` (
+CREATE TABLE `orthograph_blast` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `spec` varchar(255) NOT NULL,
   `blastdb_path` varchar(255) NOT NULL,
@@ -944,13 +944,13 @@ CREATE TABLE `forage_blast` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_blastdbs`
+-- Table structure for table `orthograph_blastdbs`
 --
 
-DROP TABLE IF EXISTS `forage_blastdbs`;
+DROP TABLE IF EXISTS `orthograph_blastdbs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_blastdbs` (
+CREATE TABLE `orthograph_blastdbs` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `setid` int(10) unsigned DEFAULT NULL,
   `blastdb_path` varchar(255) DEFAULT NULL,
@@ -960,13 +960,13 @@ CREATE TABLE `forage_blastdbs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_blastp`
+-- Table structure for table `orthograph_blastp`
 --
 
-DROP TABLE IF EXISTS `forage_blastp`;
+DROP TABLE IF EXISTS `orthograph_blastp`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_blastp` (
+CREATE TABLE `orthograph_blastp` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `spec` varchar(255) NOT NULL,
   `blastdb_path` varchar(255) NOT NULL,
@@ -983,13 +983,13 @@ CREATE TABLE `forage_blastp` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_ests`
+-- Table structure for table `orthograph_ests`
 --
 
-DROP TABLE IF EXISTS `forage_ests`;
+DROP TABLE IF EXISTS `orthograph_ests`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_ests` (
+CREATE TABLE `orthograph_ests` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `digest` char(32) NOT NULL,
   `spec` varchar(255) NOT NULL,
@@ -1004,13 +1004,13 @@ CREATE TABLE `forage_ests` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_hmmsearch`
+-- Table structure for table `orthograph_hmmsearch`
 --
 
-DROP TABLE IF EXISTS `forage_hmmsearch`;
+DROP TABLE IF EXISTS `orthograph_hmmsearch`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_hmmsearch` (
+CREATE TABLE `orthograph_hmmsearch` (
   `id`     int(11) NOT NULL AUTO_INCREMENT,
   `spec`   varchar(255) NOT NULL,
   `query`  varchar(255) NOT NULL,
@@ -1028,13 +1028,13 @@ CREATE TABLE `forage_hmmsearch` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_ntseqs`
+-- Table structure for table `orthograph_ntseqs`
 --
 
-DROP TABLE IF EXISTS `forage_ntseqs`;
+DROP TABLE IF EXISTS `orthograph_ntseqs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_ntseqs` (
+CREATE TABLE `orthograph_ntseqs` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `taxid` int(10) NOT NULL,
   `header` varchar(512) NOT NULL,
@@ -1048,13 +1048,13 @@ CREATE TABLE `forage_ntseqs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_ogs`
+-- Table structure for table `orthograph_ogs`
 --
 
-DROP TABLE IF EXISTS `forage_ogs`;
+DROP TABLE IF EXISTS `orthograph_ogs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_ogs` (
+CREATE TABLE `orthograph_ogs` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` char(3) DEFAULT NULL,
   `taxid` int(10) unsigned DEFAULT NULL,
@@ -1065,13 +1065,13 @@ CREATE TABLE `forage_ogs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_orthologs`
+-- Table structure for table `orthograph_orthologs`
 --
 
-DROP TABLE IF EXISTS `forage_orthologs`;
+DROP TABLE IF EXISTS `orthograph_orthologs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_orthologs` (
+CREATE TABLE `orthograph_orthologs` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `setid` int(10) unsigned NOT NULL,
   `ortholog_gene_id` varchar(10) NOT NULL,
@@ -1082,13 +1082,13 @@ CREATE TABLE `forage_orthologs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_seqtypes`
+-- Table structure for table `orthograph_seqtypes`
 --
 
-DROP TABLE IF EXISTS `forage_seqtypes`;
+DROP TABLE IF EXISTS `orthograph_seqtypes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_seqtypes` (
+CREATE TABLE `orthograph_seqtypes` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type` char(3) DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1097,13 +1097,13 @@ CREATE TABLE `forage_seqtypes` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_sequence_pairs`
+-- Table structure for table `orthograph_sequence_pairs`
 --
 
-DROP TABLE IF EXISTS `forage_sequence_pairs`;
+DROP TABLE IF EXISTS `orthograph_sequence_pairs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_sequence_pairs` (
+CREATE TABLE `orthograph_sequence_pairs` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `taxid` int(10) unsigned NOT NULL,
   `ogs_id` int(10) unsigned NOT NULL,
@@ -1119,13 +1119,13 @@ CREATE TABLE `forage_sequence_pairs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_set_details`
+-- Table structure for table `orthograph_set_details`
 --
 
-DROP TABLE IF EXISTS `forage_set_details`;
+DROP TABLE IF EXISTS `orthograph_set_details`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_set_details` (
+CREATE TABLE `orthograph_set_details` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(255) DEFAULT NULL,
   `description` blob,
@@ -1135,13 +1135,13 @@ CREATE TABLE `forage_set_details` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_taxa`
+-- Table structure for table `orthograph_taxa`
 --
 
-DROP TABLE IF EXISTS `forage_taxa`;
+DROP TABLE IF EXISTS `orthograph_taxa`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_taxa` (
+CREATE TABLE `orthograph_taxa` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(20) DEFAULT NULL,
   `longname` varchar(255) DEFAULT NULL,
@@ -1151,13 +1151,13 @@ CREATE TABLE `forage_taxa` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `forage_users`
+-- Table structure for table `orthograph_users`
 --
 
-DROP TABLE IF EXISTS `forage_users`;
+DROP TABLE IF EXISTS `orthograph_users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `forage_users` (
+CREATE TABLE `orthograph_users` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),

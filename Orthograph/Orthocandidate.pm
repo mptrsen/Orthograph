@@ -50,11 +50,11 @@ shall not be cluttered during large analyses.
 package Orthograph::Orthocandidate;
 use strict;
 use warnings;
-require IO::File;
-require DBI;
-require DBD::mysql;
+use IO::File;
+use DBI;
+use DBD::mysql;
 use Carp;
-require Data::Dumper;
+use Data::Dumper;
 my $verbose   = 0;
 my $debug     = 0;
 my $count     = 0;
@@ -119,7 +119,7 @@ Returns all existing objects in an array of references.
 
 =cut
 
-sub getlist {
+sub all {
 	my $class = shift;
 	if (ref($class)) { confess("Class method used as object method") }
 	return @{$list};
