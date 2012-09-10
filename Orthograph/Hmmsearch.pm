@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
-package Forage::Hmmsearch;
+package Orthograph::Hmmsearch;
 use strict;
 use warnings;
 use File::Basename; # basename of files
@@ -55,7 +55,7 @@ Sets verbose output on (TRUE) or off (FALSE). Default is FALSE.
 sub verbose {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->verbose(1|0)" }
+  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->verbose(1|0)" }
   $verbose = shift;
 }#}}}
 
@@ -68,7 +68,7 @@ Sets debug output on (TRUE) or off (FALSE). Default is FALSE.
 sub debug {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->debug(1|0)" }
+  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->debug(1|0)" }
   $debug = shift;
 }#}}}
 
@@ -81,7 +81,7 @@ Sets output directory for the hmmsearch output files. Expects a reference to sca
 sub outdir {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->outdir(OUTDIR)" }
+  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->outdir(OUTDIR)" }
   $outdir = shift;
 }#}}}
 
@@ -94,7 +94,7 @@ Sets the HMMsearch program. Expects a string. Defaults to 'F<hmmsearch>'.
 sub searchprog {#{{{
   my $class = shift;
   if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Forage::Unthreaded->searchcmd(COMMAND)" }
+  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->searchcmd(COMMAND)" }
   $searchprog = shift;
 }#}}}
 
@@ -107,7 +107,7 @@ Sets or returns the e-value threshold to use for the blastp search. Defaults to 
 sub evalue_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blast->evalue_threshold(N)\n" }
+	unless (@_ == 1) { confess "Usage: Orthograph::Blast->evalue_threshold(N)\n" }
 	$evalue_threshold = shift;
 }#}}}
 
@@ -120,7 +120,7 @@ Sets or returns the e-value threshold to use for the blastp search. Defaults to 
 sub score_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Forage::Blast->score_threshold(N)\n" }
+	unless (@_ == 1) { confess "Usage: Orthograph::Blast->score_threshold(N)\n" }
 	$score_threshold = shift;
 }#}}}
 
@@ -293,6 +293,6 @@ Written by Malte Petersen <mptrsen@uni-bonn.de>.
 Copyright (c) 2012 by Malte Petersen. All rights reserved.
 
 This program is free software; you may redistribute and/or modify it under the
-same terms as Forage itself.
+same terms as Orthograph itself.
 
 =cut
