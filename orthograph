@@ -438,7 +438,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 		# skip to next if BLAST finds nothing
 		unless ($blastobj->hitcount()) { next HMMRESULT }
-		
 
 		# insert the blast results into the db. 3-argument form.
 		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
@@ -1209,6 +1208,10 @@ sub get_orthologs {#{{{
 	$dbh->disconnect();
 	return $result;
 }#}}}
+
+sub insert_orthocandidate {
+	my $blah;
+}
 
 # Documentation#{{{
 =head1 NAME
