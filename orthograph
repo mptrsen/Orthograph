@@ -727,6 +727,7 @@ sub backup_old_output_files {#{{{
 	if (-d $outfile) {	# it's a directory
 		my $dirh = IO::Dir->new($outfile);
 		while (my $file = $dirh->read()) {
+			next if $file =~ /^\./;
 			&backup_old_output_files($file);
 		}
 		$dirh->close();
