@@ -542,7 +542,7 @@ sub mysql_do {#{{{
 sub parse_config {#{{{
 	my $file = shift;
 	my $conf = { };
-	open(my $fh, '<', $file) or die "Fatal: Could not open config file '$file'\: $!\n";
+	my $fh = IO::File->new($file) or die "Fatal: Coult not open config file '$file'\: $!\n";
 
 	while (my $line = <$fh>) {
 		next if $line =~ /^\s*$/; # skip empty lines
