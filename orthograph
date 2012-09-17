@@ -449,11 +449,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			if $verbose;
 	}
 
-	# get the ortholog results from the db
-	my $orthocand = Orthograph::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
-	Orthograph::Orthocandidate->add($orthocand);
-	printf("Added candidate for %s (%d) to candidate database.\n", $orthocand->orthoid(), Orthograph::Orthocandidate->getindex());
-
 	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	next HMMFILE unless defined $$orthologs[0];	# skip empty results
 
@@ -472,7 +467,12 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$outfh->close();
 	# yay
 	++$orthocount;
-	printf "!! ^-------Orthology detected for %s!\n", $$orthologs[0][0];
+	printf "!! ^-------Possible orthology detected for %s! Added candidate to database.\n", $$orthologs[0][0];
+	# get the ortholog results from the db
+	my $orthocand = Orthograph::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
+	Orthograph::Orthocandidate->add($orthocand);
+	# printf("Added candidate for %s (%d) to candidate database.\n", $orthocand->orthoid(), Orthograph::Orthocandidate->getindex());
+
 }#}}}
 
 # report, end the program
