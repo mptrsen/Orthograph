@@ -22,27 +22,28 @@ use warnings;       # cry if something seems odd
 
 # Core modules
 use Data::Dumper;   # great for debugging
-use Config;         # allows checking for system configuration
-use Getopt::Long;   # parsing of command line arguments
+use Config;         # allows checking for system configuration in $Config
+use Getopt::Long;   # parse command line arguments
 use Carp;           # alternative warn and die
 use File::Path qw(make_path); # mkdir with parent dirs; this also uses File::Spec
-use File::Basename; # parsing path names
+use File::Basename; # parse path names
 use File::Temp;     # temporary files
 use IO::File;       # object-oriented access to files
 use IO::Dir;        # object-oriented access to dirs
 use Digest::SHA;    # SHA hashing: good idea or not?
-use DBI;	# MySQL database interface 
-use DBD::mysql;	# database driver for MySQL
-(my $libdir = $0) =~ s/orthograph\.pl$//; 
-use lib qw($libdir);
+use DBI;	          # MySQL database interface 
+use DBD::mysql;	    # database driver for MySQL
 # you might want to look into Log::Message.
 
 # Custom modules
-use Orthograph::Hmmsearch;  # object-oriented interface to hmmsearch
-use Orthograph::Blastp;     # object-oriented interface to blastp
-use Orthograph::Orthocandidate;	# manage candidate orthologs via a OO interface
+my @path         = fileparse($0);
+my $program_file = $path[0];
+my $libdir       = $path[1];
+use lib qw($libdir);
+use Orthograph::Hmmsearch;        # object-oriented interface to hmmsearch
+use Orthograph::Blastp;           # object-oriented interface to blastp
+use Orthograph::Orthocandidate;	  # manage candidate orthologs via a OO interface
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
-use Seqload::Mysql; # object-oriented access to fasta-style MySQL databases
 
 my $program_name = 'Orthograph';
 my $version = 'alpha1';
@@ -57,11 +58,12 @@ print "Version $version\n\n";
 #-------------------------------------------------- 
 my $use_threads = 0;#{{{
 if ($use_threads == 1 and $Config{'useithreads'}) {
-  print "Using threads.\n";
+  print "Using threads.\n\n";
   use Orthograph::Threaded;
 }
 elsif ($use_threads == 1 and !$Config{'useithreads'}) {
-  die "Fatal: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n";
+  warn "Warning: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n\n";
+	$use_threads = 0;
 }
 else {
 	print "Not using threads.\n\n";
@@ -69,9 +71,9 @@ else {
 }#}}}
 
 #--------------------------------------------------
-# # Variable initialisation
+# # Config initialisation
 #-------------------------------------------------- 
-my $config;                       # will hold the configuration from config file
+my $config;    # will hold the configuration from config file
 
 #--------------------------------------------------
 # # Parse config file
@@ -216,7 +218,7 @@ my @seqobjs;
 #}}}
 
 #--------------------------------------------------
-# # Get command line options. These may override variables set via the config file.
+# # Get command line options. These may override variables set in the config file.
 #-------------------------------------------------- 
 #{{{
 GetOptions( 'v'        => \$verbose,
@@ -264,11 +266,11 @@ $blastdb = &make_blastdb($orthoset);
 #-------------------------------------------------- 
 # @reftaxa = split(/\s*,\s*/, $reftaxa);	# no more reference taxa for now
 @hmmfiles = &hmmlist($hmmdir);
-$num_hmms = scalar @hmmfiles;
+$num_hmms = scalar(@hmmfiles);
 
 
 unless ($quiet) {#{{{
-  print "Using HMM dir $hmmdir with ", scalar @hmmfiles, " HMM files.\n" 
+  print "Using HMM dir $hmmdir with ", scalar(@hmmfiles), " HMM files.\n" 
     if $hmmdir;
   print "Using HMM file $hmmfile.\n" 
     if $hmmfile;
@@ -279,11 +281,11 @@ unless ($quiet) {#{{{
 }#}}}
 
 #--------------------------------------------------
-# # translate the ESTs to protein, feed that shit to the database
+# # translate the ESTs to protein, feed that stuff to the database
 #-------------------------------------------------- 
 $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
-# Clear database of data from the same species
+# clear database of data from the same species
 if ($clear_data) {
 	print "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	&clear_db;
@@ -291,15 +293,15 @@ if ($clear_data) {
 # store est data into the database:
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
-# third arg must be array ref
+# LOAD DATA INFILE; third arg must be ref to array of column names
 $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 
-printf "%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
+printf("%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
 	$num_ests,
 	$mysql_dbname,
-	$mysql_dbserver unless $quiet;
+	$mysql_dbserver) unless $quiet;
 
-# number of existing transcript sequences
+# get number of transcript sequences
 $num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
 $num_ests = $$num_ests[0][0];
 printf "%d sequences in database '%s' on %s.\n", 
@@ -315,21 +317,27 @@ $protfile = &get_transcripts();
 # # Setup the $program_name modules. These are all class methods.
 #-------------------------------------------------- 
 
-# verbose output; this is a class method#{{{
+# verbose output #{{{
 if ($verbose) {
 	Orthograph::Hmmsearch->verbose(1);
 	Orthograph::Blastp->verbose(1);
 }
 
+# debug output
 if ($debug) {
 	Orthograph::Hmmsearch->debug(1);
 	Orthograph::Blastp->debug(1);
 }
 
-Orthograph::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold) if $hmmsearch_evalue_threshold;
-Orthograph::Hmmsearch->score_threshold($hmmsearch_score_threshold) if $hmmsearch_score_threshold;
-Orthograph::Blastp->evalue_threshold($blast_evalue_threshold) if $blast_evalue_threshold;
-Orthograph::Blastp->score_threshold($blast_score_threshold) if $blast_score_threshold;
+# score and e-value thresholds
+Orthograph::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold)
+	if $hmmsearch_evalue_threshold;
+Orthograph::Hmmsearch->score_threshold($hmmsearch_score_threshold)
+	if $hmmsearch_score_threshold;
+Orthograph::Blastp->evalue_threshold($blast_evalue_threshold)
+	if $blast_evalue_threshold;
+Orthograph::Blastp->score_threshold($blast_score_threshold)
+	if $blast_score_threshold;
 
 # the output directories
 Orthograph::Hmmsearch->outdir($hmmoutdir);
@@ -337,7 +345,7 @@ Orthograph::Blastp->outdir($blastoutdir);
 
 # the programs
 Orthograph::Hmmsearch->searchprog($hmmsearchprog);
-Orthograph::Blastp->set_blast($blastprog);
+Orthograph::Blastp->searchprog($blastprog);
 
 # maximum number of BLAST hits to save
 Orthograph::Blastp->max_hits(3);
@@ -367,8 +375,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	# count the hmmsearch hits
 	printf("%4d hits for %s (%d%% complete)\n", 
-		$hmmobj->hitcount,
-		basename($hmmobj->hmmfile),
+		$hmmobj->hitcount(),
+		basename($hmmobj->hmmfile()),
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
 	if ($hmmobj->hitcount() == 0) { # do not care further with HMM files that did not return any result
 		next HMMFILE;
@@ -376,7 +384,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	# add hitcount to total number of hmm hits,
 	# print list of hits if verbose
-	$hmmhitcount_total += $hmmobj->hitcount;
+	$hmmhitcount_total += $hmmobj->hitcount();
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
 		for (my $i = 0; $i < scalar @$hits; $i++) {
@@ -387,29 +395,22 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
-	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref);
+	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref());
 	print "     ... pushed to database.\n" if $verbose;
 	++$hmmhitcount;
 	
-	# setup SQL query; use the first array item since they all share the query (HMM) ID 
-	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_digest, $mysql_table_ests.$mysql_col_seq
-		FROM $mysql_table_ests 
-		INNER JOIN $mysql_table_hmmsearch
-		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
-		WHERE $mysql_table_hmmsearch.$mysql_col_query = '" . $hmmobj->hits_arrayref->[0]{'query'} . "'";
-
 	#--------------------------------------------------
 	# # the reciprocal search
 	#-------------------------------------------------- 
 
-	# get the sequences from the database (as array->array reference)
-	my @hmmresults = @{&mysql_get($query_get_sequences)};
+	# get hmmsearch results from database; use the first array item since they all share the query (HMM) ID 
+	my @hmmresults = @{&get_hmmresults($hmmobj->hits_arrayref->[0]{'query'})};
 
 	HMMRESULT:
 	for (my $n = 0; $n < scalar(@hmmresults); ++$n) { #{{{
  		++$count;
 
-		# setup a temporary file to hold the sequence to be blast'ed
+		# setup a temporary file to hold the sequence to be blasted
 		my $tmpfile = File::Temp->new(
 			'UNLINK' => 1, 
 			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));
@@ -541,7 +542,7 @@ sub mysql_do {#{{{
 sub parse_config {#{{{
 	my $file = shift;
 	my $conf = { };
-	open(my $fh, '<', $file) or die "Fatal: Could not open config file $file\: $!\n";
+	open(my $fh, '<', $file) or die "Fatal: Could not open config file '$file'\: $!\n";
 
 	while (my $line = <$fh>) {
 		next if $line =~ /^\s*$/; # skip empty lines
@@ -558,7 +559,7 @@ sub parse_config {#{{{
 		  s/^\s+//; # remove all leading whitespace
 		}
 
-		die "Fatal: Configuration option '$key' defined twice in line $. of config file $file\n"
+		die "Fatal: Configuration option '$key' defined twice in line $. of config file '$file'\n"
 		  if defined $conf->{$key};
 		$conf->{$key} = $val;
 	}
@@ -629,6 +630,9 @@ sub intro {#{{{
 			&cleardir($hmmoutdir);
 			print "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
 		}
+		else {
+			&backup_old_output_files($hmmoutdir);
+		}
 	}
 	else {
 		print "HMMsearch output dir $hmmoutdir does not exist, creating...\n" unless $quiet;
@@ -643,6 +647,9 @@ sub intro {#{{{
 			print "Purged BLAST output dir $blastoutdir of old result files.\n"
 				unless $quiet;
 		}
+		else {
+			&backup_old_output_files($blastoutdir);
+		}
   }
   else {
     print "BLASTP output dir $blastoutdir does not exist, creating...\n" unless $quiet;
@@ -656,6 +663,9 @@ sub intro {#{{{
 			print "Purged AA output dir $aaoutdir of old result files.\n"
 				unless $quiet;
 		}
+		else {
+			&backup_old_output_files($aaoutdir);
+		}
 	}
 	else {
 		print "AA output dir $aaoutdir does not exist, creating...\n"
@@ -663,26 +673,33 @@ sub intro {#{{{
 		&makedir($aaoutdir);
 	}
 
+	# does the set exist?
+	my $settest = &mysql_get("SELECT *
+	FROM $mysql_table_set_details
+	WHERE $mysql_col_name = '$orthoset'
+	LIMIT 1");
+	die("Set $orthoset does not exist in database $mysql_dbname. Use $0_manager first to set up your ortholog sets. Ask your administrator.\n") unless defined $$settest[0][0];
+
 }#}}}
 
 # Sub: hmmlist
-# Expects: nothing (?)
+# Expects: scalar string directory path
 # Returns: array hmmfiles
 sub hmmlist {#{{{
 	my $hmmdir = shift;
 	if (-e $hmmdir) {
 		my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
-		while (my $file = $dir->read) {
+		while (my $file = $dir->read()) {
 		  push(@hmmfiles, File::Spec->catfile($hmmdir, $file)) if ($file =~ /\.hmm$/);
 		}
-		$dir->close;
-		return sort @hmmfiles;
+		$dir->close();
+		return(sort(@hmmfiles));
 	}
 	else {
 		print "single hmm\n"
 		  if $verbose;
 		push(@hmmfiles, $hmmfile);
-		return @hmmfiles;
+		return(@hmmfiles);
 	}
 }#}}}
 
@@ -696,20 +713,26 @@ sub translate_est {#{{{
   print "Translating $estfile in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
     print "$outfile exists, using this one.\n" unless $quiet;
-    return $outfile;
+    return($outfile);
   }
-  my $translateline = qq('$translateprog' $infile > $outfile);
-  die "Fatal: Could not translate $infile: $!\n"
-    if system($translateline);
-
-  return $outfile;
+  my @translateline = qq($translateprog $infile > $outfile);
+  system(@translateline) and die("Fatal: Could not translate '$infile': $!\n");
+  return($outfile);
 }#}}}
 
-# sub: backup_up_old_output_files
+# sub: backup_old_output_files
 # input: reference to list of relevant contigs
 sub backup_old_output_files {#{{{
-  my ($outfile) = shift @_;
-  if (-e $outfile) {
+  my $outfile = shift @_;
+	if (-d $outfile) {	# it's a directory
+		my $dirh = IO::Dir->new($outfile);
+		while (my $file = $dirh->read()) {
+			next if $file =~ /^\./;
+			&backup_old_output_files($file);
+		}
+		$dirh->close();
+	}
+  if (-f $outfile) {
     rename($outfile, File::Spec->catfile($outfile . '.' . $backup_ext)) or die "wah: could not rename $outfile during backup: $!\n";
     print "backed up old file $outfile to ", $outfile.$backup_ext, "\n";
   }
@@ -956,7 +979,7 @@ sub make_hmms {#{{{
 	# get the ortholog set from the database
 	my $dbh = &mysql_dbh();
 	my $sql = $dbh->prepare($query);
-	$sql->execute() or croak();
+	$sql->execute() or die;
 	while (my @row = $sql->fetchrow_array()) {
 		# load the whole set into memory, i don't give a frak
 		$$data{$row[0]}{$row[1]} = $row[2];
@@ -965,7 +988,7 @@ sub make_hmms {#{{{
 
 	my $num_orthoids = keys(%$data);
 	my $o = 0;
-	foreach my $orthoid (keys %$data) {
+	foreach my $orthoid (keys(%$data)) {
 		&progress_bar($o, $num_orthoids, 25, '-');
 		++$o;
 		my $hmmfile = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
@@ -973,23 +996,23 @@ sub make_hmms {#{{{
 		next if (-e $hmmfile);	
 		# no, create new fasta file and so on
 		my $fafh = File::Temp->new();
-		foreach my $id (keys %{$data->{$orthoid}}) {
+		foreach my $id (keys(%{$data->{$orthoid}})) {
 			printf($fafh ">%s\n%s\n", $id, $$data{$orthoid}{$id})
-				or croak("Fatal: Could not write to file $fafh\: $!");
+				or croak("Fatal: Could not write to file '$fafh'\: $!");
 		}
 		$fafh->close();
 
 		# align
 		my $alnfile = &align($fafh)
-			or croak("Fatal: Alignment failed for $fafh\: $!");
+			or croak("Fatal: Alignment failed for '$fafh'\: $!");
 
 		# convert to stockholm
 		my $stockhfile = &fasta2stockholm($alnfile)
-			or croak("Fatal: Conversion to Stockholm format failed for $alnfile\: $!");
+			or croak("Fatal: Conversion to Stockholm format failed for '$alnfile'\: $!");
 
 		# build HMM
 		&hmmbuild($stockhfile, $hmmfile)
-			or croak("Fatal: HMM generation failed for $alnfile\: $!");
+			or croak("Fatal: HMM generation failed for '$alnfile'\: $!");
 	}
 	undef($data);	# free memory... well, it's bound to go out of scope anyway
 	return($hmmdir);
@@ -1057,7 +1080,11 @@ sub make_blastdb {#{{{
 	my $setname = shift or croak('Usage: make_blastdb($setname)');
 
 	# build the paths for input and output
-	my $blastpath = &mysql_get("SELECT DISTINCT $mysql_col_blastdbpath FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.name = '$setname' LIMIT 1");
+	my $blastpath = &mysql_get("SELECT DISTINCT $mysql_col_blastdbpath
+		FROM $mysql_table_blastdbs
+		INNER JOIN $mysql_table_set_details
+		ON $mysql_table_set_details.name = '$setname'
+		LIMIT 1");
 	my $dbfile = File::Spec->catfile($sets_dir, $setname, 'blast', $setname);
 	my $infile = File::Spec->catfile($dbfile . ".fa");
 
@@ -1167,6 +1194,23 @@ sub get_transcripts {#{{{
 	$dbh->disconnect();
 	return $tmpfh;
 }#}}}
+
+# Sub: get_hmmresults
+# Get hmmsearch results from the database.
+# Arguments: scalar string hmmsearch query
+# Returns: reference to array of arrays
+sub get_hmmresults {
+	my $hmmquery = shift;
+	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_digest, $mysql_table_ests.$mysql_col_seq
+		FROM $mysql_table_ests 
+		INNER JOIN $mysql_table_hmmsearch
+		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
+		WHERE $mysql_table_hmmsearch.$mysql_col_query = '" . $hmmquery . "'";
+
+	# get the sequences from the database (as array->array reference)
+	my $results = &mysql_get($query_get_sequences);
+	return($results);
+}
 
 # Sub: get_orthologs
 # Get orthologous sequences from the database, the final result handler

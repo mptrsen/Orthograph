@@ -33,7 +33,7 @@ package without the immense overhead of the entire Bioperl backend.
   use Orthograph::Blast;
 
   # set up the blast program
-  Orthograph::Blast->blastprog('blastp');
+  Orthograph::Blast->searchprog('blastp');
 
   # create a new blast object
   my $blastobj = Orthograph::Blast->new('/path/to/blast/database');
@@ -53,7 +53,7 @@ use Data::Dumper;
 my $verbose          = 0;
 my $debug            = 0;
 my $blastoutdir      = File::Spec->catdir('.');
-my $blastprog        = 'blastp';
+my $searchprog        = 'blastp';
 my $makeblastdbprog  = 'makeblastdb';
 my $evalue_threshold = 10;
 my $score_threshold  = 0;
@@ -101,17 +101,17 @@ sub debug {#{{{
 	$debug = shift;
 }#}}}
 
-=head3 set_blast()
+=head3 searchprog()
 
 Sets the blast program. Defaults to B<blastp>.
 
 =cut
 
-sub set_blast {#{{{
+sub searchprog {#{{{
 	my $class = shift;
 	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->set_blast(COMMAND)\n" }
-	$blastprog = shift;
+	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->searchprog(COMMAND)\n" }
+	$searchprog = shift;
 }#}}}
 
 =head3 set_makeblastdb()
@@ -215,7 +215,7 @@ sub blastp {#{{{
 		return $self;
 	}
 	# use outfmt 7 for comment lines
-	my @blastcmd = qq($blastprog -outfmt '7 qseqid sseqid evalue bitscore' -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
+	my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore' -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
 
 	# do the search or die
 	print "\n@blastcmd\n\n"
