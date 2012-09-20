@@ -102,6 +102,7 @@ my $isnucleotide = 0;
 my $ispeptide    = 0;
 my $listogs      = 0;
 my $listsets     = 0;
+my $listtaxa     = 0;
 my $temptable    = 'temp';
 my $sql;
 # table names
@@ -216,6 +217,7 @@ GetOptions(
 	'h=s'          => \$dbserver,
 	'lo'           => \$listogs,
 	'ls'           => \$listsets,
+	'lt'           => \$listtaxa,
 	'n=s'          => \$name,
 	'o'            => \$overwrite,
 	'p=s'          => \$pwd,
@@ -379,6 +381,10 @@ if ($listogs) {
 		printf("%-${maxlen_longname}s  %s\n", $_, $$ogs{$_});
 	}
 	exit;
+}
+
+if ($listtaxa) {
+	&list_set_details();
 }
 
 if ($isnucleotide) {
@@ -846,11 +852,21 @@ sub list_ogs {#{{{
 	return(\%ogslist);
 }#}}}
 
+sub list_set_details {
+	my %setlist = ();
+	my $data = &mysql_get("select distinct $t{'set_details'}.name, $t{'taxa'}.name from $t{'seqpairs'} inner join $t{'taxa'} on $t{'seqpairs'}.taxid = $t{'taxa'}.id inner join $t{'orthologs'} on $t{'orthologs'}.sequence_pair = $t{'seqpairs'}.id inner join $t{'set_details'} on $t{'orthologs'}.setid = $t{'set_details'}.id");
+	foreach my $item (@$data) {
+		$setlist{$$item[0]} .= ' ' . $$item[1];
+	}
+	printf "%s: %s\n", $_, $setlist{$_} foreach keys %setlist;
+	exit;
+}
+
 # Sub: delete_set
 # Delete a set from the database
 # Arguments: scalar string setname
 # Returns: true if successful, false otherwise
-sub delete_set {
+sub delete_set {#{{{
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
 	my $data = &mysql_get("SELECT * FROM $t{'set_details'} WHERE name = '$setname'");
 	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
@@ -868,7 +884,7 @@ sub delete_set {
 	}
 	$dbh->disconnect();
 	return 1;
-}
+}#}}}
 
 #{{{ POD: Appendix
 =head1 APPENDIX 

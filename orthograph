@@ -315,7 +315,7 @@ $protfile = &get_transcripts();
 #}}}
 
 #--------------------------------------------------
-# # Setup the $program_name modules. These are all class methods.
+# # Setup the Orthograph modules. These are all class methods.
 #-------------------------------------------------- 
 
 # verbose output #{{{
@@ -361,7 +361,6 @@ printf("HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmf
 $hmmcount = 0;
 $hmmhitcount = 0;
 
-$DB::single=2; # debugging breakpoint
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
 	$DB::single=2; # debugging breakpoint
@@ -375,11 +374,12 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
-	printf("%4d hits for %s (%d%% complete)\n", 
+	printf("%4d hits for %s (%2.1f%% complete)\n", 
 		$hmmobj->hitcount(),
 		basename($hmmobj->hmmfile()),
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
-	if ($hmmobj->hitcount() == 0) { # do not care further with HMM files that did not return any result
+	# and do not care further with HMM files that did not return any result
+	if ($hmmobj->hitcount() == 0) { 
 		next HMMFILE;
 	}
 
@@ -414,6 +414,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# setup a temporary file to hold the sequence to be blasted
 		my $tmpfile = File::Temp->new(
 			'UNLINK' => 1, 
+			# if you unlink it right away, why bother with the template?
+			#	...
+			# ah, it used to be useful during testing
 			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));
 		# write fasta header and sequence to the tempfile
 		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], $hmmresults[$n]->[1]);
@@ -439,7 +442,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		$blasthitcount_total += $blastobj->hitcount();
 
 		# skip to next if BLAST finds nothing
-		unless ($blastobj->hitcount()) { next HMMRESULT }
+		if ($blastobj->hitcount() == 0) { next HMMRESULT }
 
 		# insert the blast results into the db. 3-argument form.
 		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
@@ -470,12 +473,12 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# yay
 	++$orthocount;
 	printf "!! ^-------Possible orthology detected for %s! Added candidate to database.\n", $$orthologs[0][0];
+
 	# get the ortholog results from the db
 	my $orthocand = Orthograph::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	Orthograph::Orthocandidate->add($orthocand);
-	# printf("Added candidate for %s (%d) to candidate database.\n", $orthocand->orthoid(), Orthograph::Orthocandidate->getindex());
 
-}#}}}
+}#}}}	# End hmmlist loop
 
 # report, end the program
 printf "\n%s analysis for %s complete.\n", $program_name, $species_name;
@@ -1165,7 +1168,7 @@ sub load_data_infile {#{{{
 		unless (ref($columns)) {
 			croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
 		}
-		$list = join(', ', @$columns);
+		$list = join(',', @$columns);
 	}
 
 	# Create temporary csv file for high-speed reading into database
@@ -1217,7 +1220,7 @@ sub get_transcripts {#{{{
 # Get hmmsearch results from the database.
 # Arguments: scalar string hmmsearch query
 # Returns: reference to array of arrays
-sub get_hmmresults {
+sub get_hmmresults {#{{{
 	my $hmmquery = shift;
 	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_digest, $mysql_table_ests.$mysql_col_seq
 		FROM $mysql_table_ests 
@@ -1228,7 +1231,7 @@ sub get_hmmresults {
 	# get the sequences from the database (as array->array reference)
 	my $results = &mysql_get($query_get_sequences);
 	return($results);
-}
+}#}}}
 
 # Sub: get_orthologs
 # Get orthologous sequences from the database, the final result handler
@@ -1274,6 +1277,8 @@ sub get_orthologs {#{{{
 sub insert_orthocandidate {
 	my $blah;
 }
+
+__END__
 
 # Documentation#{{{
 =head1 NAME
