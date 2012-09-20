@@ -197,7 +197,7 @@ nucleotide/peptide pairs based on the headers (so these must correspond).
 
 =head2 -pep
 
-Load nucleotide data. These fasta files must have headers formatted as follows:
+Load peptide data. These fasta files must have headers formatted as follows:
 
   >TAXSH SEQUENCE_ID
 
