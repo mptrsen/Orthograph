@@ -126,7 +126,7 @@ my $ogs_name;
 my $total_seqs;
 
 
-#{{{POD: Options
+#{{{Documentation: Options
 =head1 OPTIONS
 
 =head2 -p PASSWORD
@@ -445,6 +445,9 @@ my $tmpfile = File::Temp->new();
 my $faobj = Seqload::Fasta->open($infile);
 no warnings;	# disable warnings for printing of the NULL column
 while (my ($hdr, $seq) = $faobj->next_seq()) {
+	if ($seq =~ /([ACDEFGHIKLMNPQRSTVWYX])/) {
+		warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+	}
 	++$total_seqs;
 	my @line = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
 	$line[0] =~ s/:.*//;	# remove everything from the colon

@@ -1138,7 +1138,7 @@ sub make_blastdb {#{{{
 	# write to output file
 	while (my ($h, $s) = $sth->fetchrow_array()) {
 		# make sure the sequence has only valid characters
-		if ($s !~ /^[ABCDEFGHIKLMNPQRSTVWXYZUX]+$/) {
+		if ($s !~ /^[ACDEFGHIKLMNPQRSTVWXYZUX]+$/) {
 			warn("Warning: Invalid characters in protein sequence $h. Let's hope BLAST will not choke on this one:\n$s");
 		}
 		printf($infh ">%s\n%s\n", $h, $s)

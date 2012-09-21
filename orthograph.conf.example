@@ -47,6 +47,12 @@ species_name = TEST_SPECIES
 #
 # Alignment program; used to create the ortholog set. Must accept a fasta
 # input file as input and produce fasta-formatted output on STDOUT.
+# Note: The --anysymbol option makes MAFFT accept any character in a sequence,
+# INCLUDING '*' for stop codons and 'U' for Selenocystein. If you are not OK
+# with this, you may remove the --anysymbol option from the command, but be sure
+# that your ortholog set sequences do not contain any nonstandard symbols.
+#
+# Standard amino acid symbols are: ACDEFGHIKLMNPQRSTVWY and X for ambiguity.
 alignment_program    = mafft --localpair --maxiterate 1000 --anysymbol
 
 # HMMbuild is used to build the profile HMMs.
