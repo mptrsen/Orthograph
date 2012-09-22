@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #--------------------------------------------------
 # This file is part of Orthograph.
 # Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
@@ -1148,7 +1148,7 @@ sub make_blastdb {#{{{
 	close($infh);
 
 	# make blast database
-	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -title $orthoset > /dev/null);
+	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset > /dev/null);
 	system(@makeblastdbcmd) and croak("Fatal: makeblastdb failed: $!\n");
 	print "\n";
 	return $dbfile;
