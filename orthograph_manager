@@ -103,6 +103,7 @@ my $ispeptide    = 0;
 my $listogs      = 0;
 my $listsets     = 0;
 my $listtaxa     = 0;
+my $listests     = 0;
 my $temptable    = 'temp';
 my $sql;
 # table names
@@ -215,6 +216,7 @@ GetOptions(
 	'delete_set=s' => \$delete_set,
 	'delete_all'   => \$delete_all,
 	'h=s'          => \$dbserver,
+	'le'           => \$listests,
 	'lo'           => \$listogs,
 	'ls'           => \$listsets,
 	'lt'           => \$listtaxa,
@@ -863,6 +865,15 @@ sub list_set_details {
 	}
 	printf "%s: %s\n", $_, $setlist{$_} foreach keys %setlist;
 	exit;
+}
+
+sub list_ests {
+	my %estlist = ();
+
+	# TODO blah blah blah
+	# use RIGHT JOIN etc:
+	# select * from o_sequence_pairs right join o_taxa on o_sequence_pairs.taxid = o_taxa.id where o_sequence_pairs.id IS NULL;
+
 }
 
 # Sub: delete_set

@@ -182,6 +182,7 @@ my $hmmresultfileref;
 my $hmmcount;
 my $hmmhitcount;
 my $hmmhitcount_total   = 0;
+my $listspecies         = 0;
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
@@ -209,7 +210,7 @@ my $num_hmms;
 my $orthocount = 0;
 my $preparedb;
 my $protfile            = '';
-my $timestamp           = time();
+my $timestamp_start     = time();
 my $tmpdir              = File::Temp->newdir(
                             'UNLINK' => 0, 
                             'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
@@ -234,6 +235,7 @@ GetOptions( 'v'        => \$verbose,
 	'hmmsearch_score=s'  => \$hmmsearch_score_threshold,
 	'H=s'                => \$hmmfile,
 	'hmmsearchprog=s'    => \$hmmsearchprog,
+	'l|list_species'     => \$listspecies,
 	'preparedb'          => \$preparedb,
 	'quiet'              => \$quiet,
 	'taxon=s'            => \$species_name,
@@ -251,6 +253,14 @@ if ($preparedb) {#{{{
   print "OK\nMySQL database now ready to run $program_name.\n";
   exit;
 }#}}}
+
+#--------------------------------------------------
+# # Another special case: List the species for which analysis data is present,
+# # then exit
+#-------------------------------------------------- 
+if ($listspecies) {
+	&listspecies;
+}
 
 #--------------------------------------------------
 # # Normal run. Input error checking, reporting etc
@@ -304,6 +314,10 @@ printf("%d sequences stored to database '%s' on %s. Sequence identifiers have be
 
 # get number of transcript sequences
 $num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
+if ($num_ests == 0) {
+	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
+	exit;
+}
 $num_ests = $$num_ests[0][0];
 printf "%d sequences in database '%s' on %s.\n", 
 	$num_ests,
@@ -723,7 +737,7 @@ sub hmmlist {#{{{
 # Returns: scalar string filename (protfile)
 sub translate_est {#{{{
   my ($infile) = shift;
-  (my $outfile = $infile) =~ s/(\.fa$)/_prot$1/;
+  (my $outfile = $infile) =~ s/(\.[^.]*$)/_prot$1/;
   print "Translating $estfile in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
     print "$outfile exists, using this one.\n" unless $quiet;
@@ -791,7 +805,7 @@ sub cleardir {#{{{
 sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX($mysql_col_id),
-		$mysql_col_digest    CHAR(32) NOT NULL,           INDEX($mysql_col_digest),
+		$mysql_col_digest    CHAR(32) NOT NULL,           UNIQUE INDEX($mysql_col_digest),
 		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX($mysql_col_spec),
 		$mysql_col_date      INT(11) UNSIGNED,
 		$mysql_col_hdr       VARCHAR(255) NOT NULL,       INDEX ($mysql_col_hdr),
@@ -1179,7 +1193,7 @@ sub load_data_infile {#{{{
 			# good idea or not?
 			Digest::SHA->sha256_hex($h, $s),
 			$species_name,
-			time(),
+			$timestamp_start,
 			$h,
 			$s
 		);

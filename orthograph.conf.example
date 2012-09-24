@@ -31,17 +31,17 @@ ortholog_set       = SETNAME
 # This is where your results are placed. Will be created if it doesn't exist.
 output_directory   = /PATH/TO/OUTPUT_DIR
 
+# Species name. Self-explanatory, but must be supplied. Make sure to pick a
+# unique name because otherwise results get mixed up. You can, however, supply
+# an existing name if you want to add to an existing data set. Just make sure
+# you know what you're doing.
+species_name = TEST_SPECIES
+
 
 #--------------------------------------------------
 # Options. These settings are optional, but may be required if the defaults
 # don't do.
 #-------------------------------------------------- 
-#
-# Species name
-#
-# Supply this, it's nice.
-species_name = TEST_SPECIES
-
 #
 # Paths to the programs. It's best to set absolute paths.
 #
