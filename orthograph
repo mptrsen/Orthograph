@@ -84,6 +84,7 @@ for (my $i = 0; $i < scalar @ARGV; ++$i) {
 	if ($ARGV[$i] =~ /-c/) {
 		if ($ARGV[$i+1] !~ /^-/) {
 		  $configfile = $ARGV[$i+1];
+			if (!-e $configfile) { die "Fatal: Config file '$configfile' not found!\n" }
 		}
 		else { warn "Warning: Config file name '$ARGV[$i+1]' not accepted (use './$ARGV[$i+1]' if you mean it). Falling back to '$configfile'\n" }
 	}
@@ -1190,8 +1191,8 @@ sub load_data_infile {#{{{
 	my $protfh = Seqload::Fasta->open($protfile);
 	while (my ($h, $s) = $protfh->next_seq()) {
 		$s =~ s/-//g;	# remove all gaps from the sequence
-		if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
-			warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
+			warn("Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
 		}
 		printf($tmpfh "%s,%s,%d,%s,%s\n", 
 			# good idea or not?
@@ -1202,8 +1203,8 @@ sub load_data_infile {#{{{
 			$s
 		);
 	}
-	$protfh->close();
 	$tmpfh->close();
+	# no need to close the protfh since we're already through it, it gets closed automagically
 
 	# load data from csv file into database
 	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table FIELDS TERMINATED BY ',' ($list)";

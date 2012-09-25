@@ -106,6 +106,12 @@ and run it with the -prepare option:
 	chmod +x orthograph
 	./orthograph -prepare
 
+If you picked a non-default database name AND you didn't save your config file
+in orthograph.conf, you must tell Orthograph where to find all that information
+with the -c option:
+
+	./orthograph -c CONFIGFILE -prepare
+
 8. Start Orthograph! 
 
   ./orthograph 
@@ -113,7 +119,7 @@ and run it with the -prepare option:
 Orthograph expects its config file in orthograph.conf. If you didn't save your config
 file as orthograph.conf, you must tell Orthograph where it is with the -c option:
 
-	./orthograph -c orthograph.conf.example
+	./orthograph -c CONFIGFILE
 
 9. Examine results in the output directory.
 
