@@ -1,26 +1,24 @@
+#--------------------------------------------------
+# # Orthograph config file
+#-------------------------------------------------- 
+#
 # Comments start with a hash sign (#) and are ignored by the parser.
-# This way you can 'comment out' lines you don't need, but would like to keep
+# This way you can comment out lines you don't need, but would like to keep
 # in your config file because they might be important later.
 #
 # Settings in UPPER-CASE must be changed to your local environment. Settings
 # in lower-case are sane defaults.
 
 #--------------------------------------------------
-# Important stuff first. These settings are mandatory.
+# # Important stuff first. These settings are mandatory.
 #-------------------------------------------------- 
-#
-# MySQL database stuff
-#
-# Prefix for your Orthograph tables. Useful to set if you are running multiple
-# instances of Orthograph on the same database but don't want the data to be mixed
-# up. Defaults to 'forage'.
-#mysql_table_prefix = forage
 
-# Connection settings.
-mysql_dbname       = DATABASE
-mysql_dbserver     = 127.0.0.1
+#
+# # MySQL connection settings.
+#
 mysql_dbuser       = USERNAME
 mysql_dbpassword   = PASSWORD
+mysql_dbname       = DATABASE
 
 # The path to your transcriptome data file. Best to use absolute paths.
 estfile            = FASTAFILE
@@ -31,26 +29,27 @@ ortholog_set       = SETNAME
 # This is where your results are placed. Will be created if it doesn't exist.
 output_directory   = /PATH/TO/OUTPUT_DIR
 
-# Species name. Self-explanatory, but must be supplied. Make sure to pick a
-# unique name because otherwise results get mixed up. You can, however, supply
-# an existing name if you want to add to an existing data set. Just make sure
-# you know what you're doing.
-species_name = TEST_SPECIES
+# Species name. Make sure to pick a unique name because otherwise results get
+# mixed up. You can, however, supply an existing name if you want to add
+# sequences to an existing data set. 
+species_name       = TEST_SPECIES
 
 
 #--------------------------------------------------
 # Options. These settings are optional, but may be required if the defaults
 # don't do.
 #-------------------------------------------------- 
+
 #
-# Paths to the programs. It's best to set absolute paths.
+# # Paths to the programs. It's best to set absolute paths.
 #
 # Alignment program; used to create the ortholog set. Must accept a fasta
 # input file as input and produce fasta-formatted output on STDOUT.
 # Note: The --anysymbol option makes MAFFT accept any character in a sequence,
 # INCLUDING '*' for stop codons and 'U' for Selenocystein. If you are not OK
-# with this, you may remove the --anysymbol option from the command, but be sure
-# that your ortholog set sequences do not contain any nonstandard symbols.
+# with this, you may remove the --anysymbol option from the command, but then it
+# is your responsibility to make sure that your ortholog set sequences do not
+# contain any nonstandard symbols.
 #
 # Standard amino acid symbols are: ACDEFGHIKLMNPQRSTVWY and X for ambiguity.
 alignment_program    = mafft --localpair --maxiterate 1000 --anysymbol
@@ -73,7 +72,7 @@ blast_program        = blastp
 #exonerate_program    = exonerate
 
 #
-# Settings that affect the HMM and BLAST searches.
+# # Settings that affect the HMM and BLAST searches.
 #
 # E-value threshold 
 hmmsearch_evalue_threshold = 1e-05
@@ -88,12 +87,25 @@ blast_evalue_threshold     = 1e-05
 # as only the best hit is considered.
 blast_max_hits             = 10
 
-# 
-# Other options
 #
-# Clear pre-existing data prior to the analysis. Useful if you plan to run the
-# same analysis multiple times, but doesn't hurt otherwise. This is the
-# default, uncomment if you want to turn it off.
+# # MySQL settings
+#
+# The database server. Change this if the database does not run on the same
+# computer as the analysis. Ask your administrator if you don't know what to
+# write here.
+mysql_dbserver     = 127.0.0.1
+
+# Prefix for your Orthograph database tables. Useful to set if you are running
+# multiple instances of Orthograph on the same database but don't want the data
+# to be mixed up. Defaults to 'orthograph'.
+#mysql_table_prefix = orthograph
+
+# 
+# # Other options
+#
+# Clear pre-existing data of the same species prior to the analysis. Useful if
+# you plan to run the same analysis multiple times, but doesn't hurt otherwise.
+# This is the default, uncomment if you want to turn it off.
 #clear_data = 0
 
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally

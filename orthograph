@@ -1189,6 +1189,10 @@ sub load_data_infile {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 	my $protfh = Seqload::Fasta->open($protfile);
 	while (my ($h, $s) = $protfh->next_seq()) {
+		$s =~ s/-//g;	# remove all gaps from the sequence
+		if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
+			warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+		}
 		printf($tmpfh "%s,%s,%d,%s,%s\n", 
 			# good idea or not?
 			Digest::SHA->sha256_hex($h, $s),

@@ -447,7 +447,8 @@ my $tmpfile = File::Temp->new();
 my $faobj = Seqload::Fasta->open($infile);
 no warnings;	# disable warnings for printing of the NULL column
 while (my ($hdr, $seq) = $faobj->next_seq()) {
-	if ($seq =~ /([ACDEFGHIKLMNPQRSTVWYX])/) {
+	$s =~ s/-//g;	# remove all gaps from the sequence
+	if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
 		warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
 	}
 	++$total_seqs;
@@ -691,11 +692,25 @@ sub load_taxon {#{{{
 	my $tmpfh = File::Temp->new(UNLINK => 1);
 	my $infh = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $infh->next_seq()) {
+		$s =~ s/-//g;	# remove all gaps from the sequence
+
+		# check if the sequence consists of valid characters
+		if ($mode) {
+			if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
+				warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'!\n");
+			}
+		}
+		else {
+			if ($seq =~ /([^ATCGN*])/i) {
+				warn("Warning: Sequence $hdr contains nonstandard nucleic acid symbol '$1'!\n");
+			}
+		}
+
 		my @fields = split(/\s+/, $hdr);
 		if (scalar(@fields) < 2) {
 			die(sprintf("$diemsg", $.));
 		}
-		elsif (length($fields[0]) != 5 or $fields[0] !~ /^\w+$/) {
+		elsif (length($fields[0]) != 5 or $fields[0] !~ /^\w{5}$/) {
 			die(sprintf("$diemsg", $.));
 		}
 		print $tmpfh "$fields[0],$fields[1],$seq\n";
