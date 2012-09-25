@@ -1,6 +1,33 @@
 ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with
 Hidden Markov models
 
+SYSTEM REQUIREMENTS
+===================
+
+Orthograph requires the following software packages to be installed on the system:
+
+Package      Version Download from
+-------------------------------------------------------------------------------
+MySQL        5.1     http://www.mysql.com
+HMMer3       3.0     http://hmmer.janelia.org
+NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
+
+The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
+IO::Dir (used for platform-independent path handling) as well as DBI and
+DBD::Mysql for database handling and Digest::SHA should be present in your
+Perl distribution. Update your Perl installation if not and see [1] and [2] if
+you are installing Orthograph on a Windows system under Cygwin. You might run into
+problems getting the MySQL driver, HMMer3 and Exonerate to work. Don't use
+Windows.
+
+If your Perl installation was not compiled with thread support, but you would
+like to use Orthograph with multithreading emulation on multiprocessor platforms,
+you may want to install the 'forks' module from CPAN. Alternatively, you can
+run Orthograph single-threadedly, of course. 
+
+At the moment, threads are not implemented anyway.
+
 QUICKSTART
 ==========
 
@@ -92,33 +119,6 @@ file as orthograph.conf, you must tell Orthograph where it is with the -c option
 
 10. Profit!
 
-
-SYSTEM REQUIREMENTS
-===================
-
-Orthograph requires the following software packages to be installed on the system:
-
-Package      Version Download from
--------------------------------------------------------------------------------
-MySQL        5.1     http://www.mysql.com
-HMMer3       3.0     http://hmmer.janelia.org
-NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
-
-The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
-IO::Dir (used for platform-independent path handling) as well as DBI and
-DBD::Mysql for database handling and Digest::SHA should be present in your
-Perl distribution. Update your Perl installation if not and see [1] and [2] if
-you are installing Orthograph on a Windows system under Cygwin. You might run into
-problems getting the MySQL driver, HMMer3 and Exonerate to work. Don't use
-Windows.
-
-If your Perl installation was not compiled with thread support, but you would
-like to use Orthograph with multithreading emulation on multiprocessor platforms,
-you may want to install the 'forks' module from CPAN. Alternatively, you can
-run Orthograph single-threadedly, of course. 
-
-At the moment, threads are not implemented anyway.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++ The rest of this document is outdated! So is `perldoc orthograph`. +++

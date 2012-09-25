@@ -43,8 +43,8 @@ species_name       = TEST_SPECIES
 #
 # # Paths to the programs. It's best to set absolute paths.
 #
-# Alignment program; used to create the ortholog set. Must accept a fasta
-# input file as input and produce fasta-formatted output on STDOUT.
+# Default alignment program; used to create the ortholog set. Must accept a
+# fasta input file as input and produce fasta-formatted output on STDOUT. 
 # Note: The --anysymbol option makes MAFFT accept any character in a sequence,
 # INCLUDING '*' for stop codons and 'U' for Selenocystein. If you are not OK
 # with this, you may remove the --anysymbol option from the command, but then it
@@ -74,7 +74,12 @@ blast_program        = blastp
 #
 # # Settings that affect the HMM and BLAST searches.
 #
-# E-value threshold 
+# E-value threshold. The HMMsearch e-value threshold affects the specificity of
+# the HMM search, the first step in the reciprocal algorithm. It defines how
+# distantly related candidate orthologs may be when searching through the
+# transcriptome file. The BLAST e-value threshold affects the second step, the
+# reciprocal search. Basically, this defines the false-positive probability
+# (lower e-value = lower probability).
 hmmsearch_evalue_threshold = 1e-05
 blast_evalue_threshold     = 1e-05
 
@@ -109,9 +114,11 @@ mysql_dbserver     = 127.0.0.1
 #clear_data = 0
 
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
-# you don't want to see this. Verbose and quiet are mutually exclusive.
+# you don't want to see this. If you are really interested in what Orthograph is
+# thinking during the analysis, uncomment this. Verbose and quiet are mutually
+# exclusive.
 #verbose    = 1
 
-# Quiet output. If you don't want to be bothered during the analysis. Verbose
-# and quiet are mutually exclusive.
+# Quiet output. Uncomment this if you don't want to be bothered during the
+# analysis. Verbose and quiet are mutually exclusive.
 #quiet      = 1
