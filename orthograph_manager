@@ -199,7 +199,7 @@ if ($delete_all) {
 elsif ($create) {
 	&drop_tables;
 	&create_tables;
-	print "OK.\n";
+	print "OK, you are good to go!\n";
 	exit;
 }
 
@@ -332,7 +332,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		$description; # set description
 }
 use warnings;	# resume yelling 
-$faobj->close();
+undef($faobj);
 
 #--------------------------------------------------
 # # create a temporary table for high-speed loading of the data. we can sort it out later.
@@ -467,6 +467,8 @@ if ($nrows == 0) {	# the last one
 	exit; 
 }
 else {	# something has changed
+	printf("Successfully loaded ortholog set %s into database.\n", $setname);
+	exit;
 }
 
 #--------------------------------------------------
@@ -556,6 +558,28 @@ sub load_taxon {#{{{
 	my $total_seqs = 0;
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
+	# get taxon shorthand
+	my $list = &mysql_get("SELECT * FROM $t{'taxa'}");
+	print "This is a list of present taxa in the database:\n";
+	for (my $i = 0; $i < scalar(@$list); ++$i) {
+		printf("%2d. %s %s\n", $$list[$i][0], $$list[$i][1], $$list[$i][2]);
+	}
+	print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
+	my $in = <STDIN>;
+	chomp $in;
+	my $taxon;
+	# make sure the user doesn't fuck up
+	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1)) {
+		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
+		$in = <STDIN>;
+		chomp $in;
+	}
+	$taxon = $$list[$in-1][0];
+	printf("You picked %d: %s (%s).\n", $in, $$list[$in-1][2], $$list[$in-1][1]);
+	print "Please enter the official gene set (OGS) version for this data file: ";
+	my $ogsversion = <STDIN>;
+	chomp $ogsversion;
+
 	my $tmpfh = File::Temp->new(UNLINK => 1);
 	my $infh = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $infh->next_seq()) {
@@ -584,32 +608,12 @@ sub load_taxon {#{{{
 		# }
 		# print $tmpfh "$fields[0],$fields[1],$seq\n";
 		#-------------------------------------------------- 
-		print $tmpfh "$hdr,$seq\n";
+		print $tmpfh "$taxon,$hdr,$seq\n";
 		++$total_seqs;
 	}
 	$tmpfh->close();
 
-	# get taxon shorthand
-	my $list = &mysql_get("SELECT * FROM $t{'taxa'}");
-	print "This is a list of present taxa in the database:\n";
-	for (my $i = 0; $i < scalar(@$list); ++$i) {
-		printf("%2d. %s %s\n", $$list[$i][0], $$list[$i][1], $$list[$i][2]);
-	}
-	print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
-	my $in = <STDIN>;
-	chomp $in;
-	my $taxon;
-	# make sure the user doesn't fuck up
-	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1)) {
-		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
-		$in = <STDIN>;
-		chomp $in;
-	}
-	$taxon = $$list[$in-1][0];
-	printf("You picked %s (%s).\n", $$list[$in-1][2], $$list[$in-1][1]);
-	print "Please enter the official gene set (OGS) version for the data you just uploaded: ";
-	my $ogsversion = <STDIN>;
-	chomp $ogsversion;
+	print "Data looks OK, uploading...\n";
 
 	# ok; insert ogs version into database
 	my $dbh = &mysql_dbh();
@@ -645,7 +649,7 @@ sub load_taxon {#{{{
 		ON $t{'taxa'}.id = $t{'ogs'}.taxid
 		LEFT JOIN $otherseqtable
 		ON $otherseqtable.header = $seqtable.header
-		WHERE $t{'taxa'}.id = $taxon
+		WHERE $t{'taxa'}.id = '$taxon'
 		ON DUPLICATE KEY UPDATE $t{'seqpairs'}.$seqcol = $seqtable.id,
 		$t{'seqpairs'}.$otherseqcol = $otherseqtable.id",
 	);
@@ -658,8 +662,8 @@ sub load_taxon {#{{{
 		printf("Query OK, %d rows affected.\n", $nrows);
 	}
 	$dbh->disconnect();
-	my $seqpairs = &mysql_get("SELECT COUNT(*) FROM $t{'seqpairs'} WHERE $t{'seqpairs'}.taxid = $taxon");
-	printf "Query OK. Loaded %d new sequences into %s on %s.\n", $$seqpairs[0][0], $dbname, $dbserver;
+	my $seqpairs = &mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
+	printf("Loaded %d new sequences into %s on %s.\n", $$seqpairs[0][0], $dbname, $dbserver);
 	return 1;
 }#}}}
 

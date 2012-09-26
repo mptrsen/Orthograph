@@ -68,8 +68,8 @@ fasta file must have an OrthoDB-style header format as in the following example:
 That is, there must exist five space-separated fields, the last one of which may
 contain whitespace as well. This is output by OrthoDB by default, so you don't
 have to worry about that if you got your orthology data from OrthoDB. If not,
-read `perldoc orthograph_manager` for further information. Make a note of your ortholog
-set name. You will need it later.
+read `perldoc orthograph_manager` for further information. Make a note of your
+ortholog set name. You will need it later.
 
 4. Load proteome sequences into the database :
 
