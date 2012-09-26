@@ -79,25 +79,21 @@ You need to load data for every taxon separately (this may change in the
 future), and you should load data for as many taxa in the orthologs file as
 possible. You will be asked for information about the file you are loading.
 These sequences are used for the reciprocal BLAST databases. If you don't load
-any peptide data, your analysis will be flawed. The sequences must be in fasta
-files with the following header format:
+any peptide data, your analysis will be flawed. 
 
-	>TAXSH ID foo bar
-
-The TAXSH must be a five-character taxon shorthand that is used in the OrthoDB
-data. At least some of the IDs must correspond to the fourth header field in the
-OrthoDB file. Repeat this step for as many taxa as you have peptide sequences
-for.
+At least some of the protein IDs must correspond to the fourth header field in
+the OrthoDB file. Repeat this step for as many taxa in your ortholog set as you
+have peptide sequences for.
 
 If you made a mistake during input of the information, you may cancel the
 process at any time using Ctrl+C. 
 
-4a. Optional: Load nucleotide data into the database:
+5. Optional: Load nucleotide data into the database:
 
 	./orthograph_manager -u USERNAME -p PASSWORD -nuc FASTAFILE
 
 They must have the same header format as the peptide sequences. At the moment,
-output of nucleotide data is not implemented anyway. 
+output of nucleotide data is not implemented anyway, so skip this step. 
 
 6. Create a config file. 
 
@@ -125,7 +121,7 @@ file as orthograph.conf, you must tell Orthograph where it is with the -c option
 
 	./orthograph -c CONFIGFILE
 
-9. Get some coffee and watch.
+9. Get some coffee, sit back and watch (or do something else).
 
 Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog set, if
 they don't exist. This may take a long time depending on the size of your set,
@@ -140,9 +136,9 @@ all proteomes.
 11. Profit!
 
 
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++ The rest of this document is outdated! So is `perldoc orthograph`. +++
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 SETUP
 =====
@@ -157,8 +153,8 @@ INVOCATION
 
 Orthograph allows parsing a config file, which by default is named 'orthograph.conf'.
 Available options can be obtained using 'perldoc orthograph'. Many options can be
-set or overridden on the command line. For those switches, also see 'perldoc
-orthograph'.
+set or overridden on the command line. For those switches, also see `perldoc
+orthograph`.
 
 MySQL PERFORMANCE
 =================
