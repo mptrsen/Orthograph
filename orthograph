@@ -21,18 +21,20 @@ use strict;         # make me write good code
 use warnings;       # cry if something seems odd
 
 # Core modules
-use Data::Dumper;   # great for debugging
-use Config;         # allows checking for system configuration in $Config
-use Getopt::Long;   # parse command line arguments
+use Archive::Tar;   # handling tar archives
 use Carp;           # alternative warn and die
-use File::Path qw(make_path); # mkdir with parent dirs; this also uses File::Spec
-use File::Basename; # parse path names
-use File::Temp;     # temporary files
-use IO::File;       # object-oriented access to files
-use IO::Dir;        # object-oriented access to dirs
-use Digest::SHA;    # SHA hashing: good idea or not?
-use DBI;	          # MySQL database interface 
+use Config;         # allows checking for system configuration in $Config
+use Cwd;            # current working directory via cwd()
 use DBD::mysql;	    # database driver for MySQL
+use DBI;	          # MySQL database interface 
+use Data::Dumper;   # great for debugging
+use Digest::SHA;    # SHA hashing: good idea or not?
+use File::Basename; # parse path names
+use File::Path qw(make_path); # mkdir with parent dirs; this also uses File::Spec
+use File::Temp;     # temporary files
+use Getopt::Long;   # parse command line arguments
+use IO::Dir;        # object-oriented access to dirs
+use IO::File;       # object-oriented access to files
 # you might want to look into Log::Message.
 
 # Custom modules
@@ -212,9 +214,12 @@ my $orthocount = 0;
 my $preparedb;
 my $protfile            = '';
 my $timestamp_start     = time();
+my @lt                  = localtime(time);
+my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
 my $tmpdir              = File::Temp->newdir(
                             'UNLINK' => 0, 
                             'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
+my @backup;
 my @hmmfiles;
 my @reftaxa;
 my @seqobjs;
@@ -660,7 +665,7 @@ sub intro {#{{{
 			print "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
 		}
 		else {
-			&backup_old_output_files($hmmoutdir);
+			&schedule_for_backup($hmmoutdir);
 		}
 	}
 	else {
@@ -677,7 +682,7 @@ sub intro {#{{{
 				unless $quiet;
 		}
 		else {
-			&backup_old_output_files($blastoutdir);
+			&schedule_for_backup($blastoutdir);
 		}
   }
   else {
@@ -693,13 +698,25 @@ sub intro {#{{{
 				unless $quiet;
 		}
 		else {
-			&backup_old_output_files($aaoutdir);
+			&schedule_for_backup($aaoutdir);
 		}
 	}
 	else {
 		print "AA output dir $aaoutdir does not exist, creating...\n"
 			unless $quiet;
 		&makedir($aaoutdir);
+	}
+
+	# do the backup; create a tarball if desired
+	unless ($clear_data) {
+		my $tarfile = &create_tarball(@backup);
+		print "Old output files backed up in $tarfile.\n";
+		# and clear the directories
+		&cleardir($hmmoutdir);
+		&cleardir($blastoutdir);
+		&cleardir($aaoutdir);
+		undef(@backup);	# not needed anymore
+		undef($tarfile);
 	}
 
 	# does the set exist?
@@ -751,20 +768,33 @@ sub translate_est {#{{{
 
 # sub: backup_old_output_files
 # input: reference to list of relevant contigs
-sub backup_old_output_files {#{{{
+sub schedule_for_backup {#{{{
   my $outfile = shift @_;
 	if (-d $outfile) {	# it's a directory
 		my $dirh = IO::Dir->new($outfile);
 		while (my $file = $dirh->read()) {
 			next if $file =~ /^\./;
-			&backup_old_output_files($file);
+			&schedule_for_backup(File::Spec->catfile($outfile, $file));
 		}
 		$dirh->close();
 	}
-  if (-f $outfile) {
-    rename($outfile, File::Spec->catfile($outfile . '.' . $backup_ext)) or die "wah: could not rename $outfile during backup: $!\n";
-    print "backed up old file $outfile to ", $outfile.$backup_ext, "\n";
+  elsif (-f $outfile) {
+    push(@backup, $outfile);
   }
+}#}}}
+
+# sub: create_tarball
+# writes a compressed tar archive
+# Expects: list of files
+# Returns: scalar string tarfilename
+sub create_tarball {#{{{
+	my @files = @_;
+	my $tarfile = File::Spec->catfile($outdir, 'backup-' . $timestring . '.tar.bz2');
+	my $tarball = Archive::Tar->new();
+	$tarball->setcwd($outdir);
+	$tarball->add_files(@files);
+	$tarball->write($tarfile, COMPRESS_BZIP) or die("Fatal: Could not create tarball: $!\n");
+	return $tarfile;
 }#}}}
 
 # Sub: makedir
