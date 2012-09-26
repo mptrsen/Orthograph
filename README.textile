@@ -2,16 +2,15 @@ h1. ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach wi
 Hidden Markov models
 
 h1. SYSTEM REQUIREMENTS
-===================
 
 Orthograph requires the following software packages to be installed on the system:
 
-Package      Version Download from
+|Package      |Version |Download from|
 -------------------------------------------------------------------------------
-MySQL        5.1     http://www.mysql.com
-HMMer3       3.0     http://hmmer.janelia.org
-NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
+|MySQL        |5.1     |http://www.mysql.com|
+|HMMer3       |3.0     |http://hmmer.janelia.org|
+|NCBI BLAST+  |2.2.25+ |ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/|
+|Exonerate    |2.2.0   |http://www.ebi.ac.uk/~guy/exonerate/|
 
 The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
 IO::Dir (used for platform-independent path handling) as well as DBI and
@@ -36,15 +35,19 @@ doesn't work, you'll have to read the rest of this document to find out why :-)
 h2. 1. Set up the MySQL database. 
 
 There must exist a database for your perusal and a database user must have
-permissions to DROP and CREATE tables and of course to SELECT, DELETE and INSERT
-into them. Google "mysql create database" or ask your administrator if you don't
-know how to create the database. Make a note of your database name. You will
-need it later.
+permissions to @DROP@ and @CREATE@ tables and of course to @SELECT@, @DELETE@
+and @INSERT@ into them. Google "mysql create database" or ask your administrator
+if you don't know how to create the database. Make a note of your database name.
+You will need it later.
 
-h2. 2. Create the tables. Make the orthograph_manager script executable and use it:
+h2. 2. Create the tables.
 
+Make the orthograph_manager script executable and use it:
+
+<code>
 	chmod +x orthograph_manager
 	./orthograph_manager -u USERNAME -p PASSWORD -D DBNAME -c 
+</code>
 
 Supply MySQL username, password and the database name (default: 'orthograph'). The
 -c switch tells the script to setup the database structure for Orthograph. It will
