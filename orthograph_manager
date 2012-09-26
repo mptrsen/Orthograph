@@ -92,7 +92,7 @@ GetOptions(
 	'r'            => \$reassignorthologs,
 	'nuc'          => \$isnucleotide,
 	'pep'          => \$ispeptide,
-	);
+	) or die "I don't know what you want me to do. Terminating.\n";
 my $infile = shift @ARGV;
 
 # make sure there is at least one underscore at the end of the prefix
@@ -310,7 +310,7 @@ my $tmpfile = File::Temp->new();
 my $faobj = Seqload::Fasta->open($infile);
 no warnings;	# disable warnings for printing of the NULL column
 while (my ($hdr, $seq) = $faobj->next_seq()) {
-	$s =~ s/-//g;	# remove all gaps from the sequence
+	$seq =~ s/-//g;	# remove all gaps from the sequence
 	if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
 		warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
 	}
@@ -559,7 +559,7 @@ sub load_taxon {#{{{
 	my $tmpfh = File::Temp->new(UNLINK => 1);
 	my $infh = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $infh->next_seq()) {
-		$s =~ s/-//g;	# remove all gaps from the sequence
+		$seq =~ s/-//g;	# remove all gaps from the sequence
 
 		# check if the sequence consists of valid characters
 		if ($mode) {
@@ -573,14 +573,18 @@ sub load_taxon {#{{{
 			}
 		}
 
-		my @fields = split(/\s+/, $hdr);
-		if (scalar(@fields) < 2) {
-			die(sprintf("$diemsg", $.));
-		}
-		elsif (length($fields[0]) != 5 or $fields[0] !~ /^\w{5}$/) {
-			die(sprintf("$diemsg", $.));
-		}
-		print $tmpfh "$fields[0],$fields[1],$seq\n";
+		# don't split the header, let the user take original proteomes
+		#--------------------------------------------------
+		# my @fields = split(/\s+/, $hdr);
+		# if (scalar(@fields) < 2) {
+		# 	die(sprintf("$diemsg", $.));
+		# }
+		# elsif (length($fields[0]) != 5 or $fields[0] !~ /^\w{5}$/) {
+		# 	die(sprintf("$diemsg", $.));
+		# }
+		# print $tmpfh "$fields[0],$fields[1],$seq\n";
+		#-------------------------------------------------- 
+		print $tmpfh "$hdr,$seq\n";
 		++$total_seqs;
 	}
 	$tmpfh->close();
@@ -595,9 +599,14 @@ sub load_taxon {#{{{
 	my $in = <STDIN>;
 	chomp $in;
 	my $taxon;
-	if ($in =~ /^\d+$/) {
-		$taxon = $$list[$in-1][0];
+	# make sure the user doesn't fuck up
+	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1)) {
+		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
+		$in = <STDIN>;
+		chomp $in;
 	}
+	$taxon = $$list[$in-1][0];
+	printf("You picked %s (%s).\n", $$list[$in-1][2], $$list[$in-1][1]);
 	print "Please enter the official gene set (OGS) version for the data you just uploaded: ";
 	my $ogsversion = <STDIN>;
 	chomp $ogsversion;
@@ -612,20 +621,20 @@ sub load_taxon {#{{{
 		# create the temporary table
 		"CREATE TABLE $temptable (
 		`id`       INT(11)      NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		`taxsh`    CHAR(5)      NOT NULL,
+		`taxid`    CHAR(5)      NOT NULL,
 		`header`   VARCHAR(255) NOT NULL,
 		`sequence` MEDIUMBLOB)",
 		# load data into temp table
 		"LOAD DATA LOCAL INFILE '$tmpfh' 
 		INTO TABLE $temptable 
 		FIELDS TERMINATED BY ',' 
-		(taxsh, header, sequence)",
+		(taxid, header, sequence)",
 		# insert data into main table. IGNORE is important to avoid duplicates.
 		"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
 		SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
 		FROM $temptable 
 		LEFT JOIN $t{'taxa'} 
-		ON $temptable.taxsh = $t{'taxa'}.name",
+		ON $temptable.taxid = $t{'taxa'}.id",
 		# insert sequence pairs relationships
 		"INSERT INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
 		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$username'

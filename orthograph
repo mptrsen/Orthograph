@@ -240,7 +240,7 @@ GetOptions( 'v'        => \$verbose,
 	'preparedb'          => \$preparedb,
 	'quiet'              => \$quiet,
 	'taxon=s'            => \$species_name,
-);#}}}
+) or die("Terminating.\n");#}}}
 
 #--------------------------------------------------
 # # Special case: Prepare the MySQL database by dropping and recreating all
