@@ -97,7 +97,7 @@ sub close {
   my $self = shift;
   my $fh = $self->{'fh'};
   my $filename = $self->{'filename'};
-  close($fh) or return { "Fatal: Could not close $filename\: $!\n";
+  close($fh) or carp("Warning: Could not close $filename\: $!\n");
   undef($self);
 }
 

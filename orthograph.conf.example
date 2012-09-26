@@ -20,7 +20,8 @@ mysql_dbuser       = USERNAME
 mysql_dbpassword   = PASSWORD
 mysql_dbname       = DATABASE
 
-# The path to your transcriptome data file. Best to use absolute paths.
+# The path to your transcriptome data file. Best to use absolute paths. At the
+# moment, you may only supply one file, not a directory of files.
 estfile            = FASTAFILE
 
 # The ortholog set you created earlier.

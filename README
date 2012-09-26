@@ -54,9 +54,13 @@ create a number of tables, all of which start with the prefix 'orthograph_'.
 
 	./orthograph_manager -u USERNAME -p PASSWORD FASTAFILE
 
-Supply username and password and a fasta file. You will be asked for information
-about the ortholog set you are loading. The fasta file must have an
-OrthoDB-style header format as in the following example:
+Supply username and password and a fasta file. If you picked a database name
+other than 'orthograph', you must also provide it with the -D option:
+
+	./orthograph_manager -u USERNAME -p PASSWORD -D DATABASE FASTAFILE
+
+You will be asked for information about the ortholog set you are loading. The
+fasta file must have an OrthoDB-style header format as in the following example:
 
 	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
 
@@ -81,9 +85,8 @@ files with the following header format:
 
 The TAXSH must be a five-character taxon shorthand that is used in the OrthoDB
 data. At least some of the IDs must correspond to the fourth header field in the
-OrthoDB file. Also, the peptide sequences should be of a taxon that occurs in
-the orthologous groups. Repeat this step for as many taxa as you have peptide
-sequences for.
+OrthoDB file. Repeat this step for as many taxa as you have peptide sequences
+for.
 
 If you made a mistake during input of the information, you may cancel the
 process at any time using Ctrl+C. 
@@ -121,9 +124,19 @@ file as orthograph.conf, you must tell Orthograph where it is with the -c option
 
 	./orthograph -c CONFIGFILE
 
-9. Examine results in the output directory.
+9. Get some coffee and watch.
 
-10. Profit!
+Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog set, if
+they don't exist. This may take a long time depending on the size of your set,
+but rest assured, once the pHMMs exist, subsequent analyses will be much faster.
+
+After that, your input file is searched using all pHMMs. Candidate orthologs are
+cached and later verified with a reciprocal search against the BLAST database of
+all proteomes.
+
+10. Examine results in the output directory.
+
+11. Profit!
 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
