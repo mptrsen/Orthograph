@@ -24,7 +24,6 @@ use warnings;       # cry if something seems odd
 use Archive::Tar;   # handling tar archives
 use Carp;           # alternative warn and die
 use Config;         # allows checking for system configuration in $Config
-use Cwd;            # current working directory via cwd()
 use DBD::mysql;	    # database driver for MySQL
 use DBI;	          # MySQL database interface 
 use Data::Dumper;   # great for debugging
@@ -448,7 +447,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		my $blastobj = Orthograph::Blastp->new($blastdb);
 
 		# generate a blast output file name from the HMM name and the hit number
-		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . sprintf("%04d", $n + 1) . '-' . basename($blastdb) .  '.blast');
+		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . $hmmresults[$n]->[0] . '-' . basename($blastdb) .  '.blast');
 
 		# do the blastp search; skip if no hits obtained
 		$blastobj->blastp($tmpfile, $blastoutfile);
@@ -480,7 +479,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# write the result to output file
 	my $outfh = IO::File->new(File::Spec->catfile($aaoutdir, $$orthologs[0][0] . '.fa'), 'w');
 	for (0..$#{$orthologs}) { 
-		printf $outfh ">%s:%s\n%s\n", 
+		printf $outfh ">%s:%s:%s\n%s\n", 
+			$$orthologs[0][0],  # the ortholog id
 			$$orthologs[$_][1],	# the taxon shorthand of the ortholog sequence
 			$$orthologs[$_][3],	# the sequence id of the ortholog sequence
 			$$orthologs[$_][4]  # the sequence
@@ -488,11 +488,16 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	}
 	# the header and sequence of the hit
 	# this is the best hit since the SQL query sorts by evalue and we take the first one
-	printf $outfh ">%s\n%s\n", $$orthologs[0][5], $$orthologs[0][6];
+	printf $outfh ">%s:%s:%s\n%s\n",
+		$$orthologs[0][0],  # the ortholog id
+		$species_name,      # the name of the analyzed species 
+		# TODO reftaxon id
+		$$orthologs[0][5],  # the original sequence id
+		$$orthologs[0][6];  # the sequence
 	$outfh->close();
 	# yay
 	++$orthocount;
-	printf "!! ^-------Possible orthology detected for %s! Added candidate to database.\n", $$orthologs[0][0];
+	printf "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0];
 
 	# get the ortholog results from the db
 	my $orthocand = Orthograph::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
@@ -502,9 +507,12 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 # report, end the program
 printf "\n%s analysis for %s complete.\n", $program_name, $species_name;
-printf "%d HMMs hit something. %d HMM files processed. \n", $hmmhitcount, $hmmcount unless $quiet;
-printf "Searched %d EST sequences using %d HMMs and obtained %d total ortholog hits (%2.2f%%).\n",
-	$num_ests, $hmmcount, $orthocount, ((100 * $orthocount) / $hmmcount);
+printf "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and verified %d as 1:1 orthologs (%2.2f%%).\n",
+	$num_ests,
+	$hmmcount,
+	$hmmhitcount,
+	$orthocount,
+	((100 * $orthocount) / $hmmcount);
 printf "Now go look in your output directory %s.\n", $outdir;
 
 exit;
@@ -724,7 +732,7 @@ sub intro {#{{{
 	FROM $mysql_table_set_details
 	WHERE $mysql_col_name = '$orthoset'
 	LIMIT 1");
-	die("Set '$orthoset' does not exist in database '$mysql_dbname'. Use $program_file\_manager first to set up your ortholog sets. Ask your administrator.\n") unless $settest;
+	die("Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file\_manager first to set up your ortholog sets. Ask your administrator.\n") unless $$settest[0][0];
 
 }#}}}
 
@@ -1011,6 +1019,19 @@ sub get_blastdir_for {#{{{
 	return $blastdir;
 }#}}}
 
+# Sub: file_is_empty
+# tests whether a file is empty (i.e., contains nothing or only empty lines)
+# Expects: scalar string path to file
+# Returns: True if file is empty, false otherwise
+sub file_is_empty {
+	my $file = shift;
+	my $fh = IO::File->new($file);
+	while (<$fh>) {
+		/^\s*$/ ? next : return 0;	# skip empty lines
+	}
+	return 1;
+}
+
 # Sub: make_hmms
 # Generate HMMs for a given core-ortholog set
 # Arguments: scalar string ortholog set name
@@ -1049,14 +1070,22 @@ sub make_hmms {#{{{
 	}
 	$dbh->disconnect();	# disc asap
 
-	my $num_orthoids = keys(%$data);
+	my $num_orthoids = scalar(keys(%$data));
 	my $o = 0;
 	foreach my $orthoid (keys(%$data)) {
 		&progress_bar($o, $num_orthoids, 25, '-');
 		++$o;
 		my $hmmfile = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
+
 		# does this HMM already exist?
-		next if (-e $hmmfile);	
+		if (-e $hmmfile) {
+			if (!&file_is_empty($hmmfile)) { next }
+			else {
+				warn("HMM file $hmmfile is empty! Something must have gone wrong during generation.\n");
+				next;
+			}
+		}
+
 		# no, create new fasta file and so on
 		my $fafile = File::Spec->catfile($alndir, $orthoid . '.fa');
 		my $fafh = IO::File->new($fafile, 'w');

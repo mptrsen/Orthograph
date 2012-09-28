@@ -2,8 +2,8 @@
 # This file is part of Orthograph.
 # Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
 # 
-# Orthograph is free software: you can redistribute it and/or modify it under the
-# terms of the GNU General Public License as published by the Free Software
+# Orthograph is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later
 # version.
 # 
@@ -28,7 +28,6 @@ my $searchprog = 'hmmsearch';
 my @searchcmd;
 my $evalue_threshold = 10;
 my $score_threshold = 10;
-my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
 1;
 
 sub new {
@@ -54,8 +53,8 @@ Sets verbose output on (TRUE) or off (FALSE). Default is FALSE.
 
 sub verbose {#{{{
   my $class = shift;
-  if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->verbose(1|0)" }
+  if (ref $class) { confess("Class method called as object method") }
+  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->verbose(1|0)") }
   $verbose = shift;
 }#}}}
 
@@ -67,21 +66,22 @@ Sets debug output on (TRUE) or off (FALSE). Default is FALSE.
 
 sub debug {#{{{
   my $class = shift;
-  if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->debug(1|0)" }
+  if (ref $class) { confess("Class method called as object method") }
+  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->debug(1|0)") }
   $debug = shift;
 }#}}}
 
 =head2 outdir
 
-Sets output directory for the hmmsearch output files. Expects a reference to scalar F<pathname>. Defaults to F<.>.
+Sets output directory for the hmmsearch output files. Expects a reference to
+scalar F<pathname>. Defaults to F<.>.
 
 =cut
 
 sub outdir {#{{{
   my $class = shift;
-  if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->outdir(OUTDIR)" }
+  if (ref $class) { confess("Class method called as object method") }
+  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->outdir(OUTDIR)") }
   $outdir = shift;
 }#}}}
 
@@ -93,42 +93,51 @@ Sets the HMMsearch program. Expects a string. Defaults to 'F<hmmsearch>'.
 
 sub searchprog {#{{{
   my $class = shift;
-  if (ref $class) { confess "Class method called as object method" }
-  unless (scalar @_ == 1) { confess "Usage: Orthograph::Unthreaded->searchcmd(COMMAND)" }
+  if (ref $class) { confess("Class method called as object method") }
+  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->searchprog(COMMAND)") }
   $searchprog = shift;
 }#}}}
 
 =head2 evalue_threshold
 
-Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
+Sets or returns the e-value threshold to use for the blastp search. Defaults to
+10. Note that e-value and score thresholds are mutually exclusive; if you set
+one, this automatically unsets the other.
 
 =cut
 
 sub evalue_threshold {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Orthograph::Blast->evalue_threshold(N)\n" }
-	$evalue_threshold = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $score_threshold };
+	if (scalar(@_) >  1) { confess("Usage: Orthograph::Hmmsearch->evalue_threshold(N)\n") }
+	$evalue_threshold = shift(@_);
+	$score_threshold = 0;
 }#}}}
 
 =head2 score_threshold
 
-Sets or returns the e-value threshold to use for the blastp search. Defaults to 0.
+Sets or returns the score threshold to use for the blastp search. Defaults to
+0 (disabled). Note that e-value and score thresholds are mutually exclusive; if
+you set one, this automatically unsets the other.
 
 =cut
 
 sub score_threshold {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Orthograph::Blast->score_threshold(N)\n" }
-	$score_threshold = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $score_threshold }
+	if (scalar(@_) >  1) { confess("Usage: Orthograph::Hmmsearch->score_threshold(N)\n") }
+	$score_threshold = shift(@_);
+	$evalue_threshold = 0;
 }#}}}
 
 =head1 Object methods
 
 =head2 search
 
-HMM-searches a sequence file using F<hmmfile>, leaving F<outfile> for later processing of the results. 
+HMM-searches a sequence file using F<hmmfile>, leaving F<outfile> for later
+processing of the results. 
 
 Expects: Reference to sequence object, scalar string filename to F<hmmfile>. 
 
@@ -136,23 +145,24 @@ Expects: Reference to sequence object, scalar string filename to F<hmmfile>.
 
 sub search {#{{{
   my $self = shift;
-  unless (scalar @_ == 1) { confess "Usage: OBJECT->search(FILE)" }
+  unless (scalar @_ == 1) { confess("Usage: OBJECT->search(FILE)") }
   my $protfile  = shift;
   my $hmmfile   = $self->hmmfile;
   # full output if desired, table only otherwise; reflects in outfile extension
-  my $outfile = File::Spec->catfile($outdir, basename($hmmfile).'.tbl');
+  my $outfile = File::Spec->catfile($outdir, basename($hmmfile).'.domtbl');
   # return right away if this search has been conducted before
   if (-e $outfile) {
     $self->resultfile($outfile);
     return $self;
   }
   else {
+		my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
     my @hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option $hmmfile $protfile);
     print "\n@hmmsearchline\n\n"
       if $debug;
     # do the search
     my $result = [ `@hmmsearchline` ];
-    confess "Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!" 
+    confess("Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!")
       unless (scalar @$result);
     # only save those results that actually match something
     unless (grep( /No hits detected/, @$result )) {

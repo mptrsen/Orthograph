@@ -2,8 +2,8 @@
 # This file is part of Orthograph.
 # Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
 # 
-# Orthograph is free software: you can redistribute it and/or modify it under the
-# terms of the GNU General Public License as published by the Free Software
+# Orthograph is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later
 # version.
 # 
@@ -21,9 +21,9 @@ B<Orthograph::Blast>
 
 =head1 DESCRIPTION
 
-The B<Orthograph::Blast> module provides an object-oriented interface to the NCBI
-blastp sequence search algorithm. It does not conform to the Guidelines of the
-BioPerl package and as such does not return or handle Bioperl's Bio::Seq or
+The B<Orthograph::Blast> module provides an object-oriented interface to the
+NCBI blastp sequence search algorithm. It does not conform to the Guidelines of
+the BioPerl package and as such does not return or handle Bioperl's Bio::Seq or
 Bio::Search objects. Instead, it is designed to be a lot simpler and more
 straightforward to use for applications that only want to use the NCBI BLAST+
 package without the immense overhead of the entire Bioperl backend.
@@ -83,8 +83,8 @@ Sets $verbose. Defaults to 0.
 
 sub verbose {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->verbose(1)\n" }
+	if (ref $class) { confess("Class method used as object method\n") }
+	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->verbose(1)\n") }
 	$verbose = shift;
 }#}}}
 
@@ -96,8 +96,8 @@ Sets $debug. Defaults to 0.
 
 sub debug {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->debug(1)\n" }
+	if (ref $class) { confess("Class method used as object method\n") }
+	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->debug(1)\n") }
 	$debug = shift;
 }#}}}
 
@@ -109,8 +109,8 @@ Sets the blast program. Defaults to B<blastp>.
 
 sub searchprog {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->searchprog(COMMAND)\n" }
+	if (ref $class) { confess("Class method used as object method\n") }
+	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->searchprog(COMMAND)\n") }
 	$searchprog = shift;
 }#}}}
 
@@ -122,8 +122,8 @@ Sets the makeblastdb program. Defaults to B<makeblastdb>.
 
 sub set_makeblastdb {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (scalar @_ == 1) { confess "Usage: Orthograph::Blast->set_makeblastdb(COMMAND)\n" }
+	if (ref $class) { confess("Class method used as object method\n") }
+	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->set_makeblastdb(COMMAND)\n") }
 	$makeblastdbprog = shift;
 }#}}}
 
@@ -136,35 +136,23 @@ Sets the blast output directory. Defaults to 'F<.>'.
 
 sub outdir {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Orthograph::Blast->outdir(FILENAME)\n" }
+	if (ref $class) { confess("Class method used as object method\n") }
+	unless (@_ == 1) { confess("Usage: Orthograph::Blastp->outdir(FILENAME)\n") }
 	my $blastoutdir = shift;
 }#}}}
 
 =head3 evalue_threshold()
 
-Sets the e-value threshold to use for the blastp search. Defaults to 10.
+Sets or returns the e-value threshold to use for the blastp search. Defaults to 10.
 
 =cut
 
 sub evalue_threshold {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Orthograph::Blast->evalue_threshold(N)\n" }
-	$evalue_threshold = shift;
-}#}}}
-
-=head3 score_threshold()
-
-Sets the score threshold to use for the blastp search. Defaults to 10.
-
-=cut
-
-sub score_threshold {#{{{
-	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Orthograph::Blast->score_threshold(N)\n" }
-	$score_threshold = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $evalue_threshold };
+	if (scalar(@_) >  1) { confess("Usage: Orthograph::Blastp->evalue_threshold(N)\n") }
+	$evalue_threshold = shift(@_);
 }#}}}
 
 =head3 max_hits()
@@ -175,8 +163,8 @@ Sets the maximum number of hits to be returned. Defaults to 100.
 
 sub max_hits {#{{{
 	my $class = shift;
-	if (ref $class) { confess "Class method used as object method\n" }
-	unless (@_ == 1) { confess "Usage: Orthograph::Blastp->max_hits(N)\n" }
+	if (ref $class) { confess("Class method used as object method\n") }
+	unless (@_ == 1) { confess("Usage: Orthograph::Blastp->max_hits(N)\n") }
 	$max_hits = shift;
 }#}}}
 
@@ -190,7 +178,7 @@ Returns the BLAST database that was selected upon creating a new object
 
 sub db {#{{{
 	my $self = shift;
-	unless ($self->{'db'}) { confess "I do not have a BLAST db\n" }
+	unless ($self->{'db'}) { confess("I do not have a BLAST db\n") }
 	return $self->{'db'};
 }#}}}
 
@@ -198,14 +186,13 @@ sub db {#{{{
 
 performs the blastp search with the command line set via blast_cmdline(), using
 the F<queryfile> on the blast db previously set via db() and with respect to
-the e-value and score thresholds set via evalue_threshold() and
-score_threshold(), respectively.
+the e-value set via evalue_threshold().
 
 =cut
 
 sub blastp {#{{{
 	my $self = shift;
-	unless (scalar @_ == 2) { confess "Usage: Orthograph::Blast->blastp(FILE, OUTFILE)\n" }
+	unless (scalar @_ == 2) { confess("Usage: Orthograph::Blastp->blastp(FILE, OUTFILE)\n") }
 	my $queryfile = shift;
 	my $outfile = shift;
 	my $db = $self->db;
@@ -215,7 +202,7 @@ sub blastp {#{{{
 		return $self;
 	}
 	# use outfmt 7 for comment lines
-	my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore' -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
+	my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore' -evalue $evalue_threshold -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
 
 	# do the search or die
 	print "\n@blastcmd\n\n"

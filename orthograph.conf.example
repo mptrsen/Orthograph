@@ -24,16 +24,16 @@ mysql_dbname       = DATABASE
 # moment, you may only supply one file, not a directory of files.
 estfile            = FASTAFILE
 
+# Species name. Make sure to pick a unique name because otherwise results get
+# mixed up. You can, however, supply an existing name if you want to add
+# sequences to an existing data set. 
+species_name       = TEST_SPECIES
+
 # The ortholog set you created earlier.
 ortholog_set       = SETNAME
 
 # This is where your results are placed. Will be created if it doesn't exist.
 output_directory   = /PATH/TO/OUTPUT_DIR
-
-# Species name. Make sure to pick a unique name because otherwise results get
-# mixed up. You can, however, supply an existing name if you want to add
-# sequences to an existing data set. 
-species_name       = TEST_SPECIES
 
 
 #--------------------------------------------------

@@ -133,6 +133,16 @@ all proteomes.
 
 10. Examine results in the output directory.
 
+The output directory contains three subdirectories:
+
+a) hmmsearch. This contains all the HMMsearch output tables.
+
+b) blastp. This contains all the BLASTP output tables.
+
+c) aa. This contains the actual result of your analysis. The hit sequences are
+output along with the core-ortholog sequences from your ortholog set, grouped by
+ortholog groups.
+
 11. Profit!
 
 
