@@ -76,7 +76,7 @@ sub next_seq {
   my $self = shift;
   my $fh = $self->{'fh'};
   local $/ = "\n>"; # change the line separator
-  return unless $item = readline($fh);  # read the line(s)
+  return unless defined(my $item = readline($fh));  # read the line(s)
   chomp $item;
   
   if ($. == 1 and $item !~ /^>/) {  # first line is not a header

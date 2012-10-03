@@ -36,11 +36,11 @@ doesn't work, you'll have to read the rest of this document to find out why :-)
 
 1. Set up the MySQL database. 
 
-There must exist a database for your perusal and a database user must have
-permissions to DROP and CREATE tables and of course to SELECT, DELETE and INSERT
-into them. Google "mysql create database" or ask your administrator if you don't
-know how to create the database. Make a note of your database name. You will
-need it later.
+There must exist a database for your usage and a database user must have
+permissions to DROP and CREATE tables and of course to SELECT, DELETE and
+INSERT into them. Google "mysql create database" or ask your administrator if
+you don't know how to create the database. Make a note of your database name.
+You will need it later.
 
 2. Create the tables. Make the orthograph_manager script executable and use it:
 
@@ -65,11 +65,15 @@ fasta file must have an OrthoDB-style header format as in the following example:
 
 	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
 
-That is, there must exist five space-separated fields, the last one of which may
-contain whitespace as well. This is output by OrthoDB by default, so you don't
-have to worry about that if you got your orthology data from OrthoDB. If not,
-read `perldoc orthograph_manager` for further information. Make a note of your
-ortholog set name. You will need it later.
+That is, there must exist five space-separated fields, the last one of which
+may contain whitespace as well. This is output by OrthoDB
+(http://cegg.unige.ch/orthodb5) by default, so you don't have to worry about
+that if you downloaded your ortholog set from OrthoDB.  However, dependent on
+your OrthoDB query, you may need to filter your file so that it contains only
+the taxa you want in the ortholog set. A filter script is provided upon
+request. If you didn't get your data from OrthoDB, read `perldoc
+orthograph_manager` for further information. Make a note of your ortholog set
+name. You will need it later.
 
 4. Load proteome sequences into the database :
 
@@ -97,14 +101,13 @@ output of nucleotide data is not implemented anyway, so skip this step.
 
 6. Create a config file. 
 
-Edit the supplied config file orthograph.conf.example, it's commented to help you
-start off. Most options are self-explanatory.
+Edit the supplied config file orthograph.conf.example, it's commented to help
+you start off. Most options are self-explanatory.
 
-7. Create the required database structure for Orthograph. Make orthograph executable
-and run it with the -prepare option:
+7. Create the required database structure for Orthograph. Make orthograph
+executable and run it with the -prepare option:
 
-	chmod +x orthograph
-	./orthograph -prepare
+	chmod +x orthograph ./orthograph -prepare
 
 If you picked a non-default database name AND you didn't save your config file
 in orthograph.conf, you must tell Orthograph where to find all that information
@@ -116,20 +119,22 @@ with the -c option:
 
   ./orthograph 
 
-Orthograph expects its config file in orthograph.conf. If you didn't save your config
-file as orthograph.conf, you must tell Orthograph where it is with the -c option:
+Orthograph expects its config file in orthograph.conf. If you didn't save your
+config file as orthograph.conf, you must tell Orthograph where it is with the
+-c option:
 
 	./orthograph -c CONFIGFILE
 
 9. Get some coffee, sit back and watch (or do something else).
 
-Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog set, if
-they don't exist. This may take a long time depending on the size of your set,
-but rest assured, once the pHMMs exist, subsequent analyses will be much faster.
+Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog
+set, if they don't exist. This may take a long time depending on the size of
+your set, but rest assured, once the pHMMs exist, subsequent analyses will be
+much faster.
 
-After that, your input file is searched using all pHMMs. Candidate orthologs are
-cached and later verified with a reciprocal search against the BLAST database of
-all proteomes.
+After that, your input file is searched using all pHMMs. Candidate orthologs
+are cached and later verified with a reciprocal search against the BLAST
+database of all proteomes.
 
 10. Examine results in the output directory.
 
@@ -140,11 +145,20 @@ a) hmmsearch. This contains all the HMMsearch output tables.
 b) blastp. This contains all the BLASTP output tables.
 
 c) aa. This contains the actual result of your analysis. The hit sequences are
-output along with the core-ortholog sequences from your ortholog set, grouped by
-ortholog groups.
+output along with the core-ortholog sequences from your ortholog set, grouped
+by ortholog groups.
 
-11. Profit!
+11. ???
 
+12. Profit!
+
+
+COMMON PROBLEMS
+===============
+"No sequences found. Something went wrong. Check your input file. Exiting." 
+
+Really check your input file. Is it empty? Is it a valid fasta file? If it looks
+ok, try deleting the translated version. 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++ The rest of this document is outdated! So is `perldoc orthograph`. +++

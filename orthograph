@@ -29,7 +29,7 @@ use DBI;	          # MySQL database interface
 use Data::Dumper;   # great for debugging
 use Digest::SHA;    # SHA hashing: good idea or not?
 use File::Basename; # parse path names
-use File::Path qw(make_path); # mkdir with parent dirs; this also uses File::Spec
+use File::Path qw(make_path remove_tree); # this also uses File::Spec
 use File::Temp;     # temporary files
 use Getopt::Long;   # parse command line arguments
 use IO::Dir;        # object-oriented access to dirs
@@ -48,9 +48,10 @@ use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta
 
 my $program_name = 'Orthograph';
 my $version = 'alpha1';
-print "Orthograph: Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models\n";
-print "Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n";
-print "Version $version\n\n";
+print "$program_name\: Orthology prediction using a Graph-based, ",
+	"Reciprocal Approach with Profile Hidden Markov models\n",
+	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n",
+	"Version $version\n\n";
 
 #--------------------------------------------------
 # Only use threads if the system supports it.
@@ -319,11 +320,11 @@ printf("%d sequences stored to database '%s' on %s. Sequence identifiers have be
 
 # get number of transcript sequences
 $num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
+$num_ests = $$num_ests[0][0];
 if ($num_ests == 0) {
 	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
 	exit;
 }
-$num_ests = $$num_ests[0][0];
 printf "%d sequences in database '%s' on %s.\n", 
 	$num_ests,
 	$mysql_dbname,
@@ -356,8 +357,10 @@ Orthograph::Hmmsearch->score_threshold($hmmsearch_score_threshold)
 	if $hmmsearch_score_threshold;
 Orthograph::Blastp->evalue_threshold($blast_evalue_threshold)
 	if $blast_evalue_threshold;
-Orthograph::Blastp->score_threshold($blast_score_threshold)
-	if $blast_score_threshold;
+# there is no score threshold for BLASTP
+# but a maximum number of hits to save
+Orthograph::Blastp->max_hits($blast_max_hits)
+	if $blast_max_hits;
 
 # the output directories
 Orthograph::Hmmsearch->outdir($hmmoutdir);
@@ -366,9 +369,6 @@ Orthograph::Blastp->outdir($blastoutdir);
 # the programs
 Orthograph::Hmmsearch->searchprog($hmmsearchprog);
 Orthograph::Blastp->searchprog($blastprog);
-
-# maximum number of BLAST hits to save
-Orthograph::Blastp->max_hits(3);
 
 #}}}
 
@@ -770,7 +770,7 @@ sub translate_est {#{{{
     return($outfile);
   }
   my @translateline = qq($translateprog $infile > $outfile);
-  system(@translateline) and die("Fatal: Could not translate '$infile': $!\n");
+  system(@translateline) and die();
   return($outfile);
 }#}}}
 

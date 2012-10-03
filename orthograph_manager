@@ -21,7 +21,7 @@ use warnings;
 use Carp;
 use Getopt::Long;
 use File::Temp;     # temporary files
-use File::Spec;
+use File::Path qw(remove_tree make_path);	# this also uses File::Spec
 use Seqload::Fasta qw(fasta2csv check_if_fasta); # object-oriented access to fasta files, fasta2csv converter
 use DBI;
 use DBD::mysql;
@@ -29,27 +29,31 @@ use Seqload::Fasta;
 use Data::Dumper;
 
 
-my $dbname       = 'orthograph';
-my $dbserver     = '127.0.0.1';
-my $username     = undef;
-my $name         = undef;
-my $pwd          = undef;
-my $setname      = undef;
-my $prefix       = 'orthograph_';
-my $blastdir     = '';
-my $create       = 0;
-my $delete_set   = '';
-my $delete_all   = 0;
-my $overwrite    = 0;
+my $blastdir          = '';
+my $create            = 0;
+my $dbname            = 'orthograph';
+my $dbserver          = '127.0.0.1';
+my $delete_all        = 0;
+my $delete_set        = '';
+my $description;
+my $isnucleotide      = 0;
+my $ispeptide         = 0;
+my $listests          = 0;
+my $listogs           = 0;
+my $listsets          = 0;
+my $listtaxa          = 0;
+my $name              = undef;
+my $ogs_name;
+my $overwrite         = 0;
+my $prefix            = 'orthograph_';
+my $pwd               = undef;
 my $reassignorthologs = 0;
-my $isnucleotide = 0;
-my $ispeptide    = 0;
-my $listogs      = 0;
-my $listsets     = 0;
-my $listtaxa     = 0;
-my $listests     = 0;
-my $temptable    = 'temp';
+my $setdir            = '';
+my $setname           = undef;
 my $sql;
+my $temptable         = 'temp';
+my $total_seqs;
+my $username          = undef;
 # table names
 my %t            = (
 	'blastdbs'     => 'blastdbs',
@@ -66,32 +70,30 @@ my %t            = (
 );
 	
 my %names;
-my $description;
-my $ogs_name;
-my $total_seqs;
 
 
 GetOptions(
 	'D=s'          => \$dbname,
-	'prefix=s'     => \$prefix,
 	'blastdir=s'   => \$blastdir,
-	'c'            => \$create,
-	'delete_set=s' => \$delete_set,
+	'c|create'     => \$create,
 	'delete_all'   => \$delete_all,
+	'delete_set=s' => \$delete_set,
 	'h=s'          => \$dbserver,
-	'le'           => \$listests,
+	'le'           => \$listests,	# TODO implement
 	'lo'           => \$listogs,
 	'ls'           => \$listsets,
 	'lt'           => \$listtaxa,
 	'n=s'          => \$name,
+	'nuc'          => \$isnucleotide,
 	'o'            => \$overwrite,
 	'p=s'          => \$pwd,
+	'pep'          => \$ispeptide,
+	'prefix=s'     => \$prefix,
+	'r'            => \$reassignorthologs,
+	'setdir=s'     => \$setdir,
 	's=s'          => \$setname,
 	't=s'          => \$temptable,
 	'u=s'          => \$username,
-	'r'            => \$reassignorthologs,
-	'nuc'          => \$isnucleotide,
-	'pep'          => \$ispeptide,
 	) or die "I don't know what you want me to do. Terminating.\n";
 my $infile = shift @ARGV;
 
@@ -205,7 +207,7 @@ elsif ($create) {
 
 elsif ($delete_set) { 
 	&delete_set($delete_set);
-	print "OK, set '$delete_set' deleted.\n";
+	print "OK, removed set '$delete_set' completely.\n";
 	exit;
 }
 
@@ -315,7 +317,9 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
 	}
 	++$total_seqs;
-	my @line = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
+	my @line = split(/\s+/, $hdr, 4);	# maximum of five fields, the last one may contain whitespace
+	# but no commas, please, they confuse the CSV parser
+	$line[3] =~ s/,/ /g;
 
 	# if the original proteome is missing, this can't work
 	if ($line[3] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
@@ -777,6 +781,7 @@ sub list_ests {
 # Returns: true if successful, false otherwise
 sub delete_set {#{{{
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
+	my $this_set_dir = File::Spec->catdir($setdir, $setname);
 	my $data = &mysql_get("SELECT * FROM $t{'set_details'} WHERE name = '$setname'");
 	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
 	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
@@ -786,12 +791,18 @@ sub delete_set {#{{{
 		"DELETE FROM $t{'orthologs'}   WHERE $t{'orthologs'}.`setid` = '$setid'",
 		"DELETE FROM $t{'blastdbs'}    WHERE $t{'blastdbs'}.`setid`  = '$setid'",
 	);
+	
 	my $dbh = &mysql_dbh();
 	foreach (@queries) {
 		print $_, "\n";
 		$dbh->do($_) or die();
 	}
 	$dbh->disconnect();
+
+	if (-e $this_set_dir) {
+		File::Path->remove_tree($this_set_dir);
+		printf "Directory $this_set_dir unlinked.\n"; 
+	}
 	return 1;
 }#}}}
 
