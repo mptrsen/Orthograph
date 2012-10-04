@@ -3,9 +3,6 @@ use strict;
 use warnings;
 use DBI;
 use DBD::mysql;
-use lib '/home/malty/local/share/perl5';
-use Seqload::Fasta;
-use Seqload::Mysql;
 use Data::Dumper;
 
 my $db       = 'orthograph';
@@ -73,12 +70,18 @@ foreach my $est (keys %$data) {
 
 printf "%d hits %d total\n", scalar keys %$data, $count;
 
-# output only one of each eogs with the correct transcript
 my $out = { };
+# output each eog with the correct transcript
+# each transcript shall be assigned to only one ortholog group
 foreach my $est (keys %$data) {
+	# for all hits, see if they are in the reftaxa list
 	for my $i (0..$#{$$data{$est}}) {
+		# is this reftaxon in our list?
 		if ( grep /$$data{$est}[$i]{'reftaxon'}/ , @reftaxa ) {
-			if ( ( defined $$out{$$data{$est}[$i]{'orthoid'}} ) and ( $$data{$est}[$i]{$sort_by} < $$out{$$data{$est}[$i]{'orthoid'}}{$sort_by} ) ) { 
+			# ok it's there
+			# take the largest (hmm|blast) evalue
+			# using a hash makes sure each ortholog group gets only one transcript
+			if ( ( defined $$out{$$data{$est}[$i]{'orthoid'}} ) and ( $$data{$est}[$i]{$sort_by} < $$out{$$data{$est}[$i]{'orthoid'}}{$sort_by} ) ) {
 				$$out{$$data{$est}[$i]{'orthoid'}} = {
 					'est'       => $est,
 					'hmmeval'   => $$data{$est}[$i]{'hmmeval'},
