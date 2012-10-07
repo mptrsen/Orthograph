@@ -322,7 +322,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 	my @line = split(/\s+/, $hdr, 4);	# maximum of five fields, the last one may contain whitespace
 
 	# if the original proteome is missing, this can't work
-	if ($line[3] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
+	if ($line[1] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
 
 	$line[0] =~ s/:.*//;	# remove everything from the colon
 	printf $tmpfile "%s,%s,%s,%s,%s,%s,%s,%s\n", 
@@ -331,7 +331,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		$setname,	    # set name
 		$line[2],     # orthodb id, e.g. EOG500001
 		File::Spec->catdir($blastdir), # blast database directory
-		$line[3],     # original proteome id
+		$line[1],     # original proteome id
 		$seq,         # sequence
 		$description; # set description
 }

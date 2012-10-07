@@ -113,7 +113,7 @@ my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastd
 #{{{
 my $aaoutdir       = $config->{'aaoutdir'}              ? $config->{'aaoutdir'}             : 'aa';
 my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
-my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 3;
+my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 10;
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
 my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
 my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
@@ -313,7 +313,7 @@ print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_
 # LOAD DATA INFILE; third arg must be ref to array of column names
 $num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 
-printf("%d sequences stored to database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n",
+printf("%d sequences stored to database '%s' on %s. \n",
 	$num_ests,
 	$mysql_dbname,
 	$mysql_dbserver) unless $quiet;
@@ -325,7 +325,7 @@ if ($num_ests == 0) {
 	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
 	exit;
 }
-printf "%d sequences in database '%s' on %s.\n", 
+printf "%d sequences in database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n", 
 	$num_ests,
 	$mysql_dbname,
 	$mysql_dbserver unless $quiet;
@@ -382,7 +382,6 @@ $hmmhitcount = 0;
 
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
-	$DB::single=2; # debugging breakpoint
 	++$hmmcount;
 	$blastcount = 0;	# reset counter
 
@@ -1246,9 +1245,10 @@ sub load_data_infile {#{{{
 	}
 
 	# Create temporary csv file for high-speed reading into database
-	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
 	my $protfh = Seqload::Fasta->open($protfile);
 	while (my ($h, $s) = $protfh->next_seq()) {
+		$h =~ s/,/ /g;	# remove all commas, they confuse the csv parser
 		$s =~ s/-//g;	# remove all gaps from the sequence
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
 			warn("Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
@@ -1273,6 +1273,7 @@ sub load_data_infile {#{{{
 	$num_ests = $dbh->do($query);
 	# disconnect ASAP
 	$dbh->disconnect;
+	defined($DBI::errstr) ? warn($DBI::errstr, "\n") : print "OK\n";
 	return $num_ests;
 }#}}}
 
