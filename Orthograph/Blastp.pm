@@ -153,6 +153,7 @@ sub evalue_threshold {#{{{
 	if (scalar(@_) == 0) { return $evalue_threshold };
 	if (scalar(@_) >  1) { confess("Usage: Orthograph::Blastp->evalue_threshold(N)\n") }
 	$evalue_threshold = shift(@_);
+	unless ($evalue_threshold =~ /^\d+(\.\d+)?(e(-)?\d+)?$/) { confess("Invalid argument (must be integer, float or exponential): $evalue_threshold\n") }
 }#}}}
 
 =head3 max_hits()
@@ -166,6 +167,7 @@ sub max_hits {#{{{
 	if (ref $class) { confess("Class method used as object method\n") }
 	unless (@_ == 1) { confess("Usage: Orthograph::Blastp->max_hits(N)\n") }
 	$max_hits = shift;
+	unless ($max_hits =~ /^\d+$/) { confess("Invalid argument (must be integer): $max_hits\n") }
 }#}}}
 
 =head1 OBJECT METHODS

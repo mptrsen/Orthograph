@@ -8,9 +8,9 @@ use Data::Dumper;
 my $count    = 0;
 my $data     = { };
 my $db       = 'orthograph';
-my $dbpwd    = 'malty';
+my $dbuser   = 'mpetersen';
+my $dbpwd    = 'mpetersen';
 my $dbserver = 'localhost';
-my $dbuser   = 'malty';
 my $fuzzy    = 0;
 my $out      = { };
 my $sort_by  = 'blasteval';
@@ -23,29 +23,29 @@ my @reftaxa  = qw(AAEGY CFLOR ISCAP);
 #-------------------------------------------------- 
 my $query = "
 SELECT DISTINCT
-	orthograph_orthologs.ortholog_gene_id AS orthoid,
-	orthograph_hmmsearch.target           AS transcript,
-	orthograph_hmmsearch.evalue           AS hmm_eval,
-	orthograph_blast.target               AS blast_target,
-	orthograph_blast.evalue               AS blast_eval,
-	orthograph_taxa.name                  AS reftax
-FROM orthograph_aaseqs
-INNER JOIN orthograph_taxa
-	ON orthograph_aaseqs.taxid            = orthograph_taxa.id
-INNER JOIN orthograph_blast
-	ON orthograph_aaseqs.id               = orthograph_blast.target
-INNER JOIN orthograph_hmmsearch
-	ON orthograph_blast.query             = orthograph_hmmsearch.target
-INNER JOIN orthograph_ests
-	ON orthograph_hmmsearch.target        = orthograph_ests.digest
-INNER JOIN orthograph_orthologs
-	ON orthograph_hmmsearch.query         = orthograph_orthologs.ortholog_gene_id
-INNER JOIN orthograph_sequence_pairs
-	ON orthograph_orthologs.sequence_pair = orthograph_sequence_pairs.id
-INNER JOIN orthograph_set_details
-	ON orthograph_set_details.name        = 'alltaxa'
-WHERE orthograph_ests.spec              = 'Mengenilla'
-ORDER BY orthograph_hmmsearch.evalue
+	o_orthologs.ortholog_gene_id AS orthoid,
+	o_hmmsearch.target           AS transcript,
+	o_hmmsearch.evalue           AS hmm_eval,
+	o_blast.target               AS blast_target,
+	o_blast.evalue               AS blast_eval,
+	o_taxa.name                  AS reftax
+FROM o_aaseqs
+INNER JOIN o_taxa
+	ON o_aaseqs.taxid            = o_taxa.id
+INNER JOIN o_blast
+	ON o_aaseqs.id               = o_blast.target
+INNER JOIN o_hmmsearch
+	ON o_blast.query             = o_hmmsearch.target
+INNER JOIN o_ests
+	ON o_hmmsearch.target        = o_ests.digest
+INNER JOIN o_orthologs
+	ON o_hmmsearch.query         = o_orthologs.ortholog_gene_id
+INNER JOIN o_sequence_pairs
+	ON o_orthologs.sequence_pair = o_sequence_pairs.id
+INNER JOIN o_set_details
+	ON o_set_details.name        = 'alltaxa'
+WHERE o_ests.spec              = 'Mengenilla'
+ORDER BY o_hmmsearch.evalue
 ";
 
 # get data, store in hash->array->hash
