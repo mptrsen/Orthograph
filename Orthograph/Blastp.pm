@@ -207,7 +207,7 @@ sub blastp {#{{{
 	my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore' -evalue $evalue_threshold -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
 
 	# do the search or die
-	print "\n@blastcmd\n\n"
+	print STDERR "\n@blastcmd\n\n"
 		if $debug;
 	croak "Fatal: BLAST search failed: $!\n"
 		if system(@blastcmd);

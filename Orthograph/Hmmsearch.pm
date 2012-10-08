@@ -28,7 +28,6 @@ my $searchprog = 'hmmsearch';
 my @searchcmd;
 my $evalue_threshold = 10;
 my $score_threshold = 10;
-1;
 
 sub new {
   my ($class, $hmmfile) = @_;
@@ -161,22 +160,14 @@ sub search {#{{{
   else {
 		my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
     my @hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option $hmmfile $protfile);
-    print "\n@hmmsearchline\n\n"
+    print STDERR "\n@hmmsearchline\n\n"
       if $debug;
     # do the search
     my $result = [ `@hmmsearchline` ];
     confess("Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!")
       unless (scalar @$result);
-    # only save those results that actually match something
-    unless (grep( /No hits detected/, @$result )) {
-      $self->{'resultfile'} = $outfile;
-      return $self;
-    }
-    # empty result
-    else {
-      $self->{'resultfile'} = $outfile;
-      return $self;
-    }
+		$self->{'resultfile'} = $outfile;
+		return $self;
   }
 }#}}}
 
