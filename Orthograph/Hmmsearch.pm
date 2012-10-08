@@ -113,7 +113,7 @@ sub evalue_threshold {#{{{
 	if (scalar(@_) >  1) { confess("Usage: Orthograph::Hmmsearch->evalue_threshold(N)\n") }
 	$evalue_threshold = shift(@_);
 	# check whether this is a valid number
-	unless ($evalue_threshold =~ /^\d+(\.\d+)?(e(-)?\d+)?$/) { confess("Invalid argument (must be integer, float or exponential): $evalue_threshold\n") }
+	unless ($evalue_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $evalue_threshold\n") }
 	$score_threshold = 0;
 }#}}}
 
@@ -131,7 +131,7 @@ sub score_threshold {#{{{
 	if (scalar(@_) == 0) { return $score_threshold }
 	if (scalar(@_) >  1) { confess("Usage: Orthograph::Hmmsearch->score_threshold(N)\n") }
 	$score_threshold = shift(@_);
-	unless ($score_threshold =~ /^\d+$/) { confess("Invalid argument (must be integer): $score_threshold\n") }
+	unless ($score_threshold =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $score_threshold\n") }
 	$evalue_threshold = 0;
 }#}}}
 
