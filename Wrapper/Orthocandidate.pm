@@ -17,11 +17,11 @@
 
 =head1 NAME 
 
-B<Orthograph::Orthocandidate>
+B<Wrapper::Orthocandidate>
 
 =head1 DESCRIPTION
 
-The B<Orthograph::Orthocandidate> module provides a simple, object-oriented
+The B<Wrapper::Orthocandidate> module provides a simple, object-oriented
 interface to a orthology candidate database, however managed. It provides
 methods for adding and removing candidate objects, looping through the list
 backwards and forwards as well as dumping the entire list.
@@ -32,22 +32,22 @@ shall not be cluttered during large analyses.
 
 =head1 SYNOPSIS
 
-  use Orthograph::Orthocandidate;
+  use Wrapper::Orthocandidate;
 
   # create a new candidate object
-	my $candidate = Orthograph::Orthocandidate->new($ortholog_id, $digest);
+	my $candidate = Wrapper::Orthocandidate->new($ortholog_id, $digest);
 
 	# add the newly created object to the candidate list
-	Orthograph::Orthocandidate->add($candidate);
+	Wrapper::Orthocandidate->add($candidate);
 
 	# output all objects in the list
-	while (my $o = Orthograph::Orthocandidate->next()) {
+	while (my $o = Wrapper::Orthocandidate->next()) {
 		printf("%s\t%s\n", $o->orthoid(), $o->digest());
 	}
 
 =cut
 
-package Orthograph::Orthocandidate;
+package Wrapper::Orthocandidate;
 use strict;
 use warnings;
 use IO::File;
@@ -64,14 +64,14 @@ my $num_items = 0;
 
 sub new {
 	my $class   = shift;
-	unless (scalar(@_) == 2) { confess('Usage: Orthograph::Orthocandidate->new($orthoid, $digest)') }
+	unless (scalar(@_) == 2) { confess('Usage: Wrapper::Orthocandidate->new($orthoid, $digest)') }
 	my ($orthoid, $digest) = splice(@_, 0, 2);
 	my $self    = {
 		'orthoid' => $orthoid,
 		'digest'  => $digest,
 	};
 	bless($self, $class);
-	#Orthograph::Orthocandidates->add($self);	# TODO ??
+	#Wrapper::Orthocandidates->add($self);	# TODO ??
 	return $self;
 }
 
@@ -134,9 +134,9 @@ Adds OBJECT to the list of candidate objects.
 sub add {
 	my $class = shift;
 	if (ref($class)) { confess("Class method used as object method") }
-	unless (scalar(@_) == 1) { confess("Usage: Orthograph::Orthocandidate->add(SCALAR)") }
+	unless (scalar(@_) == 1) { confess("Usage: Wrapper::Orthocandidate->add(SCALAR)") }
 	my $cand = shift;
-	unless (ref($cand)) { confess("Argument to Orthograph::Orthocandidate->add() must be hash reference. RTFM") }
+	unless (ref($cand)) { confess("Argument to Wrapper::Orthocandidate->add() must be hash reference. RTFM") }
 	$$cand{'index'} = $index++;
 	push(@{$list}, $cand);
 	$num_items++;

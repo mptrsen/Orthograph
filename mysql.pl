@@ -42,9 +42,12 @@ INNER JOIN o_orthologs
 	ON o_hmmsearch.query         = o_orthologs.ortholog_gene_id
 INNER JOIN o_sequence_pairs
 	ON o_orthologs.sequence_pair = o_sequence_pairs.id
+	AND o_aaseqs.id              = o_sequence_pairs.aa_seq
 INNER JOIN o_set_details
 	ON o_set_details.name        = 'notmany'
 WHERE o_ests.spec              = 'Mengenilla'
+AND o_hmmsearch.evalue         < 1e-05
+AND o_blast.evalue             < 1e-05
 ORDER BY o_hmmsearch.evalue
 ";
 
@@ -107,10 +110,13 @@ foreach my $eog (keys %$data) {
 	}
 }
 
-foreach my $digest (keys %$out) {
-	printf "%s => %s (eval %1.1e)\n", $$out{$digest}{'eog'}, $digest, $$out{$digest}{'blasteval'};
-}
+#--------------------------------------------------
+# foreach my $digest (keys %$out) {
+# 	printf "%s => %s (eval %1.1e)\n", $$out{$digest}{'eog'}, $digest, $$out{$digest}{'blasteval'};
+# }
+# 
+# #print Dumper($out);
+# printf "%d hits %d 1:1 hits %d total records\n", scalar keys %$data, scalar keys %$out, $count;
+#-------------------------------------------------- 
 
-#print Dumper($out);
-printf "%d hits %d 1:1 hits %d total hits\n", scalar keys %$data, scalar keys %$out, $count;
-
+printf "%s => %s\n", $_, $$data{$_}[0]{'digest'} foreach keys %$data;

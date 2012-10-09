@@ -325,7 +325,7 @@ if ($num_ests == 0) {
 	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
 	exit;
 }
-printf "%d sequences in database '%s' on %s. Sequence identifiers have been replaced with SHA1 digests of the combination (header, sequence). These are used for internal purposes.\n", 
+printf "%d sequences in database '%s' on %s. Sequence identifiers have been replaced with SHA256 digests of the combination (header, sequence). These are used for internal purposes.\n", 
 	$num_ests,
 	$mysql_dbname,
 	$mysql_dbserver unless $quiet;
@@ -468,7 +468,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	} #}}}
 
 	if ($hmmcount <= scalar(@hmmfiles) / 100) {
-		print "\n(Don't be alarmed, the sequence identifiers are SHA1-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
+		print "\n(Don't be alarmed, the sequence identifiers are SHA256-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
 			if $verbose;
 	}
 
