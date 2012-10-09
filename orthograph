@@ -41,8 +41,9 @@ my @path         = fileparse($0);
 my $program_file = $path[0];
 my $libdir       = $path[1];
 use lib qw($libdir);
-use Wrapper::Hmmsearch;        # object-oriented interface to hmmsearch
-use Wrapper::Blastp;           # object-oriented interface to blastp
+use Orthograph::Hmmsearch;        # object-oriented interface to hmmsearch
+use Orthograph::Blastp;           # object-oriented interface to blastp
+use Orthograph::Orthocandidate;	  # manage candidate orthologs via a OO interface
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
 
 my $program_name = 'Orthograph';
@@ -60,7 +61,7 @@ print "$program_name\: Orthology prediction using a Graph-based, ",
 my $use_threads = 0;#{{{
 if ($use_threads == 1 and $Config{'useithreads'}) {
   print "Using threads.\n\n";
-  use Wrapper::Threaded;
+  use Orthograph::Threaded;
 }
 elsif ($use_threads == 1 and !$Config{'useithreads'}) {
   warn "Warning: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n\n";
@@ -339,35 +340,35 @@ $protfile = &get_transcripts();
 
 # verbose output #{{{
 if ($verbose) {
-	Wrapper::Hmmsearch->verbose(1);
-	Wrapper::Blastp->verbose(1);
+	Orthograph::Hmmsearch->verbose(1);
+	Orthograph::Blastp->verbose(1);
 }
 
 # debug output
 if ($debug) {
-	Wrapper::Hmmsearch->debug(1);
-	Wrapper::Blastp->debug(1);
+	Orthograph::Hmmsearch->debug(1);
+	Orthograph::Blastp->debug(1);
 }
 
 # score and e-value thresholds
-Wrapper::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold)
+Orthograph::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold)
 	if $hmmsearch_evalue_threshold;
-Wrapper::Hmmsearch->score_threshold($hmmsearch_score_threshold)
+Orthograph::Hmmsearch->score_threshold($hmmsearch_score_threshold)
 	if $hmmsearch_score_threshold;
-Wrapper::Blastp->evalue_threshold($blast_evalue_threshold)
+Orthograph::Blastp->evalue_threshold($blast_evalue_threshold)
 	if $blast_evalue_threshold;
 # there is no score threshold for BLASTP
 # but a maximum number of hits to save
-Wrapper::Blastp->max_hits($blast_max_hits)
+Orthograph::Blastp->max_hits($blast_max_hits)
 	if $blast_max_hits;
 
 # the output directories
-Wrapper::Hmmsearch->outdir($hmmoutdir);
-Wrapper::Blastp->outdir($blastoutdir);
+Orthograph::Hmmsearch->outdir($hmmoutdir);
+Orthograph::Blastp->outdir($blastoutdir);
 
 # the programs
-Wrapper::Hmmsearch->searchprog($hmmsearchprog);
-Wrapper::Blastp->searchprog($blastprog);
+Orthograph::Hmmsearch->searchprog($hmmsearchprog);
+Orthograph::Blastp->searchprog($blastprog);
 
 #}}}
 
@@ -385,7 +386,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$blastcount = 0;	# reset counter
 
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
-	my $hmmobj = Wrapper::Hmmsearch->new($hmmfile); 
+	my $hmmobj = Orthograph::Hmmsearch->new($hmmfile); 
 
 	# now do the hmmsearch on the protfile
 	$hmmobj->search($protfile);
@@ -442,7 +443,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# # run blastp 
 		#-------------------------------------------------- 
 		# shiny new blastp object
-		my $blastobj = Wrapper::Blastp->new($blastdb);
+		my $blastobj = Orthograph::Blastp->new($blastdb);
 
 		# generate a blast output file name from the HMM name and the hit number
 		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . $hmmresults[$n]->[0] . '-' . basename($blastdb) .  '.blast');
@@ -496,6 +497,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# yay
 	++$orthocount;
 	printf "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0];
+
+	# get the ortholog results from the db
+	my $orthocand = Orthograph::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
+	Orthograph::Orthocandidate->add($orthocand);
 
 }#}}}	# End hmmlist loop
 
