@@ -17,11 +17,11 @@
 
 =head1 NAME 
 
-B<Orthograph::Blast>
+B<Wrapper::Blast>
 
 =head1 DESCRIPTION
 
-The B<Orthograph::Blast> module provides an object-oriented interface to the
+The B<Wrapper::Blast> module provides an object-oriented interface to the
 NCBI blastp sequence search algorithm. It does not conform to the Guidelines of
 the BioPerl package and as such does not return or handle Bioperl's Bio::Seq or
 Bio::Search objects. Instead, it is designed to be a lot simpler and more
@@ -30,20 +30,20 @@ package without the immense overhead of the entire Bioperl backend.
 
 =head1 SYNOPSIS
 
-  use Orthograph::Blast;
+  use Wrapper::Blast;
 
   # set up the blast program
-  Orthograph::Blast->searchprog('blastp');
+  Wrapper::Blast->searchprog('blastp');
 
   # create a new blast object
-  my $blastobj = Orthograph::Blast->new('/path/to/blast/database');
+  my $blastobj = Wrapper::Blast->new('/path/to/blast/database');
 
   # do the blastp search
   $blastobj->blastp($infile, $outfile);
 
 =cut
 
-package Orthograph::Blastp;
+package Wrapper::Blastp;
 use strict;
 use warnings;
 use File::Basename; # basename of files
@@ -84,7 +84,7 @@ Sets $verbose. Defaults to 0.
 sub verbose {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
-	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->verbose(1)\n") }
+	unless (scalar @_ == 1) { confess("Usage: Wrapper::Blastp->verbose(1)\n") }
 	$verbose = shift;
 }#}}}
 
@@ -97,7 +97,7 @@ Sets $debug. Defaults to 0.
 sub debug {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
-	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->debug(1)\n") }
+	unless (scalar @_ == 1) { confess("Usage: Wrapper::Blastp->debug(1)\n") }
 	$debug = shift;
 }#}}}
 
@@ -110,7 +110,7 @@ Sets the blast program. Defaults to B<blastp>.
 sub searchprog {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
-	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->searchprog(COMMAND)\n") }
+	unless (scalar @_ == 1) { confess("Usage: Wrapper::Blastp->searchprog(COMMAND)\n") }
 	$searchprog = shift;
 }#}}}
 
@@ -123,7 +123,7 @@ Sets the makeblastdb program. Defaults to B<makeblastdb>.
 sub set_makeblastdb {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
-	unless (scalar @_ == 1) { confess("Usage: Orthograph::Blastp->set_makeblastdb(COMMAND)\n") }
+	unless (scalar @_ == 1) { confess("Usage: Wrapper::Blastp->set_makeblastdb(COMMAND)\n") }
 	$makeblastdbprog = shift;
 }#}}}
 
@@ -137,7 +137,7 @@ Sets the blast output directory. Defaults to 'F<.>'.
 sub outdir {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
-	unless (@_ == 1) { confess("Usage: Orthograph::Blastp->outdir(FILENAME)\n") }
+	unless (@_ == 1) { confess("Usage: Wrapper::Blastp->outdir(FILENAME)\n") }
 	my $blastoutdir = shift;
 }#}}}
 
@@ -151,7 +151,7 @@ sub evalue_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	if (scalar(@_) == 0) { return $evalue_threshold };
-	if (scalar(@_) >  1) { confess("Usage: Orthograph::Blastp->evalue_threshold(N)\n") }
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Blastp->evalue_threshold(N)\n") }
 	$evalue_threshold = shift(@_);
 	unless ($evalue_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $evalue_threshold\n") }
 }#}}}
@@ -165,7 +165,7 @@ Sets the maximum number of hits to be returned. Defaults to 100.
 sub max_hits {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
-	unless (@_ == 1) { confess("Usage: Orthograph::Blastp->max_hits(N)\n") }
+	unless (@_ == 1) { confess("Usage: Wrapper::Blastp->max_hits(N)\n") }
 	$max_hits = shift;
 	unless ($max_hits =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $max_hits\n") }
 }#}}}
@@ -194,7 +194,7 @@ the e-value set via evalue_threshold().
 
 sub blastp {#{{{
 	my $self = shift;
-	unless (scalar @_ == 2) { confess("Usage: Orthograph::Blastp->blastp(FILE, OUTFILE)\n") }
+	unless (scalar @_ == 2) { confess("Usage: Wrapper::Blastp->blastp(FILE, OUTFILE)\n") }
 	my $queryfile = shift;
 	my $outfile = shift;
 	my $db = $self->db;

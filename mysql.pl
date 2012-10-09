@@ -43,7 +43,7 @@ INNER JOIN o_orthologs
 INNER JOIN o_sequence_pairs
 	ON o_orthologs.sequence_pair = o_sequence_pairs.id
 INNER JOIN o_set_details
-	ON o_set_details.name        = 'alltaxa'
+	ON o_set_details.name        = 'notmany'
 WHERE o_ests.spec              = 'Mengenilla'
 ORDER BY o_hmmsearch.evalue
 ";

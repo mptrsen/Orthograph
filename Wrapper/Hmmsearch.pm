@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
-package Orthograph::Hmmsearch;
+package Wrapper::Hmmsearch;
 use strict;
 use warnings;
 use File::Basename; # basename of files
@@ -53,7 +53,7 @@ Sets verbose output on (TRUE) or off (FALSE). Default is FALSE.
 sub verbose {#{{{
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
-  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->verbose(1|0)") }
+  unless (scalar @_ == 1) { confess("Usage: Wrapper::Hmmsearch->verbose(1|0)") }
   $verbose = shift;
 }#}}}
 
@@ -66,7 +66,7 @@ Sets debug output on (TRUE) or off (FALSE). Default is FALSE.
 sub debug {#{{{
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
-  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->debug(1|0)") }
+  unless (scalar @_ == 1) { confess("Usage: Wrapper::Hmmsearch->debug(1|0)") }
   $debug = shift;
 }#}}}
 
@@ -80,7 +80,7 @@ scalar F<pathname>. Defaults to F<.>.
 sub outdir {#{{{
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
-  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->outdir(OUTDIR)") }
+  unless (scalar @_ == 1) { confess("Usage: Wrapper::Hmmsearch->outdir(OUTDIR)") }
   $outdir = shift;
 }#}}}
 
@@ -93,7 +93,7 @@ Sets the HMMsearch program. Expects a string. Defaults to 'F<hmmsearch>'.
 sub searchprog {#{{{
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
-  unless (scalar @_ == 1) { confess("Usage: Orthograph::Hmmsearch->searchprog(COMMAND)") }
+  unless (scalar @_ == 1) { confess("Usage: Wrapper::Hmmsearch->searchprog(COMMAND)") }
   $searchprog = shift;
 }#}}}
 
@@ -109,7 +109,7 @@ sub evalue_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	if (scalar(@_) == 0) { return $score_threshold };
-	if (scalar(@_) >  1) { confess("Usage: Orthograph::Hmmsearch->evalue_threshold(N)\n") }
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Hmmsearch->evalue_threshold(N)\n") }
 	$evalue_threshold = shift(@_);
 	# check whether this is a valid number
 	unless ($evalue_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $evalue_threshold\n") }
@@ -128,7 +128,7 @@ sub score_threshold {#{{{
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	if (scalar(@_) == 0) { return $score_threshold }
-	if (scalar(@_) >  1) { confess("Usage: Orthograph::Hmmsearch->score_threshold(N)\n") }
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Hmmsearch->score_threshold(N)\n") }
 	$score_threshold = shift(@_);
 	unless ($score_threshold =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $score_threshold\n") }
 	$evalue_threshold = 0;
