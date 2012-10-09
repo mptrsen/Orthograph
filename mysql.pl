@@ -121,17 +121,19 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 	for (my $y = 0; $y < scalar @keys_data; ++$y) {
 
 		# get the matching transcript from the list
-		foreach my $hit (@{$$data{$keys_data[$y]}}) {
-			if ($$hit{'digest'} eq $keys_transcripts[$x]) {
+		my $flag = 0;
+		foreach my $hit (@{$$transcripts{$keys_transcripts[$x]}}) {
+			if ($$hit{'orthoid'} eq $keys_data[$y]) {
 				print "<td>", $$hit{'hmmeval'}, "</td>\n";
+				$flag = 1;
 				last;
 			}
-			else {
-				print "<td>NULL</td>\n";
-			}
+		}
+		if ($flag == 0) { print "<td>NULL</td>\n" }
+		else { $flag = 0 }
+
 			#printf "%s\n", defined $$_{'digest'} ? $$_{'digest'} : 'NULL';
 			#print grep $$_{'digest'} =~ /$keys_transcripts[$x]/, @{$$data{$keys_data[$y]}};
-		}
 
 		#--------------------------------------------------
 		# if (defined $$transcripts{$keys_transcripts[$x]}) {
