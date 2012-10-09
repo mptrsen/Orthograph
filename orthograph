@@ -855,10 +855,10 @@ sub preparedb {#{{{
 		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX($mysql_col_query),
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
-		$mysql_col_score     FLOAT NOT NULL,
-		$mysql_col_evalue    FLOAT NOT NULL,
-		$mysql_col_start      INT(4) NOT NULL,
-		$mysql_col_end        INT(4) NOT NULL)";
+		$mysql_col_score     DOUBLE NOT NULL,
+		$mysql_col_evalue    DOUBLE UNSIGNED NOT NULL,
+		$mysql_col_start     INT(4) NOT NULL,
+		$mysql_col_end       INT(4) NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX ($mysql_col_id),
@@ -867,8 +867,8 @@ sub preparedb {#{{{
 		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX ($mysql_col_query),
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
-		$mysql_col_score     FLOAT NOT NULL,
-		$mysql_col_evalue    FLOAT NOT NULL)";
+		$mysql_col_score     DOUBLE NOT NULL,
+		$mysql_col_evalue    DOUBLE UNSIGNED NOT NULL)";
 	
 	# open connection
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);

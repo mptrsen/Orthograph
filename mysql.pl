@@ -16,6 +16,9 @@ my $out      = { };
 my $sort_by  = 'blasteval';
 my $strict   = 1;
 my @reftaxa  = qw(AAEGY CFLOR ISCAP);
+my $transcripts = { };
+my $table       = [ ];
+my $hashtable   = { };
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -63,16 +66,90 @@ while (my $line = $sql->fetchrow_arrayref()) {
 		'blasteval'   => $$line[4],
 		'reftaxon'    => $$line[5]
 	};
+	$$hashtable{$$line[1]}{$$line[0]} = $$line[2];
 	$count++;
 }
 $dbh->disconnect;
 
+#--------------------------------------------------
+# my $i=0;
+# foreach (keys %$hashtable) { print ++$i, "\t" }
+# print "\n";
+# foreach my $k (keys %$hashtable) {
+# 	printf "%s\t", substr $k, 0, 4;
+# 	foreach my $k2 (keys %{$$hashtable{$k}}) {
+# 		print $$hashtable{$k}{$k2}, "\t";
+# 	}
+# 	print "\n";
+# }
+# 
+# exit;
+# 
+#-------------------------------------------------- 
 # sort by blast evalue or hmmsearch evalue or the number of your mom's chest hairs
 foreach my $eog (keys %$data) {
 	@{$$data{$eog}} = sort {
 		$$a{$sort_by} <=> $$b{$sort_by};
 	} @{$$data{$eog}};
 }
+
+# reverse the hash so that we get a transcript->orthoid assignment
+foreach my $eog (keys %$data) {
+	for my $i (0..$#{$$data{$eog}}) {
+		push @{$$transcripts{$$data{$eog}[$i]{'digest'}}}, {
+			'orthoid'     => $eog,
+			'hmmeval'     => $$data{$eog}[$i]{'hmmeval'},
+			'blasttarget' => $$data{$eog}[$i]{'blasttarget'},
+			'blasteval'   => $$data{$eog}[$i]{'blasteval'},
+			'reftaxon'    => $$data{$eog}[$i]{'reftaxon'},
+		};
+	}
+}
+
+my @keys_data = keys %$data;
+my @keys_transcripts = keys %$transcripts;
+
+# make a HTML table!
+print "<html><head><title>Table</title></head><body>\n";
+print "<table>\n";
+print "<tr><th>&nbsp;</th>\n";	# first cell is empty 
+printf "<th align='left'>%s</th>\n", $_ foreach @keys_data;	# header
+print "</tr>\n";
+for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
+	print "<tr>\n";
+	print "<td><b>", $keys_transcripts[$x], "</b></td>\n";
+	for (my $y = 0; $y < scalar @keys_data; ++$y) {
+
+		# get the matching transcript from the list
+		foreach my $hit (@{$$data{$keys_data[$y]}}) {
+			if ($$hit{'digest'} eq $keys_transcripts[$x]) {
+				print "<td>", $$hit{'hmmeval'}, "</td>\n";
+				last;
+			}
+			else {
+				print "<td>NULL</td>\n";
+			}
+			#printf "%s\n", defined $$_{'digest'} ? $$_{'digest'} : 'NULL';
+			#print grep $$_{'digest'} =~ /$keys_transcripts[$x]/, @{$$data{$keys_data[$y]}};
+		}
+
+		#--------------------------------------------------
+		# if (defined $$transcripts{$keys_transcripts[$x]}) {
+		# 	$$table[$x][$y] = $$data{$keys_data[$y]}[$x]{'hmmeval'};
+		# 	print "<td>", defined $$transcripts{$keys_transcripts[$x]}[$y]{'hmmeval'} ? $$transcripts{$keys_transcripts[$x]}[$y]{'hmmeval'} : '<b>NULL</b>', "</td>\n";
+		# }
+		# else {
+		# 	$$table[$x][$y] = '<b>NULL</b>';
+		# 	print "<td>NULL</td>\n";
+		# }
+		#-------------------------------------------------- 
+	}
+	print "</tr>\n";
+}
+print "</table>\n";
+print "</body></html>\n";
+warn Dumper($data);
+exit;
 
 # output each eog with the correct transcript
 # each transcript shall be assigned to only one ortholog group
