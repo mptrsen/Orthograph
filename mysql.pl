@@ -5,20 +5,21 @@ use DBI;
 use DBD::mysql;
 use Data::Dumper;
 
-my $count    = 0;
-my $data     = { };
-my $db       = 'orthograph';
-my $dbuser   = $ENV{LOGNAME};
-my $dbpwd    = $ENV{LOGNAME};
-my $dbserver = 'localhost';
-my $fuzzy    = 0;
-my $out      = { };
-my $sort_by  = 'blasteval';
-my $strict   = 1;
-my @reftaxa  = qw(AAEGY CFLOR ISCAP);
+my $count       = 0;
+my $data        = { };
+my $db          = 'orthograph';
+my $dbuser      = $ENV{LOGNAME};
+my $dbpwd       = $ENV{LOGNAME};
+my $dbserver    = 'localhost';
+my $setname     = 'notmany';
+my $speciesname = 'Mengenilla';
+my $fuzzy       = 0;
+my $out         = { };
+my $sort_by     = 'blasteval';
+my $strict      = 1;
+my @reftaxa     = qw(AAEGY CFLOR ISCAP);
 my $transcripts = { };
 my $table       = [ ];
-my $hashtable   = { };
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -26,32 +27,32 @@ my $hashtable   = { };
 #-------------------------------------------------- 
 my $query = "
 SELECT DISTINCT
-	orthograph_orthologs.ortholog_gene_id AS orthoid,
-	orthograph_hmmsearch.target           AS transcript,
-	orthograph_hmmsearch.evalue           AS hmm_eval,
-	orthograph_blast.target               AS blast_target,
-	orthograph_blast.evalue               AS blast_eval,
-	orthograph_taxa.name                  AS reftax
-FROM orthograph_aaseqs
-INNER JOIN orthograph_taxa
-	ON orthograph_aaseqs.taxid            = orthograph_taxa.id
-INNER JOIN orthograph_blast
-	ON orthograph_aaseqs.id               = orthograph_blast.target
-INNER JOIN orthograph_hmmsearch
-	ON orthograph_blast.query             = orthograph_hmmsearch.target
-INNER JOIN orthograph_ests
-	ON orthograph_hmmsearch.target        = orthograph_ests.digest
-INNER JOIN orthograph_orthologs
-	ON orthograph_hmmsearch.query         = orthograph_orthologs.ortholog_gene_id
-INNER JOIN orthograph_sequence_pairs
-	ON orthograph_orthologs.sequence_pair = orthograph_sequence_pairs.id
-	AND orthograph_aaseqs.id              = orthograph_sequence_pairs.aa_seq
-INNER JOIN orthograph_set_details
-	ON orthograph_set_details.name        = 'test'
-WHERE orthograph_ests.spec              = 'Mengenilla'
-AND orthograph_hmmsearch.evalue         < 1e-05
-AND orthograph_blast.evalue             < 1e-05
-ORDER BY orthograph_hmmsearch.evalue
+	o_orthologs.ortholog_gene_id AS orthoid,
+	o_hmmsearch.target           AS transcript,
+	o_hmmsearch.evalue           AS hmm_eval,
+	o_blast.target               AS blast_target,
+	o_blast.evalue               AS blast_eval,
+	o_taxa.name                  AS reftax
+FROM o_aaseqs
+INNER JOIN o_taxa
+	ON o_aaseqs.taxid            = o_taxa.id
+INNER JOIN o_blast
+	ON o_aaseqs.id               = o_blast.target
+INNER JOIN o_hmmsearch
+	ON o_blast.query             = o_hmmsearch.target
+INNER JOIN o_ests
+	ON o_hmmsearch.target        = o_ests.digest
+INNER JOIN o_orthologs
+	ON o_hmmsearch.query         = o_orthologs.ortholog_gene_id
+INNER JOIN o_sequence_pairs
+	ON o_orthologs.sequence_pair = o_sequence_pairs.id
+	AND o_aaseqs.id              = o_sequence_pairs.aa_seq
+INNER JOIN o_set_details
+	ON o_set_details.name        = '$setname'
+WHERE o_ests.spec              = '$speciesname'
+AND o_hmmsearch.evalue         < 1e-05
+AND o_blast.evalue             < 1e-05
+ORDER BY o_hmmsearch.evalue
 ";
 
 # get data, store in hash->array->hash
@@ -66,26 +67,10 @@ while (my $line = $sql->fetchrow_arrayref()) {
 		'blasteval'   => $$line[4],
 		'reftaxon'    => $$line[5]
 	};
-	$$hashtable{$$line[1]}{$$line[0]} = $$line[2];
 	$count++;
 }
 $dbh->disconnect;
 
-#--------------------------------------------------
-# my $i=0;
-# foreach (keys %$hashtable) { print ++$i, "\t" }
-# print "\n";
-# foreach my $k (keys %$hashtable) {
-# 	printf "%s\t", substr $k, 0, 4;
-# 	foreach my $k2 (keys %{$$hashtable{$k}}) {
-# 		print $$hashtable{$k}{$k2}, "\t";
-# 	}
-# 	print "\n";
-# }
-# 
-# exit;
-# 
-#-------------------------------------------------- 
 # sort by blast evalue or hmmsearch evalue or the number of your mom's chest hairs
 foreach my $eog (keys %$data) {
 	@{$$data{$eog}} = sort {
@@ -110,41 +95,34 @@ my @keys_data = keys %$data;
 my @keys_transcripts = keys %$transcripts;
 
 # make a HTML table!
-print "<html><head><title>Table</title></head><body>\n";
+print "<html><head><title>$speciesname</title></head><body>\n";
 print "<table>\n";
 print "<tr><th>&nbsp;</th>\n";	# first cell is empty 
 printf "<th align='left'>%s</th>\n", $_ foreach @keys_data;	# header
 print "</tr>\n";
+# columns
 for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 	print "<tr>\n";
 	print "<td><b>", $keys_transcripts[$x], "</b></td>\n";
+	# rows
 	for (my $y = 0; $y < scalar @keys_data; ++$y) {
-
 		# get the matching transcript from the list
 		my $flag = 0;
 		foreach my $hit (@{$$transcripts{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_data[$y]) {
 				print "<td>", $$hit{'hmmeval'}, "</td>\n";
-				$flag = 1;
+				$$table{$keys_data[$y]} = {
+					'hmmeval'     => $$hit{'hmmeval'},
+					'blasteval'   => $$hit{'blasteval'},
+					'blasttarget' => $$hit{'blasttarget'},
+					'reftaxon'    => $$hit{'reftaxon'},
+
+				}
 				last;
 			}
 		}
 		if ($flag == 0) { print "<td>NULL</td>\n" }
 		else { $flag = 0 }
-
-			#printf "%s\n", defined $$_{'digest'} ? $$_{'digest'} : 'NULL';
-			#print grep $$_{'digest'} =~ /$keys_transcripts[$x]/, @{$$data{$keys_data[$y]}};
-
-		#--------------------------------------------------
-		# if (defined $$transcripts{$keys_transcripts[$x]}) {
-		# 	$$table[$x][$y] = $$data{$keys_data[$y]}[$x]{'hmmeval'};
-		# 	print "<td>", defined $$transcripts{$keys_transcripts[$x]}[$y]{'hmmeval'} ? $$transcripts{$keys_transcripts[$x]}[$y]{'hmmeval'} : '<b>NULL</b>', "</td>\n";
-		# }
-		# else {
-		# 	$$table[$x][$y] = '<b>NULL</b>';
-		# 	print "<td>NULL</td>\n";
-		# }
-		#-------------------------------------------------- 
 	}
 	print "</tr>\n";
 }

@@ -856,7 +856,7 @@ sub preparedb {#{{{
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     DOUBLE NOT NULL,
-		$mysql_col_evalue    DOUBLE UNSIGNED NOT NULL,
+		$mysql_col_evalue    VARCHAR NOT NULL,
 		$mysql_col_start     INT(4) NOT NULL,
 		$mysql_col_end       INT(4) NOT NULL)";
 	
@@ -868,7 +868,7 @@ sub preparedb {#{{{
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     DOUBLE NOT NULL,
-		$mysql_col_evalue    DOUBLE UNSIGNED NOT NULL)";
+		$mysql_col_evalue    VARCHAR NOT NULL)";
 	
 	# open connection
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
