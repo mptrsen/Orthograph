@@ -19,7 +19,7 @@ my $sort_by     = 'blasteval';
 my $strict      = 1;
 my @reftaxa     = qw(AAEGY CFLOR ISCAP);
 my $transcripts = { };
-my $table       = [ ];
+my $table       = { };
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -94,6 +94,7 @@ foreach my $eog (keys %$data) {
 my @keys_data = keys %$data;
 my @keys_transcripts = keys %$transcripts;
 
+
 # make a HTML table!
 print "<html><head><title>$speciesname</title></head><body>\n";
 print "<table>\n";
@@ -111,13 +112,14 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 		foreach my $hit (@{$$transcripts{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_data[$y]) {
 				print "<td>", $$hit{'hmmeval'}, "</td>\n";
-				$$table{$keys_data[$y]} = {
+				# connect these in the result table
+				$$table{$keys_data[$y]}{$$hit{'orthoid'}} = {
 					'hmmeval'     => $$hit{'hmmeval'},
 					'blasteval'   => $$hit{'blasteval'},
 					'blasttarget' => $$hit{'blasttarget'},
 					'reftaxon'    => $$hit{'reftaxon'},
-
-				}
+				};
+				$flag = 1;
 				last;
 			}
 		}
