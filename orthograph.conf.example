@@ -32,6 +32,11 @@ species_name       = TEST_SPECIES
 # The ortholog set you created earlier.
 ortholog_set       = SETNAME
 
+# Reference taxa. Must be a comma-separated list of taxa that are present in
+# your ortholog set. If you don't specify any reference taxa, all taxa in your
+# set are used as reference taxa.
+reference_taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN
+
 # This is where your results are placed. Will be created if it doesn't exist.
 output_directory   = /PATH/TO/OUTPUT_DIR
 

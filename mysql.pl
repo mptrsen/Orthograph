@@ -17,7 +17,7 @@ my $fuzzy       = 0;
 my $out         = { };
 my $sort_by     = 'blasteval';
 my $strict      = 1;
-my @reftaxa     = qw(AAEGY CFLOR ISCAP);
+my @reftaxa     = qw(AAEGY MDEST CFLOR ISCAP);
 my $transcripts = { };
 my $table       = { };
 
@@ -96,24 +96,25 @@ my @keys_transcripts = keys %$transcripts;
 
 
 # make a HTML table!
-print "<html><head><title>$speciesname</title></head><body>\n";
-print "<table>\n";
-print "<tr><th>&nbsp;</th>\n";	# first cell is empty 
-printf "<th align='left'>%s</th>\n", $_ foreach @keys_data;	# header
-print "</tr>\n";
+my $fh = IO::File->new("$speciesname.html", 'w');
+print $fh "<html><head><title>$speciesname</title></head><body>\n";
+print $fh "<table>\n";
+print $fh "<tr><th>&nbsp;</th>\n";	# first cell is empty 
+printf $fh "<th align='left'>%s</th>\n", $_ foreach @keys_data;	# header
+print $fh "</tr>\n";
 # columns
 for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
-	print "<tr>\n";
-	print "<td><b>", $keys_transcripts[$x], "</b></td>\n";
+	print $fh "<tr>\n";
+	print $fh "<td><b>", $keys_transcripts[$x], "</b></td>\n";
 	# rows
 	for (my $y = 0; $y < scalar @keys_data; ++$y) {
 		# get the matching transcript from the list
 		my $flag = 0;
 		foreach my $hit (@{$$transcripts{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_data[$y]) {
-				print "<td>", $$hit{'hmmeval'}, "</td>\n";
+				print $fh "<td>", $$hit{'hmmeval'}, "</td>\n";
 				# connect these in the result table
-				$$table{$keys_data[$y]}{$$hit{'orthoid'}} = {
+				$$table{$keys_data[$y]}{$keys_transcripts[$x]} = {
 					'hmmeval'     => $$hit{'hmmeval'},
 					'blasteval'   => $$hit{'blasteval'},
 					'blasttarget' => $$hit{'blasttarget'},
@@ -123,14 +124,26 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 				last;
 			}
 		}
-		if ($flag == 0) { print "<td>NULL</td>\n" }
+		if ($flag == 0) { print $fh "<td>NULL</td>\n" }
 		else { $flag = 0 }
 	}
-	print "</tr>\n";
+	print $fh "</tr>\n";
 }
-print "</table>\n";
-print "</body></html>\n";
-warn Dumper($data);
+print $fh "</table>\n";
+print $fh "</body></html>\n";
+# close file
+undef $fh;
+warn Dumper($table);
+warn scalar keys %$table, " keys\n";
+
+# make sure we take only the reference taxa
+foreach my $eog (keys %$table) {
+	foreach my $transc (keys %{$$table{$eog}}) {
+		if (grep /$$table{$eog}{$transc}{'reftaxon'}/, @reftaxa) {
+			printf "%s => %s, reftaxon: %s\n", $eog, $transc, $$table{$eog}{$transc}{'reftaxon'};
+		}
+	}
+}
 exit;
 
 # output each eog with the correct transcript

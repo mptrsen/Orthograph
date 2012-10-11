@@ -281,7 +281,7 @@ $blastdb = &make_blastdb($orthoset);
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
-# @reftaxa = split(/\s*,\s*/, $reftaxa);	# no more reference taxa for now
+@reftaxa = split(/\s*,\s*/, $reftaxa);	# split by comma
 @hmmfiles = &hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
 
