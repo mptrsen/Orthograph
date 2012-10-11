@@ -18,7 +18,7 @@ my $sort_by     = 'blasteval';
 my @reftaxa     = qw(AMELL ACEPH DPULE);
 my $transcripts = { };
 my $table       = [ ];
-my $strict      = 1;
+my $strict      = 0;
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -142,9 +142,10 @@ undef $fh;
 
 # take only the reference taxa
 my $num_reftaxa = scalar @reftaxa;
-for my $y (0 .. $#keys_transcripts) {
-	TR:
-	for my $x (0 .. $#keys_data) {
+TR:
+for my $x (0 .. $#keys_transcripts) {
+	OG:
+	for my $y (0 .. $#keys_data) {
 		# skip non-matches and already-removed entries
 		next if not defined $$table[$x][$y] or $$table[$x][$y] == 0;
 
