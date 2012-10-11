@@ -35,7 +35,7 @@ ortholog_set       = SETNAME
 # Reference taxa. Must be a comma-separated list of taxa that are present in
 # your ortholog set. If you don't specify any reference taxa, all taxa in your
 # set are used as reference taxa.
-reference_taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN
+reference_taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN, YOUR, ORTHOLOG, SET
 
 # This is where your results are placed. Will be created if it doesn't exist.
 output_directory   = /PATH/TO/OUTPUT_DIR
@@ -114,6 +114,11 @@ mysql_dbserver     = 127.0.0.1
 # 
 # # Other options
 #
+# Strict search. Normally it is enough for a match to occur if one of the
+# reference taxa is hit in the reciprocal search. Enable strict searching to
+# make sure ALL reference taxa are hit.
+#strict      = 1
+
 # Clear pre-existing data of the same species prior to the analysis. Useful if
 # you plan to run the same analysis multiple times, but doesn't hurt otherwise.
 # This is the default, uncomment if you want to turn it off.

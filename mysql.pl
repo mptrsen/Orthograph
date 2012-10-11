@@ -168,6 +168,7 @@ for my $x (0 .. $#keys_transcripts) {
 			splice @$table, $x, 1;
 			last;
 		}
+		# this one matches at least one reference taxon
 		elsif (!$strict and scalar keys %isect) {
 			print "fuzzy for  $keys_data[$y] and $keys_transcripts[$x]\n";
 			# but it may still be redundant... fuck.
