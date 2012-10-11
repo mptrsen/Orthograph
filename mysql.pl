@@ -17,9 +17,10 @@ my $fuzzy       = 0;
 my $out         = { };
 my $sort_by     = 'blasteval';
 my $strict      = 1;
-my @reftaxa     = qw(AAEGY MDEST CFLOR ISCAP);
+my @reftaxa     = qw(AMELL ACEPH DPULE);
 my $transcripts = { };
-my $table       = { };
+my $table       = [ ];
+my $fuzzy = 1;
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -112,20 +113,25 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 		my $flag = 0;
 		foreach my $hit (@{$$transcripts{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_data[$y]) {
-				print $fh "<td>", $$hit{'hmmeval'}, "</td>\n";
+				print $fh "<td>", $$hit{'hmmeval'}, "</td>\n" if $flag == 0;
+				$flag = 1;
 				# connect these in the result table
-				$$table{$keys_data[$y]}{$keys_transcripts[$x]} = {
+				push @{$$table[$x][$y]}, {
 					'hmmeval'     => $$hit{'hmmeval'},
 					'blasteval'   => $$hit{'blasteval'},
 					'blasttarget' => $$hit{'blasttarget'},
 					'reftaxon'    => $$hit{'reftaxon'},
 				};
-				$flag = 1;
-				last;
 			}
 		}
-		if ($flag == 0) { print $fh "<td>NULL</td>\n" }
-		else { $flag = 0 }
+		if ($flag == 0) {
+			print $fh "<td>NULL</td>\n";
+			$$table[$x][$y] = 0;
+		}
+		else {
+			$flag = 0;
+			@{$$table[$x][$y]} = sort {$$a{'hmmeval'} <=> $$b{'hmmeval'}} @{$$table[$x][$y]};
+		}
 	}
 	print $fh "</tr>\n";
 }
@@ -134,14 +140,34 @@ print $fh "</body></html>\n";
 # close file
 undef $fh;
 warn Dumper($table);
-warn scalar keys %$table, " keys\n";
 
-# make sure we take only the reference taxa
-foreach my $eog (keys %$table) {
-	foreach my $transc (keys %{$$table{$eog}}) {
-		if (grep /$$table{$eog}{$transc}{'reftaxon'}/, @reftaxa) {
-			printf "%s => %s, reftaxon: %s\n", $eog, $transc, $$table{$eog}{$transc}{'reftaxon'};
+# take only the reference taxa
+my $num_reftaxa = scalar @reftaxa;
+for my $x (0 .. $#keys_transcripts) {
+	TR:
+	for my $y (0 .. $#keys_data) {
+		# skip non-matches
+		next if $$table[$x][$y] == 0;
+
+		# local list of reftaxa for this match
+		my @this_reftaxa;
+		push @this_reftaxa, $$_{'reftaxon'} foreach (@{$$table[$x][$y]});
+
+		# intersection of @reftaxa and @this_reftaxa
+		my %union = my %isect = ();
+		foreach my $e (@reftaxa) { $union{$e} = 1 }
+		foreach my $e (@this_reftaxa) { $isect{$e} = 1 if ($union{$e}) }
+		
+
+		# This orthoid-transcript combination matches all reference taxa!
+		if (scalar keys %isect == $num_reftaxa) { 
+			print "strict for $keys_data[$y] and $keys_transcripts[$x]!\n";
 		}
+		elsif ($fuzzy and scalar keys %isect) {
+			print "fuzzy for $keys_data[$y] and $keys_transcripts[$x]\n";
+		}
+
+		# but it may still be redundant... fuck.
 	}
 }
 exit;
@@ -181,14 +207,5 @@ foreach my $eog (keys %$data) {
 		}
 	}
 }
-
-#--------------------------------------------------
-# foreach my $digest (keys %$out) {
-# 	printf "%s => %s (eval %1.1e)\n", $$out{$digest}{'eog'}, $digest, $$out{$digest}{'blasteval'};
-# }
-# 
-# #print Dumper($out);
-# printf "%d hits %d 1:1 hits %d total records\n", scalar keys %$data, scalar keys %$out, $count;
-#-------------------------------------------------- 
 
 printf "%s => %s\n", $_, $$data{$_}[0]{'digest'} foreach keys %$data;
