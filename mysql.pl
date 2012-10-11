@@ -13,14 +13,12 @@ my $dbpwd       = $ENV{LOGNAME};
 my $dbserver    = 'localhost';
 my $setname     = 'notmany';
 my $speciesname = 'Mengenilla';
-my $fuzzy       = 0;
 my $out         = { };
 my $sort_by     = 'blasteval';
-my $strict      = 1;
 my @reftaxa     = qw(AMELL ACEPH DPULE);
 my $transcripts = { };
 my $table       = [ ];
-my $fuzzy = 1;
+my $strict      = 1;
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -125,6 +123,7 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 			}
 		}
 		if ($flag == 0) {
+			# this is a non-match
 			print $fh "<td>NULL</td>\n";
 			$$table[$x][$y] = 0;
 		}
@@ -139,20 +138,21 @@ print $fh "</table>\n";
 print $fh "</body></html>\n";
 # close file
 undef $fh;
-warn Dumper($table);
+#warn Dumper($table);
 
 # take only the reference taxa
 my $num_reftaxa = scalar @reftaxa;
-for my $x (0 .. $#keys_transcripts) {
+for my $y (0 .. $#keys_transcripts) {
 	TR:
-	for my $y (0 .. $#keys_data) {
-		# skip non-matches
-		next if $$table[$x][$y] == 0;
+	for my $x (0 .. $#keys_data) {
+		# skip non-matches and already-removed entries
+		next if not defined $$table[$x][$y] or $$table[$x][$y] == 0;
+
 
 		# local list of reftaxa for this match
 		my @this_reftaxa;
 		push @this_reftaxa, $$_{'reftaxon'} foreach (@{$$table[$x][$y]});
-
+		
 		# intersection of @reftaxa and @this_reftaxa
 		my %union = my %isect = ();
 		foreach my $e (@reftaxa) { $union{$e} = 1 }
@@ -160,14 +160,21 @@ for my $x (0 .. $#keys_transcripts) {
 		
 
 		# This orthoid-transcript combination matches all reference taxa!
-		if (scalar keys %isect == $num_reftaxa) { 
-			print "strict for $keys_data[$y] and $keys_transcripts[$x]!\n";
+		if ($strict and scalar keys %isect == $num_reftaxa) { 
+			print "strict for $keys_data[$y] and $keys_transcripts[$x]\n";
+			# but it may still be redundant... fuck.
+			# remove it from the table to hopefully eliminate redundancy
+			splice @$table, $x, 1;
+			last;
 		}
-		elsif ($fuzzy and scalar keys %isect) {
-			print "fuzzy for $keys_data[$y] and $keys_transcripts[$x]\n";
+		elsif (!$strict and scalar keys %isect) {
+			print "fuzzy for  $keys_data[$y] and $keys_transcripts[$x]\n";
+			# but it may still be redundant... fuck.
+			# remove it from the table to hopefully eliminate redundancy
+			splice @$table, $x, 1;
+			last;
 		}
 
-		# but it may still be redundant... fuck.
 	}
 }
 exit;
