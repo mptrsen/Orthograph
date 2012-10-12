@@ -1077,8 +1077,12 @@ sub make_hmms {#{{{
 		my $hmmfile = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
 
 		# does this HMM already exist?
+		# if so, skip to the next
 		if (-e $hmmfile and !&file_is_empty($hmmfile)) { next }
-		else { warn("Warning: Rebuilding HMM for $orthoid due to empty HMM file\n") }
+
+		# if it exists, but the file is empty (this happens if you cancel the build
+		# process), rebuild this HMM
+		elsif (-e $hmmfile and &file_is_empty($hmmfile)) { warn("Warning: Rebuilding HMM for $orthoid due to empty HMM file\n") }
 
 		# no, create new fasta file and so on
 		my $fafile = File::Spec->catfile($alndir, $orthoid . '.fa');
