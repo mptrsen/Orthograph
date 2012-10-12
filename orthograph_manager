@@ -566,7 +566,7 @@ sub load_taxon {#{{{
 	my $list = &mysql_get("SELECT * FROM $t{'taxa'}");
 	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
-		printf("%2d. %s %s\n", $$list[$i][0], $$list[$i][1], $$list[$i][2]);
+		printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
 	}
 	print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
 	my $in = <STDIN>;
@@ -667,7 +667,7 @@ sub load_taxon {#{{{
 	}
 	$dbh->disconnect();
 	my $seqpairs = &mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
-	printf("Loaded %d new sequences into %s on %s.\n", $$seqpairs[0][0], $dbname, $dbserver);
+	printf("Loaded %d new sequences into database %s on %s.\n", $$seqpairs[0][0], $dbname, $dbserver);
 	return 1;
 }#}}}
 

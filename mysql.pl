@@ -15,7 +15,7 @@ my $setname     = 'notmany';
 my $speciesname = 'Mengenilla';
 my $out         = { };
 my $sort_by     = 'blasteval';
-my @reftaxa     = qw(AMELL ACEPH DPULE);
+my @reftaxa     = qw(AMELL ISCAP ACEPH DPULE MDEST);
 my $transcripts = { };
 my $table       = [ ];
 my $strict      = 0;
@@ -90,6 +90,7 @@ foreach my $eog (keys %$data) {
 	}
 }
 
+# keys to the hashes
 my @keys_data = keys %$data;
 my @keys_transcripts = keys %$transcripts;
 
@@ -112,7 +113,6 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 		foreach my $hit (@{$$transcripts{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_data[$y]) {
 				print $fh "<td>", $$hit{'hmmeval'}, "</td>\n" if $flag == 0;
-				$flag = 1;
 				# connect these in the result table
 				push @{$$table[$x][$y]}, {
 					'hmmeval'     => $$hit{'hmmeval'},
@@ -120,6 +120,7 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 					'blasttarget' => $$hit{'blasttarget'},
 					'reftaxon'    => $$hit{'reftaxon'},
 				};
+				$flag = 1;
 			}
 		}
 		if ($flag == 0) {
@@ -161,20 +162,31 @@ for my $x (0 .. $#keys_transcripts) {
 		
 
 		# This orthoid-transcript combination matches all reference taxa!
-		if ($strict and scalar keys %isect == $num_reftaxa) { 
-			print "strict for $keys_data[$y] and $keys_transcripts[$x]\n";
+		if (scalar keys %isect == $num_reftaxa) { 
+			# strict match
+			print "+\t$keys_data[$y] and $keys_transcripts[$x]: ";
+			printf "%s ", $_ foreach keys %isect;
+			print "\n";
 			# but it may still be redundant... fuck.
 			# remove it from the table to hopefully eliminate redundancy
+			splice @{$$table[$_]}, $y, 1 foreach (0 .. $#{$table});
 			splice @$table, $x, 1;
 			last;
 		}
 		# this one matches at least one reference taxon
-		elsif (!$strict and scalar keys %isect) {
-			print "fuzzy for  $keys_data[$y] and $keys_transcripts[$x]\n";
+		elsif (scalar keys %isect) {
+			# fuzzy match
+			print "=\t$keys_data[$y] and $keys_transcripts[$x]: ";
+			printf "%s ", $_ foreach keys %isect;
+			print "\n";
 			# but it may still be redundant... fuck.
 			# remove it from the table to hopefully eliminate redundancy
+			splice @{$$table[$_]}, $y, 1 foreach (0 .. $#{$table});
 			splice @$table, $x, 1;
 			last;
+		}
+		else {
+			print "-\t$keys_data[$y] and $keys_transcripts[$x]\n";
 		}
 
 	}

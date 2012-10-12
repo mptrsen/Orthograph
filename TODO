@@ -1,1 +1,2 @@
 Integrate mysql.pl functionality into the main program
+add a --delete_ogs option to orthograph_manager. this may require supplying the original ogs file for selection of the proper sequence ids.
