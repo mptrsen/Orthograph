@@ -86,13 +86,14 @@ sub next_seq {
   $item =~ s/^>//;
 
   my ($hdr, $seq) = split(/\n/, $item, 2);
+	$hdr =~ s/\s+$//;	# remove all trailing whitespace
   $seq =~ s/>//g if defined $seq;
   $seq =~ s/\s+//g if defined $seq; # remove all whitespace, including newlines
 
   return($hdr, $seq);
 }
 
-# Destructor. Closes the file and undefs the database object.
+# Closes the file and undefs the database object.
 sub close {
   my $self = shift;
   my $fh = $self->{'fh'};
@@ -101,7 +102,7 @@ sub close {
   undef($self);
 }
 
-# I dunno if this is required but I guess this is called when you undef() an object
+# Destructor. This is called when you undef() an object
 sub DESTROY {
   my $self = shift;
   $self->close;

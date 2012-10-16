@@ -37,14 +37,14 @@ use IO::File;       # object-oriented access to files
 # you might want to look into Log::Message.
 
 # Custom modules
+# parse the path to this program
 my @path         = fileparse($0);
 my $program_file = $path[0];
 my $libdir       = $path[1];
 use lib qw($libdir);
 use Wrapper::Hmmsearch;        # object-oriented interface to hmmsearch
 use Wrapper::Blastp;           # object-oriented interface to blastp
-use Wrapper::Orthocandidate;	  # manage candidate orthologs via a OO interface
-use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files, fasta2csv converter
+use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files
 
 my $program_name = 'Orthograph';
 my $version = 'alpha1';
@@ -497,10 +497,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# yay
 	++$orthocount;
 	printf "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0];
-
-	# get the ortholog results from the db
-	my $orthocand = Wrapper::Orthocandidate->new($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
-	Wrapper::Orthocandidate->add($orthocand);
 
 }#}}}	# End hmmlist loop
 
