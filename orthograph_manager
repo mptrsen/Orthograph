@@ -199,9 +199,23 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
+	print "This will erase your orthograph database. Are you sure (y/n)? ";
+	$| = 0;
+	my $yn = readline(STDIN);
+	chomp $yn;
+	until ($yn =~ /^[yn]$/) {
+		print "Response '$yn' not understood. Are you sure (y/n)? ";
+		$yn = readline(STDIN);
+		chomp $yn;
+	}
+	if ($yn eq 'n') {
+		exit;
+	}
+	print "OK, whatever you say.\n";
+	$| = 1;
 	&drop_tables;
 	&create_tables;
-	print "OK, you are good to go!\n";
+	print "Database cleared\n";
 	exit;
 }
 
@@ -559,7 +573,6 @@ sub load_taxon {#{{{
 	if ($mode) {
 		my $blastdb = shift(@_) or croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n"); 
 	}
-	my $total_seqs = 0;
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
 	# get taxon shorthand
@@ -572,21 +585,26 @@ sub load_taxon {#{{{
 	my $in = <STDIN>;
 	chomp $in;
 	my $taxon;
+
 	# make sure the user doesn't fuck up
 	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1)) {
 		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
 		$in = <STDIN>;
 		chomp $in;
 	}
+
+	# correlate that number to the list of taxa
 	$taxon = $$list[$in-1][0];
 	printf("You picked %d: %s (%s).\n", $in, $$list[$in-1][2], $$list[$in-1][1]);
 	print "Please enter the official gene set (OGS) version for this data file: ";
 	my $ogsversion = <STDIN>;
 	chomp $ogsversion;
 
+	# create a csv file for rapid uploading into the database
 	my $tmpfh = File::Temp->new(UNLINK => 1);
 	my $infh = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $infh->next_seq()) {
+		$hdr =~ s/,/_/g; # remove commas from the header as they confuse the csv parser
 		$seq =~ s/-//g;	# remove all gaps from the sequence
 
 		# check if the sequence consists of valid characters
@@ -601,21 +619,10 @@ sub load_taxon {#{{{
 			}
 		}
 
-		# don't split the header, let the user take original proteomes
-		#--------------------------------------------------
-		# my @fields = split(/\s+/, $hdr);
-		# if (scalar(@fields) < 2) {
-		# 	die(sprintf("$diemsg", $.));
-		# }
-		# elsif (length($fields[0]) != 5 or $fields[0] !~ /^\w{5}$/) {
-		# 	die(sprintf("$diemsg", $.));
-		# }
-		# print $tmpfh "$fields[0],$fields[1],$seq\n";
-		#-------------------------------------------------- 
+		# everything seems ok, write to csv file
 		print $tmpfh "$taxon,$hdr,$seq\n";
-		++$total_seqs;
 	}
-	$tmpfh->close();
+	undef($tmpfh);
 
 	print "Data looks OK, uploading...\n";
 
