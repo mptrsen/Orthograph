@@ -47,8 +47,8 @@ use Wrapper::Blastp;           # object-oriented interface to blastp
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files
 
 my $program_name = 'Orthograph';
-my $version = 'alpha1';
-print "$program_name\: Orthology prediction using a Graph-based, ",
+my $version = 'alpha2';
+print "$program_name\: Orthology prediction using a Graph-based,\n",
 	"Reciprocal Approach with Profile Hidden Markov models\n",
 	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n",
 	"Version $version\n\n";
@@ -1242,7 +1242,7 @@ sub load_data_infile {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
 	my $protfh = Seqload::Fasta->open($protfile);
 	while (my ($h, $s) = $protfh->next_seq()) {
-		$h =~ s/,/ /g;	# remove all commas, they confuse the csv parser
+		$h =~ s/,/ /g;	# remove all commas from the header, they confuse the csv parser
 		$s =~ s/-//g;	# remove all gaps from the sequence
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
 			warn("Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");

@@ -178,7 +178,7 @@ for my $x (0 .. $#keys_transcripts) {
 			# fuzzy match
 			print "=\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
 			printf "%s ", $_ foreach keys %isect;
-			print "\n";
+			printf "%e\n", $$table[$keys_orthoids[$y]][$keys_transcripts[$x]]{$sort_by};
 			# but it may still be redundant... fuck.
 			# remove it from the table to hopefully eliminate redundancy
 			splice @{$$table[$_]}, $y, 1 foreach (0 .. $#{$table});

@@ -321,7 +321,7 @@ unless (defined $setname) { croak "Fatal: You must specify the core-ortholog set
 # # read the input file and create a CSV file with everything we know 
 #-------------------------------------------------- 
 
-my $tmpfile = File::Temp->new();
+my $tmpfile = File::Temp->new(UNLINK=>0);
 
 my $faobj = Seqload::Fasta->open($infile);
 no warnings;	# disable warnings for printing of the NULL column
@@ -331,9 +331,10 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
 	}
 	++$total_seqs;
-	# no commas please, they confuse the csv parser
-	$hdr =~ s/,/ /g;
+	# no commas in the header please, they confuse the csv parser
+	$hdr =~ s/,/_/g;
 	my @line = split(/\s+/, $hdr, 4);	# maximum of five fields, the last one may contain whitespace
+	$line[3] =~ s/[,:]/_/;
 
 	# if the original proteome is missing, this can't work
 	if ($line[1] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
@@ -345,11 +346,12 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		$setname,	    # set name
 		$line[2],     # orthodb id, e.g. EOG500001
 		File::Spec->catdir($blastdir), # blast database directory
-		$line[1],     # original proteome id
+		$line[1],     # ogs id
 		$seq,         # sequence
 		$description; # set description
 }
 use warnings;	# resume yelling 
+print "used file $tmpfile\n";
 undef($faobj);
 
 #--------------------------------------------------
@@ -363,10 +365,10 @@ my $create_temp_table_query = "CREATE TABLE $temptable (
 		`orthoid`  VARCHAR(255), INDEX(orthoid),
 		`blastdb`  VARCHAR(255),
 		`header`   VARCHAR(512), INDEX(header),
-		`sequence` VARCHAR(255),
+		`sequence` MEDIUMBLOB,
 		`description` VARCHAR(255))";
 my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' 
-  INTO TABLE $temptable FIELDS TERMINATED BY ',' (
+  INTO TABLE $temptable FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' (
 		name,
 		longname,
 		orthoset,
@@ -622,7 +624,6 @@ sub load_taxon {#{{{
 		# everything seems ok, write to csv file
 		print $tmpfh "$taxon,$hdr,$seq\n";
 	}
-	undef($tmpfh);
 
 	print "Data looks OK, uploading...\n";
 
