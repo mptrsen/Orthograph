@@ -12,11 +12,11 @@ my $db          = 'orthograph';
 my $dbuser      = $ENV{LOGNAME};
 my $dbpwd       = $ENV{LOGNAME};
 my $dbserver    = 'localhost';
-my $setname     = 'mosquitoes';
+my $setname     = 'dfg2';
 my $speciesname = 'Mengenilla';
 my $out         = { };
 my $sort_by     = 'blasteval';
-my @reftaxa     = qw(AMELL ISCAP ACEPH DPULE );
+my @reftaxa     = qw(AMELL DPULE );
 my $data_by_transcripts = { };
 my $table       = [ ];
 my $strict      = 0;
@@ -27,32 +27,32 @@ my $strict      = 0;
 #-------------------------------------------------- 
 my $query = "
 SELECT DISTINCT
-	orthograph_orthologs.ortholog_gene_id AS orthoid,
-	orthograph_hmmsearch.target           AS transcript,
-	orthograph_hmmsearch.evalue           AS hmm_eval,
-	orthograph_blast.target               AS blast_target,
-	orthograph_blast.evalue               AS blast_eval,
-	orthograph_taxa.name                  AS reftax
-FROM orthograph_aaseqs
-INNER JOIN orthograph_taxa
-	ON orthograph_aaseqs.taxid            = orthograph_taxa.id
-INNER JOIN orthograph_blast
-	ON orthograph_aaseqs.id               = orthograph_blast.target
-INNER JOIN orthograph_hmmsearch
-	ON orthograph_blast.query             = orthograph_hmmsearch.target
-INNER JOIN orthograph_ests
-	ON orthograph_hmmsearch.target        = orthograph_ests.digest
-INNER JOIN orthograph_orthologs
-	ON orthograph_hmmsearch.query         = orthograph_orthologs.ortholog_gene_id
-INNER JOIN orthograph_sequence_pairs
-	ON orthograph_orthologs.sequence_pair = orthograph_sequence_pairs.id
-	AND orthograph_aaseqs.id              = orthograph_sequence_pairs.aa_seq
-INNER JOIN orthograph_set_details
-	ON orthograph_set_details.name        = '$setname'
-WHERE orthograph_ests.spec              = '$speciesname'
-AND orthograph_hmmsearch.evalue         < 1e-05
-AND orthograph_blast.evalue             < 1e-05
-ORDER BY orthograph_hmmsearch.evalue
+	o_orthologs.ortholog_gene_id AS orthoid,
+	o_hmmsearch.target           AS transcript,
+	o_hmmsearch.evalue           AS hmm_eval,
+	o_blast.target               AS blast_target,
+	o_blast.evalue               AS blast_eval,
+	o_taxa.name                  AS reftax
+FROM o_aaseqs
+INNER JOIN o_taxa
+	ON o_aaseqs.taxid            = o_taxa.id
+INNER JOIN o_blast
+	ON o_aaseqs.id               = o_blast.target
+INNER JOIN o_hmmsearch
+	ON o_blast.query             = o_hmmsearch.target
+INNER JOIN o_ests
+	ON o_hmmsearch.target        = o_ests.digest
+INNER JOIN o_orthologs
+	ON o_hmmsearch.query         = o_orthologs.ortholog_gene_id
+INNER JOIN o_sequence_pairs
+	ON o_orthologs.sequence_pair = o_sequence_pairs.id
+	AND o_aaseqs.id              = o_sequence_pairs.aa_seq
+INNER JOIN o_set_details
+	ON o_set_details.name        = '$setname'
+WHERE o_ests.spec              = '$speciesname'
+AND o_hmmsearch.evalue         < 1e-05
+AND o_blast.evalue             < 1e-05
+ORDER BY o_hmmsearch.evalue
 ";
 
 # get data, store in hash->array->hash
@@ -166,7 +166,7 @@ for my $x (0 .. $#keys_transcripts) {
 			# strict match
 			print "+\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
 			printf "%s ", $_ foreach keys %isect;
-			print "\n";
+			printf "with %.2e\n", $$table[$x][$y][0]{'hmmeval'};
 			# but it may still be redundant... fuck.
 			# remove it from the table to hopefully eliminate redundancy
 			splice @{$$table[$_]}, $y, 1 foreach (0 .. $#{$table});
@@ -178,7 +178,7 @@ for my $x (0 .. $#keys_transcripts) {
 			# fuzzy match
 			print "=\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
 			printf "%s ", $_ foreach keys %isect;
-			printf "%e\n", $$table[$keys_orthoids[$y]][$keys_transcripts[$x]]{$sort_by};
+			printf "with %.2e\n", $$table[$x][$y][0]{'hmmeval'};
 			# but it may still be redundant... fuck.
 			# remove it from the table to hopefully eliminate redundancy
 			splice @{$$table[$_]}, $y, 1 foreach (0 .. $#{$table});
