@@ -61,7 +61,7 @@ print "$program_name\: Orthology prediction using a Graph-based,\n",
 my $use_threads = 0;#{{{
 if ($use_threads == 1 and $Config{'useithreads'}) {
   print "Using threads.\n\n";
-  use Wrapper::Threaded;
+  #use Wrapper::Threaded;
 }
 elsif ($use_threads == 1 and !$Config{'useithreads'}) {
   warn "Warning: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n\n";
@@ -83,7 +83,7 @@ my $config;    # will hold the configuration from config file
 (my $configfile = $0) =~ s/(\.pl)?$/.conf/;#{{{
 # mini argument parser for the configfile
 for (my $i = 0; $i < scalar @ARGV; ++$i) {
-	if ($ARGV[$i] =~ /-c/) {
+	if ($ARGV[$i] =~ /-c\b/) {
 		if ($ARGV[$i+1] !~ /^-/) {
 		  $configfile = $ARGV[$i+1];
 			if (!-e $configfile) { die "Fatal: Config file '$configfile' not found!\n" }
@@ -165,7 +165,7 @@ my $mysql_table_orthologs      = $config->{'orthologs'} ?
 my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
 my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
-my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
+my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : '';
 my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
@@ -852,9 +852,9 @@ sub preparedb {#{{{
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     DOUBLE NOT NULL,
-		$mysql_col_evalue    VARCHAR NOT NULL,
-		$mysql_col_start     INT(4) NOT NULL,
-		$mysql_col_end       INT(4) NOT NULL)";
+		$mysql_col_evalue    VARCHAR(100) NOT NULL,
+		$mysql_col_start     INT(5) NOT NULL,
+		$mysql_col_end       INT(5) NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id        INT NOT NULL AUTO_INCREMENT, INDEX ($mysql_col_id),
@@ -864,7 +864,7 @@ sub preparedb {#{{{
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		$mysql_col_score     DOUBLE NOT NULL,
-		$mysql_col_evalue    VARCHAR NOT NULL)";
+		$mysql_col_evalue    VARCHAR(100) NOT NULL)";
 	
 	# open connection
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);

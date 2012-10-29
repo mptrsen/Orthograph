@@ -140,23 +140,24 @@ my %create_table = (#{{{
     `aa_seq`       INT(10) UNSIGNED NOT NULL, INDEX(aa_seq),
     `nt_seq`       INT(10) UNSIGNED, INDEX(nt_seq), 
     `date`         INT(11) UNSIGNED,
-    `user`         INT(10) UNSIGNED,
-		UNIQUE(aa_seq))",
+    `user`         INT(10) UNSIGNED, UNIQUE(aa_seq))",
 
 	# table: sequences_aa
+	# deleted: UNIQUE(header),
 	'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `taxid`        INT(10) NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(512) NOT NULL, UNIQUE(header),
+    `header`       VARCHAR(512) NOT NULL, 
     `sequence`     MEDIUMBLOB,
     `user`         INT(10) UNSIGNED,
     `date`         INT(11) UNSIGNED)",
 
 	# table: sequences_nt
+	# deleted: UNIQUE(header),
 	'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
     `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `taxid`        INT(10) NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(512) NOT NULL, UNIQUE(header),
+    `header`       VARCHAR(512) NOT NULL, 
     `sequence`     MEDIUMBLOB,
     `user`         INT(10) UNSIGNED,
     `date`         INT(11) UNSIGNED)",
@@ -199,7 +200,7 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will erase your orthograph database. Are you sure (y/n)? ";
+	print "This will create a new orthograph database. Any existing database structures will be erased. Are you sure (y/n)? ";
 	$| = 0;
 	my $yn = readline(STDIN);
 	chomp $yn;
@@ -353,6 +354,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 use warnings;	# resume yelling 
 print "used file $tmpfile\n";
 undef($faobj);
+$tmpfile->close();
 
 #--------------------------------------------------
 # # create a temporary table for high-speed loading of the data. we can sort it out later.
@@ -951,296 +953,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 
 =head2 SQL dump for creating the database structure
 
-  -- MySQL dump 10.13  Distrib 5.1.61, for redhat-linux-gnu (x86_64)
-  --
-  -- Host: localhost    Database: orthograph
-  -- ------------------------------------------------------
-  -- Server version	5.1.61-log
-  
-  /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-  /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-  /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-  /*!40101 SET NAMES utf8 */;
-  /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-  /*!40103 SET TIME_ZONE='+00:00' */;
-  /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-  /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-  /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-  /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-  
-  --
-  -- Current Database: `orthograph`
-  --
-  
-  CREATE DATABASE /*!32312 IF NOT EXISTS*/ `orthograph` /*!40100 DEFAULT CHARACTER SET latin1 */;
-  
-  USE `orthograph`;
-  
-  --
-  -- Table structure for table `orthograph_aaseqs`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_aaseqs`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_aaseqs` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `taxid` int(10) NOT NULL,
-    `header` varchar(512) NOT NULL,
-    `sequence` mediumblob,
-    `user` int(10) unsigned DEFAULT NULL,
-    `date` int(11) unsigned DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `header` (`header`),
-    KEY `taxid` (`taxid`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=206817 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_blast`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_blast`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_blast` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `spec` varchar(255) NOT NULL,
-    `blastdb_path` varchar(255) NOT NULL,
-    `query` varchar(255) NOT NULL,
-    `target` varchar(255) NOT NULL,
-    `score` float NOT NULL,
-    `evalue` float NOT NULL,
-    UNIQUE KEY `query_2` (`query`,`target`),
-    KEY `id` (`id`),
-    KEY `spec` (`spec`),
-    KEY `query` (`query`),
-    KEY `target` (`target`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=9713 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_blastdbs`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_blastdbs`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_blastdbs` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `setid` int(10) unsigned DEFAULT NULL,
-    `blastdb_path` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `setid` (`setid`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_blastp`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_blastp`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_blastp` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `spec` varchar(255) NOT NULL,
-    `blastdb_path` varchar(255) NOT NULL,
-    `query` varchar(255) NOT NULL,
-    `target` varchar(255) NOT NULL,
-    `score` float NOT NULL,
-    `evalue` float NOT NULL,
-    UNIQUE KEY `query_2` (`query`,`target`),
-    KEY `id` (`id`),
-    KEY `spec` (`spec`),
-    KEY `query` (`query`),
-    KEY `target` (`target`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=1403 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_ests`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_ests`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_ests` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `digest` char(32) NOT NULL,
-    `spec` varchar(255) NOT NULL,
-    `date` int(11) unsigned DEFAULT NULL,
-    `header` varchar(255) NOT NULL,
-    `sequence` mediumblob,
-    KEY `id` (`id`),
-    KEY `digest` (`digest`),
-    KEY `spec` (`spec`),
-    KEY `header` (`header`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=630001 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_hmmsearch`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_hmmsearch`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_hmmsearch` (
-    `id`     int(11) NOT NULL AUTO_INCREMENT,
-    `spec`   varchar(255) NOT NULL,
-    `query`  varchar(255) NOT NULL,
-    `target` varchar(255) NOT NULL,
-    `score`  float NOT NULL,
-    `evalue` float NOT NULL,
-    `from`   int(4) NOT NULL,
-    `to`     int(4) NOT NULL
-    UNIQUE KEY `query_2` (`query`,`target`),
-    KEY `id` (`id`),
-    KEY `spec` (`spec`),
-    KEY `query` (`query`),
-    KEY `target` (`target`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=7405 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_ntseqs`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_ntseqs`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_ntseqs` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `taxid` int(10) NOT NULL,
-    `header` varchar(512) NOT NULL,
-    `sequence` mediumblob,
-    `user` int(10) unsigned DEFAULT NULL,
-    `date` int(11) unsigned DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `header` (`header`),
-    KEY `taxid` (`taxid`)
-  ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_ogs`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_ogs`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_ogs` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `type` char(3) DEFAULT NULL,
-    `taxid` int(10) unsigned DEFAULT NULL,
-    `version` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `taxid` (`taxid`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_orthologs`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_orthologs`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_orthologs` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `setid` int(10) unsigned NOT NULL,
-    `ortholog_gene_id` varchar(10) NOT NULL,
-    `sequence_pair` int(10) unsigned NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `setid` (`setid`,`ortholog_gene_id`,`sequence_pair`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=6853 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_seqtypes`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_seqtypes`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_seqtypes` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `type` char(3) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `type` (`type`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_sequence_pairs`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_sequence_pairs`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_sequence_pairs` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `taxid` int(10) unsigned NOT NULL,
-    `ogs_id` int(10) unsigned NOT NULL,
-    `aa_seq` int(10) unsigned NOT NULL,
-    `nt_seq` int(10) unsigned DEFAULT NULL,
-    `date` int(11) unsigned DEFAULT NULL,
-    `user` int(10) unsigned DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `aa_seq_2` (`aa_seq`),
-    KEY `aa_seq` (`aa_seq`),
-    KEY `nt_seq` (`nt_seq`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=206816 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_set_details`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_set_details`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_set_details` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `name` varchar(255) DEFAULT NULL,
-    `description` blob,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `name` (`name`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_taxa`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_taxa`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_taxa` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `name` varchar(20) DEFAULT NULL,
-    `longname` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `name` (`name`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-  
-  --
-  -- Table structure for table `orthograph_users`
-  --
-  
-  DROP TABLE IF EXISTS `orthograph_users`;
-  /*!40101 SET @saved_cs_client     = @@character_set_client */;
-  /*!40101 SET character_set_client = utf8 */;
-  CREATE TABLE `orthograph_users` (
-    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `name` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `name` (`name`)
-  ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
-  /*!40101 SET character_set_client = @saved_cs_client */;
-
+# TODO include complete MySQL dump for the database
 =cut
 
 #}}}
