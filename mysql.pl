@@ -12,7 +12,7 @@ my $db          = 'orthograph';
 my $dbuser      = $ENV{LOGNAME};
 my $dbpwd       = $ENV{LOGNAME};
 my $dbserver    = 'localhost';
-my $setname     = 'mosquitoes';
+my $setname     = 'dfg2';
 my $speciesname = 'Mengenilla';
 my $out         = { };
 my $sort_by     = 'blasteval';
@@ -28,32 +28,32 @@ my $strict      = 0;
 #-------------------------------------------------- 
 my $query = "
 SELECT DISTINCT
-	orthograph_orthologs.ortholog_gene_id AS orthoid,
-	orthograph_hmmsearch.target           AS transcript,
-	orthograph_hmmsearch.evalue           AS hmm_eval,
-	orthograph_blast.target               AS blast_target,
-	orthograph_blast.evalue               AS blast_eval,
-	orthograph_taxa.name                  AS reftax
-FROM orthograph_aaseqs
-INNER JOIN orthograph_taxa
-	ON orthograph_aaseqs.taxid            = orthograph_taxa.id
-INNER JOIN orthograph_blast
-	ON orthograph_aaseqs.id               = orthograph_blast.target
-INNER JOIN orthograph_hmmsearch
-	ON orthograph_blast.query             = orthograph_hmmsearch.target
-INNER JOIN orthograph_ests
-	ON orthograph_hmmsearch.target        = orthograph_ests.digest
-INNER JOIN orthograph_orthologs
-	ON orthograph_hmmsearch.query         = orthograph_orthologs.ortholog_gene_id
-INNER JOIN orthograph_sequence_pairs
-	ON orthograph_orthologs.sequence_pair = orthograph_sequence_pairs.id
-	AND orthograph_aaseqs.id              = orthograph_sequence_pairs.aa_seq
-INNER JOIN orthograph_set_details
-	ON orthograph_set_details.name        = '$setname'
-WHERE orthograph_ests.spec              = '$speciesname'
-AND orthograph_hmmsearch.evalue         < 1e-05
-AND orthograph_blast.evalue             < 1e-05
-ORDER BY orthograph_hmmsearch.evalue
+	o_orthologs.ortholog_gene_id AS orthoid,
+	o_hmmsearch.target           AS transcript,
+	o_hmmsearch.evalue           AS hmm_eval,
+	o_blast.target               AS blast_target,
+	o_blast.evalue               AS blast_eval,
+	o_taxa.name                  AS reftax
+FROM o_aaseqs
+INNER JOIN o_taxa
+	ON o_aaseqs.taxid            = o_taxa.id
+INNER JOIN o_blast
+	ON o_aaseqs.id               = o_blast.target
+INNER JOIN o_hmmsearch
+	ON o_blast.query             = o_hmmsearch.target
+INNER JOIN o_ests
+	ON o_hmmsearch.target        = o_ests.digest
+INNER JOIN o_orthologs
+	ON o_hmmsearch.query         = o_orthologs.ortholog_gene_id
+INNER JOIN o_sequence_pairs
+	ON o_orthologs.sequence_pair = o_sequence_pairs.id
+	AND o_aaseqs.id              = o_sequence_pairs.aa_seq
+INNER JOIN o_set_details
+	ON o_set_details.name        = '$setname'
+WHERE o_ests.spec              = '$speciesname'
+AND o_hmmsearch.evalue         < 1e-05
+AND o_blast.evalue             < 1e-05
+ORDER BY o_hmmsearch.evalue
 ";
 
 # get data, store in hash->array->hash
@@ -61,18 +61,18 @@ my $dbh = DBI->connect("dbi:mysql:$db:$dbserver", $dbuser, $dbpwd);
 my $sql = $dbh->prepare($query);
 $sql->execute();
 while (my $line = $sql->fetchrow_arrayref()) {
-	push @{$$data_by_orthoid{$$line[0]}}, {
-		'digest'      => $$line[1],
-		'hmmeval'     => $$line[2],
-		'blasttarget' => $$line[3],
-		'blasteval'   => $$line[4],
-		'reftaxon'    => $$line[5]
+	push @{$$data_by_orthoid{$$line[0]}}, {	# 0: orthoid
+		'digest'      => $$line[1],	# 1: SHA256 digest
+		'hmmeval'     => sprintf("%e", $$line[2]),	# 2: hmmsearch evalue
+		'blasttarget' => $$line[3],	# 3: blast target id	
+		'blasteval'   => sprintf("%e", $$line[4]),	# 4: blast evalue
+		'reftaxon'    => $$line[5]	# 5: reference taxon
 	};
-	push @{$$data_by_evalue{$$line[2]}}, {
+	push @{$$data_by_evalue{sprintf("%e", $$line[2])}}, {
 		'orthoid'     => $$line[0],
 		'digest'      => $$line[1],
 		'blasttarget' => $$line[3],
-		'blasteval'   => $$line[4],
+		'blasteval'   => sprintf("%e", $$line[4]),
 		'reftaxon'    => $$line[5]
 	};
 	$count++;
@@ -85,22 +85,32 @@ foreach my $eog (keys %$data_by_orthoid) {
 		$$a{$sort_by} <=> $$b{$sort_by}
 	} @{$$data_by_orthoid{$eog}};
 }
-
-# header
-printf "%-8s %-9s %-32s %-8s\n",
-	'#hmmeval',
-	'orthoid',
-	'est_digest',
-	'blasteval';
-# data
-foreach my $hmmeval (sort {$a <=> $b} keys %$data_by_evalue) {
-	printf "%-8.1e %8s %32s %-8.1e\n",
-		$hmmeval,
-		$$data_by_evalue{$hmmeval}[0]{'orthoid'},
-		$$data_by_evalue{$hmmeval}[0]{'digest'},
-		$$data_by_evalue{$hmmeval}[0]{'blasteval'};
+foreach my $eval (keys %$data_by_evalue) {
+	@{$$data_by_evalue{$eval}} = sort {
+		$$a{$sort_by} <=> $$b{$sort_by}
+	} @{$$data_by_evalue{$eval}};
 }
-#print Dumper $data_by_evalue; exit;
+
+#--------------------------------------------------
+# # header
+# printf "%-8s %-9s %-32s %-8s\n",
+# 	'#hmmeval',
+# 	'orthoid',
+# 	'est_digest',
+# 	'blasteval';
+# # data
+# foreach my $hmmeval (sort {$a <=> $b} keys %$data_by_evalue) {
+# 	for my $i (0 .. scalar(@{$$data_by_evalue{$hmmeval}}) - 1) {
+# 		printf "%-8.1e %8s %32s %-8.1e %5s\n",
+# 			$hmmeval,
+# 			$$data_by_evalue{$hmmeval}[$i]{'orthoid'},
+# 			$$data_by_evalue{$hmmeval}[$i]{'digest'},
+# 			$$data_by_evalue{$hmmeval}[$i]{'blasteval'},
+# 			$$data_by_evalue{$hmmeval}[$i]{'reftaxon'},
+# 		;
+# 	}
+# }
+#-------------------------------------------------- 
 
 # reverse the hash so that we get a transcript->orthoid assignment
 foreach my $eog (keys %$data_by_orthoid) {
@@ -116,8 +126,9 @@ foreach my $eog (keys %$data_by_orthoid) {
 }
 
 # keys to the hashes
-my @keys_orthoids = keys %$data_by_orthoid;
+my @keys_orthoids    = keys %$data_by_orthoid    ;
 my @keys_transcripts = keys %$data_by_transcripts;
+my @keys_evalues     = keys %$data_by_evalue     ;
 
 
 # make a HTML table!
@@ -130,14 +141,14 @@ print $fh "</tr>\n";
 # columns
 for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 	print $fh "<tr>\n";
-	print $fh "<td><b>", $keys_transcripts[$x], "</b></td>\n";
+	print $fh "<td><b>", $keys_transcripts[$x], "</b></td>";
 	# rows
 	for (my $y = 0; $y < scalar @keys_orthoids; ++$y) {
 		# get the matching transcript from the list
 		my $flag = 0;
 		foreach my $hit (@{$$data_by_transcripts{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_orthoids[$y]) {
-				print $fh "<td>", $$hit{'hmmeval'}, "<br />", $$hit{'reftaxon'}, "</td>\n" if $flag == 0;
+				print $fh "<td>", $$hit{'hmmeval'}, "<br />", $$hit{'reftaxon'}, "</td>" if $flag == 0;
 				# connect these in the result table
 				push @{$$table[$x][$y]}, {
 					'hmmeval'     => $$hit{'hmmeval'},
@@ -150,7 +161,7 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 		}
 		if ($flag == 0) {
 			# this is a non-match
-			print $fh "<td>NULL</td>\n";
+			print $fh "<td>NULL</td>";
 			$$table[$x][$y] = 0;
 		}
 		else {
@@ -164,7 +175,10 @@ print $fh "</table>\n";
 print $fh "</body></html>\n";
 # close file
 undef $fh;
-#warn Dumper($table);
+warn Dumper($table);
+
+
+# TODO walk through the e-values and examine each hit pair
 
 # take only the reference taxa
 my $num_reftaxa = scalar @reftaxa;
