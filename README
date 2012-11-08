@@ -102,16 +102,18 @@ output of nucleotide data is not implemented anyway, so skip this step.
 6. Create a config file. 
 
 Edit the supplied config file orthograph.conf.example, it's commented to help
-you start off. Most options are self-explanatory.
+you start off. Most options are self-explanatory. Save the file as
+orthograph.conf.
 
 7. Create the required database structure for Orthograph. Make orthograph
 executable and run it with the -prepare option:
 
-	chmod +x orthograph ./orthograph -prepare
+	chmod +x orthograph
+	./orthograph -prepare
 
 If you picked a non-default database name AND you didn't save your config file
-in orthograph.conf, you must tell Orthograph where to find all that information
-with the -c option:
+as orthograph.conf, you must tell Orthograph where to find the config file with
+the -c option:
 
 	./orthograph -c CONFIGFILE -prepare
 
