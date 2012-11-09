@@ -79,6 +79,7 @@ while (my $line = $sql->fetchrow_arrayref()) {
 }
 $dbh->disconnect;
 
+
 # sort by blast evalue or hmmsearch evalue or the number of your mom's chest hairs
 foreach my $eog (keys %$data_by_orthoid) {
 	@{$$data_by_orthoid{$eog}} = sort {
@@ -92,6 +93,7 @@ foreach my $eval (keys %$data_by_evalue) {
 }
 
 #--------------------------------------------------
+# # a normal table for screen output
 # # header
 # printf "%-8s %-9s %-32s %-8s\n",
 # 	'#hmmeval',
@@ -148,7 +150,7 @@ for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 		my $flag = 0;
 		foreach my $hit (@{$$data_by_transcripts{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_orthoids[$y]) {
-				print $fh "<td>", $$hit{'hmmeval'}, "<br />", $$hit{'reftaxon'}, "</td>" if $flag == 0;
+				print $fh "<td>", $$hit{'hmmeval'}, "</td>" if $flag == 0;
 				# connect these in the result table
 				push @{$$table[$x][$y]}, {
 					'hmmeval'     => $$hit{'hmmeval'},
@@ -175,10 +177,47 @@ print $fh "</table>\n";
 print $fh "</body></html>\n";
 # close file
 undef $fh;
-warn Dumper($table);
 
 
 # TODO walk through the e-values and examine each hit pair
+
+foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
+	# each (hmmsearch) e-value is associated with a list of hits
+	foreach my $i (0 .. scalar( @{$$data_by_evalue{$heval}} ) - 1) {
+		# only if both orthoid and transcript have not been assigned before
+		if (
+			grep( /$$data_by_evalue{$heval}[$i]{'digest'}/, @keys_transcripts )
+			and grep( /$$data_by_evalue{$heval}[$i]{'orthoid'}/, @keys_orthoids )
+		)
+		{
+			# is the reftaxon of this hit part of the reftaxa list?
+			if ( grep /$$data_by_evalue{$heval}[$i]{'reftaxon'}/, @reftaxa ) {
+				printf "%.1e : %s and %s (%s: %.1e)\n",
+					$heval,
+					$$data_by_evalue{$heval}[$i]{'orthoid'},
+					$$data_by_evalue{$heval}[$i]{'digest'},
+					$$data_by_evalue{$heval}[$i]{'reftaxon'},
+					$$data_by_evalue{$heval}[$i]{'blasteval'},
+				;
+				for (0 .. scalar(@keys_orthoids) -1 ) {
+					if ($keys_orthoids[$_] eq $$data_by_evalue{$heval}[$i]{'orthoid'}) {
+						splice(@keys_orthoids, $_, 1) and last;
+					}
+				}
+				for (0 .. scalar(@keys_transcripts) -1 ) {
+					if ($keys_transcripts[$_] eq $$data_by_evalue{$heval}[$i]{'digest'}) {
+						splice(@keys_transcripts, $_, 1) and last;
+					}
+				}
+				# make sure they only get assigned once
+				#delete $$data_by_transcripts{ $$data_by_evalue{$heval}[$i]{'digest'} };
+				#delete $$data_by_orthoid{ $$data_by_evalue{$heval}[$i]{'orthoid'} };
+			}
+		}
+	}
+}
+
+exit;
 
 # take only the reference taxa
 my $num_reftaxa = scalar @reftaxa;
