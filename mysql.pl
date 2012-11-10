@@ -85,7 +85,6 @@ while (my $line = $sql->fetchrow_arrayref()) {
 		'blasteval'   => sprintf("%e", $$line[4]),
 		'reftaxon'    => $$line[5]
 	};
-	$count++;
 }
 $dbh->disconnect;
 
@@ -131,7 +130,7 @@ foreach my $transcript (keys %$data_by_transcript) {
 
 # keys to the hashes
 my @keys_orthoids    = keys %$data_by_orthoid    ;
-my @keys_transcript = keys %$data_by_transcript;
+my @keys_transcripts = keys %$data_by_transcript;
 my @keys_evalues     = keys %$data_by_evalue     ;
 
 
@@ -143,14 +142,14 @@ print $fh "<tr><th>&nbsp;</th>\n";	# first cell is empty
 printf $fh "<th align='left'>%s</th>\n", $_ foreach @keys_orthoids;	# header
 print $fh "</tr>\n";
 # columns
-for (my $x = 0; $x < scalar @keys_transcript; ++$x) {
+for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
 	print $fh "<tr>\n";
-	print $fh "<td><b>", $keys_transcript[$x], "</b></td>";
+	print $fh "<td><b>", $keys_transcripts[$x], "</b></td>";
 	# rows
 	for (my $y = 0; $y < scalar @keys_orthoids; ++$y) {
 		# get the matching transcript from the list
 		my $flag = 0;
-		foreach my $hit (@{$$data_by_transcript{$keys_transcript[$x]}}) {
+		foreach my $hit (@{$$data_by_transcript{$keys_transcripts[$x]}}) {
 			if ($$hit{'orthoid'} eq $keys_orthoids[$y]) {
 				print $fh "<td>", $$hit{'hmmeval'}, "</td>" if $flag == 0;
 				# connect these in the result table
@@ -180,20 +179,22 @@ print $fh "</body></html>\n";
 # close file
 undef $fh;
 
-
-# TODO walk through the e-values and examine each hit pair
-
+my $reftaxa_hitcount = 0;
+my $hit = 0;
+# walk through the e-values and examine each hit pair
 foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
-	# each (hmmsearch) e-value is associated with a list of hits
+	# each (hmmsearch) e-value is associated with a list of reciprocal hits
+	# which we'll traverse now
 	foreach my $i (0 .. scalar( @{$$data_by_evalue{$heval}} ) - 1) {
 		# only if both orthoid and transcript have not been assigned before
 		if (
-			grep( /$$data_by_evalue{$heval}[$i]{'digest'}/, @keys_transcript )
+			grep( /$$data_by_evalue{$heval}[$i]{'digest'}/, @keys_transcripts )
 			and grep( /$$data_by_evalue{$heval}[$i]{'orthoid'}/, @keys_orthoids )
 		)
 		{
 			# is the reftaxon of this hit part of the reftaxa list?
 			if ( grep /$$data_by_evalue{$heval}[$i]{'reftaxon'}/, @reftaxa ) {
+				# yes... but this is not enough!
 				printf "%.1e : %s and %s (%s: %.1e, hit #%d)\n",
 					$heval,
 					$$data_by_evalue{$heval}[$i]{'orthoid'},
@@ -202,30 +203,60 @@ foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
 					$$data_by_evalue{$heval}[$i]{'blasteval'},
 					$i,
 				;
-				for (0 .. scalar(@keys_orthoids) -1 ) {
-					if ($keys_orthoids[$_] eq $$data_by_evalue{$heval}[$i]{'orthoid'}) {
-						splice(@keys_orthoids, $_, 1) and last;
-					}
-				}
-				for (0 .. scalar(@keys_transcript) -1 ) {
-					if ($keys_transcript[$_] eq $$data_by_evalue{$heval}[$i]{'digest'}) {
-						splice(@keys_transcript, $_, 1) and last;
-					}
-				}
+				++$reftaxa_hitcount;
+				$hit = $i;
 				# make sure they only get assigned once
 				#delete $$data_by_transcript{ $$data_by_evalue{$heval}[$i]{'digest'} };
 				#delete $$data_by_orthoid{ $$data_by_evalue{$heval}[$i]{'orthoid'} };
 			}
 		}
 	}
+	# all reference taxa were hit rectally
+	if ($reftaxa_hitcount == scalar @reftaxa) {
+		# make sure they only get assigned once by removing the id from the list
+		&remove_from_lists($heval, $hit);
+		print "all reference taxa hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+		# TODO insert this result into the database
+		# make a new result table
+		$count++;
+	}
+	# at least one reference taxon was hit
+	elsif ($reftaxa_hitcount > 0) {
+		# do the same i guess
+		# make sure they only get assigned once by removing the id from the list
+		&remove_from_lists($heval, $hit);
+		print "$reftaxa_hitcount reference taxon hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+		# TODO insert this result into the database
+		# make a new result table
+		$count++;
+	}
+	$reftaxa_hitcount = 0;
+	$hit = 0;
 }
+print $count, " hits\n";
 
 exit;
+
+sub remove_from_lists {
+	my $heval = shift @_;
+	my $id = shift @_;
+	for (0 .. scalar(@keys_orthoids) - 1 ) {
+		if ($keys_orthoids[$_] eq $$data_by_evalue{$heval}[$id]{'orthoid'}) {
+			splice(@keys_orthoids, $_, 1) and last;
+		}
+	}
+	for (0 .. scalar(@keys_transcripts) - 1 ) {
+		if ($keys_transcripts[$_] eq $$data_by_evalue{$heval}[$id]{'digest'}) {
+			splice(@keys_transcripts, $_, 1) and last;
+		}
+	}
+	return 1;
+}
 
 # take only the reference taxa
 my $num_reftaxa = scalar @reftaxa;
 TR:
-for my $x (0 .. $#keys_transcript) {
+for my $x (0 .. $#keys_transcripts) {
 	OG:
 	for my $y (0 .. $#keys_orthoids) {
 		# skip non-matches and already-removed entries
@@ -244,7 +275,7 @@ for my $x (0 .. $#keys_transcript) {
 		# This orthoid-transcript combination matches all reference taxa!
 		if (scalar keys %isect == $num_reftaxa) { 
 			# strict match
-			print "+\t$keys_orthoids[$y] and $keys_transcript[$x]: ";
+			print "+\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
 			printf "%s ", $_ foreach keys %isect;
 			printf "with %.2e\n", $$table[$x][$y][0]{'hmmeval'};
 			# but it may still be redundant... fuck.
@@ -256,7 +287,7 @@ for my $x (0 .. $#keys_transcript) {
 		# this one matches at least one reference taxon
 		elsif (scalar keys %isect) {
 			# fuzzy match
-			print "=\t$keys_orthoids[$y] and $keys_transcript[$x]: ";
+			print "=\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
 			printf "%s ", $_ foreach keys %isect;
 			printf "with %.2e\n", $$table[$x][$y][0]{'hmmeval'};
 			# but it may still be redundant... fuck.
@@ -267,7 +298,7 @@ for my $x (0 .. $#keys_transcript) {
 		}
 		# this one matches none
 		else {
-			print "-\t$keys_orthoids[$y] and $keys_transcript[$x]: ";
+			print "-\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
 			printf "%s ", $_ foreach @this_reftaxa;
 			print "\n";
 		}
