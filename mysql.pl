@@ -215,7 +215,7 @@ foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
 	if ($reftaxa_hitcount == scalar @reftaxa) {
 		# make sure they only get assigned once by removing the id from the list
 		&remove_from_lists($heval, $hit);
-		print "all reference taxa hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+		print "==> all reference taxa hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
 		# TODO insert this result into the database
 		# make a new result table
 		$count++;
@@ -225,7 +225,7 @@ foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
 		# do the same i guess
 		# make sure they only get assigned once by removing the id from the list
 		&remove_from_lists($heval, $hit);
-		print "$reftaxa_hitcount reference taxon hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+		print "==> $reftaxa_hitcount reference taxa hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
 		# TODO insert this result into the database
 		# make a new result table
 		$count++;
@@ -236,6 +236,15 @@ foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
 print $count, " hits\n";
 
 exit;
+
+=h2 remove_from_lists(KEY, ID)
+
+Removes a hit pair (orthoid <-> transcript digest) at KEY (usually an e-value)
+with the index INDEX of the list of hits from both the @keys_orthoids and
+@keys_transcripts lists so they can't be found again (avoiding redundancy).
+Returns 1.
+
+=cut
 
 sub remove_from_lists {
 	my $heval = shift @_;
@@ -265,12 +274,11 @@ for my $x (0 .. $#keys_transcripts) {
 		# local list of reftaxa for this match
 		my @this_reftaxa;
 		push @this_reftaxa, $$_{'reftaxon'} foreach (@{$$table[$x][$y]});
-		
+
 		# intersection of @reftaxa and @this_reftaxa
 		my %union = my %isect = ();
 		foreach my $el (@reftaxa) { $union{$el} = 1 }
 		foreach my $el (@this_reftaxa) { $isect{$el} = 1 if ($union{$el}) }
-		
 
 		# This orthoid-transcript combination matches all reference taxa!
 		if (scalar keys %isect == $num_reftaxa) { 
