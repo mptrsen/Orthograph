@@ -44,6 +44,7 @@ my $libdir       = $path[1];
 use lib qw($libdir);
 use Wrapper::Hmmsearch;        # object-oriented interface to hmmsearch
 use Wrapper::Blastp;           # object-oriented interface to blastp
+use Orthograph::Functions;     # functions for all Orthograph tools
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files
 
 my $program_name = 'Orthograph';
@@ -80,17 +81,8 @@ my $config;    # will hold the configuration from config file
 #--------------------------------------------------
 # # Parse config file
 #-------------------------------------------------- 
-(my $configfile = $0) =~ s/(\.pl)?$/.conf/;#{{{
-# mini argument parser for the configfile
-for (my $i = 0; $i < scalar @ARGV; ++$i) {
-	if ($ARGV[$i] =~ /-c\b/) {
-		if ($ARGV[$i+1] !~ /^-/) {
-		  $configfile = $ARGV[$i+1];
-			if (!-e $configfile) { die "Fatal: Config file '$configfile' not found!\n" }
-		}
-		else { warn "Warning: Config file name '$ARGV[$i+1]' not accepted (use './$ARGV[$i+1]' if you mean it). Falling back to '$configfile'\n" }
-	}
-}
+my $configfile = lc($program_name)#{{{
+$configfile = &get_configfile($configfile);
 if (-e $configfile) {
   print "Parsing config file '$configfile'.\n";
   $config = &parse_config($configfile);
@@ -100,12 +92,12 @@ if (-e $configfile) {
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
-my $alignment_program = $config->{'alignment_program'} ? $config->{'alignment_program'} : 'mafft --localpair --maxiterate 1000';#{{{
-my $hmmbuild_program  = $config->{'hmmbuild_program'} ? $config->{'hmmbuild_program'} : 'hmmbuild';
-my $translateprog     = $config->{'translate_program'} ? $config->{'translate_program'} : 'fastatranslate';
-my $hmmsearchprog     = $config->{'hmmsearch_program'} ? $config->{'hmmsearch_program'} : 'hmmsearch';
-my $blastprog         = $config->{'blast_program'}     ? $config->{'blast_program'}     : 'blastp';
-my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'}     : 'makeblastdb';#}}}
+my $alignment_program = $config->{'alignment_program'}   ? $config->{'alignment_program'}   : 'mafft --localpair --maxiterate 1000';#{{{
+my $hmmbuild_program  = $config->{'hmmbuild_program'}    ? $config->{'hmmbuild_program'}    : 'hmmbuild';
+my $translateprog     = $config->{'translate_program'}   ? $config->{'translate_program'}   : 'fastatranslate';
+my $hmmsearchprog     = $config->{'hmmsearch_program'}   ? $config->{'hmmsearch_program'}   : 'hmmsearch';
+my $blastprog         = $config->{'blast_program'}       ? $config->{'blast_program'}       : 'blastp';
+my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'} : 'makeblastdb';#}}}
 
 #--------------------------------------------------
 # # These variables can be set in the config file
@@ -560,38 +552,6 @@ sub mysql_do {#{{{
 	$sql->execute(@fields) or die;
 	$dbh->disconnect();
 	return 1;
-}#}}}
-
-# Sub: parse_config
-# Parse a simple, ini-style config file where keys are separated from values by '='. 
-# Sections are not supported. 
-# outputdir = /home/foo/bar
-sub parse_config {#{{{
-	my $file = shift;
-	my $conf = { };
-	my $fh = IO::File->new($file) or die "Fatal: Coult not open config file '$file'\: $!\n";
-
-	while (my $line = $fh->getline()) {
-		next if $line =~ /^\s*$/; # skip empty lines
-		next if $line =~ /^\s*#/; # skip comment lines starting with '#'
-		if ($line !~ /^\s*\w+\s*=\s*[\/]?\w+/) {
-			die "Fatal: Invalid format in line $. of config file $file:\n$line\n"
-		}
-		
-		# split by '=' producing a maximum of two items
-		my ($key, $val) = split('=', $line, 2);
-
-		foreach ($key, $val) {
-		  s/\s+$//; # remove all trailing whitespace
-		  s/^\s+//; # remove all leading whitespace
-		}
-
-		die "Fatal: Configuration option '$key' defined twice in line $. of config file '$file'\n"
-		  if defined $conf->{$key};
-		$conf->{$key} = $val;
-	}
-	close($fh);
-	return $conf;
 }#}}}
 
 # Sub: progress_bar

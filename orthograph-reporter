@@ -228,7 +228,7 @@ print $count, " final hits\n";
 
 exit;
 
-=h2 remove_from_lists(KEY, ID)
+=head2 remove_from_lists(KEY, ID)
 
 Removes a hit pair (orthoid <-> transcript digest) at KEY (usually an e-value)
 with the index INDEX of the list of hits from both the @keys_orthoids and
