@@ -113,74 +113,75 @@ my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('
 my %create_table = (#{{{
 	# table: blastdbs
 	'blastdbs' => "CREATE TABLE `$t{'blastdbs'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `setid`        INT(10) UNSIGNED DEFAULT NULL, UNIQUE(setid),
-    `blastdb_path` VARCHAR(255)     DEFAULT NULL)",
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
+    `blastdb_path` VARCHAR(255) DEFAULT NULL)",
 	
 	# table: ogs
 	'ogs' => "CREATE TABLE `$t{'ogs'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `type`         CHAR(3),
-    `taxid`        INT(10) UNSIGNED, UNIQUE(taxid),
+    `taxid`        INT UNSIGNED, UNIQUE(taxid),
     `version`      VARCHAR(255))",
 	
 	# table: ortholog_set
 	'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
-    `id`               INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `setid`            INT(10) UNSIGNED NOT NULL,
-    `ortholog_gene_id` VARCHAR(10)      NOT NULL,
-    `sequence_pair`    INT(10) UNSIGNED NOT NULL,
+    `id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `setid`            INT UNSIGNED NOT NULL,
+    `ortholog_gene_id` VARCHAR(10)  NOT NULL,
+    `sequence_pair`    INT UNSIGNED NOT NULL,
     UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair))",
 
 	# table: sequence_pairs
 	'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10) UNSIGNED NOT NULL,
-    `ogs_id`       INT(10) UNSIGNED NOT NULL,
-    `aa_seq`       INT(10) UNSIGNED NOT NULL, INDEX(aa_seq),
-    `nt_seq`       INT(10) UNSIGNED, INDEX(nt_seq), 
-    `date`         INT(11) UNSIGNED,
-    `user`         INT(10) UNSIGNED, UNIQUE(aa_seq))",
+    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `taxid`        INT    UNSIGNED NOT NULL,
+    `ogs_id`       INT    UNSIGNED NOT NULL,
+    `aa_seq`       INT    UNSIGNED NOT NULL, INDEX(aa_seq),
+    `nt_seq`       INT    UNSIGNED,          INDEX(nt_seq), 
+    `date`         INT    UNSIGNED,
+    `user`         INT    UNSIGNED, UNIQUE(aa_seq))",
 
 	# table: sequences_aa
 	# deleted: UNIQUE(header),
 	'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10) NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(512) NOT NULL, 
+    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `taxid`        INT             NOT NULL, INDEX(taxid),
+    `header`       VARCHAR(512)    NOT NULL, 
     `sequence`     MEDIUMBLOB,
-    `user`         INT(10) UNSIGNED,
-    `date`         INT(11) UNSIGNED)",
+    `user`         INT UNSIGNED,
+    `date`         INT UNSIGNED)",
 
 	# table: sequences_nt
 	# deleted: UNIQUE(header),
 	'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT(10) NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(512) NOT NULL, 
+    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `taxid`        INT             NOT NULL, INDEX(taxid),
+    `header`       VARCHAR(512)    NOT NULL, 
     `sequence`     MEDIUMBLOB,
-    `user`         INT(10) UNSIGNED,
-    `date`         INT(11) UNSIGNED)",
+    `user`         INT UNSIGNED,
+    `date`         INT UNSIGNED)",
 
 	# table: set_details
 	'set_details' => "CREATE TABLE `$t{'set_details'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name`         VARCHAR(255), UNIQUE(name),
     `description`  BLOB)",
 
 	# table: taxa
 	'taxa' => "CREATE TABLE `$t{'taxa'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name`         VARCHAR(20),  UNIQUE(name),
-    `longname`     VARCHAR(255))",
+    `longname`     VARCHAR(255),
+		`core`         TINYINT UNSIGNED NOT NULL)",
 	
 	# table: users
 	'users' => "CREATE TABLE `$t{'users'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name`         VARCHAR(255), UNIQUE(name))",
 	# table: seqtypes
 	'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
-    `id`           INT(10) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `type`         CHAR(3),     UNIQUE(type))",
 );#}}}
 
@@ -426,7 +427,7 @@ my @queries = (
 	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$username')",
 	# taxa (name, longname)
 	"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
-    SELECT DISTINCT $temptable.name, $temptable.longname 
+    SELECT DISTINCT $temptable.name, $temptable.longname, 1 
     FROM $temptable",
 	# set name + description
 	"INSERT IGNORE INTO $t{'set_details'} (name, description)
@@ -580,7 +581,7 @@ sub load_taxon {#{{{
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
 	# get taxon shorthand
-	my $list = &mysql_get("SELECT * FROM $t{'taxa'}");
+	my $list = &mysql_get("SELECT * FROM $t{'taxa'} WHERE `core` == 1");
 	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
@@ -638,7 +639,7 @@ sub load_taxon {#{{{
 	my @queries = (
 		# create the temporary table
 		"CREATE TABLE $temptable (
-		`id`       INT(11)      NOT NULL PRIMARY KEY AUTO_INCREMENT,
+		`id`       INT      NOT NULL PRIMARY KEY AUTO_INCREMENT,
 		`taxid`    CHAR(5)      NOT NULL,
 		`header`   VARCHAR(255) NOT NULL,
 		`sequence` MEDIUMBLOB)",
@@ -759,7 +760,16 @@ sub get_ortholog_sets {#{{{
 # Returns: array reference (list of OGS)
 sub list_ogs {#{{{
 	my %ogslist = ();
-	my $data = &mysql_get("SELECT DISTINCT $t{'taxa'}.name , $t{'ogs'}.version from $t{'aaseqs'} inner join $t{'seqpairs'} on $t{'aaseqs'}.id  = $t{'seqpairs'}.aa_seq inner join $t{'taxa'} on $t{'seqpairs'}.taxid = $t{'taxa'}.id inner join $t{'ogs'} on $t{'taxa'}.id = $t{'ogs'}.taxid");
+	my $query = "SELECT DISTINCT $t{'taxa'}.name , $t{'ogs'}.version
+		FROM $t{'aaseqs'}
+		INNER JOIN $t{'seqpairs'}
+			ON $t{'aaseqs'}.id  = $t{'seqpairs'}.aa_seq
+		INNER JOIN $t{'taxa'}
+			ON $t{'seqpairs'}.taxid = $t{'taxa'}.id
+		INNER JOIN $t{'ogs'}
+			ON $t{'taxa'}.id = $t{'ogs'}.taxid"
+	;
+	my $data = &mysql_get($query);
 	foreach my $item (@$data) {
 		$ogslist{$$item[0]} = $$item[1];
 	}
@@ -768,7 +778,15 @@ sub list_ogs {#{{{
 
 sub list_set_details {
 	my %setlist = ();
-	my $data = &mysql_get("select distinct $t{'set_details'}.name, $t{'taxa'}.name from $t{'seqpairs'} inner join $t{'taxa'} on $t{'seqpairs'}.taxid = $t{'taxa'}.id inner join $t{'orthologs'} on $t{'orthologs'}.sequence_pair = $t{'seqpairs'}.id inner join $t{'set_details'} on $t{'orthologs'}.setid = $t{'set_details'}.id");
+	my $query = "SELECT DISTINCT $t{'set_details'}.name, $t{'taxa'}.name
+		FROM $t{'seqpairs'}
+		INNER JOIN $t{'taxa'}
+			ON $t{'seqpairs'}.taxid = $t{'taxa'}.id
+		INNER JOIN $t{'orthologs'}
+			ON $t{'orthologs'}.sequence_pair = $t{'seqpairs'}.id 
+		INNER JOIN $t{'set_details'}
+			ON $t{'orthologs'}.setid = $t{'set_details'}.id"
+	my $data = &mysql_get($query);
 	foreach my $item (@$data) {
 		$setlist{$$item[0]} .= ' ' . $$item[1];
 	}

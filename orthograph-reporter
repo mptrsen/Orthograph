@@ -6,21 +6,22 @@ use DBD::mysql;
 use Data::Dumper;
 use IO::File;
 
-my $count       = 0;
-my $data_by_orthoid        = { };
-my $db          = 'orthograph';
-my $dbuser      = $ENV{LOGNAME};
-my $dbpwd       = $ENV{LOGNAME};
-my $dbserver    = 'localhost';
-my $setname     = 'mosquitoes';
-my $speciesname = 'Mengenilla';
-my $out         = { };
-my $sort_by     = 'blasteval';
-my @reftaxa     = qw(CQUIN AAEGY );
-my $data_by_transcript = { };
-my $data_by_evalue = { };
-my $table       = [ ];
-my $strict      = 0;
+my $count                = 0;
+my $data_by_orthoid      = { };
+my $db                   = 'orthograph';
+my $dbuser               = $ENV{LOGNAME};
+my $dbpwd                = $ENV{LOGNAME};
+my $dbserver             = 'localhost';
+my $setname              = 'dfg2';
+my $speciesname          = 'Mengenilla';
+my $out                  = { };
+my $sort_by              = 'blasteval';
+my @reftaxa              = qw( AGAMB APISU DPERS DPULE LHUMI PBARB PHUMA TCAST );
+my $data_by_transcript   = { };
+my $data_by_evalue       = { };
+my $table                = [ ];
+my $strict               = 0;
+my $max_miscount         = 3;
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -28,32 +29,32 @@ my $strict      = 0;
 #-------------------------------------------------- 
 my $query = "
 SELECT DISTINCT
-	orthograph_orthologs.ortholog_gene_id AS orthoid,
-	orthograph_hmmsearch.target           AS transcript,
-	orthograph_hmmsearch.evalue           AS hmm_eval,
-	orthograph_blast.target               AS blast_target,
-	orthograph_blast.evalue               AS blast_eval,
-	orthograph_taxa.name                  AS reftax
-FROM orthograph_aaseqs
-INNER JOIN orthograph_taxa
-	ON orthograph_aaseqs.taxid            = orthograph_taxa.id
-INNER JOIN orthograph_blast
-	ON orthograph_aaseqs.id               = orthograph_blast.target
-INNER JOIN orthograph_hmmsearch
-	ON orthograph_blast.query             = orthograph_hmmsearch.target
-INNER JOIN orthograph_ests
-	ON orthograph_hmmsearch.target        = orthograph_ests.digest
-INNER JOIN orthograph_orthologs
-	ON orthograph_hmmsearch.query         = orthograph_orthologs.ortholog_gene_id
-INNER JOIN orthograph_sequence_pairs
-	ON orthograph_orthologs.sequence_pair = orthograph_sequence_pairs.id
-	AND orthograph_aaseqs.id              = orthograph_sequence_pairs.aa_seq
-INNER JOIN orthograph_set_details
-	ON orthograph_set_details.name        = '$setname'
-WHERE orthograph_ests.spec              = '$speciesname'
-AND orthograph_hmmsearch.evalue         < 1e-05
-AND orthograph_blast.evalue             < 1e-05
-ORDER BY orthograph_hmmsearch.evalue
+	o_orthologs.ortholog_gene_id AS orthoid,
+	o_hmmsearch.target           AS transcript,
+	o_hmmsearch.evalue           AS hmm_eval,
+	o_blast.target               AS blast_target,
+	o_blast.evalue               AS blast_eval,
+	o_taxa.name                  AS reftax
+FROM o_aaseqs
+INNER JOIN o_taxa
+	ON o_aaseqs.taxid            = o_taxa.id
+INNER JOIN o_blast
+	ON o_aaseqs.id               = o_blast.target
+INNER JOIN o_hmmsearch
+	ON o_blast.query             = o_hmmsearch.target
+INNER JOIN o_ests
+	ON o_hmmsearch.target        = o_ests.digest
+INNER JOIN o_orthologs
+	ON o_hmmsearch.query         = o_orthologs.ortholog_gene_id
+INNER JOIN o_sequence_pairs
+	ON o_orthologs.sequence_pair = o_sequence_pairs.id
+	AND o_aaseqs.id              = o_sequence_pairs.aa_seq
+INNER JOIN o_set_details
+	ON o_set_details.name        = '$setname'
+WHERE o_ests.spec              = '$speciesname'
+AND o_hmmsearch.evalue         < 1e-05
+AND o_blast.evalue             < 1e-05
+ORDER BY o_hmmsearch.evalue
 ";
 
 # get data, store in hash->array->hash
@@ -62,6 +63,7 @@ my $sql = $dbh->prepare($query);
 $sql->execute();
 while (my $line = $sql->fetchrow_arrayref()) {
 	# the orthoid shall be the key
+	# a hash of arrays
 	push @{$$data_by_orthoid{$$line[0]}}, {	# 0: orthoid
 		'digest'      => $$line[1],	# 1: SHA256 digest
 		'hmmeval'     => sprintf("%e", $$line[2]),	# 2: hmmsearch evalue
@@ -77,9 +79,9 @@ while (my $line = $sql->fetchrow_arrayref()) {
 		'blasteval'   => sprintf("%e", $$line[4]),
 		'reftaxon'    => $$line[5]
 	};
-	# the same structure, but keyed by e-value
-	push @{$$data_by_evalue{sprintf("%e", $$line[2])}}, {
-		'orthoid'     => $$line[0],
+	# keyed by e-value
+	# a hash of hashes of arrays
+	push @{$$data_by_evalue{sprintf("%e", $$line[2])}{$$line[0]}}, {
 		'digest'      => $$line[1],
 		'blasttarget' => $$line[3],
 		'blasteval'   => sprintf("%e", $$line[4]),
@@ -96,37 +98,17 @@ foreach my $eog (keys %$data_by_orthoid) {
 	} @{$$data_by_orthoid{$eog}};
 }
 foreach my $eval (keys %$data_by_evalue) {
-	@{$$data_by_evalue{$eval}} = sort {
-		$$a{$sort_by} <=> $$b{$sort_by}
-	} @{$$data_by_evalue{$eval}};
+	foreach my $key (keys $data_by_evalue->{$eval}) {
+		@{$$data_by_evalue{$eval}{$key}} = sort {
+			$$a{$sort_by} <=> $$b{$sort_by}
+		} @{$$data_by_evalue{$eval}{$key}};
+	}
 }
 foreach my $transcript (keys %$data_by_transcript) {
 	@{$$data_by_transcript{$transcript}} = sort {
 		$$a{$sort_by} <=> $$b{$sort_by}
 	} @{$$data_by_transcript{$transcript}};
 }
-
-#--------------------------------------------------
-# # a normal table for screen output
-# # header
-# printf "%-8s %-9s %-32s %-8s\n",
-# 	'#hmmeval',
-# 	'orthoid',
-# 	'est_digest',
-# 	'blasteval';
-# # data
-# foreach my $hmmeval (sort {$a <=> $b} keys %$data_by_evalue) {
-# 	for my $i (0 .. scalar(@{$$data_by_evalue{$hmmeval}}) - 1) {
-# 		printf "%-8.1e %8s %32s %-8.1e %5s\n",
-# 			$hmmeval,
-# 			$$data_by_evalue{$hmmeval}[$i]{'orthoid'},
-# 			$$data_by_evalue{$hmmeval}[$i]{'digest'},
-# 			$$data_by_evalue{$hmmeval}[$i]{'blasteval'},
-# 			$$data_by_evalue{$hmmeval}[$i]{'reftaxon'},
-# 		;
-# 	}
-# }
-#-------------------------------------------------- 
 
 # keys to the hashes
 my @keys_orthoids    = keys %$data_by_orthoid    ;
@@ -179,61 +161,70 @@ print $fh "</body></html>\n";
 # close file
 undef $fh;
 
+my $miscount = 0;
 my $reftaxa_hitcount = 0;
 my $hit = 0;
 # walk through the e-values and examine each hit pair
+# it's a hash of hashes (of arrays)
 foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
-	# each (hmmsearch) e-value is associated with a list of reciprocal hits
-	# which we'll traverse now
-	foreach my $i (0 .. scalar( @{$$data_by_evalue{$heval}} ) - 1) {
-		# only if both orthoid and transcript have not been assigned before
-		if (
-			grep( /$$data_by_evalue{$heval}[$i]{'digest'}/, @keys_transcripts )
-			and grep( /$$data_by_evalue{$heval}[$i]{'orthoid'}/, @keys_orthoids )
-		)
-		{
-			# is the reftaxon of this hit part of the reftaxa list?
-			if ( grep /$$data_by_evalue{$heval}[$i]{'reftaxon'}/, @reftaxa ) {
-				# yes... but this is not enough!
-				printf "%.1e : %s and %s (%s: %.1e, hit #%d)\n",
-					$heval,
-					$$data_by_evalue{$heval}[$i]{'orthoid'},
-					$$data_by_evalue{$heval}[$i]{'digest'},
-					$$data_by_evalue{$heval}[$i]{'reftaxon'},
-					$$data_by_evalue{$heval}[$i]{'blasteval'},
-					$i,
-				;
-				++$reftaxa_hitcount;
-				$hit = $i;
-				# make sure they only get assigned once
-				#delete $$data_by_transcript{ $$data_by_evalue{$heval}[$i]{'digest'} };
-				#delete $$data_by_orthoid{ $$data_by_evalue{$heval}[$i]{'orthoid'} };
+	# each e-value is associated with a orthoid that has generated a number of reciprocal hits
+	# let's examine each orthoid individually
+	foreach my $oid (keys %{$$data_by_evalue{$heval}}) {
+		# each orthoid is associated with a list of reciprocal hits
+		# which we'll traverse now
+		foreach my $i (0 .. scalar( @{$$data_by_evalue{$heval}{$oid}} ) - 1) {
+			# only if both orthoid and transcript have not been assigned before
+			if (
+				grep( /$$data_by_evalue{$heval}{$oid}[$i]{'digest'}/, @keys_transcripts )
+				and grep( /$oid/, @keys_orthoids )
+			)
+			{
+				# is the reftaxon of this hit in the reftaxa list?
+				if ( $miscount < $max_miscount and grep /$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'}/, @reftaxa ) {
+					# yes... but this is not enough!
+					printf "%.1e : %s and %s (%s: %.1e, hit #%d), count %d\n",
+						$heval,
+						$oid,
+						$$data_by_evalue{$heval}{$oid}[$i]{'digest'},
+						$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'},
+						$$data_by_evalue{$heval}{$oid}[$i]{'blasteval'},
+						$i + 1,
+						$reftaxa_hitcount + 1,
+					;
+					++$reftaxa_hitcount;
+					$hit = $i;
+				}
+				else {
+					++$miscount;
+				}
 			}
 		}
+		# all reference taxa were hit rectally
+		if ($strict and $reftaxa_hitcount == scalar @reftaxa) {
+			# make sure they only get assigned once by removing the id from the list
+			&remove_from_lists($heval, $oid, $hit);
+			print "==> all reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+			# TODO insert this result into the database
+			# make a new result table
+			$count++;
+		}
+		# at least one reference taxon was hit
+		elsif (not $strict and $reftaxa_hitcount > 0) {
+			# do the same i guess
+			# make sure they only get assigned once by removing the id from the list
+			&remove_from_lists($heval, $oid, $hit);
+			print "==> $reftaxa_hitcount reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+			# TODO insert this result into the database
+			# make a new result table
+			$count++;
+		}
+		# reset counters
+		$miscount         = 0;
+		$reftaxa_hitcount = 0;
+		$hit              = 0;
 	}
-	# all reference taxa were hit rectally
-	if ($reftaxa_hitcount == scalar @reftaxa) {
-		# make sure they only get assigned once by removing the id from the list
-		&remove_from_lists($heval, $hit);
-		print "==> all reference taxa hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
-		# TODO insert this result into the database
-		# make a new result table
-		$count++;
-	}
-	# at least one reference taxon was hit
-	elsif ($reftaxa_hitcount > 0) {
-		# do the same i guess
-		# make sure they only get assigned once by removing the id from the list
-		&remove_from_lists($heval, $hit);
-		print "==> $reftaxa_hitcount reference taxa hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
-		# TODO insert this result into the database
-		# make a new result table
-		$count++;
-	}
-	$reftaxa_hitcount = 0;
-	$hit = 0;
 }
-print $count, " hits\n";
+print $count, " final hits\n";
 
 exit;
 
@@ -248,14 +239,15 @@ Returns 1.
 
 sub remove_from_lists {
 	my $heval = shift @_;
+	my $oid = shift @_;
 	my $id = shift @_;
 	for (0 .. scalar(@keys_orthoids) - 1 ) {
-		if ($keys_orthoids[$_] eq $$data_by_evalue{$heval}[$id]{'orthoid'}) {
+		if ($keys_orthoids[$_] eq $oid) {
 			splice(@keys_orthoids, $_, 1) and last;
 		}
 	}
 	for (0 .. scalar(@keys_transcripts) - 1 ) {
-		if ($keys_transcripts[$_] eq $$data_by_evalue{$heval}[$id]{'digest'}) {
+		if ($keys_transcripts[$_] eq $oid) {
 			splice(@keys_transcripts, $_, 1) and last;
 		}
 	}
