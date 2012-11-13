@@ -39,7 +39,7 @@ sub get_configfile {
 			}
 			# the file name starts with a hyphen, may be a stray option, so warn the
 			# user and don't use this name
-			else { warn "Warning: Config file name '$ARGV[$i+1]' starts with a hyphen (-). Use './$ARGV[$i+1]' if you mean it. Falling back to '$configfile' for now.\n" }
+			else { warn "Warning: Config file name '$ARGV[$i+1]' starts with a hyphen (-), could be a stray option. Use './$ARGV[$i+1]' if you mean it. Falling back to '$configfile' for now.\n" }
 		}
 	}
 	return $configfile;
@@ -56,7 +56,7 @@ outputdir = /home/foo/bar
 sub parse_config {#{{{
 	my $file = shift;
 	my $conf = { };
-	my $fh = IO::File->new($file) or die "Fatal: Coult not open config file '$file'\: $!\n";
+	my $fh = IO::File->new($file) or die "Fatal: Could not open config file '$file'\: $!\n";
 
 	while (my $line = $fh->getline()) {
 		next if $line =~ /^\s*$/; # skip empty lines

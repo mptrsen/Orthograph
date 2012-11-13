@@ -48,7 +48,7 @@ use Orthograph::Functions;     # functions for all Orthograph tools
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files
 
 my $program_name = 'Orthograph';
-my $version = 'alpha2';
+my $version = 'alpha3';
 print "$program_name\: Orthology prediction using a Graph-based,\n",
 	"Reciprocal Approach with Profile Hidden Markov models\n",
 	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n",
@@ -81,11 +81,11 @@ my $config;    # will hold the configuration from config file
 #--------------------------------------------------
 # # Parse config file
 #-------------------------------------------------- 
-my $configfile = lc($program_name)#{{{
-$configfile = &get_configfile($configfile);
+my $configfile = lc($program_name) . '.conf';#{{{
+$configfile = Orthograph::Functions::get_configfile($configfile);
 if (-e $configfile) {
   print "Parsing config file '$configfile'.\n";
-  $config = &parse_config($configfile);
+  $config = Orthograph::Functions::parse_config($configfile);
 }#}}}
 
 
@@ -852,9 +852,20 @@ sub preparedb {#{{{
 	return 1;
 } #}}}
 
+# Sub: get_species_id
+# Get the species id from the database. 
+# Arguments: scalar string species name
+# Returns: scalar int 
+sub get_species_id {
+	my $specid = &mysql_get("SELECT $mysql_col_id FROM $mysql_table_taxa WHERE $mysql_col_longname = '$species_name'");
+	return($$specid[0]);
+}
+
 # Sub: clear_db
 # clears the database of previous results from the same species 
 sub clear_db {#{{{
+	# get the species id from the database
+	my $specid = &get_species_id($species_name);
 	# clear previous results from the same species
 	my $query_clear_ests           = "DELETE FROM $mysql_table_ests 
 		                                WHERE $mysql_col_spec = '$species_name'";

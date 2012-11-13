@@ -28,6 +28,97 @@ use DBD::mysql;
 use Seqload::Fasta;
 use Data::Dumper;
 
+my $program_name = 'Orthograph';
+#--------------------------------------------------
+# # Config initialisation
+#-------------------------------------------------- 
+my $config;    # will hold the configuration from config file
+
+#--------------------------------------------------
+# # Parse config file
+#-------------------------------------------------- 
+my $configfile = lc($program_name) . '.conf';#{{{
+$configfile = Orthograph::Functions::get_configfile($configfile);
+if (-e $configfile) {
+  print "Parsing config file '$configfile'.\n";
+  $config = Orthograph::Functions::parse_config($configfile);
+}#}}}
+
+
+#--------------------------------------------------
+# # Programs in the order of their use
+#-------------------------------------------------- 
+my $alignment_program = $config->{'alignment_program'}   ? $config->{'alignment_program'}   : 'mafft --localpair --maxiterate 1000';#{{{
+my $hmmbuild_program  = $config->{'hmmbuild_program'}    ? $config->{'hmmbuild_program'}    : 'hmmbuild';
+my $translateprog     = $config->{'translate_program'}   ? $config->{'translate_program'}   : 'fastatranslate';
+my $hmmsearchprog     = $config->{'hmmsearch_program'}   ? $config->{'hmmsearch_program'}   : 'hmmsearch';
+my $blastprog         = $config->{'blast_program'}       ? $config->{'blast_program'}       : 'blastp';
+my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'} : 'makeblastdb';#}}}
+
+#--------------------------------------------------
+# # These variables can be set in the config file
+#-------------------------------------------------- 
+#{{{
+my $aaoutdir       = $config->{'aaoutdir'}              ? $config->{'aaoutdir'}             : 'aa';
+my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
+my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 10;
+my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
+my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
+my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
+my $clear_data     = defined($config->{'clear_data'})  ? $config->{'clear_data'}           : 1;
+my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
+my $estfile        = $config->{'estfile'}              ? $config->{'estfile'}              : '';
+my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}              : '';
+my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
+my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
+my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
+my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
+my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
+my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
+my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
+my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'orthograph';
+# make sure there is exactly one underscore at the end of the prefix
+$mysql_table_prefix =~ s/_*$/_/;
+
+my $mysql_table_blast = $config->{'mysql_table_blast'} ?
+	$mysql_table_prefix . $config->{'mysql_table_blast'} :
+	$mysql_table_prefix . 'blast';
+my $mysql_table_core_orthologs = $config->{'mysql_table_core_orthologs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_core_orthologs'} :
+	$mysql_table_prefix . 'core_orthologs';
+my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
+	$mysql_table_prefix . 'blastdbs';
+my $mysql_table_ests = $config->{'mysql_table_ests'} ?
+	$mysql_table_prefix . $config->{'mysql_table_ests'} :
+	$mysql_table_prefix . 'ests';
+my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ?
+	$mysql_table_prefix . $config->{'mysql_table_hmmsearch'} :
+	$mysql_table_prefix . 'hmmsearch';
+my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
+	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
+	$mysql_table_prefix . 'set_details';
+my $mysql_table_aaseqs = $config->{'aaseqs'} ?
+	$mysql_table_prefix . $config->{'aaseqs'} :
+	$mysql_table_prefix . 'aaseqs';
+my $mysql_table_seqpairs       = $config->{'sequence_pairs'} ?
+	$mysql_table_prefix . $config->{'sequence_pairs'} :
+	$mysql_table_prefix . 'sequence_pairs';
+my $mysql_table_taxa       = $config->{'taxa'} ?
+	$mysql_table_prefix . $config->{'taxa'} :
+	$mysql_table_prefix . 'taxa';
+my $mysql_table_orthologs      = $config->{'orthologs'} ?
+	$mysql_table_prefix . $config->{'orthologs'} :
+	$mysql_table_prefix . 'orthologs';
+my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
+my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
+my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
+my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : '';
+my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
+my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
+my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
+#}}}
+
 
 my $blastdir          = '';
 my $create            = 0;
