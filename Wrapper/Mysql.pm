@@ -2,6 +2,8 @@ package Wrapper::Mysql;
 use strict;
 use warnings;
 use Carp;
+use FindBin;        # locate the dir of this script during compile time
+use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config qw( $config );  # provides config in exported hashref $config
 
 #--------------------------------------------------
@@ -120,7 +122,8 @@ sub get_taxa_in_all_sets {
 }
 
 sub get_taxa_in_set {
-	my $setname = shift @_ or croak("Usage: get_taxa_in_set(SETNAME)");
+	my $setname = shift @_;
+	unless ($setname) { croak("Usage: get_taxa_in_set(SETNAME)") }
 	my @reftaxa;
 	my $query = "SELECT DISTINCT $t{'set_details'}.name, $t{'taxa'}.name
 		FROM $t{'seqpairs'}

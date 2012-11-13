@@ -1,12 +1,37 @@
 #!/usr/bin/env perl
+#--------------------------------------------------
+# This file is part of Orthograph.
+# Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
+# 
+# Orthograph is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+# 
+# Orthograph is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along with
+# Orthograph. If not, see http://www.gnu.org/licenses/.
+#-------------------------------------------------- 
+
+# Pragmas
 use strict;
 use warnings;
-use DBI;
-use DBD::mysql;
+
+# Core modules
+use DBD::mysql;     # MySQL database driver
+use DBI;            # database interface
+use FindBin;        # locate the dir of this script during compile time
+use IO::File;       # object-oriented access to files
 use Data::Dumper;
-use IO::File;
-use Orthograph::Functions;
-use Orthograph::Config qw( $config );  # provides the configuration in exported hashref $config
+
+# Custom modules
+use lib $FindBin::Bin;                 # $Bin is the directory of the original script
+use Orthograph::Config qw( $config );  # configuration in exported hashref $config
+use Wrapper::Mysql;                    # because SQL queries in main code look ugly
+use Orthograph::Functions;             # functions for all Orthograph tools
 
 my $count                = 0;
 my $data_by_orthoid      = { };
@@ -17,6 +42,7 @@ my $table                = [ ];
 my $strict               = 0;
 my $max_miscount         = 3;
 my $sort_by              = 'blasteval';
+my @reftaxa              = ( );
 
 #--------------------------------------------------
 # # Parse config file
@@ -57,15 +83,28 @@ my $mysql_table_orthologs      = $config->{'orthologs'} ?
 	$mysql_table_prefix . $config->{'orthologs'} :
 	$mysql_table_prefix . 'orthologs';
 
-my $setname                    = $config->{'ortholog_set'} ? $config->{'ortholog_set'}               : undef;
-my $speciesname                = $config->{'species_name'}               ? $config->{'species_name'}               : undef;
-my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'}     ? $config->{'blast_evalue_threshold'}     : 10;
-my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'} : undef;
-my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'}  ? $config->{'hmmsearch_score_threshold'}  : undef;
+my $setname                    = $config->{'ortholog_set'} ? 
+	$config->{'ortholog_set'} :
+	undef;
+my $speciesname                = $config->{'species_name'} ?
+	$config->{'species_name'} :
+	undef;
+my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'} ?
+	$config->{'blast_evalue_threshold'} :
+	10;
+my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ?
+	$config->{'hmmsearch_evalue_threshold'} :
+	undef;
+my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'} ?
+	$config->{'hmmsearch_score_threshold'} :
+	undef;
 
-my $reference_taxa             = $config->{'reference_taxa'}             ? $config->{'reference_taxa'}             : '';
+my $reference_taxa             = $config->{'reference_taxa'} ?
+	$config->{'reference_taxa'} :
+	'';
 
-my @reftaxa                    = split(/\s*,\s*/, $reference_taxa);
+if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
+else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($setname) }
 
 #--------------------------------------------------
 # this query selects all orthology candidates for which
@@ -142,7 +181,7 @@ foreach my $eog (keys %$data_by_orthoid) {
 	} @{$$data_by_orthoid{$eog}};
 }
 foreach my $eval (keys %$data_by_evalue) {
-	foreach my $key (keys $data_by_evalue->{$eval}) {
+	foreach my $key (keys %{$data_by_evalue->{$eval}}) {
 		@{$$data_by_evalue{$eval}{$key}} = sort {
 			$$a{$sort_by} <=> $$b{$sort_by}
 		} @{$$data_by_evalue{$eval}{$key}};

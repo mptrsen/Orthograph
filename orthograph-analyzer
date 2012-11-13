@@ -24,30 +24,27 @@ use warnings;       # cry if something seems odd
 use Archive::Tar;   # handling tar archives
 use Carp;           # alternative warn and die
 use Config;         # allows checking for system configuration in $Config
-use DBD::mysql;	    # database driver for MySQL
-use DBI;	          # MySQL database interface 
+use DBD::mysql;	    # MySQL database driver 
+use DBI;	          # database interface 
 use Data::Dumper;   # great for debugging
 use Digest::SHA;    # SHA hashing: good idea or not?
 use File::Basename; # parse path names
-use File::Path qw(make_path remove_tree); # this also uses File::Spec
+use File::Path qw( make_path remove_tree ); # this also uses File::Spec
 use File::Temp;     # temporary files
+use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # parse command line arguments
 use IO::Dir;        # object-oriented access to dirs
 use IO::File;       # object-oriented access to files
 # you might want to look into Log::Message.
 
 # Custom modules
-# parse the path to this program
-my @path         = fileparse($0);
-my $program_file = $path[0];
-my $libdir       = $path[1];
-use lib qw($libdir);
-use Wrapper::Hmmsearch;        # object-oriented interface to hmmsearch
-use Wrapper::Blastp;           # object-oriented interface to blastp
-use Wrapper::Mysql;            # wrapper functions for MySQL
-use Orthograph::Functions;     # functions for all Orthograph tools
-use Orthograph::Config qw( $config );  # provides the configuration in exported hashref $config
-use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files
+use lib $FindBin::Bin;                 # $Bin is the directory of the original script
+use Seqload::Fasta;                    # object-oriented access to fasta files
+use Wrapper::Hmmsearch;                # object-oriented interface to hmmsearch
+use Wrapper::Blastp;                   # object-oriented interface to blastp
+use Wrapper::Mysql;                    # wrapper functions for MySQL
+use Orthograph::Functions;             # functions for all Orthograph tools
+use Orthograph::Config qw( $config );  # configuration in exported hashref $config
 
 my $program_name = 'Orthograph';
 my $version = 'alpha3';
@@ -260,7 +257,6 @@ $blastdb = &make_blastdb($orthoset);
 #-------------------------------------------------- 
 if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set() }
-print "@reftaxa\n"; exit;
 @hmmfiles = &hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
 

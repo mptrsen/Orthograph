@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #--------------------------------------------------
 # This file is part of Orthograph.
 # Copyright 2012 Malte Petersen <mptrsen@uni-bonn.de>
@@ -16,20 +16,26 @@
 # Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
 
+# Pragmas
 use strict;
 use warnings;
+
+# Core modules
 use Carp;
-use Getopt::Long;
+use DBD::mysql;     # MySQL database driver
+use DBI;            # database interface
 use File::Temp;     # temporary files
-use File::Path qw(remove_tree make_path);	# this also uses File::Spec
-use Seqload::Fasta qw(fasta2csv check_if_fasta); # object-oriented access to fasta files, fasta2csv converter
-use DBI;
-use DBD::mysql;
-use Seqload::Fasta;
+use File::Path qw( remove_tree make_path );	# this also uses File::Spec
+use FindBin;        # locate the dir of this script during compile time
+use Getopt::Long;   # parse command line arguments
 use Data::Dumper;
-use Orthograph::Functions;
-use Wrapper::Mysql;                    # Functions that deal with MySQL
-use Orthograph::Config qw( $config );  # provides the configuration in exported hashref $config
+
+# Custom modules
+use lib $FindBin::Bin;                   # $Bin is the directory of the original script
+use Seqload::Fasta qw( check_if_fasta ); # object-oriented access to fasta files
+use Orthograph::Functions;               # functions for all Orthograph tools
+use Orthograph::Config qw( $config );    # configuration in exported hashref $config
+use Wrapper::Mysql;                      # because SQL queries in main code look ugly
 
 #--------------------------------------------------
 # # These variables can be set in the config file, they are exported in $config
@@ -286,7 +292,7 @@ if ($listsets) {
 		$maxlen_desc = length($$sets{$_}) if (length($$sets{$_}) > $maxlen_desc);
 	}
 	print "The following ortholog sets are presently installed:\n";
-	printf("%-${maxlen_set}s  %-${maxlen_desc}s\n", 'Set name', 'description');
+	printf("%-${maxlen_set}s   %-${maxlen_desc}s\n", 'Set name', 'description');
 	printf("%-${maxlen_set}s---%-${maxlen_desc}s\n", '-' x $maxlen_set, '-' x $maxlen_desc);
 	foreach (keys(%$sets)) {
 		printf("%-${maxlen_set}s   %s\n", $_, $$sets{$_});
@@ -795,7 +801,9 @@ sub list_ogs {#{{{
 }#}}}
 
 sub list_set_details {
-	my %setlist = Wrapper::Mysql::get_taxa_in_sets();
+	my %setlist = Wrapper::Mysql::get_taxa_in_all_sets();
+	printf "%-11s  %s\n", 'Set name', 'reference taxa';
+	printf "%-11s--%s\n", '-' x 11, '-' x 14;
 	printf "%-10s: %s\n", $_, $setlist{$_} foreach keys %setlist;
 	exit;
 }
