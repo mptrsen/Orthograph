@@ -27,65 +27,24 @@ use DBI;
 use DBD::mysql;
 use Seqload::Fasta;
 use Data::Dumper;
-
-my $program_name = 'Orthograph';
-#--------------------------------------------------
-# # Config initialisation
-#-------------------------------------------------- 
-my $config;    # will hold the configuration from config file
+use Orthograph::Functions;
+use Wrapper::Mysql;                    # Functions that deal with MySQL
+use Orthograph::Config qw( $config );  # provides the configuration in exported hashref $config
 
 #--------------------------------------------------
-# # Parse config file
-#-------------------------------------------------- 
-my $configfile = lc($program_name) . '.conf';#{{{
-$configfile = Orthograph::Functions::get_configfile($configfile);
-if (-e $configfile) {
-  print "Parsing config file '$configfile'.\n";
-  $config = Orthograph::Functions::parse_config($configfile);
-}#}}}
-
-
-#--------------------------------------------------
-# # Programs in the order of their use
-#-------------------------------------------------- 
-my $alignment_program = $config->{'alignment_program'}   ? $config->{'alignment_program'}   : 'mafft --localpair --maxiterate 1000';#{{{
-my $hmmbuild_program  = $config->{'hmmbuild_program'}    ? $config->{'hmmbuild_program'}    : 'hmmbuild';
-my $translateprog     = $config->{'translate_program'}   ? $config->{'translate_program'}   : 'fastatranslate';
-my $hmmsearchprog     = $config->{'hmmsearch_program'}   ? $config->{'hmmsearch_program'}   : 'hmmsearch';
-my $blastprog         = $config->{'blast_program'}       ? $config->{'blast_program'}       : 'blastp';
-my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'} : 'makeblastdb';#}}}
-
-#--------------------------------------------------
-# # These variables can be set in the config file
+# # These variables can be set in the config file, they are exported in $config
 #-------------------------------------------------- 
 #{{{
-my $aaoutdir       = $config->{'aaoutdir'}              ? $config->{'aaoutdir'}             : 'aa';
-my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
-my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 10;
-my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
-my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
-my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
-my $clear_data     = defined($config->{'clear_data'})  ? $config->{'clear_data'}           : 1;
 my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
-my $estfile        = $config->{'estfile'}              ? $config->{'estfile'}              : '';
-my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}              : '';
-my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
-my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
-my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
 my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
 my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
 my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
 my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
 my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'orthograph';
+
 # make sure there is exactly one underscore at the end of the prefix
 $mysql_table_prefix =~ s/_*$/_/;
 
-my $mysql_table_blast = $config->{'mysql_table_blast'} ?
-	$mysql_table_prefix . $config->{'mysql_table_blast'} :
-	$mysql_table_prefix . 'blast';
-my $mysql_table_core_orthologs = $config->{'mysql_table_core_orthologs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_core_orthologs'} :
-	$mysql_table_prefix . 'core_orthologs';
 my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
 	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
 	$mysql_table_prefix . 'blastdbs';
@@ -98,32 +57,51 @@ my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ?
 my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
 	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
 	$mysql_table_prefix . 'set_details';
-my $mysql_table_aaseqs = $config->{'aaseqs'} ?
-	$mysql_table_prefix . $config->{'aaseqs'} :
+my $mysql_table_aaseqs = $config->{'mysql_table_aaseqs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_aaseqs'} :
 	$mysql_table_prefix . 'aaseqs';
-my $mysql_table_seqpairs       = $config->{'sequence_pairs'} ?
-	$mysql_table_prefix . $config->{'sequence_pairs'} :
-	$mysql_table_prefix . 'sequence_pairs';
-my $mysql_table_taxa       = $config->{'taxa'} ?
-	$mysql_table_prefix . $config->{'taxa'} :
-	$mysql_table_prefix . 'taxa';
-my $mysql_table_orthologs      = $config->{'orthologs'} ?
-	$mysql_table_prefix . $config->{'orthologs'} :
+my $mysql_table_ntseqs = $config->{'mysql_table_ntseqs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_ntseqs'} :
+	$mysql_table_prefix . 'ntseqs';
+my $mysql_table_ogs = $config->{'mysql_table_ogs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_ogs'} :
+	$mysql_table_prefix . 'ogs';
+my $mysql_table_orthologs = $config->{'mysql_table_orthologs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_orthologs'} :
 	$mysql_table_prefix . 'orthologs';
-my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
-my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
-my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
-my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : '';
-my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
-my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
-my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
-#}}}
+my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'} ?
+	$mysql_table_prefix . $config->{'mysql_table_sequence_pairs'} :
+	$mysql_table_prefix . 'sequence_pairs';
+my $mysql_table_seqtypes       = $config->{'mysql_table_sequence_types'} ?
+	$mysql_table_prefix . $config->{'mysql_table_sequence_types'} :
+	$mysql_table_prefix . 'sequence_types';
+my $mysql_table_taxa       = $config->{'mysql_table_taxa'} ?
+	$mysql_table_prefix . $config->{'mysql_table_taxa'} :
+	$mysql_table_prefix . 'taxa';
+my $mysql_table_temp       = $config->{'mysql_table_temp'} ?
+	$mysql_table_prefix . $config->{'mysql_table_temp'} :
+	$mysql_table_prefix . 'temp';
+my $mysql_table_users       = $config->{'mysql_table_users'} ?
+	$mysql_table_prefix . $config->{'mysql_table_users'} :
+	$mysql_table_prefix . 'users';
 
+# table names. too lazy to change all of them, so i'll just reuse the old hash structure
+my %t            = (
+	'aaseqs'       => $mysql_table_aaseqs,
+	'blastdbs'     => $mysql_table_blastdbs,
+	'ntseqs'       => $mysql_table_ntseqs,
+	'ogs'          => $mysql_table_ogs,
+	'orthologs'    => $mysql_table_orthologs,
+	'seqpairs'     => $mysql_table_seqpairs,
+	'seqtypes'     => $mysql_table_seqtypes,
+	'set_details'  => $mysql_table_set_details,
+	'taxa'         => $mysql_table_taxa,
+	'temp'         => $mysql_table_temp,
+	'users'        => $mysql_table_users,
+);
 
 my $blastdir          = '';
 my $create            = 0;
-my $dbname            = 'orthograph';
-my $dbserver          = '127.0.0.1';
 my $delete_all        = 0;
 my $delete_set        = '';
 my $description;
@@ -136,40 +114,22 @@ my $listtaxa          = 0;
 my $name              = undef;
 my $ogs_name;
 my $overwrite         = 0;
-my $prefix            = 'orthograph_';
-my $pwd               = undef;
 my $reassignorthologs = 0;
 my $setdir            = '';
 my $setname           = undef;
 my $sql;
 my $temptable         = 'temp';
 my $total_seqs;
-my $username          = undef;
-# table names
-my %t            = (
-	'blastdbs'     => 'blastdbs',
-	'ogs'          => 'ogs',
-	'orthologs'    => 'orthologs',
-	'seqpairs'     => 'sequence_pairs',
-	'aaseqs'       => 'aaseqs',
-	'ntseqs'       => 'ntseqs',
-	'seqtypes'     => 'seqtypes',
-	'set_details'  => 'set_details',
-	'taxa'         => 'taxa',
-	'users'        => 'users',
-	'temp'         => 'temp',
-);
-	
 my %names;
 
 
 GetOptions(
-	'D=s'          => \$dbname,
+	'D=s'          => \$mysql_dbname,
 	'blastdir=s'   => \$blastdir,
 	'c|create'     => \$create,
 	'delete_all'   => \$delete_all,
 	'delete_set=s' => \$delete_set,
-	'h=s'          => \$dbserver,
+	'h=s'          => \$mysql_dbserver,
 	'le'           => \$listests,	# TODO implement
 	'lo'           => \$listogs,
 	'ls'           => \$listsets,
@@ -177,25 +137,23 @@ GetOptions(
 	'n=s'          => \$name,
 	'nuc'          => \$isnucleotide,
 	'o'            => \$overwrite,
-	'p=s'          => \$pwd,
+	'p=s'          => \$mysql_dbpwd,
 	'pep'          => \$ispeptide,
-	'prefix=s'     => \$prefix,
+	'prefix=s'     => \$mysql_table_prefix,
 	'r'            => \$reassignorthologs,
 	'setdir=s'     => \$setdir,
 	's=s'          => \$setname,
 	't=s'          => \$temptable,
-	'u=s'          => \$username,
-	) or die "I don't know what you want me to do. Terminating.\n";
+	'u=s'          => \$mysql_dbuser,
+	) or die("Fatal: I don't know what you want me to do. Terminating.\n");
 my $infile = shift @ARGV;
 
-# make sure there is at least one underscore at the end of the prefix
-$prefix =~ s/_$//;
-$prefix .= '_';
-# prepend the prefix to the table names. useful for dropping all of 'em.
-$t{$_} = $prefix.$t{$_} foreach keys(%t);
+unless (defined $mysql_dbuser and defined $mysql_dbpwd ) {
+	die "Fatal: You must specify database username (-u) and password (-p) AND core-ortholog set name (-s).\n";
+}
 
 # name == username unless defined name
-$name = $username unless defined($name);
+$name = $mysql_dbuser unless defined($name);
 
 # to start off with nt and aa sequence types
 my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
@@ -276,10 +234,6 @@ my %create_table = (#{{{
     `type`         CHAR(3),     UNIQUE(type))",
 );#}}}
 
-unless (defined $username and defined $pwd ) {
-	die "Fatal: You must specify database username (-u) and password (-p) AND core-ortholog set name (-s).\n";
-}
-
 #--------------------------------------------------
 # # if you really want to delete everything...
 #-------------------------------------------------- 
@@ -333,9 +287,9 @@ if ($listsets) {
 	}
 	print "The following ortholog sets are presently installed:\n";
 	printf("%-${maxlen_set}s  %-${maxlen_desc}s\n", 'Set name', 'description');
-	printf("%-${maxlen_set}s--%-${maxlen_desc}s\n", '-' x $maxlen_set, '-' x $maxlen_desc);
+	printf("%-${maxlen_set}s---%-${maxlen_desc}s\n", '-' x $maxlen_set, '-' x $maxlen_desc);
 	foreach (keys(%$sets)) {
-		printf("%-${maxlen_set}s  %s\n", $_, $$sets{$_});
+		printf("%-${maxlen_set}s   %s\n", $_, $$sets{$_});
 	}
 	exit;
 }
@@ -350,7 +304,7 @@ if ($listogs) {
 	}
 	print "The following taxa are presently installed with OGS and proteomes:\n";
 	printf("%-${maxlen_longname}s  %s\n", 'Taxon', 'OGS version');
-	printf("%s  %11s\n", '-' x 5, '-' x 11);
+	printf("%-${maxlen_longname}s  %11s\n", '-' x 5, '-' x 11);
 	foreach (keys(%$ogs)) {
 		printf("%-${maxlen_longname}s  %s\n", $_, $$ogs{$_});
 	}
@@ -383,12 +337,12 @@ elsif ($ispeptide) {
 
 # TODO stop here if db structure is not present!
 
-print "Setting up core ortholog set in $dbname on $dbserver... (press CTRL+C to abort)\n";
+print "Setting up core ortholog set in $mysql_dbname on $mysql_dbserver... (press CTRL+C to abort)\n";
 
 if (!$setname) { $setname = &get_setname() }
 
 if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
-	warn "Warning: An ortholog set with this name already exists in $dbname on $dbserver.\n";
+	warn "Warning: An ortholog set with this name already exists in $mysql_dbname on $mysql_dbserver.\n";
 	unless ($overwrite) {
 		die "Pick a different name or use -o for overwriting.\n";
 	}
@@ -478,7 +432,7 @@ $dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $tempta
 $dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
 $dbh->disconnect;
 
-print "Successfully loaded $total_seqs sequences from $infile into $temptable on $dbserver.\n";
+print "Successfully loaded $total_seqs sequences from $infile into $temptable on $mysql_dbserver.\n";
 
 # get name and longname from the temp table; they do not get updated automatically
 $dbh = &mysql_dbh();
@@ -515,7 +469,7 @@ $dbh->disconnect;
 
 my @queries = (
 	# user name
-	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$username')",
+	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$mysql_dbuser')",
 	# taxa (name, longname)
 	"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
     SELECT DISTINCT $temptable.name, $temptable.longname, 1 
@@ -535,7 +489,7 @@ my @queries = (
     FROM $temptable LEFT JOIN $t{'taxa'} 
     ON $temptable.name  = $t{'taxa'}.name
     INNER JOIN $t{'users'}
-    ON $t{'users'}.name = '$username'",
+    ON $t{'users'}.name = '$mysql_dbuser'",
 	# delete everything where header or sequence is NULL or empty
 	"DELETE FROM $t{'aaseqs'}
     WHERE $t{'aaseqs'}.header IS NULL
@@ -553,7 +507,7 @@ my @queries = (
     LEFT JOIN $t{'ntseqs'}
     ON $t{'aaseqs'}.header = $t{'ntseqs'}.header
     INNER JOIN $t{'users'}
-    ON $t{'users'}.name = '$username'",
+    ON $t{'users'}.name = '$mysql_dbuser'",
 	# orthologous groups
 	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
     SELECT $t{'set_details'}.id, $temptable.orthoid, $t{'seqpairs'}.id 
@@ -588,12 +542,6 @@ else {	# something has changed
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
-# Sub: mysql_dbh
-# Returns a MySQL database handle
-sub mysql_dbh {#{{{
-	return DBI->connect("DBI:mysql:$dbname:$dbserver", $username, $pwd);
-}#}}}
-
 # Sub: mysql_check
 # Check whether the result of a query is present or not, return appropriate
 # Arguments: Scalar string QUERY
@@ -609,27 +557,6 @@ sub mysql_check {#{{{
 		return 1;
 	}
 	return 0;
-}#}}}
-
-# Sub: mysql_get
-# Get from the database the result of a SQL query
-# Arguments: QUERY as a string literal
-# Returns: Reference to array of arrays (result lines->fields)
-sub mysql_get {#{{{
-	my $query = shift;
-	unless ($query) { croak "Usage: mysql_get(QUERY)\n" }
-  # prepare anonymous array
-	my $results = [ ];
-  # connect and fetch stuff
-	my $dbh = &mysql_dbh;
-	my $sql = $dbh->prepare($query);
-	$sql->execute();
-	while (my @result = $sql->fetchrow_array() ) {
-		push(@$results, \@result);
-	}
-	$sql->finish();
-	$dbh->disconnect; # disconnect ASAP
-	return $results;
 }#}}}
 
 # drop all tables. no really, all that start with $prefix.
@@ -672,7 +599,7 @@ sub load_taxon {#{{{
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
 	# get taxon shorthand
-	my $list = &mysql_get("SELECT * FROM $t{'taxa'} WHERE `core` == 1");
+	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'taxa'} WHERE `core` == 1");
 	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
@@ -747,7 +674,7 @@ sub load_taxon {#{{{
 		ON $temptable.taxid = $t{'taxa'}.id",
 		# insert sequence pairs relationships
 		"INSERT INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$username'
+		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$mysql_dbuser'
 		FROM $t{'taxa'}
 		RIGHT JOIN $seqtable
 		ON $seqtable.taxid = $t{'taxa'}.id
@@ -768,8 +695,8 @@ sub load_taxon {#{{{
 		printf("Query OK, %d rows affected.\n", $nrows);
 	}
 	$dbh->disconnect();
-	my $seqpairs = &mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
-	printf("Loaded %d new sequences into database %s on %s.\n", $$seqpairs[0][0], $dbname, $dbserver);
+	my $seqpairs = &Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
+	printf("Loaded %d new sequences into database %s on %s.\n", $$seqpairs[0][0], $mysql_dbname, $mysql_dbserver);
 	return 1;
 }#}}}
 
@@ -798,7 +725,7 @@ sub create_blastdb {#{{{
 		return 0;
 	}
 	# TODO
-	my $blastdir = &mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} WHERE ");
+	my $blastdir = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} WHERE ");
 	my $outfile = File::Spec->catfile($taxsh);
 	my @makeblastdbcmd = qq(makeblastdb -in $infile -out $outfile -input_type fasta -title $taxsh);
 }#}}}
@@ -818,7 +745,7 @@ sub get_setname {#{{{
 }#}}}
 
 sub getblastdir {#{{{
-	my $bd = &mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} LIMIT 1");
+	my $bd = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} LIMIT 1");
 	if (!$bd) {
 		print "Enter the location where the BLAST database directories are located (required): ";
 		$blastdir = <STDIN>;
@@ -837,7 +764,7 @@ sub getblastdir {#{{{
 sub get_ortholog_sets {#{{{
 	my %sets = ();
 	my $query = "SELECT * FROM $t{'set_details'}";
-	my $data = &mysql_get($query);
+	my $data = &Wrapper::Mysql::mysql_get($query);
 	foreach my $item (@$data) {
 		$sets{$$item[1]} = $$item[2];
 	}
@@ -860,7 +787,7 @@ sub list_ogs {#{{{
 		INNER JOIN $t{'ogs'}
 			ON $t{'taxa'}.id = $t{'ogs'}.taxid"
 	;
-	my $data = &mysql_get($query);
+	my $data = &Wrapper::Mysql::mysql_get($query);
 	foreach my $item (@$data) {
 		$ogslist{$$item[0]} = $$item[1];
 	}
@@ -868,20 +795,8 @@ sub list_ogs {#{{{
 }#}}}
 
 sub list_set_details {
-	my %setlist = ();
-	my $query = "SELECT DISTINCT $t{'set_details'}.name, $t{'taxa'}.name
-		FROM $t{'seqpairs'}
-		INNER JOIN $t{'taxa'}
-			ON $t{'seqpairs'}.taxid = $t{'taxa'}.id
-		INNER JOIN $t{'orthologs'}
-			ON $t{'orthologs'}.sequence_pair = $t{'seqpairs'}.id 
-		INNER JOIN $t{'set_details'}
-			ON $t{'orthologs'}.setid = $t{'set_details'}.id"
-	my $data = &mysql_get($query);
-	foreach my $item (@$data) {
-		$setlist{$$item[0]} .= ' ' . $$item[1];
-	}
-	printf "%s: %s\n", $_, $setlist{$_} foreach keys %setlist;
+	my %setlist = Wrapper::Mysql::get_taxa_in_sets();
+	printf "%-10s: %s\n", $_, $setlist{$_} foreach keys %setlist;
 	exit;
 }
 
@@ -901,7 +816,7 @@ sub list_ests {
 sub delete_set {#{{{
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
 	my $this_set_dir = File::Spec->catdir($setdir, $setname);
-	my $data = &mysql_get("SELECT * FROM $t{'set_details'} WHERE name = '$setname'");
+	my $data = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'set_details'} WHERE name = '$setname'");
 	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
 	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
 	my $setid = $$data[0][0];

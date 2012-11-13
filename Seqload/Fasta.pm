@@ -58,10 +58,12 @@ Checks whether or not the specified file is a valid fasta file (i.e., starts wit
 =cut#}}}
 
 package Seqload::Fasta;
+use strict;
+use warnings;
 use Carp;
 require Exporter;
-@ISA = qw(Exporter);
-@EXPORT_OK = qw(fasta2csv check_if_fasta);
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw( fasta2csv check_if_fasta );
 
 # Constructor. Returns a sequence database object.
 sub open {
@@ -123,14 +125,14 @@ sub fasta2csv {
   my $csvfile = shift;
 
   my $fastafh = Seqload::Fasta->open($fastafile);
-  open(my $outfh, '>', $csvfile)
-    or confess "Fatal: Could not open $outfile\: $!\n";
-  while ((my $hdr, $seq) = $fastafh->next_seq) {
+  CORE::open(my $outfh, '>', $csvfile)
+    or confess "Fatal: Could not open $csvfile\: $!\n";
+  while (my ($hdr, $seq) = $fastafh->next_seq) {
 		$hdr =~ s/,/_/g;	# remove commas from header, they mess up a csv file
     print $outfh $hdr . ',' . $seq . "\n"
-			or confess "Fatal: Could not write to $outfile\: $!\n";
+			or confess "Fatal: Could not write to $csvfile\: $!\n";
   }
-  close $outfh;
+  CORE::close $outfh;
   $fastafh->close;
 
   return 1;

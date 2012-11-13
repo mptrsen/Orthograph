@@ -44,7 +44,9 @@ my $libdir       = $path[1];
 use lib qw($libdir);
 use Wrapper::Hmmsearch;        # object-oriented interface to hmmsearch
 use Wrapper::Blastp;           # object-oriented interface to blastp
+use Wrapper::Mysql;            # wrapper functions for MySQL
 use Orthograph::Functions;     # functions for all Orthograph tools
+use Orthograph::Config qw( $config );  # provides the configuration in exported hashref $config
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files
 
 my $program_name = 'Orthograph';
@@ -72,22 +74,6 @@ else {
 	print "Not using threads.\n\n";
 	$use_threads = 0;
 }#}}}
-
-#--------------------------------------------------
-# # Config initialisation
-#-------------------------------------------------- 
-my $config;    # will hold the configuration from config file
-
-#--------------------------------------------------
-# # Parse config file
-#-------------------------------------------------- 
-my $configfile = lc($program_name) . '.conf';#{{{
-$configfile = Orthograph::Functions::get_configfile($configfile);
-if (-e $configfile) {
-  print "Parsing config file '$configfile'.\n";
-  $config = Orthograph::Functions::parse_config($configfile);
-}#}}}
-
 
 #--------------------------------------------------
 # # Programs in the order of their use
@@ -127,9 +113,6 @@ $mysql_table_prefix =~ s/_*$/_/;
 my $mysql_table_blast = $config->{'mysql_table_blast'} ?
 	$mysql_table_prefix . $config->{'mysql_table_blast'} :
 	$mysql_table_prefix . 'blast';
-my $mysql_table_core_orthologs = $config->{'mysql_table_core_orthologs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_core_orthologs'} :
-	$mysql_table_prefix . 'core_orthologs';
 my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
 	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
 	$mysql_table_prefix . 'blastdbs';
@@ -157,7 +140,7 @@ my $mysql_table_orthologs      = $config->{'orthologs'} ?
 my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
 my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
-my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : '';
+my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
 my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
@@ -167,6 +150,7 @@ my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}  
 # # More variables
 #-------------------------------------------------- 
 #{{{
+my $configfile          = '';
 my $count               = 0;
 my $blastdb;
 my $blastcount;
@@ -189,6 +173,7 @@ my $mysql_col_hdr       = 'header';
 my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
 my $mysql_col_digest    = 'digest';
+my $mysql_col_longname  = 'longname';
 my $mysql_col_name      = 'name';
 my $mysql_col_orthoid   = 'ortholog_gene_id';
 my $mysql_col_query     = 'query';
@@ -237,7 +222,7 @@ GetOptions( 'v'        => \$verbose,
 	'preparedb'          => \$preparedb,
 	'quiet'              => \$quiet,
 	'taxon=s'            => \$species_name,
-) or die("Terminating.\n");#}}}
+) or die("Fatal: I don't know what you want me to do. Terminating.\n");#}}}
 
 #--------------------------------------------------
 # # Special case: Prepare the MySQL database by dropping and recreating all
@@ -273,7 +258,9 @@ $blastdb = &make_blastdb($orthoset);
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
-@reftaxa = split(/\s*,\s*/, $reftaxa);	# split by comma
+if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
+else { @reftaxa = Wrapper::Mysql::get_taxa_in_set() }
+print "@reftaxa\n"; exit;
 @hmmfiles = &hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
 
@@ -798,7 +785,7 @@ sub cleardir {#{{{
 # Returns: True on success
 sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
-		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, INDEX($mysql_col_id),
+		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		$mysql_col_digest    CHAR(32) NOT NULL,           UNIQUE INDEX($mysql_col_digest),
 		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX($mysql_col_spec),
 		$mysql_col_date      INT UNSIGNED,
@@ -806,7 +793,7 @@ sub preparedb {#{{{
 		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, INDEX($mysql_col_id),
+		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX($mysql_col_spec),
 		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX($mysql_col_query),
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
@@ -817,7 +804,7 @@ sub preparedb {#{{{
 		$mysql_col_end       INT NOT NULL)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, INDEX ($mysql_col_id),
+		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX ($mysql_col_spec),
 		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
 		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX ($mysql_col_query),
@@ -1078,7 +1065,7 @@ sub make_hmms {#{{{
 
 # Sub: align
 # Generate a fasta alignment from a fasta file
-# Arguments: Scalar string filename, scalar string setname
+# Arguments: Scalar string filename, scalar string orthoid
 # Returns: Scalar string alignment filename on success, false otherwise
 sub align {#{{{
 	my $fafile = shift;
@@ -1117,7 +1104,7 @@ sub fasta2stockholm {#{{{
 
 # Sub: hmmbuild
 # Generates a hidden Markov model (HMM) file from an alignment (fasta) file.
-# Arguments: Scalar string filename, scalar string setname
+# Arguments: Scalar string filename, scalar string hmmfilename
 # Returns: True on success, false otherwise
 sub hmmbuild {#{{{
 	my $alnfile = shift;
@@ -1451,11 +1438,6 @@ don't know.
 
 MySQL: Table name for the BLAST results. Ask your administrator if you don't
 know.
-
-=head2 mysql_table_core_orthologs
-
-MySQL: Table name for the core ortholog sequences. Ask your administrator if
-you don't know.
 
 =head2 output_directory
 
