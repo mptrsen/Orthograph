@@ -2,10 +2,17 @@ package Wrapper::Mysql;
 use strict;
 use warnings;
 use Carp;
-use Orthograph::Config qw( $config );  # provides config in exported hashref $config
+use FindBin;        # locate the dir of this script during compile time
+use lib $FindBin::Bin;                 # $Bin is the directory of the original script
+use Orthograph::Config;                # provides config in exported hashref $config
 
 #--------------------------------------------------
-# # These variables can be set in the config file, they are exported in $config
+# # Parse config file
+#-------------------------------------------------- 
+my $config = Orthograph::Config->getconfig();
+
+#--------------------------------------------------
+# # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
 my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
