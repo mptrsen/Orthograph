@@ -29,7 +29,7 @@ use Data::Dumper;
 
 # Custom modules
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
-use Orthograph::Config qw( $config );  # configuration in exported hashref $config
+use Orthograph::Config;                # configuration parser getconfig()
 use Wrapper::Mysql;                    # because SQL queries in main code look ugly
 use Orthograph::Functions;             # functions for all Orthograph tools
 
@@ -47,6 +47,8 @@ my @reftaxa              = ( );
 #--------------------------------------------------
 # # Parse config file
 #-------------------------------------------------- 
+my $config = Orthograph::Config->getconfig();
+
 my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
 my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
 my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : $ENV{LOGNAME};

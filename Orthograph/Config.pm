@@ -6,24 +6,24 @@ use File::Spec;
 use FindBin;                # locate the dir of this script during compile time
 use lib $FindBin::Bin;      # $Bin is the directory of the original script
 
-our @ISA = qw( Exporter );
-our @EXPORT_OK = qw( $config );
-our $config;
-
 my $program_name = 'Orthograph';
 
-# default config file name
-my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');#{{{
+sub getconfig {
+	# default config file name
+	my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');#{{{
+	my $config;
 
-# in case the user tells us to use a different one with -c
-$configfile = &get_configfile($configfile);
+	# in case the user tells us to use a different one with -c
+	$configfile = &get_configfile($configfile);
 
-# parse if exists
-if (-e $configfile) {
-  print "Parsing config file '$configfile'.\n";
-  $config = &parse_config($configfile);
-}#}}}
+	# parse if exists
+	if (-e $configfile) {
+		print "Parsing config file '$configfile'.\n";
+		$config = &parse_config($configfile);
+	}#}}}
 
+	return $config;
+}
 
 =head2 get_configfile
 

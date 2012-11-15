@@ -44,7 +44,7 @@ use Wrapper::Hmmsearch;                # object-oriented interface to hmmsearch
 use Wrapper::Blastp;                   # object-oriented interface to blastp
 use Wrapper::Mysql;                    # wrapper functions for MySQL
 use Orthograph::Functions;             # functions for all Orthograph tools
-use Orthograph::Config qw( $config );  # configuration in exported hashref $config
+use Orthograph::Config;                # configuration in exported hashref $config
 
 my $program_name = 'Orthograph';
 my $version = 'alpha3';
@@ -52,6 +52,7 @@ print "$program_name\: Orthology prediction using a Graph-based,\n",
 	"Reciprocal Approach with Profile Hidden Markov models\n",
 	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n",
 	"Version $version\n\n";
+my $program_file = $FindBin::Script;
 
 #--------------------------------------------------
 # Only use threads if the system supports it.
@@ -71,6 +72,11 @@ else {
 	print "Not using threads.\n\n";
 	$use_threads = 0;
 }#}}}
+
+#--------------------------------------------------
+# # Parse config file
+#-------------------------------------------------- 
+my $config = Orthograph::Config->getconfig();
 
 #--------------------------------------------------
 # # Programs in the order of their use
@@ -670,7 +676,7 @@ sub intro {#{{{
 	FROM $mysql_table_set_details
 	WHERE $mysql_col_name = '$orthoset'
 	LIMIT 1");
-	die("Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file\_manager first to set up your ortholog sets. Ask your administrator.\n") unless $$settest[0][0];
+	die("Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n") unless $$settest[0][0];
 
 }#}}}
 
