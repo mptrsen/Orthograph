@@ -58,21 +58,6 @@ my $mysql_table_users       = $config->{'mysql_table_users'} ?
 	$mysql_table_prefix . $config->{'mysql_table_users'} :
 	$mysql_table_prefix . 'users';
 
-# table names. too lazy to change all of them, so i'll just reuse the old hash structure
-my %t            = (
-	'aaseqs'       => $mysql_table_aaseqs,
-	'blastdbs'     => $mysql_table_blastdbs,
-	'ntseqs'       => $mysql_table_ntseqs,
-	'ogs'          => $mysql_table_ogs,
-	'orthologs'    => $mysql_table_orthologs,
-	'seqpairs'     => $mysql_table_seqpairs,
-	'seqtypes'     => $mysql_table_seqtypes,
-	'set_details'  => $mysql_table_set_details,
-	'taxa'         => $mysql_table_taxa,
-	'temp'         => $mysql_table_temp,
-	'users'        => $mysql_table_users,
-);
-
 # Sub: mysql_dbh
 # Returns a MySQL database handle
 sub mysql_dbh {#{{{
@@ -103,14 +88,14 @@ sub mysql_get {#{{{
 
 sub get_taxa_in_all_sets {
 	my %setlist = ();
-	my $query = "SELECT DISTINCT $t{'set_details'}.name, $t{'taxa'}.name
-		FROM $t{'seqpairs'}
-		INNER JOIN $t{'taxa'}
-			ON $t{'seqpairs'}.taxid = $t{'taxa'}.id
-		INNER JOIN $t{'orthologs'}
-			ON $t{'orthologs'}.sequence_pair = $t{'seqpairs'}.id 
-		INNER JOIN $t{'set_details'}
-			ON $t{'orthologs'}.setid = $t{'set_details'}.id"
+	my $query = "SELECT DISTINCT $mysql_table_set_details.name, $mysql_table_taxa.name
+		FROM $mysql_table_seqpairs
+		INNER JOIN $mysql_table_taxa
+			ON $mysql_table_seqpairs.taxid = $mysql_table_taxa.id
+		INNER JOIN $mysql_table_orthologs
+			ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id 
+		INNER JOIN $mysql_table_set_details
+			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id"
 	;
 	my $data = &mysql_get($query);
 	foreach my $row (@$data) {
@@ -120,17 +105,18 @@ sub get_taxa_in_all_sets {
 }
 
 sub get_taxa_in_set {
-	my $setname = shift @_ or croak("Usage: get_taxa_in_set(SETNAME)");
+	my $setname = shift @_;
+	unless ($setname) { croak("Usage: get_taxa_in_set(SETNAME)") }
 	my @reftaxa;
-	my $query = "SELECT DISTINCT $t{'set_details'}.name, $t{'taxa'}.name
-		FROM $t{'seqpairs'}
-		INNER JOIN $t{'taxa'}
-			ON $t{'seqpairs'}.taxid = $t{'taxa'}.id
-		INNER JOIN $t{'orthologs'}
-			ON $t{'orthologs'}.sequence_pair = $t{'seqpairs'}.id 
-		INNER JOIN $t{'set_details'}
-			ON $t{'orthologs'}.setid = $t{'set_details'}.id
-		WHERE $t{'set_details'} = '$setname'"
+	my $query = "SELECT DISTINCT $mysql_table_set_details.name, $mysql_table_taxa.name
+		FROM $mysql_table_seqpairs
+		INNER JOIN $mysql_table_taxa
+			ON $mysql_table_seqpairs.taxid = $mysql_table_taxa.id
+		INNER JOIN $mysql_table_orthologs
+			ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id 
+		INNER JOIN $mysql_table_set_details
+			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
+		WHERE $mysql_table_set_details = '$setname'"
 	;
 	my $data = &mysql_get($query);
 	foreach my $row (@$data) {
@@ -139,5 +125,12 @@ sub get_taxa_in_set {
 	return @reftaxa;
 }
 
+sub get_species_id {
+	my $species_name = shift(@_);
+	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
+	my $query = "SELECT id FROM $mysql_table_taxa WHERE core = 0 AND longname = '$species_name'";
+	my $result = &mysql_get($query);
+	return $$result[0][0];
+}
 
 1;

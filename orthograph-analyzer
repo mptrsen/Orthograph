@@ -36,6 +36,13 @@ use IO::Dir;        # object-oriented access to dirs
 use IO::File;       # object-oriented access to files
 # you might want to look into Log::Message.
 
+my $program_name = 'Orthograph';
+my $version = 'alpha3';
+print "$program_name\: Orthology prediction using a Graph-based,\n",
+	"Reciprocal Approach with Profile Hidden Markov models\n",
+	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n",
+	"Version $version\n\n";
+
 # Custom modules
 # parse the path to this program
 my @path         = fileparse($0);
@@ -46,15 +53,8 @@ use Wrapper::Hmmsearch;        # object-oriented interface to hmmsearch
 use Wrapper::Blastp;           # object-oriented interface to blastp
 use Wrapper::Mysql;            # wrapper functions for MySQL
 use Orthograph::Functions;     # functions for all Orthograph tools
-use Orthograph::Config qw( $config );  # provides the configuration in exported hashref $config
+use Orthograph::Config qw( $config $configfile );  # provides the configuration in exported hashref $config
 use Seqload::Fasta qw(fasta2csv); # object-oriented access to fasta files
-
-my $program_name = 'Orthograph';
-my $version = 'alpha3';
-print "$program_name\: Orthology prediction using a Graph-based,\n",
-	"Reciprocal Approach with Profile Hidden Markov models\n",
-	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n",
-	"Version $version\n\n";
 
 #--------------------------------------------------
 # Only use threads if the system supports it.
@@ -150,7 +150,6 @@ my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}  
 # # More variables
 #-------------------------------------------------- 
 #{{{
-my $configfile          = '';
 my $count               = 0;
 my $blastdb;
 my $blastcount;
@@ -190,6 +189,7 @@ my $num_hmms;
 my $orthocount = 0;
 my $preparedb;
 my $protfile            = '';
+my $species_id          = undef;
 my $timestamp_start     = time();
 my @lt                  = localtime(time);
 my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
@@ -260,7 +260,6 @@ $blastdb = &make_blastdb($orthoset);
 #-------------------------------------------------- 
 if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set() }
-print "@reftaxa\n"; exit;
 @hmmfiles = &hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
 
@@ -281,6 +280,9 @@ unless ($quiet) {#{{{
 #-------------------------------------------------- 
 $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
+# create a new entry in the taxa table, returns taxid
+$species_id = &insert_taxon_into_table($species_name);
+
 # clear database of data from the same species
 if ($clear_data) {
 	print "Clearing database of previous results from '$species_name'...\n" unless $quiet;
@@ -298,7 +300,7 @@ printf("%d sequences stored to database '%s' on %s. \n",
 	$mysql_dbserver) unless $quiet;
 
 # get number of transcript sequences
-$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'");
+$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_id'");
 $num_ests = $$num_ests[0][0];
 if ($num_ests == 0) {
 	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
@@ -404,8 +406,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# get hmmsearch results from database; use the first array item since they all share the query (HMM) ID 
 	my @hmmresults = @{&get_hmmresults($hmmobj->hits_arrayref->[0]{'query'})};
 
+	# don't do too many blast searches...
+	my $max_blast_searches = scalar(@hmmresults) >= 20 ? 20 : scalar(@hmmresults);
+
 	HMMRESULT:
-	for (my $n = 0; $n < scalar(@hmmresults); ++$n) { #{{{
+	for (my $n = 0; $n < $max_blast_searches; ++$n) { #{{{
  		++$count;
 
 		# setup a temporary file to hold the sequence to be blasted
@@ -787,14 +792,14 @@ sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
 		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		$mysql_col_digest    CHAR(32) NOT NULL,           UNIQUE INDEX($mysql_col_digest),
-		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX($mysql_col_spec),
+		$mysql_col_spec      INT UNSIGNED NOT NULL,       INDEX($mysql_col_spec),
 		$mysql_col_date      INT UNSIGNED,
 		$mysql_col_hdr       VARCHAR(255) NOT NULL,       INDEX ($mysql_col_hdr),
 		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
 		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX($mysql_col_spec),
+		$mysql_col_spec      INT UNSIGNED NOT NULL,       INDEX($mysql_col_spec),
 		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX($mysql_col_query),
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
@@ -805,7 +810,7 @@ sub preparedb {#{{{
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		$mysql_col_spec      VARCHAR(255) NOT NULL,       INDEX ($mysql_col_spec),
+		$mysql_col_spec      INT UNSIGNED NOT NULL,       INDEX ($mysql_col_spec),
 		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
 		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX ($mysql_col_query),
 		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
@@ -839,40 +844,32 @@ sub preparedb {#{{{
 	return 1;
 } #}}}
 
-# Sub: get_species_id
-# Get the species id from the database. 
-# Arguments: scalar string species name
-# Returns: scalar int 
-sub get_species_id {
-	my $specid = &mysql_get("SELECT $mysql_col_id FROM $mysql_table_taxa WHERE $mysql_col_longname = '$species_name'");
-	return($$specid[0]);
-}
 
 # Sub: clear_db
 # clears the database of previous results from the same species 
 sub clear_db {#{{{
+
 	# get the species id from the database
-	my $specid = &get_species_id($species_name);
+	my $specid = &Wrapper::Mysql::get_species_id($species_name);
+
 	# clear previous results from the same species
-	my $query_clear_ests           = "DELETE FROM $mysql_table_ests 
-		                                WHERE $mysql_col_spec = '$species_name'";
-	my $query_clear_hmmsearch      = "DELETE FROM $mysql_table_hmmsearch 
-		                                WHERE $mysql_col_spec = '$species_name'";
-	my $query_clear_blast          = "DELETE FROM $mysql_table_blast 
-		                                WHERE $mysql_col_spec = '$species_name'";
+	my $dbh = &mysql_dbh();
+	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch) {
+		my $temptable = $table . '_save';
+		my $oldtable  = $table . '_old';
+		$dbh->do("CREATE TABLE $temptable LIKE $table")
+			or die "$!";
+		$dbh->do("INSERT INTO $temptable SELECT * FROM $table WHERE $mysql_col_spec != '$specid'")
+			or die "$!";
+		$dbh->do("RENAME TABLE $table TO $oldtable, $temptable TO $table")
+			or die "$!";
+		$dbh->do("DROP TABLE $oldtable")
+			or die "$!";
+		# disconnect ASAP
+	}
+	$dbh->do("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = '$specid'") or die "$!";
+	$dbh->disconnect();
 
-	# open connection
-	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-
-	my $sql = $dbh->prepare($query_clear_ests);
-	$sql->execute() or die "$!\n";
-	$sql = $dbh->prepare($query_clear_hmmsearch);
-	$sql->execute() or die "$!\n";
-	$sql = $dbh->prepare($query_clear_blast);
-	$sql->execute() or die "$!\n";
-
-	# disconnect ASAP
-	$dbh->disconnect;
 	return 1;
 }#}}}
 
@@ -909,7 +906,7 @@ sub insert_results_into_table {#{{{
 		# this is a reference to an array of hashes
 		foreach my $hit (@$hits) {
 			$sql->execute(
-				$species_name,
+				$species_id,
 				$blastdb,
 				$hit->{'query'},  # query (HMM)
 				$hit->{'target'}, # target (header)
@@ -946,7 +943,7 @@ sub insert_results_into_table {#{{{
 		# this is a reference to an array of hashes
 		foreach my $hit (@$hits) {
 			$sql->execute(
-				$species_name,
+				$species_id,
 				$hit->{'query'},  # query (HMM)
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
@@ -1179,13 +1176,21 @@ sub make_blastdb {#{{{
 	return $dbfile;
 }#}}}
 
+sub insert_taxon_into_table {
+	my $species_name = shift(@_);
+	unless ($species_name) { croak("Usage: insert_taxon_into_table(SPECIESNAME)") }
+	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES ('$species_name', 0)";
+	&mysql_do($query) or warn "Warning: Insertion of species name into database failed: $DBI::errstr";
+	return(&Wrapper::Mysql::get_species_id($species_name));
+}
+
 # Sub: load_data_infile
 # LOAD DATA LOCAL INFILE into a table
 # Arguments: scalar string filename, scalar string tablename, reference to list of columns
 # Returns: scalar int number of loaded rows
 sub load_data_infile {#{{{
 	my $protfile = shift(@_);
-	my $table = shift(@_) or croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
+	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
 	my $columns;
 	my $list;
 	if (scalar(@_)) {
@@ -1205,10 +1210,10 @@ sub load_data_infile {#{{{
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
 			warn("Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
 		}
-		printf($tmpfh "%s,%s,%d,%s,%s\n", 
+		printf($tmpfh "%s,%d,%d,%s,%s\n", 
 			# good idea or not?
 			Digest::SHA->sha256_hex($h, $s),
-			$species_name,
+			$species_id,
 			$timestamp_start,
 			$h,
 			$s
@@ -1218,15 +1223,14 @@ sub load_data_infile {#{{{
 	# no need to close the protfh since we're already through it, it gets closed automagically
 
 	# load data from csv file into database
-	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table FIELDS TERMINATED BY ',' ($list)";
+	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table_ests FIELDS TERMINATED BY ',' ($list)";
 
 	# open connection
 	my $dbh = &mysql_dbh();
 	$num_ests = $dbh->do($query);
-	# disconnect ASAP
+	# disconnect ASAP and die if errors
 	$dbh->disconnect;
-	defined($DBI::errstr) ? warn($DBI::errstr, "\n") : print "OK\n";
-	return $num_ests;
+	defined($DBI::errstr) ? die($DBI::errstr, "\n") :	return $num_ests;
 }#}}}
 
 # Sub: get_transcripts 
@@ -1235,7 +1239,7 @@ sub load_data_infile {#{{{
 # Returns: Filehandle
 sub get_transcripts {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
-	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_name'";
+	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_id'";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute();
@@ -1304,10 +1308,6 @@ sub get_orthologs {#{{{
 	$dbh->disconnect();
 	return $result;
 }#}}}
-
-sub insert_orthocandidate {
-	my $blah;
-}
 
 __END__
 

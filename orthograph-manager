@@ -221,7 +221,7 @@ my %create_table = (#{{{
 	'taxa' => "CREATE TABLE `$t{'taxa'}` (
     `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name`         VARCHAR(20),  UNIQUE(name),
-    `longname`     VARCHAR(255),
+    `longname`     VARCHAR(255), UNIQUE(longname),
 		`core`         TINYINT UNSIGNED NOT NULL)",
 	
 	# table: users
