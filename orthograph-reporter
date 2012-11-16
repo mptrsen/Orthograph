@@ -42,7 +42,7 @@ my $out                  = { };
 my $data_by_transcript   = { };
 my $data_by_evalue       = { };
 my $table                = [ ];
-my $strict               = 0;
+my $strict               = 1;
 my $max_miscount         = 3;
 my $sort_by              = 'blasteval';
 my @reftaxa              = ( );
@@ -147,7 +147,6 @@ AND $mysql_table_hmmsearch.evalue         < $hmmsearch_evalue_threshold
 AND $mysql_table_blast.evalue             < $blast_evalue_threshold
 ORDER BY $mysql_table_hmmsearch.evalue
 ";
-print "$query\n";
 
 # get data, store in hash->array->hash
 my $dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
@@ -274,15 +273,17 @@ foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
 				# is the reftaxon of this hit in the reftaxa list?
 				if ( $miscount < $max_miscount and grep /$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'}/, @reftaxa ) {
 					# yes... but this is not enough!
-					printf "%.1e : %s and %s (%s: %.1e, hit #%d), count %d\n",
-						$heval,
-						$oid,
-						$$data_by_evalue{$heval}{$oid}[$i]{'digest'},
-						$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'},
-						$$data_by_evalue{$heval}{$oid}[$i]{'blasteval'},
-						$i + 1,
-						$reftaxa_hitcount + 1,
-					;
+					#--------------------------------------------------
+					# printf "%.1e : %s and %s (%s: %.1e, hit #%d), count %d\n",
+					# 	$heval,
+					# 	$oid,
+					# 	$$data_by_evalue{$heval}{$oid}[$i]{'digest'},
+					# 	$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'},
+					# 	$$data_by_evalue{$heval}{$oid}[$i]{'blasteval'},
+					# 	$i + 1,
+					# 	$reftaxa_hitcount + 1,
+					# ;
+					#-------------------------------------------------- 
 					++$reftaxa_hitcount;
 					$hit = $i;
 				}

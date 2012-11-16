@@ -139,4 +139,17 @@ sub get_species_id {
 	return 0;
 }
 
+sub get_set_id {
+	my $setname = shift(@_);
+	unless ($setname) { croak("Usage: get_set_id(SETNAME)") }
+	my $query = "SELECT id FROM $mysql_table_set_details WHERE name = '$setname'";
+	my $result = &mysql_get($query);
+	if ( scalar(@$result) > 1 ) { 
+		warn("Warning: Multiple sets of the same name!\n");
+		return $$result[0][0];
+	}
+	return $$result[0][0];
+
+}
+
 1;
