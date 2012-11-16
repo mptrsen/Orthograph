@@ -2,15 +2,13 @@ package Wrapper::Mysql;
 use strict;
 use warnings;
 use Carp;
+use Exporter;
 use FindBin;        # locate the dir of this script during compile time
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
-use Orthograph::Config;                # provides config in exported hashref $config
+use Orthograph::Config;                # configuration parser getconfig()
+use Data::Dumper;
 
-#--------------------------------------------------
-# # Parse config file
-#-------------------------------------------------- 
-my $config = Orthograph::Config->getconfig();
-
+my $config = $Orthograph::Config::config;  # copy config
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
@@ -83,7 +81,7 @@ sub mysql_get {#{{{
   # connect and fetch stuff
 	my $dbh = &mysql_dbh;
 	my $sql = $dbh->prepare($query);
-	$sql->execute();
+	$sql->execute() or die;
 	while (my @result = $sql->fetchrow_array() ) {
 		push(@$results, \@result);
 	}
@@ -137,7 +135,8 @@ sub get_species_id {
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
 	my $query = "SELECT id FROM $mysql_table_taxa WHERE core = 0 AND longname = '$species_name'";
 	my $result = &mysql_get($query);
-	return $$result[0][0];
+	if ($result) { return $$result[0][0] }
+	return 0;
 }
 
 1;

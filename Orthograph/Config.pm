@@ -1,18 +1,20 @@
 package Orthograph::Config;
 use strict;
 use warnings;
-require Exporter;
+
 use File::Spec;             
 use FindBin;                # locate the dir of this script during compile time
 use lib $FindBin::Bin;      # $Bin is the directory of the original script
+require Exporter;
+our @ISA = qw( Exporter );
+our @EXPORT_OK = qw( $config );
 
 my $program_name = 'Orthograph';
+our $config = &getconfig; 
+
 
 sub getconfig {
-	# default config file name
-	my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');#{{{
-	my $config;
-
+	my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');
 	# in case the user tells us to use a different one with -c
 	$configfile = &get_configfile($configfile);
 
@@ -21,6 +23,7 @@ sub getconfig {
 		print "Parsing config file '$configfile'.\n";
 		$config = &parse_config($configfile);
 	}#}}}
+	else { die "Fatal: Config file '$configfile' not found!\n" }
 
 	return $config;
 }
@@ -34,11 +37,13 @@ mini argument parser to get the config file name
 # mini argument parser for the configfile
 sub get_configfile {
 	my $configfile = shift(@_);
+	# every argument
 	for (my $i = 0; $i < scalar @ARGV; ++$i) {
+		# is this '-c'?
 		if ($ARGV[$i] =~ /-c\b/) {
+			# does the next one begin with a hyphen?
 			if ($ARGV[$i+1] !~ /^-/) {
 				$configfile = $ARGV[$i+1];
-				if (!-e $configfile) { die "Fatal: Config file '$configfile' not found!\n" }
 			}
 			# the file name starts with a hyphen, may be a stray option, so warn the
 			# user and don't use this name

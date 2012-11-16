@@ -26,12 +26,15 @@ use DBI;            # database interface
 use FindBin;        # locate the dir of this script during compile time
 use IO::File;       # object-oriented access to files
 use Data::Dumper;
+use Exporter;
 
 # Custom modules
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
-use Orthograph::Config;                # configuration parser getconfig()
-use Wrapper::Mysql;                    # because SQL queries in main code look ugly
+use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
+use Wrapper::Mysql;
+
+my $config = $Orthograph::Config::config;	# copy config var
 
 my $count                = 0;
 my $data_by_orthoid      = { };
@@ -44,10 +47,7 @@ my $max_miscount         = 3;
 my $sort_by              = 'blasteval';
 my @reftaxa              = ( );
 
-#--------------------------------------------------
-# # Parse config file
-#-------------------------------------------------- 
-my $config = Orthograph::Config->getconfig();
+#my $config = Orthograph::Config::getconfig();
 
 my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
 my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
@@ -108,6 +108,12 @@ my $reference_taxa             = $config->{'reference_taxa'} ?
 if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($setname) }
 
+# get the species id from the database
+my $species_id = Wrapper::Mysql::get_species_id($speciesname);
+unless ($species_id) {
+	die "Fatal: No such species in database: '$speciesname'\n";
+}
+
 #--------------------------------------------------
 # this query selects all orthology candidates for which
 # the reciprocal search also hit something good
@@ -136,11 +142,12 @@ INNER JOIN $mysql_table_seqpairs
 	AND $mysql_table_aaseqs.id              = $mysql_table_seqpairs.aa_seq
 INNER JOIN $mysql_table_set_details
 	ON $mysql_table_set_details.name        = '$setname'
-WHERE $mysql_table_ests.spec              = '$speciesname'
+WHERE $mysql_table_ests.spec              = '$species_id'
 AND $mysql_table_hmmsearch.evalue         < $hmmsearch_evalue_threshold
 AND $mysql_table_blast.evalue             < $blast_evalue_threshold
 ORDER BY $mysql_table_hmmsearch.evalue
 ";
+print "$query\n";
 
 # get data, store in hash->array->hash
 my $dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
@@ -175,7 +182,6 @@ while (my $line = $sql->fetchrow_arrayref()) {
 }
 $dbh->disconnect;
 
-
 # sort by blast evalue or hmmsearch evalue or the number of your mom's chest hairs
 foreach my $eog (keys %$data_by_orthoid) {
 	@{$$data_by_orthoid{$eog}} = sort {
@@ -202,7 +208,8 @@ my @keys_evalues     = keys %$data_by_evalue     ;
 
 
 # make a HTML table!
-my $fh = IO::File->new("$speciesname.html", 'w');
+(my $filename = $speciesname . '.html') =~ s/\s+/_/g;
+my $fh = IO::File->new($filename, 'w');
 print $fh "<html><head><title>$speciesname</title></head><body>\n";
 print $fh "<table>\n";
 print $fh "<tr><th>&nbsp;</th>\n";	# first cell is empty 

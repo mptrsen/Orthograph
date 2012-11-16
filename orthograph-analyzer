@@ -38,13 +38,13 @@ use IO::File;       # object-oriented access to files
 # you might want to look into Log::Message.
 
 # Custom modules
-use lib $FindBin::Bin;                 # $Bin is the directory of the original script
-use Seqload::Fasta;                    # object-oriented access to fasta files
-use Wrapper::Hmmsearch;                # object-oriented interface to hmmsearch
-use Wrapper::Blastp;                   # object-oriented interface to blastp
-use Wrapper::Mysql;                    # wrapper functions for MySQL
-use Orthograph::Functions;             # functions for all Orthograph tools
-use Orthograph::Config;                # configuration in exported hashref $config
+use lib $FindBin::Bin;                    # $Bin is the directory of the original script
+use Seqload::Fasta;                       # object-oriented access to fasta files
+use Wrapper::Hmmsearch;                   # object-oriented interface to hmmsearch
+use Wrapper::Blastp;                      # object-oriented interface to blastp
+use Wrapper::Mysql;                       # wrapper functions for MySQL
+use Orthograph::Functions;                # functions for all Orthograph tools
+use Orthograph::Config;                   # configuration in global hashref $config
 
 my $program_name = 'Orthograph';
 my $version = 'alpha3';
@@ -74,9 +74,9 @@ else {
 }#}}}
 
 #--------------------------------------------------
-# # Parse config file
+# # Copy configuration
 #-------------------------------------------------- 
-my $config = Orthograph::Config->getconfig();
+my $config = $Orthograph::Config::config;
 
 #--------------------------------------------------
 # # Programs in the order of their use
@@ -284,14 +284,16 @@ unless ($quiet) {#{{{
 #-------------------------------------------------- 
 $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
-# create a new entry in the taxa table, returns taxid
-$species_id = &insert_taxon_into_table($species_name);
-
 # clear database of data from the same species
 if ($clear_data) {
 	print "Clearing database of previous results from '$species_name'...\n" unless $quiet;
-	&clear_db;
+	&clear_db($species_name) or warn("Warning: Failed to clear database for species $species_name!\n");
 }
+
+# create a new entry in the taxa table, returns taxid
+$species_id = &insert_taxon_into_table($species_name);
+print "Created new taxon id $species_id for $species_name\n" unless $quiet;
+
 # store est data into the database:
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
@@ -310,10 +312,6 @@ if ($num_ests == 0) {
 	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
 	exit;
 }
-printf "%d sequences in database '%s' on %s. Sequence identifiers have been replaced with SHA256 digests of the combination (header, sequence). These are used for internal purposes.\n", 
-	$num_ests,
-	$mysql_dbname,
-	$mysql_dbserver unless $quiet;
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
 $protfile = &get_transcripts();
@@ -794,33 +792,48 @@ sub cleardir {#{{{
 # Returns: True on success
 sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
-		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		$mysql_col_digest    CHAR(32) NOT NULL,           UNIQUE INDEX($mysql_col_digest),
-		$mysql_col_spec      INT UNSIGNED NOT NULL,       INDEX($mysql_col_spec),
+		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		$mysql_col_digest    CHAR(32) NOT NULL,           
+		$mysql_col_spec      INT UNSIGNED NOT NULL,       
 		$mysql_col_date      INT UNSIGNED,
-		$mysql_col_hdr       VARCHAR(255) NOT NULL,       INDEX ($mysql_col_hdr),
-		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL)";
+		$mysql_col_hdr       VARCHAR(255) NOT NULL,       
+		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL
+		PRIMARY KEY (`$mysql_col_id`),
+		UNIQUE INDEX ($mysql_col_digest),
+		INDEX ($mysql_col_spec),
+		INDEX ($mysql_col_hdr)
+		)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		$mysql_col_spec      INT UNSIGNED NOT NULL,       INDEX($mysql_col_spec),
-		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX($mysql_col_query),
-		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
-		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
+		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		$mysql_col_spec      INT UNSIGNED NOT NULL,       
+		$mysql_col_query     VARCHAR(255) NOT NULL,       
+		$mysql_col_target    VARCHAR(255) NOT NULL,       
 		$mysql_col_score     DOUBLE NOT NULL,
 		$mysql_col_evalue    VARCHAR(100) NOT NULL,
 		$mysql_col_start     INT NOT NULL,
-		$mysql_col_end       INT NOT NULL)";
+		$mysql_col_end       INT NOT NULL
+		PRIMARY KEY ($mysql_col_id),
+		UNIQUE INDEX ($mysql_col_query, $mysql_col_target),
+		INDEX ($mysql_col_spec),
+		INDEX ($mysql_col_query),
+		INDEX ($mysql_col_target)
+		)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		$mysql_col_spec      INT UNSIGNED NOT NULL,       INDEX ($mysql_col_spec),
+		$mysql_col_id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
+		$mysql_col_spec          INT UNSIGNED NOT NULL,       
 		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
-		$mysql_col_query     VARCHAR(255) NOT NULL,       INDEX ($mysql_col_query),
-		$mysql_col_target    VARCHAR(255) NOT NULL,       INDEX ($mysql_col_target),
+		$mysql_col_query         VARCHAR(255) NOT NULL,       
+		$mysql_col_target        VARCHAR(255) NOT NULL,       
+		$mysql_col_score         DOUBLE NOT NULL,
+		$mysql_col_evalue        VARCHAR(100) NOT NULL
+		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
-		$mysql_col_score     DOUBLE NOT NULL,
-		$mysql_col_evalue    VARCHAR(100) NOT NULL)";
+		INDEX ($mysql_col_spec),
+		INDEX ($mysql_col_query),
+		INDEX ($mysql_col_target)
+		)";
 	
 	# open connection
 	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
@@ -853,8 +866,12 @@ sub preparedb {#{{{
 # clears the database of previous results from the same species 
 sub clear_db {#{{{
 
+	my $species_name = shift @_;
+	return unless $species_name;
+
 	# get the species id from the database
 	my $specid = &Wrapper::Mysql::get_species_id($species_name);
+	return unless $specid;
 
 	# clear previous results from the same species
 	my $dbh = &mysql_dbh();

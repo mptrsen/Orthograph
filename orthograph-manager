@@ -34,13 +34,13 @@ use Data::Dumper;
 use lib $FindBin::Bin;                   # $Bin is the directory of the original script
 use Seqload::Fasta qw( check_if_fasta ); # object-oriented access to fasta files
 use Orthograph::Functions;               # functions for all Orthograph tools
-use Orthograph::Config;                  # configuration parser getconfig()
+use Orthograph::Config;                  # configuration in global hashref $config
 use Wrapper::Mysql;                      # because SQL queries in main code look ugly
 
 #--------------------------------------------------
-# # Parse config file
+# # Copy configuration
 #-------------------------------------------------- 
-my $config = Orthograph::Config->getconfig();
+my $config = $Orthograph::Config::config;
 
 #--------------------------------------------------
 # # These variables can be set in the config file
