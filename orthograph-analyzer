@@ -184,7 +184,6 @@ my $mysql_col_score     = 'score';
 my $mysql_col_seq       = 'sequence';
 my $mysql_col_seqpair   = 'sequence_pair';
 my $mysql_col_setid     = 'setid';
-my $mysql_col_spec      = 'spec';
 my $mysql_col_target    = 'target';
 my $mysql_col_taxid     = 'taxid';
 my $mysql_col_taxon     = 'taxon';
@@ -298,7 +297,7 @@ print "Created new taxon id $species_id for $species_name\n" unless $quiet;
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 # LOAD DATA INFILE; third arg must be ref to array of column names
-$num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_spec, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+$num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 
 printf("%d sequences stored to database '%s' on %s. \n",
 	$num_ests,
@@ -306,7 +305,7 @@ printf("%d sequences stored to database '%s' on %s. \n",
 	$mysql_dbserver) unless $quiet;
 
 # get number of transcript sequences
-$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_id'");
+$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'");
 $num_ests = $$num_ests[0][0];
 if ($num_ests == 0) {
 	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
@@ -794,19 +793,19 @@ sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
 		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 		$mysql_col_digest    CHAR(32) NOT NULL,           
-		$mysql_col_spec      INT UNSIGNED NOT NULL,       
+		$mysql_col_taxid     INT UNSIGNED NOT NULL,       
 		$mysql_col_date      INT UNSIGNED,
 		$mysql_col_hdr       VARCHAR(255) NOT NULL,       
 		$mysql_col_seq       MEDIUMBLOB DEFAULT NULL
 		PRIMARY KEY (`$mysql_col_id`),
 		UNIQUE INDEX ($mysql_col_digest),
-		INDEX ($mysql_col_spec),
+		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_hdr)
 		)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
 		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		$mysql_col_spec      INT UNSIGNED NOT NULL,       
+		$mysql_col_taxid      INT UNSIGNED NOT NULL,       
 		$mysql_col_query     VARCHAR(255) NOT NULL,       
 		$mysql_col_target    VARCHAR(255) NOT NULL,       
 		$mysql_col_score     DOUBLE NOT NULL,
@@ -815,14 +814,14 @@ sub preparedb {#{{{
 		$mysql_col_end       INT NOT NULL
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX ($mysql_col_query, $mysql_col_target),
-		INDEX ($mysql_col_spec),
+		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
 		INDEX ($mysql_col_target)
 		)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
-		$mysql_col_spec          INT UNSIGNED NOT NULL,       
+		$mysql_col_taxid          INT UNSIGNED NOT NULL,       
 		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
 		$mysql_col_query         VARCHAR(255) NOT NULL,       
 		$mysql_col_target        VARCHAR(255) NOT NULL,       
@@ -830,7 +829,7 @@ sub preparedb {#{{{
 		$mysql_col_evalue        VARCHAR(100) NOT NULL
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
-		INDEX ($mysql_col_spec),
+		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
 		INDEX ($mysql_col_target)
 		)";
@@ -870,7 +869,7 @@ sub clear_db {#{{{
 	return unless $species_name;
 
 	# get the species id from the database
-	my $specid = &Wrapper::Mysql::get_species_id($species_name);
+	my $specid = &Wrapper::Mysql::get_taxid_for_species($species_name);
 	return unless $specid;
 
 	# clear previous results from the same species
@@ -880,7 +879,7 @@ sub clear_db {#{{{
 		my $oldtable  = $table . '_old';
 		$dbh->do("CREATE TABLE $temptable LIKE $table")
 			or die "$!";
-		$dbh->do("INSERT INTO $temptable SELECT * FROM $table WHERE $mysql_col_spec != '$specid'")
+		$dbh->do("INSERT INTO $temptable SELECT * FROM $table WHERE $mysql_col_taxid != '$specid'")
 			or die "$!";
 		$dbh->do("RENAME TABLE $table TO $oldtable, $temptable TO $table")
 			or die "$!";
@@ -909,7 +908,7 @@ sub insert_results_into_table {#{{{
 	# this is a BLASTP result, we need the column 'blastdb'
 	if ($blastdb) {
 		my $query_insert_result = "INSERT IGNORE INTO $table (
-			`$mysql_col_spec`,
+			`$mysql_col_taxid`,
 			`$mysql_col_blastdbpath`,
 			`$mysql_col_query`,
 			`$mysql_col_target`,
@@ -943,7 +942,7 @@ sub insert_results_into_table {#{{{
 	else {
 		# SQL query for pushing HMMsearch results to the db
 		my $query_insert_result = "INSERT IGNORE INTO $table (
-			`$mysql_col_spec`,
+			`$mysql_col_taxid`,
 			`$mysql_col_query`,
 			`$mysql_col_target`,
 			`$mysql_col_score`,
@@ -1260,7 +1259,7 @@ sub load_data_infile {#{{{
 # Returns: Filehandle
 sub get_transcripts {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
-	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_spec = '$species_id'";
+	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute();

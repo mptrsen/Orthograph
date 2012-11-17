@@ -46,6 +46,8 @@ my $strict               = 1;
 my $max_miscount         = 3;
 my $sort_by              = 'blasteval';
 my @reftaxa              = ( );
+my $species_id;
+my $set_id;
 
 #my $config = Orthograph::Config::getconfig();
 
@@ -109,11 +111,34 @@ if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($setname) }
 
 # get the species id from the database
-my $species_id = Wrapper::Mysql::get_species_id($speciesname);
+$species_id = Wrapper::Mysql::get_taxid_for_species($speciesname);
 unless ($species_id) {
 	die "Fatal: No such species in database: '$speciesname'\n";
 }
 
+# get the set id from the database
+$set_id = Wrapper::Mysql::get_set_id($setname);
+
+# get a orthoid => list_of_aaseq_ids relationship from the db
+my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
+
+# get the results in the form:
+# evalue => {
+#   orthoid => [
+#     reciprocal_hit,
+#     reciprocal_hit,
+#     reciprocal_hit,
+#     etc.
+#   ]
+# }
+my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id);
+
+my @evalues_sorted = sort { $a <=> $b } keys %$hitlist;
+
+
+
+
+exit;
 #--------------------------------------------------
 # this query selects all orthology candidates for which
 # the reciprocal search also hit something good
@@ -141,8 +166,8 @@ INNER JOIN $mysql_table_seqpairs
 	ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id
 	AND $mysql_table_aaseqs.id              = $mysql_table_seqpairs.aa_seq
 INNER JOIN $mysql_table_set_details
-	ON $mysql_table_set_details.name        = '$setname'
-WHERE $mysql_table_ests.spec              = '$species_id'
+	ON $mysql_table_set_details.id          = $set_id
+WHERE $mysql_table_ests.taxid             = $species_id
 AND $mysql_table_hmmsearch.evalue         < $hmmsearch_evalue_threshold
 AND $mysql_table_blast.evalue             < $blast_evalue_threshold
 ORDER BY $mysql_table_hmmsearch.evalue

@@ -23,6 +23,9 @@ my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_tabl
 # make sure there is exactly one underscore at the end of the prefix
 $mysql_table_prefix =~ s/_*$/_/;
 
+my $mysql_table_blast = $config->{'mysql_table_blast'} ?
+	$mysql_table_prefix . $config->{'mysql_table_blast'} :
+	$mysql_table_prefix . 'blast';
 my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
 	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
 	$mysql_table_prefix . 'blastdbs';
@@ -91,6 +94,15 @@ sub mysql_get {#{{{
 }#}}}
 
 
+=head2 get_taxa_in_all_sets
+
+Get a list of sets associated with the included taxa.
+
+Arguments: None
+
+Returns: hash of scalars
+
+=cut
 sub get_taxa_in_all_sets {
 	my %setlist = ();
 	my $query = "SELECT DISTINCT $mysql_table_set_details.name, $mysql_table_taxa.name
@@ -102,13 +114,22 @@ sub get_taxa_in_all_sets {
 		INNER JOIN $mysql_table_set_details
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id"
 	;
-	my $data = &mysql_get($query);
+	my $data = &mysql_get($query) or croak();
 	foreach my $row (@$data) {
 		$setlist{$$row[0]} .= ' ' . $$row[1];
 	}
 	return %setlist;
 }
 
+=head2 get_taxa_in_set(SETNAME)
+
+Returns a list of taxon names for a named set.
+
+Arguments: scalar string SETNAME
+
+Returns: array of scalars
+
+=cut
 sub get_taxa_in_set {
 	my $setname = shift @_;
 	unless ($setname) { croak("Usage: get_taxa_in_set(SETNAME)") }
@@ -130,7 +151,16 @@ sub get_taxa_in_set {
 	return @reftaxa;
 }
 
-sub get_species_id {
+=head2 get_taxid_for_species(SPECIESNAME)
+
+Returns the taxid for a named species.
+
+Arguments: scalar string SPECIESNAME
+
+Returns: scalar int TAXID
+
+=cut
+sub get_taxid_for_species {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
 	my $query = "SELECT id FROM $mysql_table_taxa WHERE core = 0 AND longname = '$species_name'";
@@ -139,6 +169,15 @@ sub get_species_id {
 	return 0;
 }
 
+=head2 get_set_id(SETNAME)
+
+get the set id for a named set. 
+
+Arguments: scalar string SETNAME
+
+Returns: scalar int SETID
+
+=cut
 sub get_set_id {
 	my $setname = shift(@_);
 	unless ($setname) { croak("Usage: get_set_id(SETNAME)") }
@@ -149,7 +188,81 @@ sub get_set_id {
 		return $$result[0][0];
 	}
 	return $$result[0][0];
-
 }
 
+# get a orthoid => list_of_aaseq_ids relationship from the db
+sub get_orthologs_for_set_hashref {
+	my $setid = shift(@_);
+	unless ($setid) { croak("Usage: get_orthologs_for_set(SETID)") }
+	my $query = "SELECT $mysql_table_orthologs.ortholog_gene_id, $mysql_table_aaseqs.id 
+		FROM $mysql_table_orthologs 
+		INNER JOIN $mysql_table_seqpairs 
+			ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id
+		INNER JOIN $mysql_table_aaseqs
+			ON $mysql_table_seqpairs.aa_seq = $mysql_table_aaseqs.id
+		INNER JOIN $mysql_table_set_details 
+			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
+		WHERE $mysql_table_set_details.id = $setid";
+	my $data = &mysql_get($query);
+	my $result = { };
+	foreach my $line (@$data) {
+		push( @{$$result{$$line[0]}}, $$line[1] );
+	}
+	return $result;
+}
+
+=head2 get_hitlist_hashref(SPECIESID, SETID)
+
+
+Get the results in the form:
+
+  evalue => {
+    orthoid => [
+      reciprocal_hit,
+      reciprocal_hit,
+      reciprocal_hit,
+      etc.
+    ]
+		orthoid2 => [
+      reciprocal_hit,
+      reciprocal_hit,
+		]
+  }
+
+Arguments: scalar int SPECIESID, scalar int SETID
+
+Returns: hashref of hashrefs of arrays of hashes - lol
+
+=cut
+sub get_hitlist_hashref {
+	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
+	my $setid  = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
+	my $query = "SELECT 
+		$mysql_table_hmmsearch.evalue,
+		$mysql_table_orthologs.ortholog_gene_id, 
+		$mysql_table_hmmsearch.target,
+		$mysql_table_blast.target,
+		$mysql_table_blast.evalue,
+		$mysql_table_taxa.name
+		FROM $mysql_table_hmmsearch
+		INNER JOIN $mysql_table_orthologs
+			ON $mysql_table_hmmsearch.query = $mysql_table_orthologs.ortholog_gene_id
+		INNER JOIN $mysql_table_blast
+			ON $mysql_table_hmmsearch.target = $mysql_table_blast.query
+		INNER JOIN $mysql_table_aaseqs
+			ON $mysql_table_blast.target = $mysql_table_aaseqs.id
+		INNER JOIN  $mysql_table_taxa
+			ON $mysql_table_aaseqs.taxid = $mysql_table_taxa.id
+		INNER JOIN $mysql_table_set_details
+			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
+		ORDER BY $mysql_table_hmmsearch.evalue DESC
+		";
+	my $data = &mysql_get($query);
+	my $result = { };
+	foreach my $line ( @$data ) {
+		$$result{$$line[0]} = $$line[1];
+	}
+	return $result;
+}
+	
 1;
