@@ -213,14 +213,14 @@ sub get_orthologs_for_set_hashref {
 
 =head2 get_hitlist_hashref(SPECIESID, SETID)
 
-
 Get the results in the form:
 
   evalue => {
     orthoid => [
-      reciprocal_hit,
-      reciprocal_hit,
-      reciprocal_hit,
+      reciprocal_hit => {
+				blasteval => E,
+				taxname_of_hit => S,
+			},
       etc.
     ]
 		orthoid2 => [
@@ -231,7 +231,7 @@ Get the results in the form:
 
 Arguments: scalar int SPECIESID, scalar int SETID
 
-Returns: hashref of hashrefs of arrays of hashes - lol
+Returns: hashref of hashrefs of arrayrefs of hashrefs - lol
 
 =cut
 sub get_hitlist_hashref {
@@ -260,7 +260,12 @@ sub get_hitlist_hashref {
 	my $data = &mysql_get($query);
 	my $result = { };
 	foreach my $line ( @$data ) {
-		$$result{$$line[0]} = $$line[1];
+		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
+			'hmmhit'                   => $$line[2],
+			'reciprocal_hit'           => $$line[3],
+			'reciprocal_evalue'        => $$line[4],
+			'reciprocal_species_name'  => $$line[5],
+		});
 	}
 	return $result;
 }
