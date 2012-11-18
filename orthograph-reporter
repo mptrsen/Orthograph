@@ -132,8 +132,12 @@ my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 #   ]
 # }
 my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id);
+my @transcript_list = Wrapper::Mysql::get_hit_transcripts($species_id, $set_id);
 
 my @evalues_sorted = sort { $a <=> $b } keys %$hitlist;
+
+# generate a table
+my $transcripts_mapped_to = { };
 
 EVALUE:
 foreach my $evalue (@evalues_sorted) {
@@ -154,31 +158,49 @@ foreach my $evalue (@evalues_sorted) {
 			# find out if the aaseq_id is one of those used for this orthoid
 			print "  checking out hit " , Dumper($reciprocal_hit), "\n";
 
-
+			# need a for loop here because splice
 			for (my $i = 0; $i < scalar(@{$$aaseqs_in_orthoid{$orthoid}}); ++$i) {
 				printf "    checking out %d : %d\n",
 					$$reciprocal_hit{'reciprocal_hit'},
 					$$aaseqs_in_orthoid{$orthoid}[$i],
 				;
-				if ($$reciprocal_hit{'reciprocal_hit'} == $$aaseqs_in_orthoid{$orthoid}[$i]) {
+
+				# has this aaseq been used in building this hmm?
+				if ($$reciprocal_hit{'reciprocal_hit'} == $$aaseqs_in_orthoid{$orthoid}[$i] and grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
 					printf "    %s: %s -> %d (%.1e)\n", 
 						$orthoid,
 						$$reciprocal_hit{'hmmhit'},
 						$$reciprocal_hit{'reciprocal_hit'},
 						$$reciprocal_hit{'reciprocal_evalue'},
 					;
+
+					# this orthoid can't be found again
 					delete $$aaseqs_in_orthoid{$orthoid};
-					# remove from list
-					#splice @{$$aaseqs_in_orthoid{$orthoid}}, $i, 1;
-					# it's ok, go to next hit pair
+
+					# this transcript can't be found again either
+					for my $j (0 .. $#transcript_list) {
+						if ($$reciprocal_hit{'hmmhit'} eq $transcript_list[$j]) {
+							splice @transcript_list, $j, 1;
+							last;
+						}
+					}
+
+					$$transcripts_mapped_to{$orthoid} = $$reciprocal_hit{'hmmhit'};
+
+					# it's ok, go to next hit 
 					next ORTHOID;
 				}
 			}
+			# get over it
 			print "    $$reciprocal_hit{'reciprocal_hit'} not used in this HMM :(\n";
 		}
+		print "    $orthoid could not be assigned :((\n";
 	}
 }
 
+while (my ($o, $t) = each %$transcripts_mapped_to) {
+	warn sprintf("%s : %s\n", $o, $t);
+}
 
 exit;
 #--------------------------------------------------

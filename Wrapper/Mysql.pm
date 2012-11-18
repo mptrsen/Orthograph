@@ -255,7 +255,8 @@ sub get_hitlist_hashref {
 			ON $mysql_table_aaseqs.taxid = $mysql_table_taxa.id
 		INNER JOIN $mysql_table_set_details
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
-		ORDER BY $mysql_table_hmmsearch.evalue DESC
+		WHERE $mysql_table_set_details.id = $setid
+		AND $mysql_table_hmmsearch.taxid  = $specid
 		";
 	my $data = &mysql_get($query);
 	my $result = { };
@@ -268,6 +269,31 @@ sub get_hitlist_hashref {
 		});
 	}
 	return $result;
+}
+
+sub get_hit_transcripts {
+	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
+	my $setid  = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
+	my $query = "SELECT DISTINCT
+		$mysql_table_hmmsearch.target
+		FROM $mysql_table_hmmsearch
+		INNER JOIN $mysql_table_orthologs
+			ON $mysql_table_hmmsearch.query = $mysql_table_orthologs.ortholog_gene_id
+		INNER JOIN $mysql_table_blast
+			ON $mysql_table_hmmsearch.target = $mysql_table_blast.query
+		INNER JOIN $mysql_table_aaseqs
+			ON $mysql_table_blast.target = $mysql_table_aaseqs.id
+		INNER JOIN  $mysql_table_taxa
+			ON $mysql_table_aaseqs.taxid = $mysql_table_taxa.id
+		INNER JOIN $mysql_table_set_details
+			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
+		WHERE $mysql_table_set_details.id = $setid
+		AND $mysql_table_hmmsearch.taxid  = $specid
+	";
+	my $data = &mysql_get($query);
+	my @result;
+	push(@result, ${shift(@$data)}[0]) while @$data;
+	return @result;
 }
 	
 1;
