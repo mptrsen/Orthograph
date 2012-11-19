@@ -55,26 +55,26 @@ output_directory   = /PATH/TO/OUTPUT_DIR
 # INCLUDING '*' for stop codons and 'U' for Selenocystein. If you are not OK
 # with this, you may remove the --anysymbol option from the command, but then it
 # is your responsibility to make sure that your ortholog set sequences do not
-# contain any nonstandard symbols.
+# contain any nonstandard symbols that may make MAFFT choke on your set.
 #
 # Standard amino acid symbols are: ACDEFGHIKLMNPQRSTVWY and X for ambiguity.
 alignment_program    = mafft --localpair --maxiterate 1000 --anysymbol
 
-# HMMbuild is used to build the profile HMMs.
+# HMMbuild is used to build the profile HMMs. Part of the HMMER3 package.
 hmmbuild_program     = hmmbuild
 
-# fastatranslate is part of the Exonerate package (which you will need at a
-# later point, too) and translates the transcript sequences into all six reading
-# frames. You are free to use different programs, though.
+# Fastatranslate is part of the Exonerate package and translates the transcript
+# sequences into all six reading frames. You are free to use different
+# programs, though.
 translate_program    = fastatranslate
 
-# hmmsearch, of course.
+# HMMsearch, of course. Also part of the HMMER3 package.
 hmmsearch_program    = hmmsearch
 
-# blast. Should be blastp from the NCBI BLAST+ package.
+# BLAST. Should be blastp from the NCBI BLAST+ package.
 blast_program        = blastp
 
-# exonerate. Not used yet.
+# Exonerate. Not used yet.
 #exonerate_program    = exonerate
 
 #
