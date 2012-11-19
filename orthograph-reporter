@@ -156,18 +156,18 @@ foreach my $evalue (@evalues_sorted) {
 		RH:
 		foreach my $reciprocal_hit (@$sorted_list) {
 			# find out if the aaseq_id is one of those used for this orthoid
-			print "  checking out hit " , Dumper($reciprocal_hit), "\n";
+			print "  checking out hit " , Dumper($reciprocal_hit);
 
 			# need a for loop here because splice
 			for (my $i = 0; $i < scalar(@{$$aaseqs_in_orthoid{$orthoid}}); ++$i) {
-				printf "    checking out %d : %d\n",
-					$$reciprocal_hit{'reciprocal_hit'},
+				printf "    checking out %8d : %8d\n",
 					$$aaseqs_in_orthoid{$orthoid}[$i],
+					$$reciprocal_hit{'reciprocal_hit'},
 				;
 
 				# has this aaseq been used in building this hmm?
 				if ($$reciprocal_hit{'reciprocal_hit'} == $$aaseqs_in_orthoid{$orthoid}[$i] and grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
-					printf "    %s: %s -> %d (%.1e)\n", 
+					printf "      assigned %s to %s because %d (%.1e)\n", 
 						$orthoid,
 						$$reciprocal_hit{'hmmhit'},
 						$$reciprocal_hit{'reciprocal_hit'},

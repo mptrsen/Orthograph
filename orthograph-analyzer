@@ -792,7 +792,7 @@ sub cleardir {#{{{
 sub preparedb {#{{{
 	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
 		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		$mysql_col_digest    CHAR(32) NOT NULL,           
+		$mysql_col_digest    CHAR(32)     NOT NULL,           
 		$mysql_col_taxid     INT UNSIGNED NOT NULL,       
 		$mysql_col_date      INT UNSIGNED,
 		$mysql_col_hdr       VARCHAR(255) NOT NULL,       
@@ -805,13 +805,13 @@ sub preparedb {#{{{
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
 		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		$mysql_col_taxid      INT UNSIGNED NOT NULL,       
+		$mysql_col_taxid     INT UNSIGNED NOT NULL,       
 		$mysql_col_query     VARCHAR(255) NOT NULL,       
-		$mysql_col_target    VARCHAR(255) NOT NULL,       
-		$mysql_col_score     DOUBLE NOT NULL,
+		$mysql_col_target    CHAR(32)     NOT NULL,       
+		$mysql_col_score     DOUBLE       NOT NULL,
 		$mysql_col_evalue    VARCHAR(100) NOT NULL,
-		$mysql_col_start     INT NOT NULL,
-		$mysql_col_end       INT NOT NULL
+		$mysql_col_start     INT          NOT NULL,
+		$mysql_col_end       INT          NOT NULL
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX ($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
@@ -821,11 +821,11 @@ sub preparedb {#{{{
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
 		$mysql_col_id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
-		$mysql_col_taxid          INT UNSIGNED NOT NULL,       
+		$mysql_col_taxid         INT UNSIGNED NOT NULL,       
 		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
-		$mysql_col_query         VARCHAR(255) NOT NULL,       
+		$mysql_col_query         CHAR(32)     NOT NULL,       
 		$mysql_col_target        VARCHAR(255) NOT NULL,       
-		$mysql_col_score         DOUBLE NOT NULL,
+		$mysql_col_score         DOUBLE       NOT NULL,
 		$mysql_col_evalue        VARCHAR(100) NOT NULL
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),

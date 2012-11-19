@@ -237,7 +237,7 @@ Returns: hashref of hashrefs of arrayrefs of hashrefs - lol
 sub get_hitlist_hashref {
 	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
 	my $setid  = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
-	my $query = "SELECT 
+	my $query = "SELECT DISTINCT
 		$mysql_table_hmmsearch.evalue,
 		$mysql_table_orthologs.ortholog_gene_id, 
 		$mysql_table_hmmsearch.target,
