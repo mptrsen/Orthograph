@@ -17,8 +17,8 @@
 #-------------------------------------------------- 
 
 # Pragmas
-use strict;
-use warnings;
+use strict;         # make me write clean code
+use warnings;       # cry if something seems odd
 
 # Core modules
 use DBD::mysql;     # MySQL database driver
@@ -36,42 +36,46 @@ use Wrapper::Mysql;
 
 my $config = $Orthograph::Config::config;	# copy config var
 
-my $count                = 0;
-my $data_by_orthoid      = { };
-my $out                  = { };
-my $data_by_transcript   = { };
-my $data_by_evalue       = { };
-my $table                = [ ];
-my $strict               = 1;
-my $max_miscount         = 3;
-my $sort_by              = 'blasteval';
-my @reftaxa              = ( );
-my $species_id;
-my $set_id;
-
-#my $config = Orthograph::Config::getconfig();
-
-my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
-my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
-my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : $ENV{LOGNAME};
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : $ENV{LOGNAME};
-my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'orthograph';
+# These variables must be set in the config file
+my $mysql_dbname   = $config->{'mysql_dbname'}           ?
+	$config->{'mysql_dbname'}       : 'orthograph';
+my $mysql_dbserver = $config->{'mysql_dbserver'}         ?
+	$config->{'mysql_dbserver'}     : 'localhost';
+# db user and pwd default to the login name of the executing user
+my $mysql_dbuser   = $config->{'mysql_dbuser'}           ?
+	$config->{'mysql_dbuser'}       : $ENV{LOGNAME};
+my $mysql_dbpwd    = $config->{'mysql_dbpassword'}       ?
+	$config->{'mysql_dbpassword'}   : $ENV{LOGNAME};
+my $mysql_table_prefix = $config->{'mysql_table_prefix'} ?
+	$config->{'mysql_table_prefix'} : 'orthograph';
 # make sure the prefix ends on exactly one _
 $mysql_table_prefix =~ s/_*$/_/;
 
-my $mysql_table_blast = $config->{'mysql_table_blast'} ?
+my $setname                    = $config->{'ortholog_set'} ? 
+	$config->{'ortholog_set'} :
+	undef;
+my $speciesname                = $config->{'species_name'} ?
+	$config->{'species_name'} :
+	undef;
+my $reference_taxa             = $config->{'reference_taxa'} ?
+	$config->{'reference_taxa'} :
+	'';
+
+
+# These variables can be set in the config file
+my $mysql_table_blast          = $config->{'mysql_table_blast'} ?
 	$mysql_table_prefix . $config->{'mysql_table_blast'} :
 	$mysql_table_prefix . 'blast';
-my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
+my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'} ?
 	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
 	$mysql_table_prefix . 'blastdbs';
-my $mysql_table_ests = $config->{'mysql_table_ests'} ?
+my $mysql_table_ests           = $config->{'mysql_table_ests'} ?
 	$mysql_table_prefix . $config->{'mysql_table_ests'} :
 	$mysql_table_prefix . 'ests';
-my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ?
+my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'} ?
 	$mysql_table_prefix . $config->{'mysql_table_hmmsearch'} :
 	$mysql_table_prefix . 'hmmsearch';
-my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
+my $mysql_table_set_details    = $config->{'mysql_table_set_details'} ?
 	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
 	$mysql_table_prefix . 'set_details';
 my $mysql_table_aaseqs = $config->{'aaseqs'} ?
@@ -87,15 +91,12 @@ my $mysql_table_orthologs      = $config->{'orthologs'} ?
 	$mysql_table_prefix . $config->{'orthologs'} :
 	$mysql_table_prefix . 'orthologs';
 
-my $setname                    = $config->{'ortholog_set'} ? 
-	$config->{'ortholog_set'} :
-	undef;
-my $speciesname                = $config->{'species_name'} ?
-	$config->{'species_name'} :
-	undef;
 my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'} ?
 	$config->{'blast_evalue_threshold'} :
 	10;
+my $soft_threshold             = $config->{'soft_threshold'} ?
+	$config->{'soft_threshold'} :
+	5;
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ?
 	$config->{'hmmsearch_evalue_threshold'} :
 	undef;
@@ -103,21 +104,34 @@ my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'} ?
 	$config->{'hmmsearch_score_threshold'} :
 	undef;
 
-my $reference_taxa             = $config->{'reference_taxa'} ?
-	$config->{'reference_taxa'} :
-	'';
+# More variables
+my $count                = 0;
+my $data_by_orthoid      = { };
+my $out                  = { };
+my $data_by_transcript   = { };
+my $data_by_evalue       = { };
+my $table                = [ ];
+my $strict               = 1;
+my $max_miscount         = 3;
+my $sort_by              = 'blasteval';
+my @reftaxa              = ( );
+my $species_id;
+my $set_id;
+my $match                = 0;
+my @this_reftaxa         = ( );
 
+# Create the list of reference taxa
+# This can be set in the config file, otherwise get all taxa in the set
 if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($setname) }
 
 # get the species id from the database
 $species_id = Wrapper::Mysql::get_taxid_for_species($speciesname);
-unless ($species_id) {
-	die "Fatal: No such species in database: '$speciesname'\n";
-}
+die "Fatal: No such species in database: '$speciesname'\n" unless ($species_id);
 
 # get the set id from the database
 $set_id = Wrapper::Mysql::get_set_id($setname);
+die "Fatal: No such set in database: '$setname'\n" unless ($set_id);
 
 # get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
@@ -132,13 +146,18 @@ my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 #   ]
 # }
 my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id);
-my @transcript_list = Wrapper::Mysql::get_hit_transcripts($species_id, $set_id);
 
+# this will hold all transcripts that were found so we can check for redundancy
+my @transcript_list;
+
+# mysql can't sort evalues correctly when they are stored as char
+# so we do the sorting ourselves
 my @evalues_sorted = sort { $a <=> $b } keys %$hitlist;
 
 # generate a table
 my $transcripts_mapped_to = { };
 
+# okay let's do the loop come on baby let's do the loop
 EVALUE:
 foreach my $evalue (@evalues_sorted) {
 
@@ -149,7 +168,7 @@ foreach my $evalue (@evalues_sorted) {
 		next ORTHOID unless exists $$aaseqs_in_orthoid{$orthoid};
 
 		# sort by reciprocal hit evalue
-		my $sorted_list = [ sort { $$a{'reciprocal_evalue'} <=> $$b{'reciprocal_evalue'} } @$list ];
+		my $sorted_list = [ sort { $$a{'blast_evalue'} <=> $$b{'blast_evalue'} } @$list ];
 
 		print "checking out $orthoid with evalue $evalue\n";
 
@@ -158,45 +177,70 @@ foreach my $evalue (@evalues_sorted) {
 			# find out if the aaseq_id is one of those used for this orthoid
 			print "  checking out hit " , Dumper($reciprocal_hit);
 
-			# need a for loop here because splice
-			for (my $i = 0; $i < scalar(@{$$aaseqs_in_orthoid{$orthoid}}); ++$i) {
-				printf "    checking out %8d : %8d\n",
-					$$aaseqs_in_orthoid{$orthoid}[$i],
-					$$reciprocal_hit{'reciprocal_hit'},
+			# has this aaseq been used in building this hmm and has this not been found previously?
+			# grep is the nicer solution but may not be as fast as a loop that we can exit after one match.
+			# the first function from List::Util also returns after the first occurence.
+			# however no significant difference could be noted between the two in terms of runtime
+			# (in a real-life example with arrays of > 4000 elements)
+			if (grep(/$$reciprocal_hit{'blast_hit'}/, @{$$aaseqs_in_orthoid{$orthoid}}) and not grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
+
+				$match = $reciprocal_hit;
+				push @this_reftaxa, $reciprocal_hit;
+
+				# one hit is enough if not in strict mode
+				last RH unless $strict;
+			}
+			else {  # not found
+				# ok, no match
+				undef $match;
+
+				# cry
+				print "    $$reciprocal_hit{'blast_hit'} not used in this HMM :(\n";
+
+				# in a strict search, that's it for this orthoid
+				next ORTHOID if $strict;
+			}
+
+		# END RH
+		}
+		# so, was this a match?
+		if ($match) {
+			if ($strict and scalar @this_reftaxa == @reftaxa) {
+
+				# yeah
+				printf ">>    assigned %s to %s\n",
+					$orthoid,
+					$$match{'hmmhit'},
+					#$$match{'blast_hit'},
+					#$$match{'blast_evalue'},
 				;
 
-				# has this aaseq been used in building this hmm?
-				if ($$reciprocal_hit{'reciprocal_hit'} == $$aaseqs_in_orthoid{$orthoid}[$i] and grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
-					printf "      assigned %s to %s because %d (%.1e)\n", 
-						$orthoid,
-						$$reciprocal_hit{'hmmhit'},
-						$$reciprocal_hit{'reciprocal_hit'},
-						$$reciprocal_hit{'reciprocal_evalue'},
-					;
+				# this orthoid can't be found again
+				delete $$aaseqs_in_orthoid{$orthoid};
 
-					# this orthoid can't be found again
-					delete $$aaseqs_in_orthoid{$orthoid};
+				# this transcript can't be found again either
+				push @transcript_list, $$match{'hmmhit'};
 
-					# this transcript can't be found again either
-					for my $j (0 .. $#transcript_list) {
-						if ($$reciprocal_hit{'hmmhit'} eq $transcript_list[$j]) {
-							splice @transcript_list, $j, 1;
-							last;
-						}
-					}
+				$$transcripts_mapped_to{$orthoid} = $$match{'hmmhit'};
 
-					$$transcripts_mapped_to{$orthoid} = $$reciprocal_hit{'hmmhit'};
-
-					# it's ok, go to next hit 
-					next ORTHOID;
-				}
+				# reset 
+				@this_reftaxa = ( );
+				undef $match;
 			}
-			# get over it
-			print "    $$reciprocal_hit{'reciprocal_hit'} not used in this HMM :(\n";
 		}
-		print "    $orthoid could not be assigned :((\n";
-	}
+		else {
+			# this orthoid has no match
+			print "    $orthoid could not be assigned :((\n";
+			@this_reftaxa = ( );
+		}
+
+	# END ORTHOID
+	} 
+
+# END EVALUE
 }
+
+
 
 while (my ($o, $t) = each %$transcripts_mapped_to) {
 	warn sprintf("%s : %s\n", $o, $t);

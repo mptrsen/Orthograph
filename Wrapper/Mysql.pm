@@ -217,15 +217,15 @@ Get the results in the form:
 
   evalue => {
     orthoid => [
-      reciprocal_hit => {
+      blast_hit => {
 				blasteval => E,
 				taxname_of_hit => S,
 			},
       etc.
     ]
 		orthoid2 => [
-      reciprocal_hit,
-      reciprocal_hit,
+      blast_hit,
+      blast_hit,
 		]
   }
 
@@ -262,10 +262,10 @@ sub get_hitlist_hashref {
 	my $result = { };
 	foreach my $line ( @$data ) {
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
-			'hmmhit'                   => $$line[2],
-			'reciprocal_hit'           => $$line[3],
-			'reciprocal_evalue'        => $$line[4],
-			'reciprocal_species_name'  => $$line[5],
+			'hmmhit'       => $$line[2],
+			'blast_hit'    => $$line[3],
+			'blast_evalue' => $$line[4],
+			'species_name' => $$line[5],
 		});
 	}
 	return $result;

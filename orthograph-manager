@@ -17,8 +17,8 @@
 #-------------------------------------------------- 
 
 # Pragmas
-use strict;
-use warnings;
+use strict;         # make me write clean code
+use warnings;       # cry if something seems odd
 
 # Core modules
 use Carp;

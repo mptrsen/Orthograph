@@ -136,12 +136,11 @@ sub score_threshold {#{{{
 
 =head1 Object methods
 
-=head2 search
+=head2 search(FILE)
 
-HMM-searches a sequence file using F<hmmfile>, leaving F<outfile> for later
-processing of the results. 
+Searches the FILE for matches using the hidden Markov model.
 
-Expects: Reference to sequence object, scalar string filename to F<hmmfile>. 
+Arguments: scalar string filename 
 
 =cut
 
