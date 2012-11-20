@@ -95,6 +95,7 @@ sub next_seq {
 	# remove the '>'
   $item =~ s/^>//;
 
+	# split to a maximum of two items (header, sequence)
   my ($hdr, $seq) = split(/\n/, $item, 2);
 	$hdr =~ s/\s+$//;	# remove all trailing whitespace
   $seq =~ s/>//g if defined $seq;
@@ -138,7 +139,6 @@ sub fasta2csv {
   return 1;
 }
 
-
 # validates a fasta file by looking at the FIRST (header, sequence) pair
 # arguments: scalar string path to file
 # returns: true on validation, false otherwise
@@ -148,5 +148,6 @@ sub check_if_fasta {
 	my ($h, $s) = $infh->next_seq() or return 0;
 	return 1;
 }
+
 # return true
-1;
+'This line intentionally left true';
