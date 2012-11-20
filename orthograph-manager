@@ -21,14 +21,14 @@ use strict;         # make me write clean code
 use warnings;       # cry if something seems odd
 
 # Core modules
-use Carp;
+use Carp;           # carp and croak: warn and die with call stack
 use DBD::mysql;     # MySQL database driver
 use DBI;            # database interface
 use File::Temp;     # temporary files
 use File::Path qw( remove_tree make_path );	# this also uses File::Spec
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # parse command line arguments
-use Data::Dumper;
+use Data::Dumper;   # good for debugging
 
 # Custom modules
 use lib $FindBin::Bin;                   # $Bin is the directory of the original script
@@ -437,7 +437,7 @@ my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile'
 		sequence,
 		description)";
 
-my $dbh = &mysql_dbh();
+my $dbh = Wrapper::Mysql::mysql_dbh();
 $dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
 $dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
 $dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
@@ -446,7 +446,7 @@ $dbh->disconnect;
 print "Successfully loaded $total_seqs sequences from $infile into $temptable on $mysql_dbserver.\n";
 
 # get name and longname from the temp table; they do not get updated automatically
-$dbh = &mysql_dbh();
+$dbh = Wrapper::Mysql::mysql_dbh();
 $sql = $dbh->prepare("SELECT DISTINCT name, longname FROM temp");
 $sql->execute();
 while (my @result = $sql->fetchrow) {
@@ -464,7 +464,7 @@ foreach (sort(keys %names)) {
 }
 
 # update the temptable with the collected info
-$dbh = &mysql_dbh;
+$dbh = Wrapper::Mysql::mysql_dbh;
 foreach (keys %names) {
 	$sql = $dbh->prepare("UPDATE $temptable SET longname='" . $names{$_} . "' WHERE name='" . $_ . "'");
 	$sql->execute();
@@ -482,7 +482,7 @@ my @queries = (
 	# user name
 	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$mysql_dbuser')",
 	# taxa (name, longname)
-	"INSERT IGNORE INTO $t{'taxa'} (name, longname) 
+	"INSERT IGNORE INTO $t{'taxa'} (name, longname, core) 
     SELECT DISTINCT $temptable.name, $temptable.longname, 1 
     FROM $temptable",
 	# set name + description
@@ -531,7 +531,7 @@ my @queries = (
     ON $t{'set_details'}.name = $temptable.orthoset",
 );
 
-$dbh = &mysql_dbh;
+$dbh = Wrapper::Mysql::mysql_dbh;
 my $nrows;
 foreach (@queries) {
 	print $_ . ";\n";
@@ -561,7 +561,7 @@ sub mysql_check {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_check(QUERY)\n"; }
 	my @results;
-	my $dbh = &mysql_dbh;
+	my $dbh = Wrapper::Mysql::mysql_dbh;
 	my $sql = $dbh->prepare($query);
 	$sql->execute();
 	if ($sql->fetchrow_array()) {

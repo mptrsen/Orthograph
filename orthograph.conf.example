@@ -94,9 +94,9 @@ blast_evalue_threshold     = 1e-05
 #hmmsearch_score_threshold = 10
 #blast_score_threshold     = 10
 
-# Maximum number of BLAST hits to scan for orthologs. No effect at the moment,
-# as only the best hit is considered.
-blast_max_hits             = 10
+# Maximum number of BLAST hits to consider for ortholog candidates.
+# Defaults to 100.
+blast_max_hits             = 100
 
 #
 # # MySQL settings
@@ -104,9 +104,9 @@ blast_max_hits             = 10
 # The database server. Change this if the database does not run on the same
 # computer as the analysis. Ask your administrator if you don't know what to
 # write here.
-mysql_dbserver     = 127.0.0.1
+mysql_dbserver             = 127.0.0.1
 
-# Prefix for your Orthograph database tables. Useful to set if you are running
+# Prefix for your Orthograph database tables. Useful if you are running
 # multiple instances of Orthograph on the same database but don't want the data
 # to be mixed up. Defaults to 'orthograph'.
 #mysql_table_prefix = orthograph
@@ -115,21 +115,21 @@ mysql_dbserver     = 127.0.0.1
 # # Other options
 #
 # Strict search. Normally it is enough for a match to occur if one of the
-# reference taxa is hit in the reciprocal search. Enable strict searching to
-# make sure ALL reference taxa are hit.
+# reference taxa is hit in the reciprocal search. In strict mode ALL reference
+# taxa must be hit to verify an ortholog assignment. This is more conservative.
 #strict      = 1
 
 # Clear pre-existing data of the same species prior to the analysis. Useful if
 # you plan to run the same analysis multiple times, but doesn't hurt otherwise.
 # This is the default, uncomment if you want to turn it off.
-#clear_data = 0
+#clear_data  = 0
 
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
 # you don't want to see this. If you are really interested in what Orthograph is
 # thinking during the analysis, uncomment this. Verbose and quiet are mutually
 # exclusive.
-#verbose    = 1
+#verbose     = 1
 
 # Quiet output. Uncomment this if you don't want to be bothered during the
 # analysis. Verbose and quiet are mutually exclusive.
-#quiet      = 1
+#quiet       = 1

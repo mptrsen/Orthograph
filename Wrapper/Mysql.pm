@@ -84,7 +84,7 @@ sub mysql_get {#{{{
   # connect and fetch stuff
 	my $dbh = &mysql_dbh;
 	my $sql = $dbh->prepare($query);
-	$sql->execute() or die;
+	$sql->execute() or croak;
 	while (my @result = $sql->fetchrow_array() ) {
 		push(@$results, \@result);
 	}
@@ -131,8 +131,8 @@ Returns: array of scalars
 
 =cut
 sub get_taxa_in_set {
-	my $setname = shift @_;
-	unless ($setname) { croak("Usage: get_taxa_in_set(SETNAME)") }
+	my $set_id = shift @_;
+	unless ($set_id) { croak("Usage: get_taxa_in_set(SETNAME)") }
 	my @reftaxa;
 	my $query = "SELECT DISTINCT $mysql_table_set_details.name, $mysql_table_taxa.name
 		FROM $mysql_table_seqpairs
@@ -142,7 +142,7 @@ sub get_taxa_in_set {
 			ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id 
 		INNER JOIN $mysql_table_set_details
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
-		WHERE $mysql_table_set_details = '$setname'"
+		WHERE $mysql_table_set_details.id = '$set_id'"
 	;
 	my $data = &mysql_get($query);
 	foreach my $row (@$data) {
@@ -241,6 +241,8 @@ sub get_hitlist_hashref {
 		$mysql_table_hmmsearch.evalue,
 		$mysql_table_orthologs.ortholog_gene_id, 
 		$mysql_table_hmmsearch.target,
+		$mysql_table_hmmsearch.start,
+		$mysql_table_hmmsearch.end,
 		$mysql_table_blast.target,
 		$mysql_table_blast.evalue,
 		$mysql_table_taxa.name
@@ -263,9 +265,11 @@ sub get_hitlist_hashref {
 	foreach my $line ( @$data ) {
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
 			'hmmhit'       => $$line[2],
-			'blast_hit'    => $$line[3],
-			'blast_evalue' => $$line[4],
-			'species_name' => $$line[5],
+			'start'        => $$line[3],
+			'end'          => $$line[4],
+			'blast_hit'    => $$line[5],
+			'blast_evalue' => $$line[6],
+			'species_name' => $$line[7],
 		});
 	}
 	return $result;

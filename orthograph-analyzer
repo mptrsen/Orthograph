@@ -22,7 +22,7 @@ use warnings;       # cry if something seems odd
 
 # Core modules
 use Archive::Tar;   # handling tar archives
-use Carp;           # alternative warn and die
+use Carp;           # carp and croak: warn and die with call stack
 use Config;         # allows checking for system configuration in $Config
 use DBD::mysql;	    # MySQL database driver 
 use DBI;	          # database interface 

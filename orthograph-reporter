@@ -21,12 +21,13 @@ use strict;         # make me write clean code
 use warnings;       # cry if something seems odd
 
 # Core modules
+use Carp;           # carp and croak: warn and die with call stack
+use Data::Dumper;   # great for debugging
 use DBD::mysql;     # MySQL database driver
 use DBI;            # database interface
 use FindBin;        # locate the dir of this script during compile time
+use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
-use Data::Dumper;
-use Exporter;
 
 # Custom modules
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
@@ -104,6 +105,22 @@ my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'} ?
 	$config->{'hmmsearch_score_threshold'} :
 	undef;
 
+my $verbose = $config->{'verbose'};  # verbose output
+my $quiet   = $config->{'quiet'};    # i like my quiet
+
+GetOptions(
+	'v|verbose'      => \$verbose,
+	'q|verbose'      => \$quiet,
+);
+
+# mutually exclusive options
+die "Fatal: Can't operate in both verbose and quiet mode\n"
+	if ($verbose and $quiet);
+
+# mutually exclusive options
+die "Fatal: Can't use both e-value and score thresholds\n"
+	if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold);
+
 # More variables
 my $count                = 0;
 my $data_by_orthoid      = { };
@@ -111,19 +128,14 @@ my $out                  = { };
 my $data_by_transcript   = { };
 my $data_by_evalue       = { };
 my $table                = [ ];
-my $strict               = 1;
-my $max_miscount         = 3;
+my $strict               = 0;
 my $sort_by              = 'blasteval';
 my @reftaxa              = ( );
 my $species_id;
 my $set_id;
 my $match                = 0;
-my @this_reftaxa         = ( );
-
-# Create the list of reference taxa
-# This can be set in the config file, otherwise get all taxa in the set
-if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
-else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($setname) }
+my $mismatches           = 0;
+my $max_mismatches       = $soft_threshold;
 
 # get the species id from the database
 $species_id = Wrapper::Mysql::get_taxid_for_species($speciesname);
@@ -132,6 +144,11 @@ die "Fatal: No such species in database: '$speciesname'\n" unless ($species_id);
 # get the set id from the database
 $set_id = Wrapper::Mysql::get_set_id($setname);
 die "Fatal: No such set in database: '$setname'\n" unless ($set_id);
+
+# Create the list of reference taxa
+# This can be set in the config file, otherwise get all taxa in the set
+if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
+else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 
 # get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
@@ -163,6 +180,8 @@ foreach my $evalue (@evalues_sorted) {
 
 	ORTHOID:
 	while (my ($orthoid, $list) = each (%{$$hitlist{$evalue}})) {
+		# reset the mismatch counter
+		$mismatches = 0;
 
 		# has this orthoid been assigned before?
 		next ORTHOID unless exists $$aaseqs_in_orthoid{$orthoid};
@@ -170,12 +189,14 @@ foreach my $evalue (@evalues_sorted) {
 		# sort by reciprocal hit evalue
 		my $sorted_list = [ sort { $$a{'blast_evalue'} <=> $$b{'blast_evalue'} } @$list ];
 
-		print "checking out $orthoid with evalue $evalue\n";
+		print "checking out $orthoid with evalue $evalue: ", scalar @$sorted_list, " reciprocal hits\n"
+			if $verbose;
 
 		RH:
 		foreach my $reciprocal_hit (@$sorted_list) {
 			# find out if the aaseq_id is one of those used for this orthoid
-			print "  checking out hit " , Dumper($reciprocal_hit);
+			print "  checking out hit " , Dumper($reciprocal_hit)
+				if $verbose;
 
 			# has this aaseq been used in building this hmm and has this not been found previously?
 			# grep is the nicer solution but may not be as fast as a loop that we can exit after one match.
@@ -185,53 +206,60 @@ foreach my $evalue (@evalues_sorted) {
 			if (grep(/$$reciprocal_hit{'blast_hit'}/, @{$$aaseqs_in_orthoid{$orthoid}}) and not grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
 
 				$match = $reciprocal_hit;
-				push @this_reftaxa, $reciprocal_hit;
+
+				print "    $$reciprocal_hit{'blast_hit'} used in this HMM!\n"
+					if $verbose;
 
 				# one hit is enough if not in strict mode
 				last RH unless $strict;
 			}
 			else {  # not found
-				# ok, no match
-				undef $match;
-
 				# cry
-				print "    $$reciprocal_hit{'blast_hit'} not used in this HMM :(\n";
+				print "    $$reciprocal_hit{'blast_hit'} not used in this HMM (mismatch #", ++$mismatches, ") :(\n"
+					if $verbose;
 
 				# in a strict search, that's it for this orthoid
 				next ORTHOID if $strict;
+
+				# no match
+				undef $match;
+
+				# too many mismatches, we don't trust this one anymore
+				if ($mismatches >= $max_mismatches) {
+					print ">>    Too many mismatches, we don't trust this one anymore\n"
+						if $verbose;
+					next ORTHOID;
+				}
 			}
 
 		# END RH
 		}
 		# so, was this a match?
 		if ($match) {
-			if ($strict and scalar @this_reftaxa == @reftaxa) {
 
-				# yeah
-				printf ">>    assigned %s to %s\n",
-					$orthoid,
-					$$match{'hmmhit'},
-					#$$match{'blast_hit'},
-					#$$match{'blast_evalue'},
-				;
+			# yeah
+			printf ">>    assigned %s to %s\n",
+				$$match{'hmmhit'},
+				$orthoid,
+				#$$match{'blast_hit'},
+				#$$match{'blast_evalue'},
+				unless $quiet;
 
-				# this orthoid can't be found again
-				delete $$aaseqs_in_orthoid{$orthoid};
+			# this orthoid can't be found again
+			delete $$aaseqs_in_orthoid{$orthoid};
 
-				# this transcript can't be found again either
-				push @transcript_list, $$match{'hmmhit'};
+			# this transcript can't be found again either
+			push @transcript_list, $$match{'hmmhit'};
 
-				$$transcripts_mapped_to{$orthoid} = $$match{'hmmhit'};
+			$$transcripts_mapped_to{$orthoid} = $$match{'hmmhit'};
 
-				# reset 
-				@this_reftaxa = ( );
-				undef $match;
-			}
+			# reset 
+			undef $match;
 		}
 		else {
 			# this orthoid has no match
-			print "    $orthoid could not be assigned :((\n";
-			@this_reftaxa = ( );
+			print "    $orthoid could not be assigned :((\n"
+				unless $quiet;
 		}
 
 	# END ORTHOID
@@ -384,74 +412,76 @@ print $fh "</table>\n";
 print $fh "</body></html>\n";
 # close file
 undef $fh;
-
-my $miscount = 0;
-my $reftaxa_hitcount = 0;
-my $hit = 0;
-# walk through the e-values and examine each hit pair
-# it's a hash of hashes (of arrays)
-foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
-	# each e-value is associated with a orthoid that has generated a number of reciprocal hits
-	# let's examine each orthoid individually
-	foreach my $oid (keys %{$$data_by_evalue{$heval}}) {
-		# each orthoid is associated with a list of reciprocal hits
-		# which we'll traverse now
-		foreach my $i (0 .. scalar( @{$$data_by_evalue{$heval}{$oid}} ) - 1) {
-			# only if both orthoid and transcript have not been assigned before
-			if (
-				grep( /$$data_by_evalue{$heval}{$oid}[$i]{'digest'}/, @keys_transcripts )
-				and grep( /$oid/, @keys_orthoids )
-			)
-			{
-				# is the reftaxon of this hit in the reftaxa list?
-				if ( $miscount < $max_miscount and grep /$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'}/, @reftaxa ) {
-					# yes... but this is not enough!
-					#--------------------------------------------------
-					# printf "%.1e : %s and %s (%s: %.1e, hit #%d), count %d\n",
-					# 	$heval,
-					# 	$oid,
-					# 	$$data_by_evalue{$heval}{$oid}[$i]{'digest'},
-					# 	$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'},
-					# 	$$data_by_evalue{$heval}{$oid}[$i]{'blasteval'},
-					# 	$i + 1,
-					# 	$reftaxa_hitcount + 1,
-					# ;
-					#-------------------------------------------------- 
-					++$reftaxa_hitcount;
-					$hit = $i;
-				}
-				else {
-					++$miscount;
-				}
-			}
-		}
-		# all reference taxa were hit rectally
-		if ($strict and $reftaxa_hitcount == scalar @reftaxa) {
-			# make sure they only get assigned once by removing the id from the list
-			&remove_from_lists($heval, $oid, $hit);
-			print "==> all reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
-			# TODO insert this result into the database
-			# make a new result table
-			$count++;
-		}
-		# at least one reference taxon was hit
-		elsif (not $strict and $reftaxa_hitcount > 0) {
-			# do the same i guess
-			# make sure they only get assigned once by removing the id from the list
-			&remove_from_lists($heval, $oid, $hit);
-			print "==> $reftaxa_hitcount reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
-			# TODO insert this result into the database
-			# make a new result table
-			$count++;
-		}
-		# reset counters
-		$miscount         = 0;
-		$reftaxa_hitcount = 0;
-		$hit              = 0;
-	}
-}
-print $count, " final hits\n";
-
+#--------------------------------------------------
+# 
+# my $miscount = 0;
+# my $reftaxa_hitcount = 0;
+# my $hit = 0;
+# # walk through the e-values and examine each hit pair
+# # it's a hash of hashes (of arrays)
+# foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
+# 	# each e-value is associated with a orthoid that has generated a number of reciprocal hits
+# 	# let's examine each orthoid individually
+# 	foreach my $oid (keys %{$$data_by_evalue{$heval}}) {
+# 		# each orthoid is associated with a list of reciprocal hits
+# 		# which we'll traverse now
+# 		foreach my $i (0 .. scalar( @{$$data_by_evalue{$heval}{$oid}} ) - 1) {
+# 			# only if both orthoid and transcript have not been assigned before
+# 			if (
+# 				grep( /$$data_by_evalue{$heval}{$oid}[$i]{'digest'}/, @keys_transcripts )
+# 				and grep( /$oid/, @keys_orthoids )
+# 			)
+# 			{
+# 				# is the reftaxon of this hit in the reftaxa list?
+# 				if ( $miscount < $max_miscount and grep /$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'}/, @reftaxa ) {
+# 					# yes... but this is not enough!
+# 					#--------------------------------------------------
+# 					# printf "%.1e : %s and %s (%s: %.1e, hit #%d), count %d\n",
+# 					# 	$heval,
+# 					# 	$oid,
+# 					# 	$$data_by_evalue{$heval}{$oid}[$i]{'digest'},
+# 					# 	$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'},
+# 					# 	$$data_by_evalue{$heval}{$oid}[$i]{'blasteval'},
+# 					# 	$i + 1,
+# 					# 	$reftaxa_hitcount + 1,
+# 					# ;
+# 					#-------------------------------------------------- 
+# 					++$reftaxa_hitcount;
+# 					$hit = $i;
+# 				}
+# 				else {
+# 					++$miscount;
+# 				}
+# 			}
+# 		}
+# 		# all reference taxa were hit rectally
+# 		if ($strict and $reftaxa_hitcount == scalar @reftaxa) {
+# 			# make sure they only get assigned once by removing the id from the list
+# 			&remove_from_lists($heval, $oid, $hit);
+# 			print "==> all reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+# 			# TODO insert this result into the database
+# 			# make a new result table
+# 			$count++;
+# 		}
+# 		# at least one reference taxon was hit
+# 		elsif (not $strict and $reftaxa_hitcount > 0) {
+# 			# do the same i guess
+# 			# make sure they only get assigned once by removing the id from the list
+# 			&remove_from_lists($heval, $oid, $hit);
+# 			print "==> $reftaxa_hitcount reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
+# 			# TODO insert this result into the database
+# 			# make a new result table
+# 			$count++;
+# 		}
+# 		# reset counters
+# 		$miscount         = 0;
+# 		$reftaxa_hitcount = 0;
+# 		$hit              = 0;
+# 	}
+# }
+# print $count, " final hits\n";
+# 
+#-------------------------------------------------- 
 exit;
 
 =head2 remove_from_lists(KEY, ID)
