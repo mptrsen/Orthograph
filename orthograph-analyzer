@@ -144,6 +144,8 @@ my $outdir         = $config->{'output_directory'}      ? $config->{'output_dire
 my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
 my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
+# substitution character for selenocysteine, which normally leads to blast freaking out
+my $u_subst = $config->{'substitute_u_with'}            ? $config->{'substitute_u_with'}    : undef;
 my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
@@ -192,6 +194,7 @@ my $num_hmms;
 my $orthocount = 0;
 my $preparedb;
 my $protfile            = '';
+my $set_id              = undef;
 my $species_id          = undef;
 my $timestamp_start     = time();
 my @lt                  = localtime(time);
@@ -261,8 +264,9 @@ $blastdb = &make_blastdb($orthoset);
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
+$set_id = Wrapper::Mysql::get_set_id($orthoset);
 if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
-else { @reftaxa = Wrapper::Mysql::get_taxa_in_set() }
+else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 @hmmfiles = &hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
 
@@ -1201,7 +1205,7 @@ sub insert_taxon_into_table {
 	unless ($species_name) { croak("Usage: insert_taxon_into_table(SPECIESNAME)") }
 	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES ('$species_name', 0)";
 	&mysql_do($query) or warn "Warning: Insertion of species name into database failed: $DBI::errstr";
-	return(&Wrapper::Mysql::get_species_id($species_name));
+	return(Wrapper::Mysql::get_taxid_for_species($species_name));
 }
 
 # Sub: load_data_infile
@@ -1228,7 +1232,13 @@ sub load_data_infile {#{{{
 		$h =~ s/,/ /g;	# remove all commas from the header, they confuse the csv parser
 		$s =~ s/-//g;	# remove all gaps from the sequence
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
-			warn("Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+			# change all Us to X if requested
+			if ($u_subst and $s =~ s/U/$u_subst/gi) {
+				warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence $h.\n");
+			}
+			else {
+				warn("Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+			}
 		}
 		printf($tmpfh "%s,%d,%d,%s,%s\n", 
 			# good idea or not?
@@ -1281,7 +1291,7 @@ sub get_hmmresults {#{{{
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
 		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
-		WHERE $mysql_table_hmmsearch.$mysql_col_query = '" . $hmmquery . "'";
+		WHERE $mysql_table_hmmsearch.$mysql_col_query = '$hmmquery'";
 
 	# get the sequences from the database (as array->array reference)
 	my $results = &mysql_get($query_get_sequences);

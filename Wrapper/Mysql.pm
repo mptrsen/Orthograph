@@ -93,6 +93,43 @@ sub mysql_get {#{{{
 	return $results;
 }#}}}
 
+# Sub: get_ortholog_sets
+# Get list of ortholog sets from the database
+# Arguments: none
+# Returns: hash reference of set names => description
+sub get_ortholog_sets {#{{{
+	my %sets = ();
+	my $query = "SELECT * FROM $mysql_table_set_details";
+	my $data = &Wrapper::Mysql::mysql_get($query);
+	foreach my $item (@$data) {
+		$sets{$$item[1]} = $$item[2];
+	}
+	return(\%sets);
+}#}}}
+
+#TODO merge with get_ortholog_sets() into one function that accepts a query
+# Sub: list_ogs
+# Get list of OGS in the database
+# Arguments: none
+# Returns: array reference (list of OGS)
+sub get_list_of_ogs {#{{{
+	my %ogslist = ();
+	my $query = "SELECT DISTINCT $mysql_table_taxa.name , $mysql_table_ogs.version
+		FROM $mysql_table_aaseqs
+		INNER JOIN $mysql_table_seqpairs
+			ON $mysql_table_aaseqs.id  = $mysql_table_seqpairs.aa_seq
+		INNER JOIN $mysql_table_taxa
+			ON $mysql_table_seqpairs.taxid = $mysql_table_taxa.id
+		INNER JOIN $mysql_table_ogs
+			ON $mysql_table_taxa.id = $mysql_table_ogs.taxid"
+	;
+	my $data = &Wrapper::Mysql::mysql_get($query);
+	foreach my $item (@$data) {
+		$ogslist{$$item[0]} = $$item[1];
+	}
+	return(\%ogslist);
+}#}}}
+
 
 =head2 get_taxa_in_all_sets
 

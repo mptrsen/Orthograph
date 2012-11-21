@@ -124,6 +124,12 @@ mysql_dbserver             = 127.0.0.1
 # This is the default, uncomment if you want to turn it off.
 #clear_data  = 0
 
+# Selenocysteine (U) may occur in some protein sequences. However, Blast does
+# not accept this nonstandard amino acid symbol. You can tell Orthograph to
+# substitute all 'U' in the sequences with a different character. The default is
+# not to substitute.
+#substitute_u_with = X
+
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
 # you don't want to see this. If you are really interested in what Orthograph is
 # thinking during the analysis, uncomment this. Verbose and quiet are mutually
@@ -133,3 +139,12 @@ mysql_dbserver             = 127.0.0.1
 # Quiet output. Uncomment this if you don't want to be bothered during the
 # analysis. Verbose and quiet are mutually exclusive.
 #quiet       = 1
+
+
+#
+# # More directories
+# 
+# Sets directory. Useful if you would like to keep your ortholog sets (that is,
+# the BLAST database, the HMMs and the alignment files for each ortholog gene)
+# in a separate place. Defaults to /PATH/TO/ORTHOGRAPH/sets.
+#sets_dir    = /PATH/TO/SETS/DIR
