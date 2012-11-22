@@ -188,6 +188,41 @@ sub get_taxa_in_set {
 	return @reftaxa;
 }
 
+
+=head2 get_aaseqs_for_set(SETID)
+
+Returns a hashref for all aa sequences of taxa in a set, for creation of a BLAST database.
+Don't forget to undef this ref (or let it go out of scope), as it is potentially very large!
+
+Arguments: scalar int TAXID
+
+Returns: hashref { ID => SEQ }
+
+=cut
+sub get_aaseqs_for_set {
+	my $setid = shift @_ or croak "Usage: get_aaseqs_for_set(SETID)";
+
+	# get taxa in set, this returns a list of strings
+	my @taxa = &get_taxa_in_set($setid);
+
+	# make a string for the next query
+	my $taxa_string = join ',', map { $_ = "'$_'" } @taxa;
+
+	# get the taxids for them
+	my $taxids = &mysql_get("SELECT id FROM $mysql_table_taxa WHERE name IN ($taxa_string)");
+
+	# make a fucking string out of these fucking fucks
+	my $taxids_string = join ',', map { $$_[0] = "'$$_[0]'" } @$taxids;
+
+	# get the aaseqs for those taxids
+	# this is a potentially very large collection, i hope that's fine with you
+	my $aaseqs = &mysql_get("SELECT $mysql_table_aaseqs.id, $mysql_table_aaseqs.sequence FROM  $mysql_table_aaseqs WHERE $mysql_table_aaseqs.taxid IN ($taxids_string)");
+
+	my $aaseqs = { map { $$_[0] => $$_[1] } @$aaseqs };
+	return $aaseqs;
+}
+
+
 =head2 get_taxid_for_species(SPECIESNAME)
 
 Returns the taxid for a named species.

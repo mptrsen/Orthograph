@@ -256,15 +256,17 @@ if ($listspecies) {
 #-------------------------------------------------- 
 &intro;
 
+# get the set id
+$set_id = Wrapper::Mysql::get_set_id($orthoset);
+
 # prepare the HMMs
 $hmmdir = &make_hmms($orthoset);
 # prepare the BLAST database
-$blastdb = &make_blastdb($orthoset);
+$blastdb = &make_blastdb($set_id);
 
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
-$set_id = Wrapper::Mysql::get_set_id($orthoset);
 if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 @hmmfiles = &hmmlist($hmmdir);
@@ -684,8 +686,10 @@ sub intro {#{{{
 	FROM $mysql_table_set_details
 	WHERE $mysql_col_name = '$orthoset'
 	LIMIT 1");
-	die("Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n") unless $$settest[0][0];
+	die("Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n")
+		unless $$settest[0][0];
 
+	return 1;
 }#}}}
 
 # Sub: hmmlist
@@ -1144,59 +1148,42 @@ sub hmmbuild {#{{{
 # Arguments: Scalar string ortholog set name
 # Returns: Scalar string path_to_blastdbfile
 sub make_blastdb {#{{{
-	my $setname = shift or croak('Usage: make_blastdb($setname)');
+	my $setid = shift or croak('Usage: make_blastdb(SETID)');
 
 	# build the paths for input and output
-	my $blastpath = &mysql_get("SELECT DISTINCT $mysql_col_blastdbpath
-		FROM $mysql_table_blastdbs
-		INNER JOIN $mysql_table_set_details
-		ON $mysql_table_set_details.name = '$setname'
-		LIMIT 1");
-	my $dbfile = File::Spec->catfile($sets_dir, $setname, 'blast', $setname);
+	my $dbfile = File::Spec->catfile($sets_dir, $orthoset, 'blast', $orthoset);
 	my $infile = File::Spec->catfile($dbfile . ".fa");
 
 	# check whether a database already exists
 	if (-e File::Spec->catfile($dbfile . '.psq')) {
-		print "BLAST DB for set $setname exists in $dbfile.\n"
+		print "BLAST DB for set $orthoset exists in $dbfile.\n"
 			unless $quiet;
 		return $dbfile;
 	}
 
 	# database not extant, we have to create it
-	$| = 1;
-	print "BLAST DB for set $setname does not exist, creating in $dbfile... "
+	print "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
 		unless $quiet;
-	$| = 0;
-	# get the sequences from the database
-	my $query = "SELECT $mysql_table_aaseqs.id, $mysql_table_aaseqs.sequence
-		FROM $mysql_table_aaseqs
-		INNER JOIN $mysql_table_seqpairs
-		ON $mysql_table_seqpairs.aa_seq = $mysql_table_aaseqs.id
-		INNER JOIN $mysql_table_orthologs
-		ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id
-		INNER JOIN $mysql_table_set_details
-		ON $mysql_table_set_details.id = $mysql_table_orthologs.setid
-		WHERE $mysql_table_set_details.name = '$setname'";
 	my $infh = File::Temp->new();
-	my $dbh = &mysql_dbh();
-	my $sth = $dbh->prepare($query);
-	$sth->execute();
+	# get the sequences from the database
+	my $sequences = Wrapper::Mysql::get_aaseqs_for_set($setid);
+
 	# write to output file
-	while (my ($h, $s) = $sth->fetchrow_array()) {
+	while (my ($h, $s) = each %$sequences) {
 		# make sure the sequence has only valid characters
-		if ($s !~ /^[ACDEFGHIKLMNPQRSTVWXYZUX]+$/) {
-			warn("Warning: Invalid characters in protein sequence $h. Let's hope BLAST will not choke on this one:\n$s");
+		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWXYZUX]+)/) {
+			warn("Warning: Invalid characters '$1' in protein sequence $h. Let's hope BLAST will not choke on this one.\n");
 		}
 		printf($infh ">%s\n%s\n", $h, $s)
 			or croak("Fatal: Could not write to file $infile\: $!\n");
 	}
-	$dbh->disconnect();
+	undef $sequences;
 	close($infh);
+	
 
 	# make blast database
 	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset > /dev/null);
 	system(@makeblastdbcmd) and croak("Fatal: makeblastdb failed: $!\n");
-	print "\n";
 	return $dbfile;
 }#}}}
 
