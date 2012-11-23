@@ -188,6 +188,43 @@ sub get_taxa_in_set {
 	return @reftaxa;
 }
 
+sub get_number_of_ests_for_specid {
+	my $specid = shift @_ or croak "Usage: get_number_of_ests_for_specid(SPECID)";
+
+	my $result = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE taxid = '$specid'");
+
+	return $$result[0][0];
+}
+
+sub get_taxids_in_set {
+	my $setid = shift @_ or croak "Usage: get_taxids_in_set(SETID)";
+
+	# get list of taxon names for this set
+	my @taxa = &get_taxa_in_set($setid);
+
+	# make a string for the next query
+	my $taxa_string = join ',', map { $_ = "'$_'" } @taxa;
+
+	# get the taxids for them
+	my $taxids = &mysql_get("SELECT id FROM $mysql_table_taxa WHERE name IN ($taxa_string)");
+
+	return $taxids;
+}
+
+sub get_number_of_ests_for_set {
+	my $setid = shift @_ or croak "Usage: get_taxids_in_set(SETID)";
+
+	# get list of taxids for this set
+	my $taxids = &get_taxids_in_set($setid);
+
+	# make a fucking string out of these fucking fucks
+	my $taxids_string = join ',', map { $$_[0] = "'$$_[0]'" } @$taxids;
+
+	# get the number of aaseqs for those taxids
+	my $aaseqs = &mysql_get("SELECT COUNT(*) FROM  $mysql_table_aaseqs WHERE $mysql_table_aaseqs.taxid IN ($taxids_string)");
+
+	return $$aaseqs[0][0];
+}
 
 =head2 get_aaseqs_for_set(SETID)
 
@@ -202,14 +239,8 @@ Returns: hashref { ID => SEQ }
 sub get_aaseqs_for_set {
 	my $setid = shift @_ or croak "Usage: get_aaseqs_for_set(SETID)";
 
-	# get taxa in set, this returns a list of strings
-	my @taxa = &get_taxa_in_set($setid);
-
-	# make a string for the next query
-	my $taxa_string = join ',', map { $_ = "'$_'" } @taxa;
-
 	# get the taxids for them
-	my $taxids = &mysql_get("SELECT id FROM $mysql_table_taxa WHERE name IN ($taxa_string)");
+	my $taxids = &get_taxids_in_set($setid);
 
 	# make a fucking string out of these fucking fucks
 	my $taxids_string = join ',', map { $$_[0] = "'$$_[0]'" } @$taxids;

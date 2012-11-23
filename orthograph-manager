@@ -355,7 +355,7 @@ unless (defined $setname) { croak "Fatal: You must specify the core-ortholog set
 # # read the input file and create a CSV file with everything we know 
 #-------------------------------------------------- 
 
-my $tmpfile = File::Temp->new(UNLINK=>0);
+my $tmpfile = File::Temp->new(UNLINK=>1);
 
 my $faobj = Seqload::Fasta->open($infile);
 no warnings;	# disable warnings for printing of the NULL column

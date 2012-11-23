@@ -200,7 +200,7 @@ my $timestamp_start     = time();
 my @lt                  = localtime(time);
 my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
 my $tmpdir              = File::Temp->newdir(
-                            'UNLINK' => 0, 
+                            'UNLINK' => 1, 
                             'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
 my @backup;
 my @hmmfiles;
@@ -297,25 +297,25 @@ if ($clear_data) {
 
 # create a new entry in the taxa table, returns taxid
 $species_id = &insert_taxon_into_table($species_name);
-print "Created new taxon id $species_id for $species_name\n" unless $quiet;
+print "Created new taxon id $species_id for '$species_name'\n" unless $quiet;
 
 # store est data into the database:
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 # LOAD DATA INFILE; third arg must be ref to array of column names
-$num_ests = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 
-printf("%d sequences stored to database '%s' on %s. \n",
-	$num_ests,
-	$mysql_dbname,
-	$mysql_dbserver) unless $quiet;
-
-# get number of transcript sequences
-$num_ests = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'");
-$num_ests = $$num_ests[0][0];
-if ($num_ests == 0) {
-	warn "No sequences found. Something went wrong. Check your input. Exiting.\n";
-	exit;
+# get number of sequences for this species, report or die
+$num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
+if ($num_ests != 0) {
+	printf("%d sequences of %s in database '%s' on %s. \n",
+		$num_ests,
+		$species_name,
+		$mysql_dbname,
+		$mysql_dbserver) unless $quiet;
+}
+else {
+	die "No sequences found for taxon id $species_id. Something went wrong. Check your input. Exiting.\n";
 }
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
@@ -427,8 +427,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			#	...
 			# ah, it used to be useful during testing
 			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));
+		# get sequence length
+		my ($start, $end) = ($hmmresults[$n][2], $hmmresults[$n][3]);
+		my $length = $end - $start;
 		# write fasta header and sequence to the tempfile
-		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], $hmmresults[$n]->[1]);
+		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], substr($hmmresults[$n]->[1], $$start, $$length));
 
 		#--------------------------------------------------
 		# # run blastp 
@@ -883,19 +886,23 @@ sub clear_db {#{{{
 	# clear previous results from the same species
 	my $dbh = &mysql_dbh();
 	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch) {
-		my $temptable = $table . '_save';
-		my $oldtable  = $table . '_old';
-		$dbh->do("CREATE TABLE $temptable LIKE $table")
-			or die "$!";
-		$dbh->do("INSERT INTO $temptable SELECT * FROM $table WHERE $mysql_col_taxid != '$specid'")
-			or die "$!";
-		$dbh->do("RENAME TABLE $table TO $oldtable, $temptable TO $table")
-			or die "$!";
-		$dbh->do("DROP TABLE $oldtable")
-			or die "$!";
-		# disconnect ASAP
+		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = '$specid'";
+		$dbh->do($query);
+		#--------------------------------------------------
+		# my $temptable = $table . '_save';
+		# my $oldtable  = $table . '_old';
+		# $dbh->do("CREATE TABLE $temptable LIKE $table")
+		# 	or die "$!";
+		# $dbh->do("INSERT INTO $temptable SELECT * FROM $table WHERE $mysql_col_taxid != '$specid'")
+		# 	or die "$!";
+		# $dbh->do("RENAME TABLE $table TO $oldtable, $temptable TO $table")
+		# 	or die "$!";
+		# $dbh->do("DROP TABLE $oldtable")
+		# 	or die "$!";
+		#-------------------------------------------------- 
 	}
 	$dbh->do("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = '$specid'") or die "$!";
+	# disconnect ASAP
 	$dbh->disconnect();
 
 	return 1;
@@ -1213,7 +1220,7 @@ sub load_data_infile {#{{{
 	}
 
 	# Create temporary csv file for high-speed reading into database
-	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
+	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
 	my $protfh = Seqload::Fasta->open($protfile);
 	while (my ($h, $s) = $protfh->next_seq()) {
 		$h =~ s/,/ /g;	# remove all commas from the header, they confuse the csv parser
@@ -1255,7 +1262,8 @@ sub load_data_infile {#{{{
 # Arguments: None
 # Returns: Filehandle
 sub get_transcripts {#{{{
-	my $tmpfh = File::Temp->new('UNLINK' => 0, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+	my $counter = 0;
 	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
@@ -1263,8 +1271,11 @@ sub get_transcripts {#{{{
 	while (my ($h, $s) = $sth->fetchrow_array()) {
 		printf($tmpfh ">%s\n%s\n", $h, $s)
 			or croak("Fatal: Could not write to file $tmpfh\: $!\n");
+		++$counter;
 	}
 	$dbh->disconnect();
+	print "Wrote $count sequences to $tmpfh\n"
+		unless $quiet;
 	return $tmpfh;
 }#}}}
 
@@ -1274,7 +1285,7 @@ sub get_transcripts {#{{{
 # Returns: reference to array of arrays
 sub get_hmmresults {#{{{
 	my $hmmquery = shift;
-	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_digest, $mysql_table_ests.$mysql_col_seq
+	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_digest, $mysql_table_ests.$mysql_col_seq, $mysql_table_hmmsearch.start, $mysql_table_hmmsearch.end
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
 		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
