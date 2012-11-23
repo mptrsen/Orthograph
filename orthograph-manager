@@ -210,10 +210,11 @@ my %create_table = (#{{{
 	'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
     `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `taxid`        INT             NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(512), 
+    `header`       VARCHAR(512),             INDEX(header),
     `sequence`     MEDIUMBLOB,
     `user`         INT UNSIGNED,
-    `date`         INT UNSIGNED)",
+    `date`         INT UNSIGNED)
+		",
 
 	# table: sequences_nt
 	# deleted: UNIQUE(header),

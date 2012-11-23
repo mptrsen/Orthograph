@@ -249,7 +249,7 @@ sub get_aaseqs_for_set {
 	# this is a potentially very large collection, i hope that's fine with you
 	my $aaseqs = &mysql_get("SELECT $mysql_table_aaseqs.id, $mysql_table_aaseqs.sequence FROM  $mysql_table_aaseqs WHERE $mysql_table_aaseqs.taxid IN ($taxids_string)");
 
-	my $aaseqs = { map { $$_[0] => $$_[1] } @$aaseqs };
+	$aaseqs = { map { $$_[0] => $$_[1] } @$aaseqs };
 	return $aaseqs;
 }
 
