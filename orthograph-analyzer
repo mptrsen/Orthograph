@@ -200,7 +200,7 @@ my $timestamp_start     = time();
 my @lt                  = localtime(time);
 my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
 my $tmpdir              = File::Temp->newdir(
-                            'UNLINK' => 1, 
+                            'UNLINK' => 0, 
                             'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
 my @backup;
 my @hmmfiles;
@@ -274,6 +274,8 @@ $num_hmms = scalar(@hmmfiles);
 
 
 unless ($quiet) {#{{{
+	print "Using temporary directory $tmpdir.\n"
+		if $tmpdir;
   print "Using HMM dir $hmmdir with ", scalar(@hmmfiles), " HMM files.\n" 
     if $hmmdir;
   print "Using HMM file $hmmfile.\n" 
@@ -334,6 +336,7 @@ if ($verbose) {
 
 # debug output
 if ($debug) {
+	$verbose = 1;
 	Wrapper::Hmmsearch->debug(1);
 	Wrapper::Blastp->debug(1);
 }
@@ -422,14 +425,14 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 		# setup a temporary file to hold the sequence to be blasted
 		my $tmpfile = File::Temp->new(
-			'UNLINK' => 1, 
-			# if you unlink it right away, why bother with the template?
-			#	...
-			# ah, it used to be useful during testing
+			'UNLINK' => 0, 
 			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));
+		# don't delete this file if debugging
+		$tmpfile->unlink_on_destroy(0) if $debug;
 		# get sequence length
 		my ($start, $end) = ($hmmresults[$n][2] - 1, $hmmresults[$n][3] - 1);
 		my $length = $end - $start;
+		print "Writing temporary sequence '$hmmresults[$n][1]' to $tmpfile\n" if $debug;
 		# write fasta header and sequence to the tempfile
 		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], substr($hmmresults[$n]->[1], $start, $length));
 
@@ -888,18 +891,6 @@ sub clear_db {#{{{
 	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch) {
 		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = '$specid'";
 		$dbh->do($query);
-		#--------------------------------------------------
-		# my $temptable = $table . '_save';
-		# my $oldtable  = $table . '_old';
-		# $dbh->do("CREATE TABLE $temptable LIKE $table")
-		# 	or die "$!";
-		# $dbh->do("INSERT INTO $temptable SELECT * FROM $table WHERE $mysql_col_taxid != '$specid'")
-		# 	or die "$!";
-		# $dbh->do("RENAME TABLE $table TO $oldtable, $temptable TO $table")
-		# 	or die "$!";
-		# $dbh->do("DROP TABLE $oldtable")
-		# 	or die "$!";
-		#-------------------------------------------------- 
 	}
 	$dbh->do("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = '$specid'") or die "$!";
 	# disconnect ASAP
@@ -1263,7 +1254,7 @@ sub load_data_infile {#{{{
 # Returns: Filehandle
 sub get_transcripts {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
-	my $counter = 0;
+	my $nseqs = 0;
 	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
@@ -1271,10 +1262,10 @@ sub get_transcripts {#{{{
 	while (my ($h, $s) = $sth->fetchrow_array()) {
 		printf($tmpfh ">%s\n%s\n", $h, $s)
 			or croak("Fatal: Could not write to file $tmpfh\: $!\n");
-		++$counter;
+		++$nseqs;
 	}
 	$dbh->disconnect();
-	print "Wrote $count sequences to $tmpfh\n"
+	print "Wrote $nseqs sequences to $tmpfh\n"
 		unless $quiet;
 	return $tmpfh;
 }#}}}
