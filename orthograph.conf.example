@@ -94,6 +94,10 @@ blast_evalue_threshold     = 1e-05
 #hmmsearch_score_threshold = 10
 #blast_score_threshold     = 10
 
+# Maximum number of HMMsearch hits to consider.
+# Defaults to 20.
+max_blast_searches         = 20
+
 # Maximum number of BLAST hits to consider for ortholog candidates.
 # Defaults to 100.
 blast_max_hits             = 100

@@ -95,6 +95,7 @@ my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastd
 my $aaoutdir       = $config->{'aaoutdir'}              ? $config->{'aaoutdir'}             : 'aa';
 my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
 my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 10;
+my $max_blast_searches     = $config->{'max_blast_searches'}            ? $config->{'max_blast_searches'}           : 20;
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
 my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
 my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
@@ -420,10 +421,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	my @hmmresults = @{&get_hmmresults($hmmobj->hits_arrayref->[0]{'query'})};
 
 	# don't do too many blast searches...
-	my $max_blast_searches = scalar(@hmmresults) >= 20 ? 20 : scalar(@hmmresults);
+	my $max = scalar(@hmmresults) >= $max_blast_searches ? $max_blast_searches : scalar(@hmmresults);
 
 	HMMRESULT:
-	for (my $n = 0; $n < $max_blast_searches; ++$n) { #{{{
+	for (my $n = 0; $n < $max; ++$n) { #{{{
  		++$count;
 
 		# setup a temporary file to hold the sequence to be blasted
@@ -1201,7 +1202,7 @@ sub insert_taxon_into_table {
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $species_name, 0 )
 		or warn "Warning: Insertion of species name into database failed: $DBI::errstr";
-	$dbh->disconnnect();
+	$dbh->disconnect();
 	return(Wrapper::Mysql::get_taxid_for_species($species_name));
 }
 
