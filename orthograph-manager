@@ -116,6 +116,7 @@ my %t            = (
 my $blastdir          = '';
 my $create            = 0;
 my $delete_all        = 0;
+my $delete_ogs        = '';
 my $delete_set        = '';
 my $description;
 my $isnucleotide      = 0;
@@ -142,6 +143,7 @@ GetOptions(
 	'c|create'     => \$create,
 	'delete-all'   => \$delete_all,
 	'delete-set=s' => \$delete_set,
+	'delete-ogs=s' => \$delete_ogs,
 	'h=s'          => \$mysql_dbserver,
 	'le'           => \$listests,	# TODO implement
 	'lo'           => \$listogs,
@@ -262,19 +264,8 @@ if ($delete_all) {
 #-------------------------------------------------- 
 elsif ($create) {
 	print "This will create a new orthograph database. Any existing database structures will be erased. Are you sure (y/n)? ";
-	$| = 0;
-	my $yn = readline(STDIN);
-	chomp $yn;
-	until ($yn =~ /^[yn]$/) {
-		print "Response '$yn' not understood. Are you sure (y/n)? ";
-		$yn = readline(STDIN);
-		chomp $yn;
-	}
-	if ($yn eq 'n') {
-		exit;
-	}
+	&get_yn() or exit;
 	print "OK, whatever you say.\n";
-	$| = 1;
 	&drop_tables;
 	&create_tables;
 	print "Database cleared\n";
@@ -284,6 +275,13 @@ elsif ($create) {
 elsif ($delete_set) { 
 	&delete_set($delete_set);
 	print "OK, removed set '$delete_set' completely.\n";
+	exit;
+}
+elsif ($delete_ogs) {
+	print "Deleting OGS sequences from $delete_ogs. Are you sure (y/n)? ";
+	&get_yn() or exit;
+	my $c = &delete_ogs($delete_ogs);
+	print "OK, removed $c sequences for OGS '$delete_ogs' from the database.\n";
 	exit;
 }
 
@@ -340,7 +338,7 @@ if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) 
 	$| = 0;
 	my $yn = readline(STDIN);
 	chomp $yn;
-	unless ($yn eq 'y') {
+	unless ($yn =~ /^[yn]$/i) {
 		print "OK, exiting.\n";
 		exit;
 	}
@@ -576,6 +574,26 @@ sub create_tables {#{{{
 	$dbh->disconnect;
 }#}}}
 
+# sub: get_yn
+# Get a response of the type 'y' or 'n'. Prompts the user until she complies :D
+# returns 1 on 'y', 0 on 'n'
+sub get_yn {
+	local $| = 0;
+	my $yn = readline(STDIN);
+	chomp $yn;
+	until ($yn =~ /^[yn]$/) {
+		print "Response '$yn' not understood. Are you sure (y/n)? ";
+		$yn = readline(STDIN);
+		chomp $yn;
+	}
+	if ($yn eq 'n') {
+		$| = 1;
+		return 0;
+	}
+	$| = 1;
+	return 1;
+}
+
 # Sub: load_taxon
 # Loads sequence data into the database.
 # Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
@@ -606,7 +624,7 @@ sub load_taxon {#{{{
 	my $taxon;
 
 	# make sure the user doesn't fuck up
-	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1)) {
+	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1) or !defined($in)) {
 		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
 		$in = <STDIN>;
 		chomp $in;
@@ -848,6 +866,46 @@ sub delete_set {#{{{
 	}
 	return 1;
 }#}}}
+
+sub delete_ogs {
+	my $ogsfile = shift @_ or confess("Usage: delete_ogs(OGSFILE)");
+
+	# get taxon shorthand
+	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'taxa'} WHERE `core` = '1'");
+	print "This is a list of present taxa in the database:\n";
+	for (my $i = 0; $i < scalar(@$list); ++$i) {
+		printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
+	}
+	print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
+	my $in = <STDIN>;
+	chomp $in;
+	my $taxid;
+
+	# make sure the user doesn't fuck up
+	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1) or !defined($in)) {
+		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
+		$in = <STDIN>;
+		chomp $in;
+	}
+	
+	# correlate that number to the list of taxa
+	$taxid = $$list[$in-1][0];
+
+	# open the file and delete each sequence (slow, I know...)
+	my $ogsfh = Seqload::Fasta->open($ogsfile);
+	my $dbh = Wrapper::Mysql::mysql_dbh();
+	my $count = 0;
+	while (my ($h, $s) = $ogsfh->next_seq()) {
+		my $sth = $dbh->prepare("DELETE FROM $mysql_table_aaseqs WHERE header = ? LIMIT 1");
+		$sth->execute( $h );
+		$count += $sth->rows;
+	}
+
+	my $sth = $dbh->prepare("DELETE FROM $mysql_table_ogs WHERE taxid = ?");
+	$sth->execute( $taxid );
+	$dbh->disconnect();
+	return $count;
+}
 
 # Documentation after the code#{{{
 =head1 NAME 
