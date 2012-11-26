@@ -1,4 +1,1 @@
-Integrate mysql.pl functionality into the main program
-add a --delete_ogs option to orthograph_manager. this may require supplying the original ogs file for selection of the proper sequence ids.
-Read up on MySQL FOREIGN KEY constraints and re-design the db structure using foreign keys in order to reduce information redundancy. This may be scheduled for later releases.
-Optionally substitute U in sequences with a user-defined character so blast doesn't get confused
+Read up on MySQL FOREIGN KEY constraints and re-design the db structure using foreign keys in order to reduce information redundancy. This may be scheduled for later releases. # nah
