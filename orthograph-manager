@@ -365,7 +365,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 	if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
 		# change all Us to X if requested
 		if ($u_subst and $seq =~ s/U/$u_subst/gi) {
-			warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence $hdr.\n");
+			warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence '$hdr'.\n");
 		}
 		else {
 			warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
@@ -588,7 +588,7 @@ sub load_taxon {#{{{
 	my $otherseqtable = $mode ? $t{'ntseqs'} : $t{'aaseqs'};
 	my $seqcol = $mode ? 'aa_seq' : 'nt_seq';
 	my $otherseqcol = $mode ? 'nt_seq' : 'aa_seq';
-	my $type = $mode ? 'nt' : 'aa';
+	my $type = $mode ? 'aa' : 'nt';
 	if ($mode) {
 		my $blastdb = shift(@_) or croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n"); 
 	}
@@ -631,7 +631,7 @@ sub load_taxon {#{{{
 			if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
 				# change all Us to X if requested
 				if ($u_subst and $seq =~ s/U/$u_subst/gi) {
-					warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence $hdr.\n");
+					warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence '$hdr'.\n");
 				}
 				else {
 					warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");

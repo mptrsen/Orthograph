@@ -435,9 +435,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# get sequence length
 		my ($start, $end) = ($hmmresults[$n][2] - 1, $hmmresults[$n][3] - 1);
 		my $length = $end - $start;
-		print "Writing temporary sequence '$hmmresults[$n][1]' to $tmpfile\n" if $debug;
+		# print "Writing temporary sequence '$hmmresults[$n][1]' to $tmpfile\n" if $debug;
 		# write fasta header and sequence to the tempfile
 		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], substr($hmmresults[$n]->[1], $start, $length));
+		print "Wrote sequence [$n] to $tmpfile\n" if $debug;
 
 		#--------------------------------------------------
 		# # run blastp 
