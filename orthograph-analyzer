@@ -199,6 +199,7 @@ my $species_id          = undef;
 my $timestamp_start     = time();
 my @lt                  = localtime(time);
 my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
+# create new temporary directory and set it to not be deleted if debugging
 my $tmpdir              = File::Temp->newdir(
                             'UNLINK' => 0, 
                             'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
@@ -229,6 +230,8 @@ GetOptions( 'v'        => \$verbose,
 	'quiet'              => \$quiet,
 	'taxon=s'            => \$species_name,
 ) or die("Fatal: I don't know what you want me to do. Terminating.\n");#}}}
+
+$tmpdir->unlink_on_destroy(0) if $debug;
 
 #--------------------------------------------------
 # # Special case: Prepare the MySQL database by dropping and recreating all

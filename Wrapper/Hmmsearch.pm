@@ -226,8 +226,8 @@ sub hits_arrayref {#{{{
       'query'  => $line[3],		# query ID
       'evalue' => $line[12],	# e-value of the best domain
       'score'  => $line[13],	# score of the best domain
-      'start'  => $line[15],	# beginning of domain
-      'end'    => $line[16],	# end of domain
+      'start'  => $line[17],	# beginning of domain
+      'end'    => $line[18],	# end of domain
     });
   }
   # this is an array reference
