@@ -114,6 +114,7 @@ sub get_ortholog_sets {#{{{
 # Returns: array reference (list of OGS)
 sub get_list_of_ogs {#{{{
 	my %ogslist = ();
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT $mysql_table_taxa.name , $mysql_table_ogs.version
 		FROM $mysql_table_aaseqs
 		INNER JOIN $mysql_table_seqpairs
@@ -142,6 +143,7 @@ Returns: hash of scalars
 =cut
 sub get_taxa_in_all_sets {
 	my %setlist = ();
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT $mysql_table_set_details.name, $mysql_table_taxa.name
 		FROM $mysql_table_seqpairs
 		INNER JOIN $mysql_table_taxa
@@ -171,6 +173,7 @@ sub get_taxa_in_set {
 	my $set_id = shift @_;
 	unless ($set_id) { croak("Usage: get_taxa_in_set(SETNAME)") }
 	my @reftaxa;
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT $mysql_table_set_details.name, $mysql_table_taxa.name
 		FROM $mysql_table_seqpairs
 		INNER JOIN $mysql_table_taxa
@@ -191,6 +194,7 @@ sub get_taxa_in_set {
 sub get_number_of_ests_for_specid {
 	my $specid = shift @_ or croak "Usage: get_number_of_ests_for_specid(SPECID)";
 
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $result = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE taxid = '$specid'");
 
 	return $$result[0][0];
@@ -206,6 +210,7 @@ sub get_taxids_in_set {
 	my $taxa_string = join ',', map { $_ = "'$_'" } @taxa;
 
 	# get the taxids for them
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $taxids = &mysql_get("SELECT id FROM $mysql_table_taxa WHERE name IN ($taxa_string)");
 
 	return $taxids;
@@ -221,6 +226,7 @@ sub get_number_of_ests_for_set {
 	my $taxids_string = join ',', map { $$_[0] = "'$$_[0]'" } @$taxids;
 
 	# get the number of aaseqs for those taxids
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $aaseqs = &mysql_get("SELECT COUNT(*) FROM  $mysql_table_aaseqs WHERE $mysql_table_aaseqs.taxid IN ($taxids_string)");
 
 	return $$aaseqs[0][0];
@@ -247,6 +253,7 @@ sub get_aaseqs_for_set {
 
 	# get the aaseqs for those taxids
 	# this is a potentially very large collection, i hope that's fine with you
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $aaseqs = &mysql_get("SELECT $mysql_table_aaseqs.id, $mysql_table_aaseqs.sequence FROM  $mysql_table_aaseqs WHERE $mysql_table_aaseqs.taxid IN ($taxids_string)");
 
 	$aaseqs = { map { $$_[0] => $$_[1] } @$aaseqs };
@@ -266,6 +273,7 @@ Returns: scalar int TAXID
 sub get_taxid_for_species {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT id FROM $mysql_table_taxa WHERE core = 0 AND longname = '$species_name'";
 	my $result = &mysql_get($query);
 	if ($result) { return $$result[0][0] }
@@ -284,6 +292,7 @@ Returns: scalar int SETID
 sub get_set_id {
 	my $setname = shift(@_);
 	unless ($setname) { croak("Usage: get_set_id(SETNAME)") }
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT id FROM $mysql_table_set_details WHERE name = '$setname'";
 	my $result = &mysql_get($query);
 	if ( scalar(@$result) > 1 ) { 
@@ -297,6 +306,7 @@ sub get_set_id {
 sub get_orthologs_for_set_hashref {
 	my $setid = shift(@_);
 	unless ($setid) { croak("Usage: get_orthologs_for_set(SETID)") }
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT $mysql_table_orthologs.ortholog_gene_id, $mysql_table_aaseqs.id 
 		FROM $mysql_table_orthologs 
 		INNER JOIN $mysql_table_seqpairs 
@@ -340,6 +350,7 @@ Returns: hashref of hashrefs of arrayrefs of hashrefs - lol
 sub get_hitlist_hashref {
 	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
 	my $setid  = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT
 		$mysql_table_hmmsearch.evalue,
 		$mysql_table_orthologs.ortholog_gene_id, 
@@ -381,6 +392,7 @@ sub get_hitlist_hashref {
 sub get_hit_transcripts {
 	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
 	my $setid  = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT
 		$mysql_table_hmmsearch.target
 		FROM $mysql_table_hmmsearch

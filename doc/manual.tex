@@ -1,0 +1,86 @@
+%        File: manual.tex
+%     Created: Mon 2012-11-26 Nov:11 C
+% Last Change: Mon 2012-11-26 Nov:11 C
+%
+\documentclass[a4paper]{scrartcl}
+\usepackage[T1]{fontenc}			% International font encoding
+\usepackage[utf8]{inputenc}		% input encoding: utf-8
+
+%--------------------------------------------------
+% \usepackage[german]{babel}		% German language 
+\usepackage{lmodern}					% font looks better on screen
+\usepackage{microtype}				% even better
+% \usepackage[cm]{fullpage}			% more space on the page
+% \usepackage{natbib}
+% \bibpunct{[}{]}{,}{n}{}{;}		% citing format:
+% 1. opening bracket symbol, default = (
+% 2. closing bracket symbol, default = )
+% 3. punctuation between multiple citations, default = ;
+% 4. 'n' for numerical style, 's' for numerical superscript style, default = author-year;
+% 5. punctuation between the author names and the year
+% 6. punctuation between years or numbers when common author lists are suppressed (default = ,);
+
+% Math symbols and stuff
+%--------------------------------------------------
+% \usepackage{amsmath}					% all the fancy math stuff
+% \usepackage{amssymb}					% more math symbols
+% \usepackage{wasysym}					% even MORE math symbols
+% \usepackage{upgreek}					% upright Greek letters
+
+% Enhanced formatting
+%--------------------------------------------------
+% \usepackage{color}						% enable color
+% \usepackage{colortbl}					% colored tables
+% \usepackage{graphicx}					% fancy graphics
+% \usepackage{wrapfig}					% wrap figures
+% \usepackage{tabularx}					% better tables
+% \usepackage{enumerate}				% customize numbered lists
+% \usepackage{tocloft}					% fancy table of content
+% \usepackage{caption}					% extended captioning, e.g. without numbers
+% \usepackage{fancyhdr}					% fancy header customisation
+% \usepackage[parfill]{parskip} % vspace instead of indentation
+% \usepackage{geometry}					% customize page size, margins etc
+
+% Extra stuff, glossary, index etc
+%--------------------------------------------------
+% \usepackage{glossaries}				% glossaries
+% \usepackage{makeidx}					% index
+% \usepackage{showidx}					% print index items for debugging
+% \usepackage{url}
+% \usepackage{hyperref}					% should be loaded last
+% \usepackage{syntonly}					% check for syntax only; much faster
+% \syntaxonly										% comment if output is desired
+% \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}	% dots in TOC
+
+% Stuff that doesn't fit in any category
+% \usepackage{lastpage}					% provides total number of pages, use with:
+%																% \pageref{LastPage}
+%-------------------------------------------------- 
+
+\title{Orthograph}
+\author{Malte Petersen}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\section{Notes on HMMer3}
+
+HMMer3 uses three notions to report endpoints of the alignment regions: Two
+give the endpoints of the reported local alignment with respect to the query
+model (``hmm from'' and ``hmm to'') and the target sequence (``ali from'' and
+``ali to''). The third defines the \emph{envelope} (``env from'' and ``env to'')
+of the domain's location on the target sequence. It is mostly a little (or a
+lot) wider than than what HMMer thinks is a reasonably confident alignment and
+represents a subsequence whose endpoints are only fuzzily inferrable.
+
+Orthograph uses the envelope coordinates for its analysis, and this is normally
+fine when working with high-scoring domains that are not close to each other.
+However, be aware that the envelope coordinates of hmmsearch hits can and will
+overlap when two weaker-scoring domains are close to each other, and this may
+lead to some hits getting excluded because overlaps are not allowed in ortholog
+regions. 
+
+\end{document}
+
+

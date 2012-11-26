@@ -438,7 +438,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# print "Writing temporary sequence '$hmmresults[$n][1]' to $tmpfile\n" if $debug;
 		# write fasta header and sequence to the tempfile
 		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], substr($hmmresults[$n]->[1], $start, $length));
-		print "Wrote sequence [$n] to $tmpfile\n" if $debug;
+		printf("Wrote sequence [%d] (from %d to %d) to tmpfile %s\n", $n + 1, $start, $end, $tmpfile) if $debug;
 
 		#--------------------------------------------------
 		# # run blastp 
@@ -692,6 +692,7 @@ sub intro {#{{{
 	}
 
 	# does the set exist?
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $settest = &mysql_get("SELECT *
 	FROM $mysql_table_set_details
 	WHERE $mysql_col_name = '$orthoset'
@@ -993,6 +994,7 @@ sub insert_results_into_table {#{{{
 # Expects: scalar string REFTAXON
 # Returns: scalar string PATH TO BLASTDB
 sub get_blastdir_for {#{{{
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT $mysql_table_blastdbs.blastdb_path FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.id = $mysql_table_blastdbs.setid LIMIT 1";
 	my $result = &mysql_get($query);
 	my $blastdir = File::Spec->catfile($$result[0][0], $orthoset);
@@ -1020,6 +1022,7 @@ sub make_hmms {#{{{
 	my $set = shift;
 	my $hmmsuffix = '.hmm';
 	my $data = {};
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT o.$mysql_col_orthoid, a.id, a.$mysql_col_seq
 		FROM $mysql_table_orthologs AS o
     INNER JOIN $mysql_table_seqpairs AS p
@@ -1192,8 +1195,13 @@ sub make_blastdb {#{{{
 sub insert_taxon_into_table {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: insert_taxon_into_table(SPECIESNAME)") }
-	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES ('$species_name', 0)";
-	&mysql_do($query) or warn "Warning: Insertion of species name into database failed: $DBI::errstr";
+
+	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute( $species_name, 0 )
+		or warn "Warning: Insertion of species name into database failed: $DBI::errstr";
+	$dbh->disconnnect();
 	return(Wrapper::Mysql::get_taxid_for_species($species_name));
 }
 
@@ -1259,6 +1267,7 @@ sub load_data_infile {#{{{
 sub get_transcripts {#{{{
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 	my $nseqs = 0;
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
@@ -1280,6 +1289,7 @@ sub get_transcripts {#{{{
 # Returns: reference to array of arrays
 sub get_hmmresults {#{{{
 	my $hmmquery = shift;
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_digest, $mysql_table_ests.$mysql_col_seq, $mysql_table_hmmsearch.start, $mysql_table_hmmsearch.end
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
@@ -1299,6 +1309,7 @@ sub get_orthologs {#{{{
 	my $orthoid = shift;
 	my $estdigest = shift;
 	# what do we want from the database?
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT
 			$mysql_table_orthologs.$mysql_col_orthoid AS orthogroup,
 			$mysql_table_taxa.$mysql_col_name	        AS name,

@@ -327,6 +327,7 @@ print "Setting up core ortholog set in $mysql_dbname on $mysql_dbserver... (pres
 
 if (!$setname) { $setname = &get_setname() }
 
+# TODO rewrite this part using parametrized queries to protect from SQL injections?
 if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
 	warn "Warning: An ortholog set with this name already exists in $mysql_dbname on $mysql_dbserver.\n";
 	unless ($overwrite) {
@@ -458,6 +459,7 @@ $dbh->disconnect;
 
 # TODO check whether the proteome header format is right (protein id only)!
 # TODO import the proteome data via a second temptable
+# TODO rewrite this part using parametrized queries to protect from SQL injections?
 
 my @queries = (
 	# user name
@@ -670,10 +672,12 @@ sub load_taxon {#{{{
 
 	# ok; insert ogs version into database
 	my $dbh = Wrapper::Mysql::mysql_dbh();
-	$dbh->do("INSERT IGNORE INTO $t{'ogs'} (type, taxid, version) VALUES ('$type', '$taxon', '$ogsversion')");
+	my $sth = $dbh->prepare("INSERT IGNORE INTO $t{'ogs'} (type, taxid, version) VALUES (?, ?, ?)");
+	$sth->execute( $type, $taxon, $ogsversion );
 	$dbh->disconnect();
 
 	# queries:
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my @queries = (
 		# create the temporary table
 		"CREATE TABLE $temptable (
@@ -715,6 +719,7 @@ sub load_taxon {#{{{
 		printf("Query OK, %d rows affected.\n", $nrows);
 	}
 	$dbh->disconnect();
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $seqpairs = &Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
 	printf("Loaded %d new sequences into database %s on %s.\n", $$seqpairs[0][0], $mysql_dbname, $mysql_dbserver);
 	return 1;
@@ -744,7 +749,7 @@ sub create_blastdb {#{{{
 	if (&check_if_fasta == 0) {
 		return 0;
 	}
-	# TODO
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $blastdir = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} WHERE ");
 	my $outfile = File::Spec->catfile($taxsh);
 	my @makeblastdbcmd = qq(makeblastdb -in $infile -out $outfile -input_type fasta -title $taxsh);
@@ -765,6 +770,7 @@ sub get_setname {#{{{
 }#}}}
 
 sub getblastdir {#{{{
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $bd = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} LIMIT 1");
 	if (!$bd) {
 		print "Enter the location where the BLAST database directories are located (required): ";
@@ -843,6 +849,7 @@ sub list_ests {
 sub delete_set {#{{{
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
 	my $this_set_dir = File::Spec->catdir($setdir, $setname);
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $data = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'set_details'} WHERE name = '$setname'");
 	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
 	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
@@ -871,6 +878,7 @@ sub delete_ogs {
 	my $ogsfile = shift @_ or confess("Usage: delete_ogs(OGSFILE)");
 
 	# get taxon shorthand
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'taxa'} WHERE `core` = '1'");
 	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
