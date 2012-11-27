@@ -12,6 +12,8 @@ our @EXPORT_OK = qw( $config );
 my $program_name = 'Orthograph';
 our $config = &getconfig; 
 
+exit(1) unless $config;
+
 
 sub getconfig {
 	my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');
@@ -23,7 +25,10 @@ sub getconfig {
 		print "Parsing config file '$configfile'.\n";
 		$config = &parse_config($configfile);
 	}#}}}
-	else { die "Fatal: Config file '$configfile' not found!\n" }
+	else {
+		warn "Fatal: Config file '$configfile' not found!\n";
+		return 0;
+	}
 
 	return $config;
 }

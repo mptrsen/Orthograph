@@ -66,6 +66,7 @@ my $mysql_table_users       = $config->{'mysql_table_users'} ?
 	$mysql_table_prefix . $config->{'mysql_table_users'} :
 	$mysql_table_prefix . 'users';
 
+
 # Sub: mysql_dbh
 # Returns a MySQL database handle
 sub mysql_dbh {#{{{
@@ -82,6 +83,8 @@ sub mysql_get {#{{{
   # prepare anonymous array
 	my $results = [ ];
   # connect and fetch stuff
+	print "$query;\n" 
+		if $debug;
 	my $dbh = &mysql_dbh;
 	my $sql = $dbh->prepare($query);
 	$sql->execute() or croak;

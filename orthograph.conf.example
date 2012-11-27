@@ -146,9 +146,13 @@ mysql_dbserver             = 127.0.0.1
 
 
 #
-# # More directories
+# # More paths
 # 
 # Sets directory. Useful if you would like to keep your ortholog sets (that is,
 # the BLAST database, the HMMs and the alignment files for each ortholog gene)
 # in a separate place. Defaults to /PATH/TO/ORTHOGRAPH/sets.
 #sets_dir    = /PATH/TO/SETS/DIR
+
+# Log file. If set (and not empty), all messages will also be written
+# to this file.
+#logfile = /PATH/TO/LOGFILE

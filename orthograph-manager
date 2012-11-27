@@ -46,10 +46,10 @@ my $config = $Orthograph::Config::config;
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
-my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
-my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
-my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
+my $mysql_dbname       = $config->{'mysql_dbname'}       ? $config->{'mysql_dbname'}       : 'orthograph';
+my $mysql_dbpwd        = $config->{'mysql_dbpassword'}   ? $config->{'mysql_dbpassword'}   : 'root';
+my $mysql_dbserver     = $config->{'mysql_dbserver'}     ? $config->{'mysql_dbserver'}     : 'localhost';
+my $mysql_dbuser       = $config->{'mysql_dbuser'}       ? $config->{'mysql_dbuser'}       : 'root';
 my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'orthograph';
 
 # make sure there is exactly one underscore at the end of the prefix
@@ -293,15 +293,15 @@ if ($listsets) {
 	&list_sets and exit;
 }
 
-if ($listogs) {
+elsif ($listogs) {
 	&list_ogs and exit;
 }
 
-if ($listtaxa) {
+elsif ($listtaxa) {
 	&list_set_details and exit;
 }
 
-if ($isnucleotide) {
+elsif ($isnucleotide) {
 	# 0 for nucleotide
 	&load_taxon($infile, 0) or die("Fatal: Nucleotide loading failed\n");
 	exit;

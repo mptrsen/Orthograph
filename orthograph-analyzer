@@ -22,6 +22,7 @@ use warnings;       # cry if something seems odd
 
 # Core modules
 use Archive::Tar;   # handling tar archives
+use Benchmark qw( timediff timestr );  # timing functions
 use Carp;           # carp and croak: warn and die with call stack
 use Config;         # allows checking for system configuration in $Config
 use DBD::mysql;	    # MySQL database driver 
@@ -39,6 +40,7 @@ use IO::File;       # object-oriented access to files
 
 # Custom modules
 use lib $FindBin::Bin;                    # $Bin is the directory of the original script
+use IO::Tee;                              # not custom, but supplied because from CPAN
 use Seqload::Fasta;                       # object-oriented access to fasta files
 use Wrapper::Hmmsearch;                   # object-oriented interface to hmmsearch
 use Wrapper::Blastp;                      # object-oriented interface to blastp
@@ -197,7 +199,11 @@ my $preparedb;
 my $protfile            = '';
 my $set_id              = undef;
 my $species_id          = undef;
-my $timestamp_start     = time();
+my $t0;  # these are used for timing 
+my $t1;  # these are used for timing 
+my $timestamp_start     = scalar time();
+my $timestamp_end       = undef; # will hold the time at the end
+my $timestamp_diff      = undef;
 my @lt                  = localtime(time);
 my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
 # create new temporary directory and set it to not be deleted if debugging
@@ -298,7 +304,11 @@ $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 # clear database of data from the same species
 if ($clear_data) {
 	print "Clearing database of previous results from '$species_name'...\n" unless $quiet;
-	&clear_db($species_name) or warn("Warning: Failed to clear database for species $species_name!\n");
+	$t0 = Benchmark->new();
+	my $n_deleted = &clear_db($species_name) or warn("Warning: Failed to clear database for species $species_name!\n");
+	$t1 = Benchmark->new();
+	print "Deleted $n_deleted records from database.\n" unless $quiet;
+	print 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
 }
 
 # create a new entry in the taxa table, returns taxid
@@ -309,7 +319,11 @@ print "Created new taxon id $species_id for '$species_name'\n" unless $quiet;
 print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 # LOAD DATA INFILE; third arg must be ref to array of column names
+$t0 = Benchmark->new();
 &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+$t1 = Benchmark->new();
+print 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
+
 
 # get number of sequences for this species, report or die
 $num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
@@ -503,7 +517,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 }#}}}	# End hmmlist loop
 
 # report, end the program
-printf "\n%s analysis for %s complete.\n", $program_name, $species_name;
+$timestamp_end = scalar time();
+$timestamp_diff = $timestamp_end - $timestamp_start;
+printf "\n%s analysis for %s completed in %d seconds.\n", $program_name, $species_name, $timestamp_diff;
 printf "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and verified %d as 1:1 orthologs (%2.2f%%).\n",
 	$num_ests,
 	$hmmcount,
@@ -892,17 +908,22 @@ sub clear_db {#{{{
 	my $specid = &Wrapper::Mysql::get_taxid_for_species($species_name);
 	return unless $specid;
 
+	# count number of records 
+	my $n = 0;
+
 	# clear previous results from the same species
 	my $dbh = &mysql_dbh();
 	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch) {
-		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = '$specid'";
-		$dbh->do($query);
+		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = ?";
+		my $sth = $dbh->prepare($query);
+		$n += $sth->execute( $specid );
 	}
-	$dbh->do("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = '$specid'") or die "$!";
+	my $sth = $dbh->prepare("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = ?");
+	$n      += $sth->execute($specid) or die "$!";
 	# disconnect ASAP
 	$dbh->disconnect();
 
-	return 1;
+	return $n;
 }#}}}
 
 # Sub: insert_results_into_table
@@ -1025,10 +1046,10 @@ sub make_hmms {#{{{
 	my $data = {};
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT o.$mysql_col_orthoid, a.id, a.$mysql_col_seq
-		FROM $mysql_table_orthologs AS o
-    INNER JOIN $mysql_table_seqpairs AS p
+		FROM $mysql_table_orthologs         AS o
+    INNER JOIN $mysql_table_seqpairs    AS p
     ON o.$mysql_col_seqpair = p.id
-    INNER JOIN $mysql_table_aaseqs AS a
+    INNER JOIN $mysql_table_aaseqs      AS a
     ON a.id = p.$mysql_col_aaseq
     INNER JOIN $mysql_table_set_details AS d
     ON d.id = o.$mysql_col_setid
@@ -1255,7 +1276,8 @@ sub load_data_infile {#{{{
 
 	# open connection
 	my $dbh = &mysql_dbh();
-	$num_ests = $dbh->do($query);
+	my $sth = $dbh->prepare($query);
+	$num_ests = $sth->execute();
 	# disconnect ASAP and die if errors
 	$dbh->disconnect;
 	defined($DBI::errstr) ? die($DBI::errstr, "\n") :	return $num_ests;
