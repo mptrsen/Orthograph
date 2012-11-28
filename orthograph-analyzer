@@ -108,6 +108,7 @@ my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}   
 my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
 my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
+my $logfile        = $config->{'logfile'}              ? $config->{'logfile'}              : undef;
 my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
 my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
 my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
@@ -148,7 +149,7 @@ my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_se
 my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
 my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
 # substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst = $config->{'substitute_u_with'}            ? $config->{'substitute_u_with'}    : undef;
+my $u_subst        = $config->{'substitute_u_with'}     ? $config->{'substitute_u_with'}    : undef;
 my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
 my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
 my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
@@ -199,6 +200,8 @@ my $preparedb;
 my $protfile            = '';
 my $set_id              = undef;
 my $species_id          = undef;
+my $stdout              = undef;
+my $stderr              = undef;
 my $t0;  # these are used for timing 
 my $t1;  # these are used for timing 
 my $timestamp_start     = scalar time();
@@ -233,6 +236,7 @@ GetOptions( 'v'        => \$verbose,
 	'H=s'                => \$hmmfile,
 	'hmmsearchprog=s'    => \$hmmsearchprog,
 	'l|list_species'     => \$listspecies,
+	'log|logfile=s'      => \$logfile,
 	'preparedb'          => \$preparedb,
 	'quiet'              => \$quiet,
 	'taxon=s'            => \$species_name,
@@ -284,15 +288,15 @@ $num_hmms = scalar(@hmmfiles);
 
 
 unless ($quiet) {#{{{
-	print "Using temporary directory $tmpdir.\n"
+	print $stdout "Using temporary directory $tmpdir.\n"
 		if $tmpdir;
-  print "Using HMM dir $hmmdir with ", scalar(@hmmfiles), " HMM files.\n" 
+  print $stdout "Using HMM dir $hmmdir with ", scalar(@hmmfiles), " HMM files.\n" 
     if $hmmdir;
-  print "Using HMM file $hmmfile.\n" 
+  print $stdout "Using HMM file $hmmfile.\n" 
     if $hmmfile;
-  print "HMMsearch e-Value cutoff: $hmmsearch_evalue_threshold.\n" 
+  print $stdout "HMMsearch e-Value cutoff: $hmmsearch_evalue_threshold.\n" 
     if $hmmsearch_evalue_threshold;
-  print "Score cutoff: $hmmsearch_score_threshold.\n"
+  print $stdout "Score cutoff: $hmmsearch_score_threshold.\n"
     if $hmmsearch_score_threshold;
 }#}}}
 
@@ -303,39 +307,39 @@ $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
 # clear database of data from the same species
 if ($clear_data) {
-	print "Clearing database of previous results from '$species_name'...\n" unless $quiet;
+	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = Benchmark->new();
-	my $n_deleted = &clear_db($species_name) or warn("Warning: Failed to clear database for species $species_name!\n");
+	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name!\n";
 	$t1 = Benchmark->new();
-	print "Deleted $n_deleted records from database.\n" unless $quiet;
-	print 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
+	print $stdout "Deleted $n_deleted records from database.\n" unless $quiet;
+	print $stdout 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
 }
 
 # create a new entry in the taxa table, returns taxid
 $species_id = &insert_taxon_into_table($species_name);
-print "Created new taxon id $species_id for '$species_name'\n" unless $quiet;
+print $stdout "Created new taxon id $species_id for '$species_name'\n" unless $quiet;
 
 # store est data into the database:
-print "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 # LOAD DATA INFILE; third arg must be ref to array of column names
 $t0 = Benchmark->new();
 &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 $t1 = Benchmark->new();
-print 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
+print $stdout 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
 
 
 # get number of sequences for this species, report or die
 $num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
 if ($num_ests != 0) {
-	printf("%d sequences of %s in database '%s' on %s. \n",
+	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
 		$num_ests,
 		$species_name,
 		$mysql_dbname,
 		$mysql_dbserver) unless $quiet;
 }
 else {
-	die "No sequences found for taxon id $species_id. Something went wrong. Check your input. Exiting.\n";
+	print $stderr "No sequences found for taxon id $species_id. Something went wrong. Check your input. Exiting.\n" and exit(1);
 }
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
@@ -384,7 +388,7 @@ Wrapper::Blastp->searchprog($blastprog);
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-printf("HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmfiles), $hmmdir)
+printf($stdout "HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmfiles), $hmmdir)
 	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
@@ -401,7 +405,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
-	printf("%4d hits for %s (%2.1f%% complete)\n", 
+	printf($stdout "%4d hits for %s (%2.1f%% complete)\n", 
 		$hmmobj->hitcount(),
 		basename($hmmobj->hmmfile()),
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
@@ -424,7 +428,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# # push results to database 
 	#-------------------------------------------------- 
 	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref());
-	print "     ... pushed to database.\n" if $verbose;
+	print $stdout "     ... pushed to database.\n" if $verbose;
 	++$hmmhitcount;
 	
 	#--------------------------------------------------
@@ -450,10 +454,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# get sequence length
 		my ($start, $end) = ($hmmresults[$n][2] - 1, $hmmresults[$n][3] - 1);
 		my $length = $end - $start;
-		# print "Writing temporary sequence '$hmmresults[$n][1]' to $tmpfile\n" if $debug;
 		# write fasta header and sequence to the tempfile
 		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], substr($hmmresults[$n]->[1], $start, $length));
-		printf("Wrote sequence [%d] (from %d to %d) to tmpfile %s\n", $n + 1, $start, $end, $tmpfile) if $debug;
+		printf($stdout "Wrote sequence [%d] (from %d to %d) to tmpfile %s\n", $n + 1, $start, $end, $tmpfile) if $debug;
 
 		#--------------------------------------------------
 		# # run blastp 
@@ -467,7 +470,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# do the blastp search; skip if no hits obtained
 		$blastobj->blastp($tmpfile, $blastoutfile);
 
-		printf("       %4d BLASTP hits detected for [%d] against %s, e-value below %2.1e\n",
+		printf($stdout "       %4d BLASTP hits detected for [%d] against %s, e-value below %2.1e\n",
 			$blastobj->hitcount,
 			$n + 1,
 			basename($blastdb),
@@ -480,11 +483,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 		# insert the blast results into the db. 3-argument form.
 		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
-		print "            ... pushed to database.\n" if $verbose;
+		print $stdout "            ... pushed to database.\n" if $verbose;
 	} #}}}
 
 	if ($hmmcount <= scalar(@hmmfiles) / 100) {
-		print "\n(Don't be alarmed, the sequence identifiers are SHA256-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
+		print $stdout "\n(Don't be alarmed, the sequence identifiers are SHA256-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
 			if $verbose;
 	}
 
@@ -499,7 +502,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			$$orthologs[$_][1],	# the taxon shorthand of the ortholog sequence
 			$$orthologs[$_][3],	# the sequence id of the ortholog sequence
 			$$orthologs[$_][4]  # the sequence
-				or croak "Fatal: Could not write to output file $outfh: $!";
+				or print $stderr "Fatal: Could not write to output file $outfh: $!" and exit(1);
 	}
 	# the header and sequence of the hit
 	# this is the best hit since the SQL query sorts by evalue and we take the first one
@@ -589,7 +592,7 @@ sub progress_bar {#{{{
 	$char ||= '=';
 	my $num_width = length($total);
 	$| = 1;
-	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r", $char x (($width-1)*$got/$total) . '>', $got, $total, 100*$got/$total);
+	printf($stdout "|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r", $char x (($width-1)*$got/$total) . '>', $got, $total, 100*$got/$total);
 	$| = 0;
 }#}}}
 
@@ -597,18 +600,32 @@ sub progress_bar {#{{{
 # Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
 sub intro {#{{{
-	die "Fatal: Species name needed (-taxon NAME)!\n"
+	# first things first: setup the log file
+	if ($logfile) {
+		my $logfh = IO::File->new($logfile, 'w');  # new log file
+		$stdout = IO::Tee->new(
+			\*STDOUT,  # reference to STDOUT typeglob
+			$logfh, 
+		);
+		$stderr = IO::Tee->new(
+			\*STDERR,  # reference to STDERR typeglob
+			$logfh,
+		);
+		print $stdout "Writing to log file $logfile\n";
+	}
+
+	print $stderr "Fatal: Species name needed (-taxon NAME)!\n" and exit(1)
 		unless ($species_name);
 	
-	die "Fatal: Ortholog set name required (ortholog_set)!\n"
+	print $stderr "Fatal: Ortholog set name required (ortholog_set)!\n" and exit(1)
 		unless ($orthoset);
 
 	# mutually exclusive options
-	die "Fatal: Can't operate in both verbose and quiet mode\n"
+	print $stderr "Fatal: Can't operate in both verbose and quiet mode\n" and exit(1)
 		if ($verbose and $quiet);
 
 	# mutually exclusive options
-	die "Fatal: Can't use both e-value and score thresholds\n"
+	print $stderr "Fatal: Can't use both e-value and score thresholds\n" and exit(1)
 		if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold);
 
 	# construct output directory paths
@@ -621,85 +638,82 @@ sub intro {#{{{
 	# the alignment directory (for ortholog set creation)
 	unless ($alndir) { $alndir = File::Spec->catdir($sets_dir, $orthoset, 'aln') }
 	if (-d $alndir) {
-		print "Alignment dir $alndir exists.\n" unless $quiet;
+		print $stdout "Alignment dir $alndir exists.\n" unless $quiet;
 	}
 	else {
-		print "Alignment dir $alndir does not exist, creating...\n" unless $quiet;
-		&makedir($alndir);
+		print $stdout "Alignment dir $alndir does not exist, creating...\n" unless $quiet;
+		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
 
 	# the HMM directory
 	unless ($hmmdir) { $hmmdir = File::Spec->catdir($sets_dir, $orthoset, 'hmms') }
 	if (-d $hmmdir) {
-		print "HMM dir $hmmdir exists.\n" unless $quiet;
+		print $stdout "HMM dir $hmmdir exists.\n" unless $quiet;
 	}
 	else {
-		print "HMM dir $hmmdir does not exist, creating...\n" unless $quiet;
-		&makedir($hmmdir);
+		print $stdout "HMM dir $hmmdir does not exist, creating...\n" unless $quiet;
+		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
 
 	# the EST file
 	if (-e $estfile) {
-		print "EST file $estfile exists.\n" unless $quiet;
+		print $stdout "EST file $estfile exists.\n" unless $quiet;
 	}
 	else {
-		die "Fatal: EST file $estfile does not exist!\n";
+		print $stderr "Fatal: EST file $estfile does not exist!\n" and exit(1);
 	}
 
 	# the HMMsearch output directory
 	if (-d $hmmoutdir) {
-		print "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
+		print $stdout "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
 		if ($clear_data) {
 			&cleardir($hmmoutdir);
-			print "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
+			print $stdout "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
 		}
 		else {
 			&schedule_for_backup($hmmoutdir);
 		}
 	}
 	else {
-		print "HMMsearch output dir $hmmoutdir does not exist, creating...\n" unless $quiet;
-		&makedir($hmmoutdir);
+		print $stdout "HMMsearch output dir $hmmoutdir does not exist, creating...\n" unless $quiet;
+		&makedir($hmmoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
 
   # the BLASTP output directory
   if (-d $blastoutdir) {
-    print "BLASTP output dir $blastoutdir exists.\n" unless $quiet;
+    print $stdout "BLASTP output dir $blastoutdir exists.\n" unless $quiet;
 		if ($clear_data) {
 			&cleardir($blastoutdir);
-			print "Purged BLAST output dir $blastoutdir of old result files.\n"
-				unless $quiet;
+			print $stdout "Purged BLAST output dir $blastoutdir of old result files.\n" unless $quiet;
 		}
 		else {
 			&schedule_for_backup($blastoutdir);
 		}
   }
   else {
-    print "BLASTP output dir $blastoutdir does not exist, creating...\n" unless $quiet;
-    &makedir($blastoutdir);
+    print $stdout "BLASTP output dir $blastoutdir does not exist, creating...\n" unless $quiet;
+    &makedir($blastoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
   }
 	# the aa output directory
 	if (-d $aaoutdir) {
-		print "AA output dir $aaoutdir exists.\n" unless $quiet;
+		print $stdout "AA output dir $aaoutdir exists.\n" unless $quiet;
 		if ($clear_data) {
 			&cleardir($aaoutdir);
-			print "Purged AA output dir $aaoutdir of old result files.\n"
-				unless $quiet;
+			print $stdout "Purged AA output dir $aaoutdir of old result files.\n" unless $quiet;
 		}
 		else {
 			&schedule_for_backup($aaoutdir);
 		}
 	}
 	else {
-		print "AA output dir $aaoutdir does not exist, creating...\n"
-			unless $quiet;
-		&makedir($aaoutdir);
+		print $stdout "AA output dir $aaoutdir does not exist, creating...\n" unless $quiet;
+		&makedir($aaoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
 
 	# do the backup; create a tarball if desired
 	unless ($clear_data) {
 		my $tarfile = &create_tarball(@backup);
-		print "Old output files backed up in $tarfile.\n";
+		print $stdout "Old output files backed up in $tarfile.\n";
 		# and clear the directories
 		&cleardir($hmmoutdir);
 		&cleardir($blastoutdir);
@@ -734,8 +748,7 @@ sub hmmlist {#{{{
 		return(sort(@hmmfiles));
 	}
 	else {
-		print "single hmm\n"
-		  if $verbose;
+		print $stdout "single hmm\n" if $verbose;
 		push(@hmmfiles, $hmmfile);
 		return(@hmmfiles);
 	}
@@ -748,9 +761,9 @@ sub hmmlist {#{{{
 sub translate_est {#{{{
   my ($infile) = shift;
   (my $outfile = $infile) =~ s/(\.[^.]*$)/_prot$1/;
-  print "Translating $estfile in all six reading frames...\n" unless $quiet;
+  print $stdout "Translating $estfile in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
-    print "$outfile exists, using this one.\n" unless $quiet;
+    print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
   }
   my @translateline = qq($translateprog $infile > $outfile);
@@ -796,11 +809,11 @@ sub create_tarball {#{{{
 sub makedir {#{{{
   my $dir = shift;
   if (-e $dir and not -d $dir) {
-    die "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later.\n";
+    print $stderr "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later.\n" and exit(1);
   }
   else {
-    make_path $dir, { verbose => 0 } or die "Fatal: Could not create $dir: $!\n";
-    return 1;
+    make_path $dir, { verbose => 0 } or print $stderr "Warning: Could not create $dir: $!\n";
+    return 0;
   }
   return 1;
 }#}}}
@@ -811,14 +824,14 @@ sub makedir {#{{{
 sub cleardir {#{{{
 	my $dir = shift(@_);
 	opendir(my $dirh, $dir)
-		or croak("Fatal: Couldn't open dir $dir\: $!");
+		or print $stderr "Fatal: Couldn't open dir $dir\: $!" and exit(1);
 	foreach (readdir($dirh)) {
 		next if $_ =~ /^\.\.?$/;
 		unlink(File::Spec->catfile($dir, $_))
-			or carp("Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!");
+			or print $stderr "Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!";
 	}
 	closedir($dirh)
-		or croak("Fatal: Couldn't close dir $dir\: $!");
+		or print $stderr "Fatal: Couldn't close dir $dir\: $!" and exit(1);
 	return 1;
 }#}}}
 
@@ -876,10 +889,10 @@ sub preparedb {#{{{
 	# drop all tables
 	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
 		my $query_drop = "DROP TABLE IF EXISTS $_";
-		print "$query_drop;\n" if $verbose;
+		print $stdout "$query_drop;\n" if $verbose;
 		my $sql = $dbh->prepare($query_drop);
 		$sql->execute()
-		  or die "Could not execute SQL query: $!\n";
+		  or print $stderr "Fatal: Could not execute SQL query: $!\n" and exit(1);
 	}
 
 	# create all tables
@@ -887,7 +900,7 @@ sub preparedb {#{{{
 		printf "$query;\n" if $verbose;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
-		  or die "Could not execute SQL query: $!\n";
+		  or print $stderr "Fatal: Could not execute SQL query: $!\n" and exit(1);
 	}
 
 	# disconnect
@@ -919,7 +932,7 @@ sub clear_db {#{{{
 		$n += $sth->execute( $specid );
 	}
 	my $sth = $dbh->prepare("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = ?");
-	$n      += $sth->execute($specid) or die "$!";
+	$n      += $sth->execute($specid) or print $stderr "$!" and exit(1);
 	# disconnect ASAP
 	$dbh->disconnect();
 
@@ -965,7 +978,7 @@ sub insert_results_into_table {#{{{
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
 				$hit->{'evalue'}  # evalue
-			) or die "Fatal: Could not push to database!\n";
+			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
 		$dbh->disconnect;
@@ -1003,7 +1016,7 @@ sub insert_results_into_table {#{{{
 				$hit->{'evalue'}, # evalue
 				$hit->{'start'},	# start of hit domain
 				$hit->{'end'}			# end of hit domain
-			) or die "Fatal: Could not push to database!\n";
+			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
 		$dbh->disconnect;
@@ -1057,13 +1070,13 @@ sub make_hmms {#{{{
 
 	# does the alignment dir exist?
 	if (!-e $alndir) {
-		&makedir($alndir);
+		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
 	# does the HMM dir exist?
 	if (!-e $hmmdir) {
-		&makedir($hmmdir);
+		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
-	print "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
+	print $stdout "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
 	# get the ortholog set from the database
 	my $dbh = &mysql_dbh();
@@ -1088,7 +1101,7 @@ sub make_hmms {#{{{
 
 		# if it exists, but the file is empty (this happens if you cancel the build
 		# process), rebuild this HMM
-		elsif (-e $hmmfile and &file_is_empty($hmmfile)) { warn("Warning: Rebuilding HMM for $orthoid due to empty HMM file\n") }
+		elsif (-e $hmmfile and &file_is_empty($hmmfile)) { print $stderr "Warning: Rebuilding HMM for $orthoid due to empty HMM file\n" }
 
 		# no, create new fasta file and so on
 		my $fafile = File::Spec->catfile($alndir, $orthoid . '.fa');
@@ -1125,11 +1138,11 @@ sub align {#{{{
 	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
 	my $alnsuffix = '.aln';
 	my @alignment_cmd = qq($alignment_program $fafile 2> /dev/null);	# this prints the alignment to STDOUT, must be captured somehow
-	print "@alignment_cmd\n" if $debug;
+	print $stdout "@alignment_cmd\n" if $debug;
 	my $alnf = File::Spec->catfile($alndir, $orthoid . '.aln.fa');
 	my $alnfh = IO::File->new($alnf, 'w');
 	print $alnfh `@alignment_cmd`
-		or croak("Fatal: Could not write to file $alnf\: $!\n");
+		or print $stderr "Fatal: Could not write alignment to file $alnf\: $!\n" and exit(1);
 	$alnfh->close();
 	return $alnf;
 }#}}}
@@ -1147,7 +1160,7 @@ sub fasta2stockholm {#{{{
 	print $stockhfh "# STOCKHOLM 1.0\n";
 	while (my ($h, $s) = $fh->next_seq()) {
 		printf($stockhfh "%-50s %s\n", $h, $s)
-			or croak("Fatal: Could not write to file $stockhfh\: $!");
+			or print $stderr "Fatal: Could not write Stockholm file $stockhfh\: $!" and exit(1);
 	}
 	print $stockhfh "//";
 	close($stockhfh);
@@ -1183,13 +1196,12 @@ sub make_blastdb {#{{{
 
 	# check whether a database already exists
 	if (-e File::Spec->catfile($dbfile . '.psq')) {
-		print "BLAST DB for set $orthoset exists in $dbfile.\n"
-			unless $quiet;
+		print $stdout "BLAST DB for set $orthoset exists in $dbfile.\n" unless $quiet;
 		return $dbfile;
 	}
 
 	# database not extant, we have to create it
-	print "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
+	print $stdout "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
 		unless $quiet;
 	my $infh = File::Temp->new();
 	# get the sequences from the database
@@ -1197,12 +1209,13 @@ sub make_blastdb {#{{{
 
 	# write to output file
 	while (my ($h, $s) = each %$sequences) {
-		# make sure the sequence has only valid characters
+		# warn if the sequence has invalid characters
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWXYZUX]+)/) {
-			warn("Warning: Invalid characters '$1' in protein sequence $h. Let's hope BLAST will not choke on this one.\n");
+			print $stderr "Warning: Invalid characters '$1' in protein sequence $h. Let's hope BLAST will not choke on this one.\n";
 		}
+		# but write out anyway
 		printf($infh ">%s\n%s\n", $h, $s)
-			or croak("Fatal: Could not write to file $infile\: $!\n");
+			or print $stderr "Fatal: Could not write to makeblastdb input file $infile\: $!\n" and exit(1);
 	}
 	undef $sequences;
 	close($infh);
@@ -1210,7 +1223,7 @@ sub make_blastdb {#{{{
 
 	# make blast database
 	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset > /dev/null);
-	system(@makeblastdbcmd) and croak("Fatal: makeblastdb failed: $!\n");
+	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $!\n" and exit(1);
 	return $dbfile;
 }#}}}
 
@@ -1222,7 +1235,7 @@ sub insert_taxon_into_table {
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $species_name, 0 )
-		or warn "Warning: Insertion of species name into database failed: $DBI::errstr";
+		or print $stderr "Warning: Insertion of species name into database failed: $DBI::errstr";
 	$dbh->disconnect();
 	return(Wrapper::Mysql::get_taxid_for_species($species_name));
 }
@@ -1253,10 +1266,10 @@ sub load_data_infile {#{{{
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
 			# change all Us to X if requested
 			if ($u_subst and $s =~ s/U/$u_subst/gi) {
-				warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence $h.\n");
+				print $stderr "Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence $h.\n";
 			}
 			else {
-				warn("Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+				print $stderr "Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n";
 			}
 		}
 		printf($tmpfh "%s,%d,%d,%s,%s\n", 
@@ -1297,12 +1310,11 @@ sub get_transcripts {#{{{
 	$sth->execute();
 	while (my ($h, $s) = $sth->fetchrow_array()) {
 		printf($tmpfh ">%s\n%s\n", $h, $s)
-			or croak("Fatal: Could not write to file $tmpfh\: $!\n");
+			or print $stderr "Fatal: Could not write to file $tmpfh\: $!\n" and exit(1);
 		++$nseqs;
 	}
 	$dbh->disconnect();
-	print "Wrote $nseqs sequences to $tmpfh\n"
-		unless $quiet;
+	print $stdout "Wrote $nseqs sequences to $tmpfh\n" unless $quiet;
 	return $tmpfh;
 }#}}}
 
