@@ -49,10 +49,11 @@ use Orthograph::Functions;                # functions for all Orthograph tools
 use Orthograph::Config;                   # configuration in global hashref $config
 
 my $program_name = 'Orthograph';
-my $version = 'alpha3';
-print "$program_name\: Orthology prediction using a Graph-based,\n",
-	"Reciprocal Approach with Profile Hidden Markov models\n",
-	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n",
+my $version = 'alpha4';
+# this message will be printed later when we have a log file handle
+my $message = "$program_name\: Orthology prediction using a Graph-based,\n" .
+	"Reciprocal Approach with Profile Hidden Markov models\n" .
+	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
 	"Version $version\n\n";
 my $program_file = $FindBin::Script;
 
@@ -63,7 +64,7 @@ my $program_file = $FindBin::Script;
 #-------------------------------------------------- 
 my $use_threads = 0;#{{{
 if ($use_threads == 1 and $Config{'useithreads'}) {
-  print "Using threads.\n\n";
+  $message .= "Using threads.\n\n";
   #use Wrapper::Threaded;
 }
 elsif ($use_threads == 1 and !$Config{'useithreads'}) {
@@ -71,7 +72,7 @@ elsif ($use_threads == 1 and !$Config{'useithreads'}) {
 	$use_threads = 0;
 }
 else {
-	print "Not using threads.\n\n";
+	$message .= "Not using threads.\n\n";
 	$use_threads = 0;
 }#}}}
 
@@ -171,6 +172,7 @@ my $hmmcount;
 my $hmmhitcount;
 my $hmmhitcount_total   = 0;
 my $listspecies         = 0;
+my $logdir              = '';
 my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
@@ -600,9 +602,31 @@ sub progress_bar {#{{{
 # Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
 sub intro {#{{{
-	# first things first: setup the log file
+	# first things first: 
+	# construct output directory paths
+	# outdir may be defined in the config file
+	$outdir = defined($outdir) ? $outdir : '.';
+
+	# the output directory. create if it does not exist.
+	if (-d $outdir) {
+		# no IO::Tee because the log dir has not been created yet 
+		$message .= "Using output dir $outdir.\n" unless $quiet;
+	}
+	else {
+		# no IO::Tee because the log dir has not been created yet 
+		$message .= "Output dir $outdir does not exist, creating...\n" unless $quiet;
+		&makedir($outdir) or die "Fatal: Failed to create directory $outdir\n";
+	}
+
+	# the other dirs
+	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
+	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearchprog));
+  $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blastprog));
+
+	# setup the log file
 	if ($logfile) {
-		my $logfh = IO::File->new($logfile, 'w');  # new log file
+		# new log file handle
+		my $logfh = IO::File->new($logfile, 'w') or die "Fatal: Could not create log file '$logfile': $!\n";  
 		$stdout = IO::Tee->new(
 			\*STDOUT,  # reference to STDOUT typeglob
 			$logfh, 
@@ -611,11 +635,32 @@ sub intro {#{{{
 			\*STDERR,  # reference to STDERR typeglob
 			$logfh,
 		);
+		# print the messages that were collected so far
+		print $stdout $message;
 		print $stdout "Writing to log file $logfile\n";
 	}
 	else {
-		$stdout = *STDOUT;
-		$stderr = *STDERR;
+		$logdir = File::Spec->catdir($outdir, 'log');
+		if (-d $logdir) {
+			print "Using log dir $logdir.\n" unless $quiet;
+		}
+		else {
+			$message .= "Log dir $logdir does not exist, creating...\n" unless $quiet;
+			&makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
+		}
+		$logfile = File::Spec->catfile($logdir,  'orthograph-' . $timestamp_start . '.log');
+		my $logfh = IO::File->new($logfile, 'w') or die "Fatal: Could not create log file '$logfile': $!\n";
+		$stdout = IO::Tee->new(
+			\*STDOUT,
+			$logfh,
+		);
+		$stderr = IO::Tee->new(
+			\*STDERR,
+			$logfh,
+		);
+		# print the messages that were collected so far
+		print $stdout $message;
+		print $stdout "Using log file $logfile.\n";
 	}
 
 	print $stderr "Fatal: Species name needed (-taxon NAME)!\n" and exit(1)
@@ -631,13 +676,6 @@ sub intro {#{{{
 	# mutually exclusive options
 	print $stderr "Fatal: Can't use both e-value and score thresholds\n" and exit(1)
 		if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold);
-
-	# construct output directory paths
-	# outdir may be defined in the config file
-	$outdir = defined($outdir) ? $outdir : $species_name;
-	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
-	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearchprog));
-  $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blastprog));
 
 	# the alignment directory (for ortholog set creation)
 	unless ($alndir) { $alndir = File::Spec->catdir($sets_dir, $orthoset, 'aln') }
@@ -813,10 +851,10 @@ sub create_tarball {#{{{
 sub makedir {#{{{
   my $dir = shift;
   if (-e $dir and not -d $dir) {
-    print $stderr "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later.\n" and exit(1);
+    print $stderr "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later. Exiting.\n" and exit(1);
   }
-  else {
-    make_path $dir, { verbose => 0 } or print $stderr "Warning: Could not create $dir: $!\n";
+  elsif (!make_path($dir, { verbose => 0 })) {
+    warn "Warning: Could not create $dir: $!\n";
     return 0;
   }
   return 1;

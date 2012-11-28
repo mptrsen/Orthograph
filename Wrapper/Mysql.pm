@@ -70,7 +70,7 @@ my $mysql_table_users       = $config->{'mysql_table_users'} ?
 # Sub: mysql_dbh
 # Returns a MySQL database handle
 sub mysql_dbh {#{{{
-	return DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
+	return DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd);
 }#}}}
 
 # Sub: mysql_get

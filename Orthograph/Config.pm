@@ -49,6 +49,7 @@ sub get_configfile {
 			# does the next one begin with a hyphen?
 			if ($ARGV[$i+1] !~ /^-/) {
 				$configfile = $ARGV[$i+1];
+				splice @ARGV, $i, 2;
 			}
 			# the file name starts with a hyphen, may be a stray option, so warn the
 			# user and don't use this name

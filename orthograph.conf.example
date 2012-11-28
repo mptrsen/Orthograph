@@ -125,13 +125,13 @@ mysql_dbserver             = 127.0.0.1
 
 # Clear pre-existing data of the same species prior to the analysis. Useful if
 # you plan to run the same analysis multiple times, but doesn't hurt otherwise.
-# This is the default, uncomment if you want to turn it off.
+# This is the default, uncomment this line if you want to turn it off.
 #clear_data  = 0
 
-# Selenocysteine (U) may occur in some protein sequences. However, Blast does
-# not accept this nonstandard amino acid symbol. You can tell Orthograph to
-# substitute all 'U' in the sequences with a different character. The default is
-# not to substitute.
+# Selenocysteine (U) may occur in some protein sequences. However, some
+# alignment programs do not accept this nonstandard amino acid symbol. You can
+# tell Orthograph to substitute all 'U' in the sequences with a different
+# character. The default is not to substitute.
 #substitute_u_with = X
 
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
@@ -150,9 +150,10 @@ mysql_dbserver             = 127.0.0.1
 # 
 # Sets directory. Useful if you would like to keep your ortholog sets (that is,
 # the BLAST database, the HMMs and the alignment files for each ortholog gene)
-# in a separate place. Defaults to /PATH/TO/ORTHOGRAPH/sets.
+# in a separate place. Defaults to 'sets' (in the current directory).
 #sets_dir    = /PATH/TO/SETS/DIR
 
-# Log file. If set (and not empty), all messages will also be written
-# to this file.
+# Log file. If set (and not empty), all messages will also be written to this
+# file. If this is not set, messages are not written to a log file, but to
+# STDOUT and STDERR.
 #logfile = /PATH/TO/LOGFILE

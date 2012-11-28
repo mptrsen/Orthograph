@@ -140,7 +140,7 @@ my %names;
 GetOptions(
 	'D=s'          => \$mysql_dbname,
 	'blastdir=s'   => \$blastdir,
-	'c|create'     => \$create,
+	'create'       => \$create,
 	'delete-all'   => \$delete_all,
 	'delete-set=s' => \$delete_set,
 	'delete-ogs=s' => \$delete_ogs,
