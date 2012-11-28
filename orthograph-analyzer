@@ -613,6 +613,10 @@ sub intro {#{{{
 		);
 		print $stdout "Writing to log file $logfile\n";
 	}
+	else {
+		$stdout = *STDOUT;
+		$stderr = *STDERR;
+	}
 
 	print $stderr "Fatal: Species name needed (-taxon NAME)!\n" and exit(1)
 		unless ($species_name);
