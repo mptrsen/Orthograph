@@ -4,6 +4,7 @@ use warnings;
 
 use File::Spec;             
 use FindBin;                # locate the dir of this script during compile time
+use Getopt::Long;
 use lib $FindBin::Bin;      # $Bin is the directory of the original script
 require Exporter;
 our @ISA = qw( Exporter );
@@ -11,6 +12,27 @@ our @EXPORT_OK = qw( $config );
 
 my $program_name = 'Orthograph';
 our $config = &getconfig; 
+
+#--------------------------------------------------
+# # Get command line options. These may override variables set in the config file.
+#-------------------------------------------------- 
+#{{{
+GetOptions( $config,
+	'verbose|v',
+	'configfile|c',
+  'debug|d',
+	'estfile|E=s',
+	'blast_evalue_threshold=s',
+	'blast_max_hits=s',
+	'hmmsearch_evalue_threshold=s',
+	'hmmsearch_score=s',
+	'hmmsearchprog=s',
+	'list_species|l',
+	'logfile|log=s',
+	'preparedb',
+	'quiet',
+	'species_name=s',
+) or die("Fatal: I don't know what you want me to do. Terminating.\n");#}}}
 
 exit(1) unless $config;
 

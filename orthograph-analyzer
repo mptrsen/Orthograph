@@ -98,7 +98,6 @@ my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastd
 my $aaoutdir       = $config->{'aaoutdir'}              ? $config->{'aaoutdir'}             : 'aa';
 my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
 my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 10;
-my $max_blast_searches     = $config->{'max_blast_searches'}            ? $config->{'max_blast_searches'}           : 20;
 my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
 my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
 my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
@@ -110,80 +109,91 @@ my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_ou
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
 my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
 my $logfile        = $config->{'logfile'}              ? $config->{'logfile'}              : undef;
-my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
-my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
-my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
-my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'orthograph';
+my $max_blast_searches     = $config->{'max_blast_searches'}            ? $config->{'max_blast_searches'}           : 20;
+
+# MySQL settings
+my $mysql_dbname   = $config->{'mysql_dbname'}           ?
+	$config->{'mysql_dbname'}                              :
+	'orthograph';
+my $mysql_dbpwd    = $config->{'mysql_dbpassword'}       ?
+	$config->{'mysql_dbpassword'}                          :
+	'root';
+my $mysql_dbserver = $config->{'mysql_dbserver'}         ?
+	$config->{'mysql_dbserver'}                            :
+	'localhost';
+my $mysql_dbuser   = $config->{'mysql_dbuser'}           ?
+	$config->{'mysql_dbuser'}                              :
+	'root';
+my $mysql_table_prefix = $config->{'mysql_table_prefix'} ?
+	$config->{'mysql_table_prefix'}                        :
+	'orthograph';
 # make sure there is exactly one underscore at the end of the prefix
 $mysql_table_prefix =~ s/_*$/_/;
 
-my $mysql_table_blast = $config->{'mysql_table_blast'} ?
-	$mysql_table_prefix . $config->{'mysql_table_blast'} :
-	$mysql_table_prefix . 'blast';
-my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
-	$mysql_table_prefix . 'blastdbs';
-my $mysql_table_ests = $config->{'mysql_table_ests'} ?
-	$mysql_table_prefix . $config->{'mysql_table_ests'} :
-	$mysql_table_prefix . 'ests';
-my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ?
-	$mysql_table_prefix . $config->{'mysql_table_hmmsearch'} :
-	$mysql_table_prefix . 'hmmsearch';
+my $mysql_table_blast       = $config->{'mysql_table_blast'}       ?
+	$mysql_table_prefix .       $config->{'mysql_table_blast'}       :
+	$mysql_table_prefix .       'blast';
+my $mysql_table_blastdbs    = $config->{'mysql_table_blastdbs'}    ?
+	$mysql_table_prefix .       $config->{'mysql_table_blastdbs'}    :
+	$mysql_table_prefix .       'blastdbs';
+my $mysql_table_ests        = $config->{'mysql_table_ests'}        ?
+	$mysql_table_prefix .       $config->{'mysql_table_ests'}        :
+	$mysql_table_prefix .       'ests';
+my $mysql_table_hmmsearch   = $config->{'mysql_table_hmmsearch'}   ?
+	$mysql_table_prefix .       $config->{'mysql_table_hmmsearch'}   :
+	$mysql_table_prefix .       'hmmsearch';
 my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
-	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
-	$mysql_table_prefix . 'set_details';
-my $mysql_table_aaseqs = $config->{'aaseqs'} ?
-	$mysql_table_prefix . $config->{'aaseqs'} :
-	$mysql_table_prefix . 'aaseqs';
-my $mysql_table_seqpairs       = $config->{'sequence_pairs'} ?
-	$mysql_table_prefix . $config->{'sequence_pairs'} :
-	$mysql_table_prefix . 'sequence_pairs';
-my $mysql_table_taxa       = $config->{'taxa'} ?
-	$mysql_table_prefix . $config->{'taxa'} :
-	$mysql_table_prefix . 'taxa';
-my $mysql_table_orthologs      = $config->{'orthologs'} ?
-	$mysql_table_prefix . $config->{'orthologs'} :
-	$mysql_table_prefix . 'orthologs';
-my $outdir         = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
-my $orthoset       = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
-my $quiet          = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
-my $reftaxa        = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
+	$mysql_table_prefix .       $config->{'mysql_table_set_details'} :
+	$mysql_table_prefix .       'set_details';
+my $mysql_table_aaseqs      = $config->{'aaseqs'}                  ?
+	$mysql_table_prefix .       $config->{'aaseqs'}                  :
+	$mysql_table_prefix .       'aaseqs';
+my $mysql_table_seqpairs    = $config->{'sequence_pairs'}          ?
+	$mysql_table_prefix .       $config->{'sequence_pairs'}          :
+	$mysql_table_prefix .       'sequence_pairs';
+my $mysql_table_taxa        = $config->{'taxa'}                    ?
+	$mysql_table_prefix .       $config->{'taxa'}                    :
+	$mysql_table_prefix .       'taxa';
+my $mysql_table_orthologs   = $config->{'orthologs'}               ?
+	$mysql_table_prefix .       $config->{'orthologs'}               :
+	$mysql_table_prefix .       'orthologs';
+my $outdir       = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
+my $orthoset     = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
+my $quiet        = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
+my $reftaxa      = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
 # substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst        = $config->{'substitute_u_with'}     ? $config->{'substitute_u_with'}    : undef;
-my $sets_dir       = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
-my $species_name   = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
-my $verbose        = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
+my $u_subst      = $config->{'substitute_u_with'}     ? $config->{'substitute_u_with'}    : undef;
+my $sets_dir     = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
+my $species_name = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
+my $verbose      = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
 #}}}
 
 #--------------------------------------------------
 # # More variables
 #-------------------------------------------------- 
 #{{{
+my $alndir              = '';
+my $blastcount          = 0;
+my $blastdb             = '';
+my $blasthitcount_total = 0;
 my $configfile          = '';
 my $count               = 0;
-my $blastdb;
-my $blastcount;
-my $blasthitcount_total;
-my $alndir              = '';
+my $hmmcount            = 0;
 my $hmmdir              = '';
-my $hmmresultfileref;
-my $hmmcount;
-my $hmmhitcount;
+my $hmmhitcount         = 0;
 my $hmmhitcount_total   = 0;
+my $hmmresultfileref    = '';
 my $listspecies         = 0;
 my $logdir              = '';
-my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
 my $mysql_col_aaseq     = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
 my $mysql_col_date      = 'date';
+my $mysql_col_digest    = 'digest';
 my $mysql_col_end       = 'end';
 my $mysql_col_evalue    = 'evalue';
-my $mysql_col_start     = 'start';
 my $mysql_col_hdr       = 'header';
 my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
-my $mysql_col_digest    = 'digest';
 my $mysql_col_longname  = 'longname';
 my $mysql_col_name      = 'name';
 my $mysql_col_orthoid   = 'ortholog_gene_id';
@@ -192,25 +202,27 @@ my $mysql_col_score     = 'score';
 my $mysql_col_seq       = 'sequence';
 my $mysql_col_seqpair   = 'sequence_pair';
 my $mysql_col_setid     = 'setid';
+my $mysql_col_start     = 'start';
 my $mysql_col_target    = 'target';
 my $mysql_col_taxid     = 'taxid';
 my $mysql_col_taxon     = 'taxon';
-my $num_ests;
-my $num_hmms;
-my $orthocount = 0;
-my $preparedb;
+my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
+my $num_ests            = 0;
+my $num_hmms            = 0;
+my $orthocount          = 0;
+my $preparedb           = 0;
 my $protfile            = '';
 my $set_id              = undef;
 my $species_id          = undef;
-my $stdout              = undef;
 my $stderr              = undef;
+my $stdout              = undef;
 my $t0;  # these are used for timing 
 my $t1;  # these are used for timing 
-my $timestamp_start     = scalar time();
-my $timestamp_end       = undef; # will hold the time at the end
 my $timestamp_diff      = undef;
-my @lt                  = localtime(time);
+my $timestamp_end       = undef; # will hold the time at the end
+my $timestamp_start     = scalar time();
 my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
+my @lt                  = localtime(time);
 # create new temporary directory and set it to not be deleted if debugging
 my $tmpdir              = File::Temp->newdir(
                             'UNLINK' => 0, 
@@ -220,29 +232,6 @@ my @hmmfiles;
 my @reftaxa;
 my @seqobjs;
 #}}}
-
-#--------------------------------------------------
-# # Get command line options. These may override variables set in the config file.
-#-------------------------------------------------- 
-#{{{
-GetOptions( 'v'        => \$verbose,
-	'c'                  => \$configfile,
-  'd'                  => \$debug,
-	'threads'            => \$use_threads,   # make using threads optional
-	'estfile=s'          => \$estfile,
-	'E=s'                => \$estfile,
-	'blast_evalue=s'     => \$blast_evalue_threshold,
-	'blast_score=s'      => \$blast_score_threshold,
-	'hmmsearch_evalue=s' => \$hmmsearch_evalue_threshold,
-	'hmmsearch_score=s'  => \$hmmsearch_score_threshold,
-	'H=s'                => \$hmmfile,
-	'hmmsearchprog=s'    => \$hmmsearchprog,
-	'l|list_species'     => \$listspecies,
-	'log|logfile=s'      => \$logfile,
-	'preparedb'          => \$preparedb,
-	'quiet'              => \$quiet,
-	'taxon=s'            => \$species_name,
-) or die("Fatal: I don't know what you want me to do. Terminating.\n");#}}}
 
 $tmpdir->unlink_on_destroy(0) if $debug;
 
@@ -265,6 +254,7 @@ if ($preparedb) {#{{{
 #-------------------------------------------------- 
 if ($listspecies) {
 	&listspecies;
+	exit(0);
 }
 
 #--------------------------------------------------
@@ -766,7 +756,7 @@ sub intro {#{{{
 
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $settest = &mysql_get("SELECT *
+	my $settest = Wrapper::Mysql::mysql_get("SELECT *
 	FROM $mysql_table_set_details
 	WHERE $mysql_col_name = '$orthoset'
 	LIMIT 1");
@@ -967,7 +957,7 @@ sub clear_db {#{{{
 	my $n = 0;
 
 	# clear previous results from the same species
-	my $dbh = &mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh();
 	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch) {
 		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = ?";
 		my $sth = $dbh->prepare($query);
@@ -1072,8 +1062,8 @@ sub insert_results_into_table {#{{{
 # Returns: scalar string PATH TO BLASTDB
 sub get_blastdir_for {#{{{
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT $mysql_table_blastdbs.blastdb_path FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.id = $mysql_table_blastdbs.setid LIMIT 1";
-	my $result = &mysql_get($query);
+	my $query = "SELECT $mysql_table_blastdbs.$mysql_col_blastdbpath FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.$mysql_col_id = $mysql_table_blastdbs.$mysql_col_setid LIMIT 1";
+	my $result = Wrapper::Mysql::mysql_get($query);
 	my $blastdir = File::Spec->catfile($$result[0][0], $orthoset);
 	return $blastdir;
 }#}}}
@@ -1100,14 +1090,14 @@ sub make_hmms {#{{{
 	my $hmmsuffix = '.hmm';
 	my $data = {};
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT o.$mysql_col_orthoid, a.id, a.$mysql_col_seq
+	my $query = "SELECT o.$mysql_col_orthoid, a.$mysql_col_id, a.$mysql_col_seq
 		FROM $mysql_table_orthologs         AS o
     INNER JOIN $mysql_table_seqpairs    AS p
-    ON o.$mysql_col_seqpair = p.id
+    ON o.$mysql_col_seqpair = p.$mysql_col_id
     INNER JOIN $mysql_table_aaseqs      AS a
-    ON a.id = p.$mysql_col_aaseq
+    ON a.$mysql_col_id = p.$mysql_col_aaseq
     INNER JOIN $mysql_table_set_details AS d
-    ON d.id = o.$mysql_col_setid
+    ON d.$mysql_col_id = o.$mysql_col_setid
     WHERE d.$mysql_col_name = '$set'";
 
 	# does the alignment dir exist?
@@ -1121,7 +1111,7 @@ sub make_hmms {#{{{
 	print $stdout "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
 	# get the ortholog set from the database
-	my $dbh = &mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh();
 	my $sql = $dbh->prepare($query);
 	$sql->execute() or die;
 	while (my @row = $sql->fetchrow_array()) {
@@ -1182,8 +1172,11 @@ sub align {#{{{
 	my @alignment_cmd = qq($alignment_program $fafile 2> /dev/null);	# this prints the alignment to STDOUT, must be captured somehow
 	print $stdout "@alignment_cmd\n" if $debug;
 	my $alnf = File::Spec->catfile($alndir, $orthoid . '.aln.fa');
-	my $alnfh = IO::File->new($alnf, 'w');
-	print $alnfh `@alignment_cmd`
+	my $alnfh = IO::File->new($alnf, 'w')
+		or print $stderr "Fatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
+	my $aln = `@alignment_cmd`
+		or print $stderr "Fatal: Alignment for $orthoid failed: $?\n" and exit(1);
+	print $alnfh $aln
 		or print $stderr "Fatal: Could not write alignment to file $alnf\: $!\n" and exit(1);
 	$alnfh->close();
 	return $alnf;
@@ -1198,7 +1191,8 @@ sub fasta2stockholm {#{{{
 	my $orthoid = shift;
 	my $fh = Seqload::Fasta->open($fafile);
 	my $stockhf = File::Spec->catfile($alndir, $orthoid . '.stockh');
-	my $stockhfh = IO::File->new($stockhf, 'w');
+	my $stockhfh = IO::File->new($stockhf, 'w')
+		or print $stderr "Fatal: Could not open file '$stockhf' for writing: $!\n" and exit(1);
 	print $stockhfh "# STOCKHOLM 1.0\n";
 	while (my ($h, $s) = $fh->next_seq()) {
 		printf($stockhfh "%-50s %s\n", $h, $s)
@@ -1274,7 +1268,7 @@ sub insert_taxon_into_table {
 	unless ($species_name) { croak("Usage: insert_taxon_into_table(SPECIESNAME)") }
 
 	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
-	my $dbh = &mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $species_name, 0 )
 		or print $stderr "Warning: Insertion of species name into database failed: $DBI::errstr";
@@ -1330,7 +1324,7 @@ sub load_data_infile {#{{{
 	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table_ests FIELDS TERMINATED BY ',' ($list)";
 
 	# open connection
-	my $dbh = &mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$num_ests = $sth->execute();
 	# disconnect ASAP and die if errors
@@ -1347,7 +1341,7 @@ sub get_transcripts {#{{{
 	my $nseqs = 0;
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'";
-	my $dbh = &mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute();
 	while (my ($h, $s) = $sth->fetchrow_array()) {
@@ -1374,7 +1368,7 @@ sub get_hmmresults {#{{{
 		WHERE $mysql_table_hmmsearch.$mysql_col_query = '$hmmquery'";
 
 	# get the sequences from the database (as array->array reference)
-	my $results = &mysql_get($query_get_sequences);
+	my $results = Wrapper::Mysql::mysql_get($query_get_sequences);
 	return($results);
 }#}}}
 
@@ -1397,9 +1391,9 @@ sub get_orthologs {#{{{
       $mysql_table_ests.$mysql_col_seq          AS EST_seq
     FROM $mysql_table_aaseqs
 		INNER JOIN $mysql_table_taxa
-			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.id
+			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.$mysql_col_id
     INNER JOIN $mysql_table_blast 
-			ON $mysql_table_aaseqs.id = $mysql_table_blast.$mysql_col_target 
+			ON $mysql_table_aaseqs.$mysql_col_id = $mysql_table_blast.$mysql_col_target 
     INNER JOIN $mysql_table_hmmsearch 
 			ON $mysql_table_blast.$mysql_col_query = $mysql_table_hmmsearch.$mysql_col_target  
     INNER JOIN $mysql_table_ests 
@@ -1407,14 +1401,14 @@ sub get_orthologs {#{{{
     INNER JOIN $mysql_table_orthologs 
 			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
 		INNER JOIN $mysql_table_seqpairs
-			ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.id 
-		WHERE $mysql_table_orthologs.$mysql_col_orthoid = '$orthoid'
-			AND $mysql_table_ests.$mysql_col_digest = '$estdigest'
-			AND $mysql_table_seqpairs.$mysql_col_aaseq = $mysql_table_aaseqs.id
+			ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.$mysql_col_id 
+		WHERE $mysql_table_orthologs.$mysql_col_orthoid = ?
+			AND $mysql_table_ests.$mysql_col_digest       = ?
+			AND $mysql_table_seqpairs.$mysql_col_aaseq    = $mysql_table_aaseqs.$mysql_col_id
 		ORDER BY $mysql_table_hmmsearch.$mysql_col_evalue, $mysql_table_blast.$mysql_col_evalue";
-	my $dbh = &mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh();
 	my $sql = $dbh->prepare($query);
-	$sql->execute();
+	$sql->execute( $orthoid, $estdigest );
 	my $result = $sql->fetchall_arrayref();
 	$dbh->disconnect();
 	return $result;

@@ -63,6 +63,9 @@ alignment_program    = mafft --localpair --maxiterate 1000 --anysymbol
 # HMMbuild is used to build the profile HMMs. Part of the HMMER3 package.
 hmmbuild_program     = hmmbuild
 
+# makeblastdb is used to build the BLAST database. Part of NCBI BLAST+
+makeblastdb_program  = makeblastdb
+
 # Fastatranslate is part of the Exonerate package and translates the transcript
 # sequences into all six reading frames. You are free to use different
 # programs, though.
