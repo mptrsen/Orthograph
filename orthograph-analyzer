@@ -29,24 +29,22 @@ use DBD::mysql;	    # MySQL database driver
 use DBI;	          # database interface 
 use Data::Dumper;   # great for debugging
 use Digest::SHA;    # SHA hashing: good idea or not?
-use File::Basename; # parse path names
+use File::Basename; # provides basename()
 use File::Path qw( make_path remove_tree ); # this also uses File::Spec
 use File::Temp;     # temporary files
 use FindBin;        # locate the dir of this script during compile time
-use Getopt::Long;   # parse command line arguments
 use IO::Dir;        # object-oriented access to dirs
 use IO::File;       # object-oriented access to files
-# you might want to look into Log::Message.
 
 # Custom modules
-use lib $FindBin::Bin;                    # $Bin is the directory of the original script
-use IO::Tee;                              # not custom, but supplied because from CPAN
-use Seqload::Fasta;                       # object-oriented access to fasta files
-use Wrapper::Hmmsearch;                   # object-oriented interface to hmmsearch
-use Wrapper::Blastp;                      # object-oriented interface to blastp
-use Wrapper::Mysql;                       # wrapper functions for MySQL
-use Orthograph::Functions;                # functions for all Orthograph tools
-use Orthograph::Config;                   # configuration in global hashref $config
+use lib $FindBin::Bin;     # $Bin is the directory of the original script
+use IO::Tee;               # not custom, but supplied because from CPAN
+use Seqload::Fasta;        # object-oriented access to fasta files
+use Wrapper::Hmmsearch;    # object-oriented interface to hmmsearch
+use Wrapper::Blastp;       # object-oriented interface to blastp
+use Wrapper::Mysql;        # wrapper functions for MySQL
+use Orthograph::Functions; # functions for all Orthograph tools
+use Orthograph::Config;    # configuration in global hashref $config; also handles command line arguments
 
 my $program_name = 'Orthograph';
 my $version = 'alpha4';
@@ -81,91 +79,63 @@ else {
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
 
+printf "%s => %s\n", $_, $config->{$_} foreach sort keys %$config;
+exit;
+
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
-my $alignment_program = $config->{'alignment_program'}   ? $config->{'alignment_program'}   : 'mafft --localpair --maxiterate 1000';#{{{
-my $hmmbuild_program  = $config->{'hmmbuild_program'}    ? $config->{'hmmbuild_program'}    : 'hmmbuild';
-my $translateprog     = $config->{'translate_program'}   ? $config->{'translate_program'}   : 'fastatranslate';
-my $hmmsearchprog     = $config->{'hmmsearch_program'}   ? $config->{'hmmsearch_program'}   : 'hmmsearch';
-my $blastprog         = $config->{'blast_program'}       ? $config->{'blast_program'}       : 'blastp';
-my $makeblastdbprog   = $config->{'makeblastdb_program'} ? $config->{'makeblastdb_program'} : 'makeblastdb';#}}}
+my $alignment_program          = $config->{'alignment_program'};
+my $hmmbuild_program           = $config->{'hmmbuild_program'};
+my $translateprog              = $config->{'translate_program'};
+my $hmmsearchprog              = $config->{'hmmsearch_program'};
+my $blastprog                  = $config->{'blast_program'};
+my $makeblastdbprog            = $config->{'makeblastdb_program'};
 
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
-my $aaoutdir       = $config->{'aaoutdir'}              ? $config->{'aaoutdir'}             : 'aa';
-my $backup_ext     = $config->{'backup_extension'}      ? $config->{'backup_extension'}     : '.bak';
-my $blast_max_hits = $config->{'blast_max_hits'}        ? $config->{'blast_max_hits'}       : 10;
-my $blastoutdir    = $config->{'blastoutdir'}           ? $config->{'blastoutdir'}          : 'blastp';
-my $blast_evalue_threshold = $config->{'blast_evalue_threshold'}        ? $config->{'blast_evalue_threshold'}       : 10;
-my $blast_score_threshold  = $config->{'blast_score_threshold'}         ? $config->{'blast_score_threshold'}        : 10;
-my $clear_data     = defined($config->{'clear_data'})  ? $config->{'clear_data'}           : 1;
-my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
-my $estfile        = $config->{'estfile'}              ? $config->{'estfile'}              : '';
-my $hmmfile        = $config->{'hmmfile'}              ? $config->{'hmmfile'}              : '';
-my $hmmoutdir      = $config->{'hmmsearch_output_dir'} ? $config->{'hmmsearch_output_dir'} : basename($hmmsearchprog);
-my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ? $config->{'hmmsearch_evalue_threshold'}  : undef;
-my $hmmsearch_score_threshold = $config->{'hmmsearch_score_threshold'}      ? $config->{'hmmsearch_score_threshold'}      : undef;
-my $logfile        = $config->{'logfile'}              ? $config->{'logfile'}              : undef;
-my $max_blast_searches     = $config->{'max_blast_searches'}            ? $config->{'max_blast_searches'}           : 20;
+my $aaoutdir                   = $config->{'aaoutdir'};
+my $backup_ext                 = $config->{'backup_extension'};
+my $blast_max_hits             = $config->{'blast_max_hits'};
+my $blastoutdir                = $config->{'blastoutdir'};
+my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
+my $blast_score_threshold      = $config->{'blast_score_threshold'};
+my $clear_data                 = defined($config->{'clear_data'});
+my $debug                      = $config->{'debug'};
+my $estfile                    = $config->{'estfile'};
+my $hmmfile                    = $config->{'hmmfile'};
+my $hmmoutdir                  = $config->{'hmmsearch_output_dir'};
+my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'};
+my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'};
+my $logfile                    = $config->{'logfile'};
+my $max_blast_searches         = $config->{'max_blast_searches'};
 
 # MySQL settings
-my $mysql_dbname   = $config->{'mysql_dbname'}           ?
-	$config->{'mysql_dbname'}                              :
-	'orthograph';
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'}       ?
-	$config->{'mysql_dbpassword'}                          :
-	'root';
-my $mysql_dbserver = $config->{'mysql_dbserver'}         ?
-	$config->{'mysql_dbserver'}                            :
-	'localhost';
-my $mysql_dbuser   = $config->{'mysql_dbuser'}           ?
-	$config->{'mysql_dbuser'}                              :
-	'root';
-my $mysql_table_prefix = $config->{'mysql_table_prefix'} ?
-	$config->{'mysql_table_prefix'}                        :
-	'orthograph';
-# make sure there is exactly one underscore at the end of the prefix
-$mysql_table_prefix =~ s/_*$/_/;
+my $mysql_dbname               = $config->{'mysql_dbname'};
+my $mysql_dbpwd                = $config->{'mysql_dbpassword'};
+my $mysql_dbserver             = $config->{'mysql_dbserver'};
+my $mysql_dbuser               = $config->{'mysql_dbuser'};
 
-my $mysql_table_blast       = $config->{'mysql_table_blast'}       ?
-	$mysql_table_prefix .       $config->{'mysql_table_blast'}       :
-	$mysql_table_prefix .       'blast';
-my $mysql_table_blastdbs    = $config->{'mysql_table_blastdbs'}    ?
-	$mysql_table_prefix .       $config->{'mysql_table_blastdbs'}    :
-	$mysql_table_prefix .       'blastdbs';
-my $mysql_table_ests        = $config->{'mysql_table_ests'}        ?
-	$mysql_table_prefix .       $config->{'mysql_table_ests'}        :
-	$mysql_table_prefix .       'ests';
-my $mysql_table_hmmsearch   = $config->{'mysql_table_hmmsearch'}   ?
-	$mysql_table_prefix .       $config->{'mysql_table_hmmsearch'}   :
-	$mysql_table_prefix .       'hmmsearch';
-my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
-	$mysql_table_prefix .       $config->{'mysql_table_set_details'} :
-	$mysql_table_prefix .       'set_details';
-my $mysql_table_aaseqs      = $config->{'aaseqs'}                  ?
-	$mysql_table_prefix .       $config->{'aaseqs'}                  :
-	$mysql_table_prefix .       'aaseqs';
-my $mysql_table_seqpairs    = $config->{'sequence_pairs'}          ?
-	$mysql_table_prefix .       $config->{'sequence_pairs'}          :
-	$mysql_table_prefix .       'sequence_pairs';
-my $mysql_table_taxa        = $config->{'taxa'}                    ?
-	$mysql_table_prefix .       $config->{'taxa'}                    :
-	$mysql_table_prefix .       'taxa';
-my $mysql_table_orthologs   = $config->{'orthologs'}               ?
-	$mysql_table_prefix .       $config->{'orthologs'}               :
-	$mysql_table_prefix .       'orthologs';
-my $outdir       = $config->{'output_directory'}      ? $config->{'output_directory'}     : undef;
-my $orthoset     = $config->{'ortholog_set'}          ? $config->{'ortholog_set'}         : undef;
-my $quiet        = $config->{'quiet'}                 ? $config->{'quiet'}                : undef;  # I like my quiet
-my $reftaxa      = $config->{'reference_taxa'}        ? $config->{'reference_taxa'}       : undef;
+my $mysql_table_blast          = $config->{'mysql_table_blast'};
+my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
+my $mysql_table_ests           = $config->{'mysql_table_ests'};
+my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
+my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
+my $mysql_table_aaseqs         = $config->{'aaseqs'};
+my $mysql_table_seqpairs       = $config->{'sequence_pairs'};
+my $mysql_table_taxa           = $config->{'taxa'};
+my $mysql_table_orthologs      = $config->{'orthologs'};
+my $outdir                     = $config->{'output_directory'};
+my $orthoset                   = $config->{'ortholog_set'};
+my $quiet                      = $config->{'quiet'};
+my $reftaxa                    = $config->{'reference_taxa'};
 # substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst      = $config->{'substitute_u_with'}     ? $config->{'substitute_u_with'}    : undef;
-my $sets_dir     = $config->{'sets_dir'}              ? $config->{'sets_dir'}             : 'sets';
-my $species_name = $config->{'species_name'}          ? $config->{'species_name'}         : undef;
-my $verbose      = $config->{'verbose'}               ? $config->{'verbose'}              : undef;
+my $u_subst                    = $config->{'substitute_u_with'};
+my $sets_dir                   = $config->{'sets_dir'};
+my $species_name               = $config->{'species_name'};
+my $verbose                    = $config->{'verbose'};
 #}}}
 
 #--------------------------------------------------
@@ -221,8 +191,8 @@ my $t1;  # these are used for timing
 my $timestamp_diff      = undef;
 my $timestamp_end       = undef; # will hold the time at the end
 my $timestamp_start     = scalar time();
-my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
 my @lt                  = localtime(time);
+my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
 # create new temporary directory and set it to not be deleted if debugging
 my $tmpdir              = File::Temp->newdir(
                             'UNLINK' => 0, 
@@ -523,61 +493,17 @@ printf "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and verified 
 	((100 * $orthocount) / $hmmcount);
 printf "Now go look in your output directory %s.\n", $outdir;
 
-exit;
+# successfully exit :)
+exit(0);
 
 
 ###################################################
 # # Functions 
 ###################################################
 
-# Sub: mysql_dbh
-# Get a database handle
-# Arguments: -
-# Returns: Database handle
-sub mysql_dbh {#{{{
-	return DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-}#}}}
-
-# Sub: mysql_get
-# Get from the database the result of a SQL query
-# Expects: QUERY as a string literal
-# Returns: Reference to array of arrays (result lines->fields)
-sub mysql_get {#{{{
-	my $query = shift;
-	unless ($query) { croak "Usage: mysql_get(QUERY)\n" }
-  # prepare anonymous array
-	my $results = [ ];
-  # connect and fetch stuff
-	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	my $sql = $dbh->prepare($query);
-	$sql->execute() or return 0;
-	while (my @result = $sql->fetchrow_array() ) {
-		push(@$results, \@result);
-	}
-	$sql->finish();
-	$dbh->disconnect; # disconnect ASAP
-	return $results;
-}#}}}
-
-# Sub: mysql_do
-# Connect to a database, execute a single query (for repetitive queries, you better do that by hand).
-# Expects: scalar string SQL query. 
-# Returns 1 on result, dies otherwise.
-
-sub mysql_do {#{{{
-	my $query = shift;
-	unless ($query) { croak "Usage: mysql_do(QUERY)\n" }
-	my @fields = @_;
-	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-	my $sql = $dbh->prepare($query);
-	$sql->execute(@fields) or die;
-	$dbh->disconnect();
-	return 1;
-}#}}}
-
 # Sub: progress_bar
-# Returns a wget-style progress bar.
-# Arguments: 
+# Prints a self-overwriting, wget-style progress bar.
+# Arguments: scalar int so-far, scalar int total, scalar int width, scalar char "what-to-use-as-char"
 sub progress_bar {#{{{
 	my ($got, $total, $width, $char) = @_;
 	$width ||= 25;

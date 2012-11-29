@@ -38,80 +38,80 @@ use Wrapper::Mysql;
 my $config = $Orthograph::Config::config;	# copy config var
 
 # These variables must be set in the config file
-my $mysql_dbname   = $config->{'mysql_dbname'}           ?
-	$config->{'mysql_dbname'}       : 'orthograph';
-my $mysql_dbserver = $config->{'mysql_dbserver'}         ?
-	$config->{'mysql_dbserver'}     : 'localhost';
+my $mysql_dbname       = $config->{'mysql_dbname'}       ?
+                         $config->{'mysql_dbname'}       :
+                         'orthograph';
+my $mysql_dbserver     = $config->{'mysql_dbserver'}     ?
+                         $config->{'mysql_dbserver'}     :
+                         'localhost';
 # db user and pwd default to the login name of the executing user
-my $mysql_dbuser   = $config->{'mysql_dbuser'}           ?
-	$config->{'mysql_dbuser'}       : $ENV{LOGNAME};
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'}       ?
-	$config->{'mysql_dbpassword'}   : $ENV{LOGNAME};
+my $mysql_dbuser       = $config->{'mysql_dbuser'}       ?
+                         $config->{'mysql_dbuser'}       :
+                         $ENV{LOGNAME};
+my $mysql_dbpwd        = $config->{'mysql_dbpassword'}   ?
+                         $config->{'mysql_dbpassword'}   :
+                         $ENV{LOGNAME};
 my $mysql_table_prefix = $config->{'mysql_table_prefix'} ?
-	$config->{'mysql_table_prefix'} : 'orthograph';
-# make sure the prefix ends on exactly one _
+                         $config->{'mysql_table_prefix'} :
+												 'orthograph';
+# make sure the prefix ends on exactly one underscore
 $mysql_table_prefix =~ s/_*$/_/;
 
 my $setname                    = $config->{'ortholog_set'} ? 
-	$config->{'ortholog_set'} :
-	undef;
+                                 $config->{'ortholog_set'} :
+                                 undef;
 my $speciesname                = $config->{'species_name'} ?
-	$config->{'species_name'} :
-	undef;
+                                 $config->{'species_name'} :
+                                 undef;
 my $reference_taxa             = $config->{'reference_taxa'} ?
-	$config->{'reference_taxa'} :
-	'';
+                                 $config->{'reference_taxa'} :
+                                 '';
 
 
 # These variables can be set in the config file
 my $mysql_table_blast          = $config->{'mysql_table_blast'} ?
-	$mysql_table_prefix . $config->{'mysql_table_blast'} :
-	$mysql_table_prefix . 'blast';
+	$mysql_table_prefix .          $config->{'mysql_table_blast'} :
+	$mysql_table_prefix .          'blast';
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
-	$mysql_table_prefix . 'blastdbs';
+	$mysql_table_prefix .          $config->{'mysql_table_blastdbs'} :
+	$mysql_table_prefix .          'blastdbs';
 my $mysql_table_ests           = $config->{'mysql_table_ests'} ?
-	$mysql_table_prefix . $config->{'mysql_table_ests'} :
-	$mysql_table_prefix . 'ests';
+	$mysql_table_prefix .          $config->{'mysql_table_ests'} :
+	$mysql_table_prefix .          'ests';
 my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'} ?
-	$mysql_table_prefix . $config->{'mysql_table_hmmsearch'} :
-	$mysql_table_prefix . 'hmmsearch';
+	$mysql_table_prefix .          $config->{'mysql_table_hmmsearch'} :
+	$mysql_table_prefix . '         hmmsearch';
 my $mysql_table_set_details    = $config->{'mysql_table_set_details'} ?
-	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
-	$mysql_table_prefix . 'set_details';
+	$mysql_table_prefix .          $config->{'mysql_table_set_details'} :
+	$mysql_table_prefix .          'set_details';
 my $mysql_table_aaseqs = $config->{'aaseqs'} ?
-	$mysql_table_prefix . $config->{'aaseqs'} :
-	$mysql_table_prefix . 'aaseqs';
+	$mysql_table_prefix .          $config->{'aaseqs'} :
+	$mysql_table_prefix .          'aaseqs';
 my $mysql_table_seqpairs       = $config->{'sequence_pairs'} ?
-	$mysql_table_prefix . $config->{'sequence_pairs'} :
-	$mysql_table_prefix . 'sequence_pairs';
-my $mysql_table_taxa       = $config->{'taxa'} ?
-	$mysql_table_prefix . $config->{'taxa'} :
-	$mysql_table_prefix . 'taxa';
+	$mysql_table_prefix .          $config->{'sequence_pairs'} :
+	$mysql_table_prefix .          'sequence_pairs';
+my $mysql_table_taxa           = $config->{'taxa'} ?
+	$mysql_table_prefix .          $config->{'taxa'} :
+	$mysql_table_prefix .          'taxa';
 my $mysql_table_orthologs      = $config->{'orthologs'} ?
-	$mysql_table_prefix . $config->{'orthologs'} :
-	$mysql_table_prefix . 'orthologs';
+	$mysql_table_prefix .          $config->{'orthologs'} :
+	$mysql_table_prefix .          'orthologs';
 
 my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'} ?
-	$config->{'blast_evalue_threshold'} :
-	10;
+	                               $config->{'blast_evalue_threshold'} :
+	                               10;
 my $soft_threshold             = $config->{'soft_threshold'} ?
-	$config->{'soft_threshold'} :
-	5;
+	                               $config->{'soft_threshold'} :
+	                               5;
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ?
-	$config->{'hmmsearch_evalue_threshold'} :
-	undef;
+	                               $config->{'hmmsearch_evalue_threshold'} :
+	                               undef;
 my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'} ?
-	$config->{'hmmsearch_score_threshold'} :
-	undef;
+	                               $config->{'hmmsearch_score_threshold'} :
+	                               undef;
 
 my $verbose = $config->{'verbose'};  # verbose output
 my $quiet   = $config->{'quiet'};    # i like my quiet
-
-GetOptions(
-	'v|verbose'      => \$verbose,
-	'q|verbose'      => \$quiet,
-);
 
 # mutually exclusive options
 die "Fatal: Can't operate in both verbose and quiet mode\n"

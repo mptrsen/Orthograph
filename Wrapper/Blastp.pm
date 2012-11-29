@@ -156,6 +156,21 @@ sub evalue_threshold {#{{{
 	unless ($evalue_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $evalue_threshold\n") }
 }#}}}
 
+=head3 score_threshold()
+
+Sets or returns the score threshold to use for the blastp search. Defaults to 10.
+
+=cut
+
+sub score_threshold {#{{{
+	my $class = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $score_threshold };
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Blastp->score_threshold(N)\n") }
+	$score_threshold = shift(@_);
+	unless ($score_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $score_threshold\n") }
+}#}}}
+
 =head3 max_hits()
 
 Sets the maximum number of hits to be returned. Defaults to 100.
@@ -204,7 +219,7 @@ sub blastp {#{{{
 		return $self;
 	}
 	# use outfmt 7 for comment lines
-	my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore' -evalue $evalue_threshold -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
+	my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
 
 	# do the search or die
 	print STDERR "\n@blastcmd\n\n"

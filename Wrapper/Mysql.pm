@@ -68,14 +68,16 @@ my $mysql_table_users       = $config->{'mysql_table_users'} ?
 
 
 # Sub: mysql_dbh
-# Returns a MySQL database handle
+# Get a database handle
+# Arguments: -
+# Returns: Database handle
 sub mysql_dbh {#{{{
 	return DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd);
 }#}}}
 
 # Sub: mysql_get
 # Get from the database the result of a SQL query
-# Arguments: QUERY as a string literal
+# Expects: QUERY as a string literal
 # Returns: Reference to array of arrays (result lines->fields)
 sub mysql_get {#{{{
 	my $query = shift;
@@ -83,17 +85,31 @@ sub mysql_get {#{{{
   # prepare anonymous array
 	my $results = [ ];
   # connect and fetch stuff
-	print "$query;\n" 
-		if $debug;
-	my $dbh = &mysql_dbh;
+	my $dbh = &mysql_dbh();
 	my $sql = $dbh->prepare($query);
-	$sql->execute() or croak;
+	$sql->execute() or return 0;
 	while (my @result = $sql->fetchrow_array() ) {
 		push(@$results, \@result);
 	}
 	$sql->finish();
 	$dbh->disconnect; # disconnect ASAP
 	return $results;
+}#}}}
+
+# Sub: mysql_do
+# Connect to a database, execute a single query (for repetitive queries, you better do that by hand).
+# Expects: scalar string SQL query. 
+# Returns 1 on result, dies otherwise.
+
+sub mysql_do {#{{{
+	my $query = shift;
+	unless ($query) { croak "Usage: mysql_do(QUERY)\n" }
+	my @fields = @_;
+	my $dbh = &mysql_dbh();
+	my $sql = $dbh->prepare($query);
+	$sql->execute(@fields) or die;
+	$dbh->disconnect();
+	return 1;
 }#}}}
 
 # Sub: get_ortholog_sets

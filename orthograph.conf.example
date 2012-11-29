@@ -116,7 +116,7 @@ mysql_dbserver             = 127.0.0.1
 # Prefix for your Orthograph database tables. Useful if you are running
 # multiple instances of Orthograph on the same database but don't want the data
 # to be mixed up. Defaults to 'orthograph'.
-#mysql_table_prefix = orthograph
+#mysql_prefix = orthograph
 
 # 
 # # Other options
