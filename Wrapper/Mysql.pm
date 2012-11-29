@@ -9,63 +9,33 @@ use Orthograph::Config;                # configuration parser getconfig()
 use Data::Dumper;
 
 my $config = $Orthograph::Config::config;  # copy config
-#--------------------------------------------------
-# # These variables can be set in the config file
-#-------------------------------------------------- 
-#{{{
-my $debug          = $config->{'debug'}                ? $config->{'debug'}                : undef;
-my $mysql_dbname   = $config->{'mysql_dbname'}         ? $config->{'mysql_dbname'}         : 'orthograph';
-my $mysql_dbpwd    = $config->{'mysql_dbpassword'}     ? $config->{'mysql_dbpassword'}     : 'root';
-my $mysql_dbserver = $config->{'mysql_dbserver'}       ? $config->{'mysql_dbserver'}       : 'localhost';
-my $mysql_dbuser   = $config->{'mysql_dbuser'}          ? $config->{'mysql_dbuser'}         : 'root';
-my $mysql_table_prefix = $config->{'mysql_table_prefix'} ? $config->{'mysql_table_prefix'} : 'orthograph';
 
-# make sure there is exactly one underscore at the end of the prefix
-$mysql_table_prefix =~ s/_*$/_/;
+# MySQL settings
+my $mysql_dbname               = $config->{'mysql_dbname'};
+my $mysql_dbpwd                = $config->{'mysql_dbpassword'};
+my $mysql_dbserver             = $config->{'mysql_dbserver'};
+my $mysql_dbuser               = $config->{'mysql_dbuser'};
 
-my $mysql_table_blast = $config->{'mysql_table_blast'} ?
-	$mysql_table_prefix . $config->{'mysql_table_blast'} :
-	$mysql_table_prefix . 'blast';
-my $mysql_table_blastdbs = $config->{'mysql_table_blastdbs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_blastdbs'} :
-	$mysql_table_prefix . 'blastdbs';
-my $mysql_table_ests = $config->{'mysql_table_ests'} ?
-	$mysql_table_prefix . $config->{'mysql_table_ests'} :
-	$mysql_table_prefix . 'ests';
-my $mysql_table_hmmsearch = $config->{'mysql_table_hmmsearch'} ?
-	$mysql_table_prefix . $config->{'mysql_table_hmmsearch'} :
-	$mysql_table_prefix . 'hmmsearch';
-my $mysql_table_set_details = $config->{'mysql_table_set_details'} ?
-	$mysql_table_prefix . $config->{'mysql_table_set_details'} :
-	$mysql_table_prefix . 'set_details';
-my $mysql_table_aaseqs = $config->{'mysql_table_aaseqs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_aaseqs'} :
-	$mysql_table_prefix . 'aaseqs';
-my $mysql_table_ntseqs = $config->{'mysql_table_ntseqs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_ntseqs'} :
-	$mysql_table_prefix . 'ntseqs';
-my $mysql_table_ogs = $config->{'mysql_table_ogs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_ogs'} :
-	$mysql_table_prefix . 'ogs';
-my $mysql_table_orthologs = $config->{'mysql_table_orthologs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_orthologs'} :
-	$mysql_table_prefix . 'orthologs';
-my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'} ?
-	$mysql_table_prefix . $config->{'mysql_table_sequence_pairs'} :
-	$mysql_table_prefix . 'sequence_pairs';
-my $mysql_table_seqtypes       = $config->{'mysql_table_sequence_types'} ?
-	$mysql_table_prefix . $config->{'mysql_table_sequence_types'} :
-	$mysql_table_prefix . 'sequence_types';
-my $mysql_table_taxa       = $config->{'mysql_table_taxa'} ?
-	$mysql_table_prefix . $config->{'mysql_table_taxa'} :
-	$mysql_table_prefix . 'taxa';
-my $mysql_table_temp       = $config->{'mysql_table_temp'} ?
-	$mysql_table_prefix . $config->{'mysql_table_temp'} :
-	$mysql_table_prefix . 'temp';
-my $mysql_table_users       = $config->{'mysql_table_users'} ?
-	$mysql_table_prefix . $config->{'mysql_table_users'} :
-	$mysql_table_prefix . 'users';
-
+my $mysql_table_blast          = $config->{'mysql_table_blast'};
+my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
+my $mysql_table_ests           = $config->{'mysql_table_ests'};
+my $mysql_table_ogs            = $config->{'mysql_table_ogs'};
+my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
+my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
+my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
+my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
+my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
+my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
+my $outdir                     = $config->{'output_directory'};
+my $orthoset                   = $config->{'ortholog_set'};
+my $quiet                      = $config->{'quiet'};
+my $reftaxa                    = $config->{'reference_taxa'};
+# substitution character for selenocysteine, which normally leads to blast freaking out
+my $u_subst                    = $config->{'substitute_u_with'};
+my $sets_dir                   = $config->{'sets_dir'};
+my $species_name               = $config->{'species_name'};
+my $verbose                    = $config->{'verbose'};
+#}}}
 
 # Sub: mysql_dbh
 # Get a database handle

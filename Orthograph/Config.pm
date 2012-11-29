@@ -2,6 +2,8 @@ package Orthograph::Config;
 use strict;
 use warnings;
 
+use Data::Dumper;
+use File::Basename;
 use File::Spec;             
 use FindBin;                # locate the dir of this script during compile time
 use Getopt::Long;           # parse command line arguments
@@ -52,7 +54,8 @@ GetOptions( $config,
   'ortholog_set',
   'output_directory',
   'quiet',
-  'reference_taxon=s@',
+  'reference_taxa=s',
+  'reference_taxon=s',
   'sets_dir=s',
   'soft_threshold=i',
   'substitute_u_with=s',
@@ -79,7 +82,6 @@ GetOptions( $config,
 
 
 
-
 # MySQL settings
 defined $config->{'mysql_dbname'}               or $config->{'mysql_dbname'}               = 'orthograph';
 defined $config->{'mysql_dbpassword'}           or $config->{'mysql_dbpassword'}           = 'root';
@@ -93,12 +95,19 @@ defined $config->{'mysql_table_blast'}          or $config->{'mysql_table_blast'
 defined $config->{'mysql_table_blastdbs'}       or $config->{'mysql_table_blastdbs'}       = 'blastdbs';
 defined $config->{'mysql_table_ests'}           or $config->{'mysql_table_ests'}           = 'ests';
 defined $config->{'mysql_table_hmmsearch'}      or $config->{'mysql_table_hmmsearch'}      = 'hmmsearch';
+defined $config->{'mysql_table_ogs'}            or $config->{'mysql_table_ogs'}            = 'ogs';
 defined $config->{'mysql_table_orthologs'}      or $config->{'mysql_table_orthologs'}      = 'orthologs';
 defined $config->{'mysql_table_sequence_pairs'} or $config->{'mysql_table_sequence_pairs'} = 'sequence_pairs';
 defined $config->{'mysql_table_set_details'}    or $config->{'mysql_table_set_details'}    = 'set_details';
 defined $config->{'mysql_table_taxa'}           or $config->{'mysql_table_taxa'}           = 'taxa';
 
 # more variables
+defined $config->{'alignment_program'}          or $config->{'alignment_program'}          = 'alignment';
+defined $config->{'hmmbuild_program'}           or $config->{'hmmbuild_program'}           = 'hmmbuild';
+defined $config->{'translate_program'}          or $config->{'translate_program'}          = 'translate';
+defined $config->{'hmmsearch_program'}          or $config->{'hmmsearch_program'}          = 'hmmsearch';
+defined $config->{'blast_program'}              or $config->{'blast_program'}              = 'blast';
+defined $config->{'makeblastdb_program'}        or $config->{'makeblastdb_program'}        = 'makeblastdb';
 defined $config->{'aaoutdir'}                   or $config->{'aaoutdir'}                   = 'aa';
 defined $config->{'backup_extension'}           or $config->{'backup_extension'}           = '.bak';
 defined $config->{'blast_evalue_threshold'}     or $config->{'blast_evalue_threshold'}     = 10;
@@ -111,6 +120,8 @@ defined $config->{'estfile'}                    or $config->{'estfile'}         
 defined $config->{'hmmfile'}                    or $config->{'hmmfile'}                    = '';
 defined $config->{'hmmsearch_evalue_threshold'} or $config->{'hmmsearch_evalue_threshold'} = undef;
 defined $config->{'hmmsearch_output_dir'}       or $config->{'hmmsearch_output_dir'}       = basename($config->{'hmmsearch_program'});
+
+
 # mutually exclusive options
 defined $config->{'hmmsearch_score_threshold'}  or $config->{'hmmsearch_score_threshold'}  = $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
 defined $config->{'logfile'}                    or $config->{'logfile'}                    = '';
@@ -119,8 +130,8 @@ defined $config->{'max_blast_searches'}         or $config->{'max_blast_searches
 defined $config->{'ortholog_set'}               or $config->{'ortholog_set'}               = '';
 defined $config->{'output_directory'}           or $config->{'output_directory'}           = '';
 defined $config->{'quiet'}                      or $config->{'quiet'}                      = 0;  # I like my quiet
-defined $config->{'reference_taxa'}             or $config->{'reference_taxa'}             = [ ];
-defined $config->{'reference_taxon'}            or $config->{'reference_taxon'}            = [ ];
+defined $config->{'reference_taxa'}             or $config->{'reference_taxa'}             = '';
+defined $config->{'reference_taxon'}            or $config->{'reference_taxon'}            = '';
 defined $config->{'sets_dir'}                   or $config->{'sets_dir'}                   = 'sets';
 defined $config->{'species_name'}               or $config->{'species_name'}               = '';
 # substitution character for selenocysteine, which normally leads to blast freaking out
@@ -140,19 +151,11 @@ $config->{$_} = $C{$_} foreach keys %C;
 # free memory... well, it's bound to go out of scope anyway
 undef %C;
 
-# special option: reference_taxa is a LIST
-# if provided in the config file, it's a string that must be transformed into an arrayref
-if (defined $config->{'reference_taxa'}) {
-	$config->{'reference_taxa'} = [ split(/\s*,\s*/, $config->{'reference_taxa'}) ] 
-}
-# if provided on the command line as multiple --reference_taxon, it is an arrayref already
-if (defined $config->{'reference_taxon'}) {
-	push(@{$config->{'reference_taxa'}}, @{$config->{'reference_taxon'}});
-}
-
-printf("%26s => %s\n", $_, $config->{$_}) foreach sort keys %$config;
-printf "<%s>", $_ foreach @{$config->{'reference_taxa'}};
-exit;
+#--------------------------------------------------
+# printf("%26s => %s\n", $_, $config->{$_}) foreach sort keys %$config;
+# printf "<%s>", $_ foreach @{$config->{'reference_taxa'}};
+# exit;
+#-------------------------------------------------- 
 # if something went wrong
 die unless $config;
 
