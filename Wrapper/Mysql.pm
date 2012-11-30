@@ -295,7 +295,6 @@ sub get_set_id {
 sub get_orthologs_for_set_hashref {
 	my $setid = shift(@_);
 	unless ($setid) { croak("Usage: get_orthologs_for_set(SETID)") }
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT $mysql_table_orthologs.ortholog_gene_id, $mysql_table_aaseqs.id 
 		FROM $mysql_table_orthologs 
 		INNER JOIN $mysql_table_seqpairs 
@@ -343,9 +342,9 @@ Returns: hashref of hashrefs of arrayrefs of hashrefs - lol
 sub get_hitlist_hashref {
 	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
 	my $setid  = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT
 		$mysql_table_hmmsearch.evalue,
+		$mysql_table_hmmsearch.logevalue,
 		$mysql_table_orthologs.ortholog_gene_id, 
 		$mysql_table_hmmsearch.target,
 		$mysql_table_hmmsearch.start,
@@ -366,6 +365,7 @@ sub get_hitlist_hashref {
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
 		WHERE $mysql_table_set_details.id = ?
 		AND $mysql_table_hmmsearch.taxid  = ?
+		ORDER BY $mysql_table_hmmsearch.logevalue ASC
 		";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
