@@ -304,12 +304,16 @@ sub get_orthologs_for_set_hashref {
 			ON $mysql_table_seqpairs.aa_seq = $mysql_table_aaseqs.id
 		INNER JOIN $mysql_table_set_details 
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
-		WHERE $mysql_table_set_details.id = $setid";
-	my $data = &mysql_get($query);
+		WHERE $mysql_table_set_details.id = ?";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute( $setid );
 	my $result = { };
-	foreach my $line (@$data) {
+	while (my $line = $sth->fetchrow_arrayref()) {
 		push( @{$$result{$$line[0]}}, $$line[1] );
 	}
+	$sth->finish;
+	$dbh->disconnect;
 	return $result;
 }
 
@@ -360,12 +364,15 @@ sub get_hitlist_hashref {
 			ON $mysql_table_aaseqs.taxid = $mysql_table_taxa.id
 		INNER JOIN $mysql_table_set_details
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
-		WHERE $mysql_table_set_details.id = $setid
-		AND $mysql_table_hmmsearch.taxid  = $specid
+		WHERE $mysql_table_set_details.id = ?
+		AND $mysql_table_hmmsearch.taxid  = ?
 		";
-	my $data = &mysql_get($query);
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute( $setid, $specid );
 	my $result = { };
-	foreach my $line ( @$data ) {
+	while (my $line = $sth->fetchrow_arrayref()) {
+		# first key is the hmmsearch evalue, second key is the orthoid
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
 			'hmmhit'       => $$line[2],
 			'start'        => $$line[3],
@@ -375,6 +382,8 @@ sub get_hitlist_hashref {
 			'species_name' => $$line[7],
 		});
 	}
+	$sth->finish();
+	$dbh->disconnect();
 	return $result;
 }
 

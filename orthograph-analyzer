@@ -102,7 +102,7 @@ my $blast_max_hits             = $config->{'blast_max_hits'};
 my $blastoutdir                = $config->{'blastoutdir'};
 my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
 my $blast_score_threshold      = $config->{'blast_score_threshold'};
-my $clear_data                 = defined($config->{'clear_data'});
+my $clear_data                 = $config->{'clear_data'};
 my $debug                      = $config->{'debug'};
 my $estfile                    = $config->{'estfile'};
 my $hmmfile                    = $config->{'hmmfile'};
@@ -161,6 +161,7 @@ my $mysql_col_date      = 'date';
 my $mysql_col_digest    = 'digest';
 my $mysql_col_end       = 'end';
 my $mysql_col_evalue    = 'evalue';
+my $mysql_col_logevalue = 'log_evalue';
 my $mysql_col_hdr       = 'header';
 my $mysql_col_hmm       = 'hmm';
 my $mysql_col_id        = 'id';
@@ -521,7 +522,7 @@ sub intro {#{{{
 	# first things first: 
 	# construct output directory paths
 	# outdir may be defined in the config file
-	$outdir = defined($outdir) ? $outdir : '.';
+	$outdir = defined($outdir) ? $outdir : File::Spec->catdir('.', $species_name);
 
 	# the output directory. create if it does not exist.
 	if (-d $outdir) {
@@ -817,13 +818,15 @@ sub preparedb {#{{{
 		$mysql_col_target    CHAR(32)     NOT NULL,       
 		$mysql_col_score     DOUBLE       NOT NULL,
 		$mysql_col_evalue    VARCHAR(100) NOT NULL,
+		$mysql_col_logevalue DOUBLE       NOT NULL,
 		$mysql_col_start     INT          NOT NULL,
 		$mysql_col_end       INT          NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX ($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
-		INDEX ($mysql_col_target)
+		INDEX ($mysql_col_target),
+		INDEX ($mysql_col_logevalue)
 		)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
@@ -834,11 +837,13 @@ sub preparedb {#{{{
 		$mysql_col_target        VARCHAR(255) NOT NULL,       
 		$mysql_col_score         DOUBLE       NOT NULL,
 		$mysql_col_evalue        VARCHAR(100) NOT NULL,
+		$mysql_col_logevalue     DOUBLE       NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
-		INDEX ($mysql_col_target)
+		INDEX ($mysql_col_target),
+		INDEX ($mysql_col_logevalue)
 		)";
 	
 	# open connection
@@ -917,7 +922,10 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_query`,
 			`$mysql_col_target`,
 			`$mysql_col_score`,
-			`$mysql_col_evalue`) VALUES (
+			`$mysql_col_evalue`,
+			`$mysql_col_logevalue
+			) VALUES (
+			?,
 			?,
 			?,
 			?,
@@ -936,6 +944,7 @@ sub insert_results_into_table {#{{{
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
 				$hit->{'evalue'}  # evalue
+				$hit->{'evalue'} != 0 ? log($hit->{'evalue'} : -999,  # natural logarithm only if not 0
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
@@ -951,8 +960,11 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_target`,
 			`$mysql_col_score`,
 			`$mysql_col_evalue`,
+			`$mysql_col_logevalue`,
 			`$mysql_col_start`,
-			`$mysql_col_end`) VALUES (
+			`$mysql_col_end`
+			) VALUES (
+			?,
 			?,
 			?,
 			?,
@@ -972,6 +984,7 @@ sub insert_results_into_table {#{{{
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
 				$hit->{'evalue'}, # evalue
+				$hit->{'evalue'} != 0 ? log($hit->{'evalue'} : -999,	# natural logarithm only if not 0
 				$hit->{'start'},	# start of hit domain
 				$hit->{'end'}			# end of hit domain
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
