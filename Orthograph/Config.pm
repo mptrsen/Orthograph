@@ -49,6 +49,7 @@ GetOptions( $config,
   'mysql_table_hmmsearch',
   'mysql_table_orthologs',
   'mysql_table_sequence_pairs',
+  'mysql_table_sequence_types',
   'mysql_table_set_details',
   'mysql_table_taxa',
   'ortholog_set',
@@ -83,11 +84,11 @@ GetOptions( $config,
 
 
 # MySQL settings
-defined $config->{'mysql_dbname'}               or $config->{'mysql_dbname'}               = 'orthograph';
-defined $config->{'mysql_dbpassword'}           or $config->{'mysql_dbpassword'}           = 'root';
-defined $config->{'mysql_dbserver'}             or $config->{'mysql_dbserver'}             = 'localhost';
-defined $config->{'mysql_dbuser'}               or $config->{'mysql_dbuser'}               = 'root';
-defined $config->{'mysql_prefix'}               or $config->{'mysql_prefix'}               = 'orthograph';
+defined $config->{'mysql_database'}             or $config->{'mysql_database'}               = 'orthograph';
+defined $config->{'mysql_password'}             or $config->{'mysql_password'}               = 'root';
+defined $config->{'mysql_server'}               or $config->{'mysql_server'}                 = 'localhost';
+defined $config->{'mysql_username'}             or $config->{'mysql_username'}               = 'root';
+defined $config->{'mysql_prefix'}               or $config->{'mysql_prefix'}                 = 'orthograph';
 
 # MySQL tables
 defined $config->{'mysql_table_aaseqs'}         or $config->{'mysql_table_aaseqs'}         = 'aaseqs';
@@ -95,49 +96,14 @@ defined $config->{'mysql_table_blast'}          or $config->{'mysql_table_blast'
 defined $config->{'mysql_table_blastdbs'}       or $config->{'mysql_table_blastdbs'}       = 'blastdbs';
 defined $config->{'mysql_table_ests'}           or $config->{'mysql_table_ests'}           = 'ests';
 defined $config->{'mysql_table_hmmsearch'}      or $config->{'mysql_table_hmmsearch'}      = 'hmmsearch';
+defined $config->{'mysql_table_ntseqs'}         or $config->{'mysql_table_ntseqs'}         = 'ntseqs';
 defined $config->{'mysql_table_ogs'}            or $config->{'mysql_table_ogs'}            = 'ogs';
 defined $config->{'mysql_table_orthologs'}      or $config->{'mysql_table_orthologs'}      = 'orthologs';
 defined $config->{'mysql_table_sequence_pairs'} or $config->{'mysql_table_sequence_pairs'} = 'sequence_pairs';
+defined $config->{'mysql_table_sequence_types'} or $config->{'mysql_table_sequence_types'} = 'sequence_types';
 defined $config->{'mysql_table_set_details'}    or $config->{'mysql_table_set_details'}    = 'set_details';
 defined $config->{'mysql_table_taxa'}           or $config->{'mysql_table_taxa'}           = 'taxa';
-
-# more variables
-defined $config->{'alignment_program'}          or $config->{'alignment_program'}          = 'alignment';
-defined $config->{'hmmbuild_program'}           or $config->{'hmmbuild_program'}           = 'hmmbuild';
-defined $config->{'translate_program'}          or $config->{'translate_program'}          = 'translate';
-defined $config->{'hmmsearch_program'}          or $config->{'hmmsearch_program'}          = 'hmmsearch';
-defined $config->{'blast_program'}              or $config->{'blast_program'}              = 'blast';
-defined $config->{'makeblastdb_program'}        or $config->{'makeblastdb_program'}        = 'makeblastdb';
-defined $config->{'aaoutdir'}                   or $config->{'aaoutdir'}                   = 'aa';
-defined $config->{'backup_extension'}           or $config->{'backup_extension'}           = '.bak';
-defined $config->{'blast_evalue_threshold'}     or $config->{'blast_evalue_threshold'}     = 10;
-defined $config->{'blast_max_hits'}             or $config->{'blast_max_hits'}             = 10;
-defined $config->{'blast_score_threshold'}      or $config->{'blast_score_threshold'}      = 10;
-defined $config->{'blastoutdir'}                or $config->{'blastoutdir'}                = 'blastp';
-defined $config->{'clear_data'}                 or $config->{'clear_data'}                 = 1;
-defined $config->{'debug'}                      or $config->{'debug'}                      = 0;
-defined $config->{'estfile'}                    or $config->{'estfile'}                    = '';
-defined $config->{'hmmfile'}                    or $config->{'hmmfile'}                    = '';
-defined $config->{'hmmsearch_evalue_threshold'} or $config->{'hmmsearch_evalue_threshold'} = undef;
-defined $config->{'hmmsearch_output_dir'}       or $config->{'hmmsearch_output_dir'}       = basename($config->{'hmmsearch_program'});
-
-
-# mutually exclusive options
-defined $config->{'hmmsearch_score_threshold'}  or $config->{'hmmsearch_score_threshold'}  = $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
-defined $config->{'logfile'}                    or $config->{'logfile'}                    = '';
-defined $config->{'max_blast_searches'}         or $config->{'max_blast_searches'}         = 20;
-
-defined $config->{'ortholog_set'}               or $config->{'ortholog_set'}               = '';
-defined $config->{'output_directory'}           or $config->{'output_directory'}           = '';
-defined $config->{'quiet'}                      or $config->{'quiet'}                      = 0;  # I like my quiet
-defined $config->{'reference_taxa'}             or $config->{'reference_taxa'}             = '';
-defined $config->{'reference_taxon'}            or $config->{'reference_taxon'}            = '';
-defined $config->{'sets_dir'}                   or $config->{'sets_dir'}                   = 'sets';
-defined $config->{'species_name'}               or $config->{'species_name'}               = '';
-# substitution character for selenocysteine, which normally leads to blast freaking out
-defined $config->{'substitute_u_with'}          or $config->{'substitute_u_with'}          = 'X';
-defined $config->{'verbose'}                    or $config->{'verbose'}                    = 0;
-#}}}
+defined $config->{'mysql_table_users'}          or $config->{'mysql_table_users'}          = 'users';
 
 # make sure there is exactly one underscore at the end of the prefix
 (my $mysql_prefix = $config->{'mysql_prefix'}) =~ s/_*$/_/;
@@ -151,11 +117,42 @@ $config->{$_} = $C{$_} foreach keys %C;
 # free memory... well, it's bound to go out of scope anyway
 undef %C;
 
-#--------------------------------------------------
-# printf("%26s => %s\n", $_, $config->{$_}) foreach sort keys %$config;
-# printf "<%s>", $_ foreach @{$config->{'reference_taxa'}};
-# exit;
-#-------------------------------------------------- 
+# more variables
+
+defined $config->{'aaoutdir'}                   or $config->{'aaoutdir'}                   = 'aa';
+defined $config->{'alignment_program'}          or $config->{'alignment_program'}          = 'alignment';
+defined $config->{'backup_extension'}           or $config->{'backup_extension'}           = '.bak';
+defined $config->{'blast_evalue_threshold'}     or $config->{'blast_evalue_threshold'}     = 10;
+defined $config->{'blast_max_hits'}             or $config->{'blast_max_hits'}             = 10;
+defined $config->{'blast_program'}              or $config->{'blast_program'}              = 'blastp';
+defined $config->{'blast_score_threshold'}      or $config->{'blast_score_threshold'}      = 10;
+defined $config->{'blastoutdir'}                or $config->{'blastoutdir'}                = basename($config->{'blast_program'});
+defined $config->{'clear_data'}                 or $config->{'clear_data'}                 = 1;
+defined $config->{'debug'}                      or $config->{'debug'}                      = 0;
+defined $config->{'estfile'}                    or $config->{'estfile'}                    = '';
+defined $config->{'hmmbuild_program'}           or $config->{'hmmbuild_program'}           = 'hmmbuild';
+defined $config->{'hmmfile'}                    or $config->{'hmmfile'}                    = '';
+defined $config->{'hmmsearch_evalue_threshold'} or $config->{'hmmsearch_evalue_threshold'} = undef;
+defined $config->{'hmmsearch_program'}          or $config->{'hmmsearch_program'}          = 'hmmsearch';
+defined $config->{'hmmsearchoutdir'}            or $config->{'hmmsearchoutdir'}            = basename($config->{'hmmsearch_program'});
+defined $config->{'makeblastdb_program'}        or $config->{'makeblastdb_program'}        = 'makeblastdb';
+defined $config->{'translate_program'}          or $config->{'translate_program'}          = 'fastatranslate';
+defined $config->{'hmmsearch_score_threshold'}  or $config->{'hmmsearch_score_threshold'}  = $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
+defined $config->{'logfile'}                    or $config->{'logfile'}                    = '';
+defined $config->{'max_blast_searches'}         or $config->{'max_blast_searches'}         = 100;
+defined $config->{'ortholog_set'}               or $config->{'ortholog_set'}               = '';
+defined $config->{'output_directory'}           or $config->{'output_directory'}           = '';
+defined $config->{'quiet'}                      or $config->{'quiet'}                      = 0;  # I like my quiet
+defined $config->{'reference_taxa'}             or $config->{'reference_taxa'}             = '';
+defined $config->{'reference_taxon'}            or $config->{'reference_taxon'}            = '';
+defined $config->{'sets_dir'}                   or $config->{'sets_dir'}                   = 'sets';
+defined $config->{'species_name'}               or $config->{'species_name'}               = '';
+defined $config->{'soft_threshold'}             or $config->{'soft_threshold'}             = 5;
+# substitution character for selenocysteine, which normally leads to blast freaking out
+defined $config->{'substitute_u_with'}          or $config->{'substitute_u_with'}          = 'X';
+defined $config->{'verbose'}                    or $config->{'verbose'}                    = 0;
+#}}}
+
 # if something went wrong
 die unless $config;
 
@@ -242,7 +239,7 @@ sub parse_config {#{{{
 			die "Fatal: Invalid format in line $. of config file $file:\n$line\n"
 		}
 		
-		# split by '=' producing a maximum of two items
+		# split by '=' producing a maximum of two items; the value may contain whitespace
 		my ($key, $val) = split('=', $line, 2);
 
 		foreach ($key, $val) {

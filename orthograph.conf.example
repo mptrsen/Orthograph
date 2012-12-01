@@ -81,6 +81,20 @@ blast_program        = blastp
 #exonerate_program    = exonerate
 
 #
+# # MySQL settings
+#
+# The database server. Change this if the database does not run on the same
+# computer as the analysis. Ask your administrator if you don't know what to
+# write here.
+# Defaults to 127.0.0.1.
+#mysql_dbserver             = 127.0.0.1
+
+# Prefix for your Orthograph database tables. Useful if you are running
+# multiple instances of Orthograph on the same database but don't want the data
+# to be mixed up. Defaults to 'orthograph'.
+#mysql_prefix = orthograph
+
+#
 # # Settings that affect the HMM and BLAST searches.
 #
 # E-value threshold. The HMMsearch e-value threshold affects the specificity of
@@ -92,38 +106,41 @@ blast_program        = blastp
 hmmsearch_evalue_threshold = 1e-05
 blast_evalue_threshold     = 1e-05
 
-# You can also set a score threshold. E-value and score thresholds are
-# mutually exclusive.
+# You can also set a score threshold. A higher score means a better match. For
+# HMMsearch, E-value and score thresholds are mutually exclusive. If both are
+# set, the E-value threshold will be used (to use the score threshold, you have
+# to unset the E-value threshold). BLAST accepts both E-value and score
+# thresholds simultaneously.
 #hmmsearch_score_threshold = 10
 #blast_score_threshold     = 10
 
-# Maximum number of HMMsearch hits to consider.
-# Defaults to 20.
-max_blast_searches         = 20
+# Maximum number of HMMsearch hits to consider. This setting is useful to limit
+# the number of reciprocal searches for HMM searches with very large number of
+# hits. However, it is also useful to limit the scope of your HMM searches,
+# which you normally don't want to do. Unless you have an idea of how many
+# reciprocal searches are required to effectively verify or reject a candidate
+# ortholog, don't use this setting. 
+# Defaults to 100.
+#max_blast_searches         = 100
+
+# The soft threshold is a special concept of Orthograph: While checking in
+# strict mode (see below) whether the reciprocal hits are part of the ortholog
+# group in question, this many mismatches may occur before the ortholog
+# candidate is rejected.
+# Defaults to 5.
+#soft_threshold             = 5
 
 # Maximum number of BLAST hits to consider for ortholog candidates.
 # Defaults to 100.
 blast_max_hits             = 100
-
-#
-# # MySQL settings
-#
-# The database server. Change this if the database does not run on the same
-# computer as the analysis. Ask your administrator if you don't know what to
-# write here.
-mysql_dbserver             = 127.0.0.1
-
-# Prefix for your Orthograph database tables. Useful if you are running
-# multiple instances of Orthograph on the same database but don't want the data
-# to be mixed up. Defaults to 'orthograph'.
-#mysql_prefix = orthograph
 
 # 
 # # Other options
 #
 # Strict search. Normally it is enough for a match to occur if one of the
 # reference taxa is hit in the reciprocal search. In strict mode ALL reference
-# taxa must be hit to verify an ortholog assignment. This is more conservative.
+# taxa must be hit to verify an ortholog assignment. This is (much) more
+# conservative.
 #strict      = 1
 
 # Clear pre-existing data of the same species prior to the analysis. Useful if

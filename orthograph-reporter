@@ -53,34 +53,19 @@ my $mysql_table_aaseqs         = $config->{'aaseqs'};
 my $mysql_table_seqpairs       = $config->{'sequence_pairs'};
 my $mysql_table_taxa           = $config->{'taxa'};
 my $mysql_table_orthologs      = $config->{'orthologs'};
+
 my $outdir                     = $config->{'output_directory'};
-my $orthoset                   = $config->{'ortholog_set'};
 my $quiet                      = $config->{'quiet'};
-my $reftaxa                    = $config->{'reference_taxa'};
-# substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst                    = $config->{'substitute_u_with'};
-my $sets_dir                   = $config->{'sets_dir'};
-my $species_name               = $config->{'species_name'};
 my $verbose                    = $config->{'verbose'};
 
-my $setname                    = $config->{'ortholog_set'} ;
-my $speciesname                = $config->{'species_name'} ;
-my $reference_taxa             = $config->{'reference_taxa'} ;
+my $setname                    = $config->{'ortholog_set'};
+my $speciesname                = $config->{'species_name'};
+my $reference_taxa             = $config->{'reference_taxa'};
 
-
-
-my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'} ?
-	                               $config->{'blast_evalue_threshold'} :
-	                               10;
-my $soft_threshold             = $config->{'soft_threshold'} ?
-	                               $config->{'soft_threshold'} :
-	                               5;
-my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'} ?
-	                               $config->{'hmmsearch_evalue_threshold'} :
-	                               undef;
-my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'} ?
-	                               $config->{'hmmsearch_score_threshold'} :
-	                               undef;
+my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
+my $soft_threshold             = $config->{'soft_threshold'};
+my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'};
+my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'};
 
 # mutually exclusive options
 die "Fatal: Can't operate in both verbose and quiet mode\n"
@@ -100,8 +85,8 @@ my $table                = [ ];
 my $strict               = 0;
 my $sort_by              = 'blasteval';
 my @reftaxa              = ( );
-my $species_id;
-my $set_id;
+my $species_id           = 0;
+my $set_id               = 0;
 my $match                = 0;
 my $mismatches           = 0;
 my $max_mismatches       = $soft_threshold;
@@ -116,7 +101,7 @@ die "Fatal: No such set in database: '$setname'\n" unless ($set_id);
 
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
-if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $config->{'reference_taxa'}) }
+if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 
 # get a orthoid => list_of_aaseq_ids relationship from the db

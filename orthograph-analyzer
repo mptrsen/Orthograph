@@ -79,8 +79,7 @@ else {
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
 
-printf "%s => %s\n", $_, $config->{$_} foreach sort keys %$config;
-exit;
+printf "%s = %s\n", $_, $config->{$_} foreach sort keys %$config;
 
 #--------------------------------------------------
 # # Programs in the order of their use
@@ -113,20 +112,20 @@ my $logfile                    = $config->{'logfile'};
 my $max_blast_searches         = $config->{'max_blast_searches'};
 
 # MySQL settings
-my $mysql_dbname               = $config->{'mysql_dbname'};
-my $mysql_dbpwd                = $config->{'mysql_dbpassword'};
-my $mysql_dbserver             = $config->{'mysql_dbserver'};
-my $mysql_dbuser               = $config->{'mysql_dbuser'};
+my $mysql_dbname               = $config->{'mysql_database'};
+my $mysql_dbpwd                = $config->{'mysql_password'};
+my $mysql_dbserver             = $config->{'mysql_server'};
+my $mysql_dbuser               = $config->{'mysql_username'};
 
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests           = $config->{'mysql_table_ests'};
 my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
 my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
-my $mysql_table_aaseqs         = $config->{'aaseqs'};
-my $mysql_table_seqpairs       = $config->{'sequence_pairs'};
-my $mysql_table_taxa           = $config->{'taxa'};
-my $mysql_table_orthologs      = $config->{'orthologs'};
+my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
+my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
+my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
+my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
 my $outdir                     = $config->{'output_directory'};
 my $orthoset                   = $config->{'ortholog_set'};
 my $quiet                      = $config->{'quiet'};
@@ -142,66 +141,66 @@ my $verbose                    = $config->{'verbose'};
 # # More variables
 #-------------------------------------------------- 
 #{{{
-my $alndir              = '';
-my $blastcount          = 0;
-my $blastdb             = '';
-my $blasthitcount_total = 0;
-my $configfile          = '';
-my $count               = 0;
-my $hmmcount            = 0;
-my $hmmdir              = '';
-my $hmmhitcount         = 0;
-my $hmmhitcount_total   = 0;
-my $hmmresultfileref    = '';
-my $listspecies         = 0;
-my $logdir              = '';
-my $mysql_col_aaseq     = 'aa_seq';
+my $alndir                  = '';
+my $blastcount              = 0;
+my $blastdb                 = '';
+my $blasthitcount_total     = 0;
+my $configfile              = '';
+my $count                   = 0;
+my $hmmcount                = 0;
+my $hmmdir                  = '';
+my $hmmhitcount             = 0;
+my $hmmhitcount_total       = 0;
+my $hmmresultfileref        = '';
+my $listspecies             = 0;
+my $logdir                  = '';
+my $mysql_col_aaseq         = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
-my $mysql_col_date      = 'date';
-my $mysql_col_digest    = 'digest';
-my $mysql_col_end       = 'end';
-my $mysql_col_evalue    = 'evalue';
-my $mysql_col_logevalue = 'log_evalue';
-my $mysql_col_hdr       = 'header';
-my $mysql_col_hmm       = 'hmm';
-my $mysql_col_id        = 'id';
-my $mysql_col_longname  = 'longname';
-my $mysql_col_name      = 'name';
-my $mysql_col_orthoid   = 'ortholog_gene_id';
-my $mysql_col_query     = 'query';
-my $mysql_col_score     = 'score';
-my $mysql_col_seq       = 'sequence';
-my $mysql_col_seqpair   = 'sequence_pair';
-my $mysql_col_setid     = 'setid';
-my $mysql_col_start     = 'start';
-my $mysql_col_target    = 'target';
-my $mysql_col_taxid     = 'taxid';
-my $mysql_col_taxon     = 'taxon';
-my $mysql_dbi           = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
-my $num_ests            = 0;
-my $num_hmms            = 0;
-my $orthocount          = 0;
-my $preparedb           = 0;
-my $protfile            = '';
-my $set_id              = undef;
-my $species_id          = undef;
-my $stderr              = undef;
-my $stdout              = undef;
+my $mysql_col_date          = 'date';
+my $mysql_col_digest        = 'digest';
+my $mysql_col_end           = 'end';
+my $mysql_col_evalue        = 'evalue';
+my $mysql_col_logevalue     = 'log_evalue';
+my $mysql_col_hdr           = 'header';
+my $mysql_col_hmm           = 'hmm';
+my $mysql_col_id            = 'id';
+my $mysql_col_longname      = 'longname';
+my $mysql_col_name          = 'name';
+my $mysql_col_orthoid       = 'ortholog_gene_id';
+my $mysql_col_query         = 'query';
+my $mysql_col_score         = 'score';
+my $mysql_col_seq           = 'sequence';
+my $mysql_col_seqpair       = 'sequence_pair';
+my $mysql_col_setid         = 'setid';
+my $mysql_col_start         = 'start';
+my $mysql_col_target        = 'target';
+my $mysql_col_taxid         = 'taxid';
+my $mysql_col_taxon         = 'taxon';
+my $mysql_dbi               = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
+my $num_ests                = 0;
+my $num_hmms                = 0;
+my $orthocount              = 0;
+my $preparedb               = 0;
+my $protfile                = '';
+my $set_id                  = 0;
+my $species_id              = 0;
+my $stderr                  = undef;
+my $stdout                  = undef;
 my $t0;  # these are used for timing 
 my $t1;  # these are used for timing 
-my $timestamp_diff      = undef;
-my $timestamp_end       = undef; # will hold the time at the end
-my $timestamp_start     = scalar time();
-my @lt                  = localtime(time);
-my $timestring          = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
-# create new temporary directory and set it to not be deleted if debugging
-my $tmpdir              = File::Temp->newdir(
-                            'UNLINK' => 0, 
-                            'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
-my @backup;
-my @hmmfiles;
-my @reftaxa;
-my @seqobjs;
+my $timestamp_diff          = 0;
+my $timestamp_end           = 0; # will hold the time at the end
+my $timestamp_start         = scalar time();
+my @lt                      = localtime(time);
+my $timestring              = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
+# create new temporary directory and set it to not be deleted 
+my $tmpdir                  = File::Temp->newdir(
+                               'UNLINK' => 0, 
+                               'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
+my @backup                  = ( );
+my @hmmfiles                = ( );
+my @reftaxa                 = ( );
+my @seqobjs                 = ( );
 #}}}
 
 $tmpdir->unlink_on_destroy(0) if $debug;
@@ -326,15 +325,16 @@ if ($debug) {
 	Wrapper::Blastp->debug(1);
 }
 
-# score and e-value thresholds
+# e-value and score thresholds
 Wrapper::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold)
 	if $hmmsearch_evalue_threshold;
-Wrapper::Hmmsearch->score_threshold($hmmsearch_score_threshold)
-	if $hmmsearch_score_threshold;
 Wrapper::Blastp->evalue_threshold($blast_evalue_threshold)
 	if $blast_evalue_threshold;
-# there is no score threshold for BLASTP
-# but a maximum number of hits to save
+Wrapper::Hmmsearch->score_threshold($hmmsearch_score_threshold)
+	if $hmmsearch_score_threshold;
+Wrapper::Blastp->score_threshold($blast_score_threshold)
+	if $blast_score_threshold;
+# maximum number of hits to save for blast
 Wrapper::Blastp->max_hits($blast_max_hits)
 	if $blast_max_hits;
 
@@ -923,7 +923,7 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_target`,
 			`$mysql_col_score`,
 			`$mysql_col_evalue`,
-			`$mysql_col_logevalue
+			`$mysql_col_logevalue`
 			) VALUES (
 			?,
 			?,
@@ -943,8 +943,8 @@ sub insert_results_into_table {#{{{
 				$hit->{'query'},  # query (HMM)
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
-				$hit->{'evalue'}  # evalue
-				$hit->{'evalue'} != 0 ? log($hit->{'evalue'} : -999,  # natural logarithm only if not 0
+				$hit->{'evalue'},  # evalue
+				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,  # natural logarithm only if not 0
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
@@ -984,7 +984,7 @@ sub insert_results_into_table {#{{{
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
 				$hit->{'evalue'}, # evalue
-				$hit->{'evalue'} != 0 ? log($hit->{'evalue'} : -999,	# natural logarithm only if not 0
+				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,	# natural logarithm only if not 0
 				$hit->{'start'},	# start of hit domain
 				$hit->{'end'}			# end of hit domain
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
