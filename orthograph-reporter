@@ -126,6 +126,10 @@ my $transcripts_mapped_to = { };
 my $limit = 50;
 my $offset = 0;
 
+# this will hold all transcripts that were found so we can check for redundancy
+my @transcript_list;
+
+# open log and table output files 
 my $logfile = File::Spec->catfile($logdir, 'report.txt');
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open report file $logfile\: $!\n";
@@ -133,15 +137,13 @@ my $tablefile = File::Spec->catfile($logdir, 'table.txt');
 my $tfh = IO::File->new($tablefile, 'w')
 	or die "Fatal: Could not open table file $tablefile\: $!\n";
 
+# setup IO::Tee
 my $stdout = IO::Tee->new(
 	\*STDOUT,
 	$logfh,
 );
 
 while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, $limit, $offset) ) {
-
-	# this will hold all transcripts that were found so we can check for redundancy
-	my @transcript_list;
 
 	# mysql can't sort evalues correctly when they are stored as char
 	# so we do the sorting ourselves
@@ -212,12 +214,13 @@ while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, 
 			# so, was this a match?
 			if ($match) {
 
-				# yeah
-				printf $stdout ">>    assigned %s to %s\n",
+				# yeah - here should be the part where the actual sequences are output
+				# in fasta format
+				printf $stdout ">>    assigned %s to %s (%d with %.1e)\n",
 					$$match{'hmmhit'},
 					$orthoid,
-					#$$match{'blast_hit'},
-					#$$match{'blast_evalue'},
+					$$match{'blast_hit'},
+					$$match{'blast_evalue'},
 					unless $quiet;
 
 				# this orthoid can't be found again
@@ -250,330 +253,7 @@ while (my ($o, $t) = each %$transcripts_mapped_to) {
 	printf($tfh "%s : %s\n", $o, $t);
 }
 
-exit;
-#--------------------------------------------------
-# this query selects all orthology candidates for which
-# the reciprocal search also hit something good
-#-------------------------------------------------- 
-my $query = "
-SELECT DISTINCT
-	$mysql_table_orthologs.ortholog_gene_id AS orthoid,
-	$mysql_table_hmmsearch.target           AS transcript,
-	$mysql_table_hmmsearch.evalue           AS hmm_eval,
-	$mysql_table_blast.target               AS blast_target,
-	$mysql_table_blast.evalue               AS blast_eval,
-	$mysql_table_taxa.name                  AS reftax
-FROM $mysql_table_aaseqs
-INNER JOIN $mysql_table_taxa
-	ON $mysql_table_aaseqs.taxid            = $mysql_table_taxa.id
-INNER JOIN $mysql_table_blast
-	ON $mysql_table_aaseqs.id               = $mysql_table_blast.target
-INNER JOIN $mysql_table_hmmsearch
-	ON $mysql_table_blast.query             = $mysql_table_hmmsearch.target
-INNER JOIN $mysql_table_ests
-	ON $mysql_table_hmmsearch.target        = $mysql_table_ests.digest
-INNER JOIN $mysql_table_orthologs
-	ON $mysql_table_hmmsearch.query         = $mysql_table_orthologs.ortholog_gene_id
-INNER JOIN $mysql_table_seqpairs
-	ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id
-	AND $mysql_table_aaseqs.id              = $mysql_table_seqpairs.aa_seq
-INNER JOIN $mysql_table_set_details
-	ON $mysql_table_set_details.id          = $set_id
-WHERE $mysql_table_ests.taxid             = $species_id
-AND $mysql_table_hmmsearch.evalue         < $hmmsearch_evalue_threshold
-AND $mysql_table_blast.evalue             < $blast_evalue_threshold
-ORDER BY $mysql_table_hmmsearch.evalue
-";
-
-# get data, store in hash->array->hash
-my $dbh = DBI->connect("dbi:mysql:$mysql_dbname:$mysql_dbserver", $mysql_dbuser, $mysql_dbpwd);
-my $sql = $dbh->prepare($query);
-$sql->execute();
-while (my $line = $sql->fetchrow_arrayref()) {
-	# the orthoid shall be the key
-	# a hash of arrays
-	push @{$$data_by_orthoid{$$line[0]}}, {	# 0: orthoid
-		'digest'      => $$line[1],	# 1: SHA256 digest
-		'hmmeval'     => sprintf("%e", $$line[2]),	# 2: hmmsearch evalue
-		'blasttarget' => $$line[3],	# 3: blast target id	
-		'blasteval'   => sprintf("%e", $$line[4]),	# 4: blast evalue
-		'reftaxon'    => $$line[5]	# 5: reference taxon
-	};
-	# the same structure, but keyed by transcript digest
-	push @{$$data_by_transcript{$$line[1]}}, {
-		'orthoid'     => $$line[0],
-		'hmmeval'     => sprintf("%e", $$line[2]),	# 2: hmmsearch evalue
-		'blasttarget' => $$line[3],
-		'blasteval'   => sprintf("%e", $$line[4]),
-		'reftaxon'    => $$line[5]
-	};
-	# keyed by e-value
-	# a hash of hashes of arrays
-	push @{$$data_by_evalue{sprintf("%e", $$line[2])}{$$line[0]}}, {
-		'digest'      => $$line[1],
-		'blasttarget' => $$line[3],
-		'blasteval'   => sprintf("%e", $$line[4]),
-		'reftaxon'    => $$line[5]
-	};
-}
-$dbh->disconnect;
-
-# sort by blast evalue or hmmsearch evalue or the number of your mom's chest hairs
-foreach my $eog (keys %$data_by_orthoid) {
-	@{$$data_by_orthoid{$eog}} = sort {
-		$$a{$sort_by} <=> $$b{$sort_by}
-	} @{$$data_by_orthoid{$eog}};
-}
-foreach my $eval (keys %$data_by_evalue) {
-	foreach my $key (keys %{$data_by_evalue->{$eval}}) {
-		@{$$data_by_evalue{$eval}{$key}} = sort {
-			$$a{$sort_by} <=> $$b{$sort_by}
-		} @{$$data_by_evalue{$eval}{$key}};
-	}
-}
-foreach my $transcript (keys %$data_by_transcript) {
-	@{$$data_by_transcript{$transcript}} = sort {
-		$$a{$sort_by} <=> $$b{$sort_by}
-	} @{$$data_by_transcript{$transcript}};
-}
-
-# keys to the hashes
-my @keys_orthoids    = keys %$data_by_orthoid    ;
-my @keys_transcripts = keys %$data_by_transcript;
-my @keys_evalues     = keys %$data_by_evalue     ;
-
-
-# make a HTML table!
-(my $filename = $speciesname . '.html') =~ s/\s+/_/g;
-my $fh = IO::File->new($filename, 'w');
-print $fh "<html><head><title>$speciesname</title></head><body>\n";
-print $fh "<table>\n";
-print $fh "<tr><th>&nbsp;</th>\n";	# first cell is empty 
-printf $fh "<th align='left'>%s</th>\n", $_ foreach @keys_orthoids;	# header
-print $fh "</tr>\n";
-# columns
-for (my $x = 0; $x < scalar @keys_transcripts; ++$x) {
-	print $fh "<tr>\n";
-	print $fh "<td><b>", $keys_transcripts[$x], "</b></td>";
-	# rows
-	for (my $y = 0; $y < scalar @keys_orthoids; ++$y) {
-		# get the matching transcript from the list
-		my $flag = 0;
-		foreach my $hit (@{$$data_by_transcript{$keys_transcripts[$x]}}) {
-			if ($$hit{'orthoid'} eq $keys_orthoids[$y]) {
-				print $fh "<td>", $$hit{'hmmeval'}, "</td>" if $flag == 0;
-				# connect these in the result table
-				push @{$$table[$x][$y]}, {
-					'hmmeval'     => $$hit{'hmmeval'},
-					'blasteval'   => $$hit{'blasteval'},
-					'blasttarget' => $$hit{'blasttarget'},
-					'reftaxon'    => $$hit{'reftaxon'},
-				};
-				$flag = 1;
-			}
-		}
-		if ($flag == 0) {
-			# this is a non-match
-			print $fh "<td>NULL</td>";
-			$$table[$x][$y] = 0;
-		}
-		else {
-			$flag = 0;
-			@{$$table[$x][$y]} = sort {$$a{'hmmeval'} <=> $$b{'hmmeval'}} @{$$table[$x][$y]};
-		}
-	}
-	print $fh "</tr>\n";
-}
-print $fh "</table>\n";
-print $fh "</body></html>\n";
-# close file
-undef $fh;
-#--------------------------------------------------
-# 
-# my $miscount = 0;
-# my $reftaxa_hitcount = 0;
-# my $hit = 0;
-# # walk through the e-values and examine each hit pair
-# # it's a hash of hashes (of arrays)
-# foreach my $heval (sort {$a <=> $b} keys %$data_by_evalue) {
-# 	# each e-value is associated with a orthoid that has generated a number of reciprocal hits
-# 	# let's examine each orthoid individually
-# 	foreach my $oid (keys %{$$data_by_evalue{$heval}}) {
-# 		# each orthoid is associated with a list of reciprocal hits
-# 		# which we'll traverse now
-# 		foreach my $i (0 .. scalar( @{$$data_by_evalue{$heval}{$oid}} ) - 1) {
-# 			# only if both orthoid and transcript have not been assigned before
-# 			if (
-# 				grep( /$$data_by_evalue{$heval}{$oid}[$i]{'digest'}/, @keys_transcripts )
-# 				and grep( /$oid/, @keys_orthoids )
-# 			)
-# 			{
-# 				# is the reftaxon of this hit in the reftaxa list?
-# 				if ( $miscount < $max_miscount and grep /$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'}/, @reftaxa ) {
-# 					# yes... but this is not enough!
-# 					#--------------------------------------------------
-# 					# printf "%.1e : %s and %s (%s: %.1e, hit #%d), count %d\n",
-# 					# 	$heval,
-# 					# 	$oid,
-# 					# 	$$data_by_evalue{$heval}{$oid}[$i]{'digest'},
-# 					# 	$$data_by_evalue{$heval}{$oid}[$i]{'reftaxon'},
-# 					# 	$$data_by_evalue{$heval}{$oid}[$i]{'blasteval'},
-# 					# 	$i + 1,
-# 					# 	$reftaxa_hitcount + 1,
-# 					# ;
-# 					#-------------------------------------------------- 
-# 					++$reftaxa_hitcount;
-# 					$hit = $i;
-# 				}
-# 				else {
-# 					++$miscount;
-# 				}
-# 			}
-# 		}
-# 		# all reference taxa were hit rectally
-# 		if ($strict and $reftaxa_hitcount == scalar @reftaxa) {
-# 			# make sure they only get assigned once by removing the id from the list
-# 			&remove_from_lists($heval, $oid, $hit);
-# 			print "==> all reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
-# 			# TODO insert this result into the database
-# 			# make a new result table
-# 			$count++;
-# 		}
-# 		# at least one reference taxon was hit
-# 		elsif (not $strict and $reftaxa_hitcount > 0) {
-# 			# do the same i guess
-# 			# make sure they only get assigned once by removing the id from the list
-# 			&remove_from_lists($heval, $oid, $hit);
-# 			print "==> $reftaxa_hitcount reftax hit (", $reftaxa_hitcount, " of ", scalar @reftaxa, "). removed this pair from the list of candidates.\n";
-# 			# TODO insert this result into the database
-# 			# make a new result table
-# 			$count++;
-# 		}
-# 		# reset counters
-# 		$miscount         = 0;
-# 		$reftaxa_hitcount = 0;
-# 		$hit              = 0;
-# 	}
-# }
-# print $count, " final hits\n";
-# 
-#-------------------------------------------------- 
+# yay
 exit;
 
-=head2 remove_from_lists(KEY, ID)
 
-Removes a hit pair (orthoid <-> transcript digest) at KEY (usually an e-value)
-with the index INDEX of the list of hits from both the @keys_orthoids and
-@keys_transcripts lists so they can't be found again (avoiding redundancy).
-Returns 1.
-
-=cut
-
-sub remove_from_lists {
-	my $heval = shift @_;
-	my $oid = shift @_;
-	my $id = shift @_;
-	for (0 .. scalar(@keys_orthoids) - 1 ) {
-		if ($keys_orthoids[$_] eq $oid) {
-			splice(@keys_orthoids, $_, 1) and last;
-		}
-	}
-	for (0 .. scalar(@keys_transcripts) - 1 ) {
-		if ($keys_transcripts[$_] eq $oid) {
-			splice(@keys_transcripts, $_, 1) and last;
-		}
-	}
-	return 1;
-}
-
-# take only the reference taxa
-my $num_reftaxa = scalar @reftaxa;
-TR:
-for my $x (0 .. $#keys_transcripts) {
-	OG:
-	for my $y (0 .. $#keys_orthoids) {
-		# skip non-matches and already-removed entries
-		next if not defined $$table[$x][$y] or $$table[$x][$y] == 0;
-
-		# local list of reftaxa for this match
-		my @this_reftaxa;
-		push @this_reftaxa, $$_{'reftaxon'} foreach (@{$$table[$x][$y]});
-
-		# intersection of @reftaxa and @this_reftaxa
-		my %union = my %isect = ();
-		foreach my $el (@reftaxa) { $union{$el} = 1 }
-		foreach my $el (@this_reftaxa) { $isect{$el} = 1 if ($union{$el}) }
-
-		# This orthoid-transcript combination matches all reference taxa!
-		if (scalar keys %isect == $num_reftaxa) { 
-			# strict match
-			print "+\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
-			printf "%s ", $_ foreach keys %isect;
-			printf "with %.2e\n", $$table[$x][$y][0]{'hmmeval'};
-			# but it may still be redundant... fuck.
-			# remove it from the table to hopefully eliminate redundancy
-			splice @{$$table[$_]}, $y, 1 foreach (0 .. $#{$table});
-			splice @$table, $x, 1;
-			last;
-		}
-		# this one matches at least one reference taxon
-		elsif (scalar keys %isect) {
-			# fuzzy match
-			print "=\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
-			printf "%s ", $_ foreach keys %isect;
-			printf "with %.2e\n", $$table[$x][$y][0]{'hmmeval'};
-			# but it may still be redundant... fuck.
-			# remove it from the table to hopefully eliminate redundancy
-			splice @{$$table[$_]}, $y, 1 foreach (0 .. $#{$table});
-			splice @$table, $x, 1;
-			last;
-		}
-		# this one matches none
-		else {
-			print "-\t$keys_orthoids[$y] and $keys_transcripts[$x]: ";
-			printf "%s ", $_ foreach @this_reftaxa;
-			print "\n";
-		}
-
-	}
-}
-print "Reftaxa: @reftaxa\n";
-exit;
-
-# output each eog with the correct transcript
-# each transcript shall be assigned to only one ortholog group
-foreach my $eog (keys %$data_by_orthoid) {
-	# for all hits, see if they are in the reftaxa list
-	REFTAXON:
-	for my $i (0..$#{$$data_by_orthoid{$eog}}) {
-		# is this reftaxon in our list?
-		if ( grep /$$data_by_orthoid{$eog}[$i]{'reftaxon'}/ , @reftaxa ) {
-			# ok it's there
-			# take the best (hmm|blast) evalue
-			# using a hash makes sure each ortholog group gets only one transcript
-			if ( defined $$out{$$data_by_orthoid{$eog}[$i]{'digest'}} ) {
-				if ( $$data_by_orthoid{$eog}[$i]{$sort_by} < $$out{$$data_by_orthoid{$eog}[$i]{'digest'}}{$sort_by} ) {
-					$$out{$$data_by_orthoid{$eog}[$i]{'digest'}} = {
-						'eog'       => $eog,
-						'hmmeval'   => $$data_by_orthoid{$eog}[$i]{'hmmeval'},
-						'blasteval' => $$data_by_orthoid{$eog}[$i]{'blasteval'},
-						'reftaxon'  => $$data_by_orthoid{$eog}[$i]{'reftaxon'},
-					};
-				}
-				# is this a strict search, i.e., do we need to hit ALL reftaxa?
-				unless ($strict) { last; }
-				else { next REFTAXON }
-			}
-			else {
-				$$out{$$data_by_orthoid{$eog}[$i]{'digest'}} = {
-					'eog'       => $eog,
-					'hmmeval'   => $$data_by_orthoid{$eog}[$i]{'hmmeval'},
-					'blasteval' => $$data_by_orthoid{$eog}[$i]{'blasteval'},
-					'reftaxon'  => $$data_by_orthoid{$eog}[$i]{'reftaxon'},
-				};
-			}
-		}
-	}
-}
-
-printf "%s => %s\n", $_, $$data_by_orthoid{$_}[0]{'digest'} foreach keys %$data_by_orthoid;

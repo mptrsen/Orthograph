@@ -563,7 +563,7 @@ sub intro {#{{{
 	else {
 		$logdir = File::Spec->catdir($outdir, 'log');
 		if (-d $logdir) {
-			print $stdout "Using log dir $logdir.\n" unless $quiet;
+			$message .= "Using log dir $logdir.\n" unless $quiet;
 		}
 		else {
 			$message .= "Log dir $logdir does not exist, creating...\n" unless $quiet;
