@@ -306,7 +306,7 @@ else {
 }
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
-$protfile = &get_transcripts();
+$protfile = &get_transcripts($species_id);
 #}}}
 
 #--------------------------------------------------
@@ -403,7 +403,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#-------------------------------------------------- 
 
 	# get hmmsearch results from database; use the first array item since they all share the query (HMM) ID 
-	my @hmmresults = @{&get_hmmresults($hmmobj->hits_arrayref->[0]{'query'})};
+	my @hmmresults = @{Wrapper::Mysql::get_hmmresults($hmmobj->hits_arrayref->[0]{'query'})};
 
 	# don't do too many blast searches...
 	my $max = scalar(@hmmresults) >= $max_blast_searches ? $max_blast_searches : scalar(@hmmresults);
@@ -458,6 +458,19 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			if $verbose;
 	}
 
+	# is this a valid candidate? 
+	# take the first element of the hit list, they share the same orthoid 
+	print Dumper($hmmobj->hits_arrayref()); exit;
+	if (Wrapper::Mysql::reciprocal_match($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'})) {
+
+		# yay
+		++$orthocount;
+		printf $stdout "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $hmmobj->hmmname unless $quiet;
+
+	}
+	# otherwise, just continue
+	else { next HMMFILE }
+
 	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	next HMMFILE unless defined $$orthologs[0];	# skip empty results
 
@@ -480,9 +493,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		$$orthologs[0][5],  # the original sequence id
 		$$orthologs[0][6];  # the sequence
 	$outfh->close();
-	# yay
-	++$orthocount;
-	printf $stdout "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0] unless $quiet;
 
 }#}}}	# End hmmlist loop
 
@@ -508,6 +518,7 @@ exit(0);
 
 # Sub: progress_bar
 # Prints a self-overwriting, wget-style progress bar.
+# This is not written to the log file so it doesn't get cluttered.
 # Arguments: scalar int so-far, scalar int total, scalar int width, scalar char "what-to-use-as-char"
 sub progress_bar {#{{{
 	my ($got, $total, $width, $char) = @_;
@@ -515,7 +526,7 @@ sub progress_bar {#{{{
 	$char ||= '=';
 	my $num_width = length($total);
 	$| = 1;
-	printf($stdout "|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r", $char x (($width-1)*$got/$total) . '>', $got, $total, 100*$got/$total);
+	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r", $char x (($width-1)*$got/$total) . '>', $got, $total, 100*$got/$total);
 	$| = 0;
 }#}}}
 
@@ -762,7 +773,7 @@ sub create_tarball {#{{{
 	my $tarball = Archive::Tar->new();
 	$tarball->setcwd($outdir);
 	$tarball->add_files(@files);
-	$tarball->write($tarfile, COMPRESS_BZIP) or die("Fatal: Could not create tarball: $!\n");
+	$tarball->write($tarfile, COMPRESS_BZIP) or print $stderr "Fatal: Could not create tarball: $!\n" and exit(1);
 	return $tarfile;
 }#}}}
 
@@ -852,7 +863,7 @@ sub preparedb {#{{{
 		)";
 	
 	# open connection
-	my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+	my $dbh = Wrapper::Mysql::mysql_dbh();
 
 	# drop all tables
 	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
@@ -1000,18 +1011,6 @@ sub insert_results_into_table {#{{{
 	}
 }#}}}
 
-# Sub: get_blastdir_for
-# returns the BLASTP database path for a given reference taxon
-# Expects: scalar string REFTAXON
-# Returns: scalar string PATH TO BLASTDB
-sub get_blastdir_for {#{{{
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT $mysql_table_blastdbs.$mysql_col_blastdbpath FROM $mysql_table_blastdbs INNER JOIN $mysql_table_set_details ON $mysql_table_set_details.$mysql_col_id = $mysql_table_blastdbs.$mysql_col_setid LIMIT 1";
-	my $result = Wrapper::Mysql::mysql_get($query);
-	my $blastdir = File::Spec->catfile($$result[0][0], $orthoset);
-	return $blastdir;
-}#}}}
-
 # Sub: file_is_empty
 # tests whether a file is empty (i.e., contains nothing or only empty lines)
 # Expects: scalar string path to file
@@ -1031,19 +1030,8 @@ sub file_is_empty {
 # Returns: True if successful
 sub make_hmms {#{{{
 	my $set = shift;
+	my $set_id = Wrapper::Mysql::get_set_id($set);
 	my $hmmsuffix = '.hmm';
-	my $data = {};
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT o.$mysql_col_orthoid, a.$mysql_col_id, a.$mysql_col_seq
-		FROM $mysql_table_orthologs         AS o
-    INNER JOIN $mysql_table_seqpairs    AS p
-    ON o.$mysql_col_seqpair = p.$mysql_col_id
-    INNER JOIN $mysql_table_aaseqs      AS a
-    ON a.$mysql_col_id = p.$mysql_col_aaseq
-    INNER JOIN $mysql_table_set_details AS d
-    ON d.$mysql_col_id = o.$mysql_col_setid
-    WHERE d.$mysql_col_name = '$set'";
-
 	# does the alignment dir exist?
 	if (!-e $alndir) {
 		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
@@ -1055,14 +1043,7 @@ sub make_hmms {#{{{
 	print $stdout "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
 	# get the ortholog set from the database
-	my $dbh = Wrapper::Mysql::mysql_dbh();
-	my $sql = $dbh->prepare($query);
-	$sql->execute() or die;
-	while (my @row = $sql->fetchrow_array()) {
-		# load the whole set into memory, i don't give a frak
-		$$data{$row[0]}{$row[1]} = $row[2];
-	}
-	$dbh->disconnect();	# disc asap
+	my $data = Wrapper::Mysql::get_ortholog_groups_for_set($set_id);
 
 	my $num_orthoids = scalar(keys(%$data));
 	my $o = 0;
@@ -1281,39 +1262,17 @@ sub load_data_infile {#{{{
 # Arguments: None
 # Returns: Filehandle
 sub get_transcripts {#{{{
+	my $species_id = shift;
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 	my $nseqs = 0;
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT $mysql_col_digest, $mysql_col_seq FROM $mysql_table_ests WHERE $mysql_col_taxid = '$species_id'";
-	my $dbh = Wrapper::Mysql::mysql_dbh();
-	my $sth = $dbh->prepare($query);
-	$sth->execute();
-	while (my ($h, $s) = $sth->fetchrow_array()) {
-		printf($tmpfh ">%s\n%s\n", $h, $s)
+	my $data = Wrapper::Mysql::get_transcripts($species_id);
+	while (my $row = shift @$data) {
+		printf($tmpfh ">%s\n%s\n", $$row[0], $$row[1])
 			or print $stderr "Fatal: Could not write to file $tmpfh\: $!\n" and exit(1);
 		++$nseqs;
 	}
-	$dbh->disconnect();
 	print $stdout "Wrote $nseqs sequences to $tmpfh\n" unless $quiet;
 	return $tmpfh;
-}#}}}
-
-# Sub: get_hmmresults
-# Get hmmsearch results from the database.
-# Arguments: scalar string hmmsearch query
-# Returns: reference to array of arrays
-sub get_hmmresults {#{{{
-	my $hmmquery = shift;
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query_get_sequences = "SELECT $mysql_table_ests.$mysql_col_digest, $mysql_table_ests.$mysql_col_seq, $mysql_table_hmmsearch.start, $mysql_table_hmmsearch.end
-		FROM $mysql_table_ests 
-		INNER JOIN $mysql_table_hmmsearch
-		ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
-		WHERE $mysql_table_hmmsearch.$mysql_col_query = '$hmmquery'";
-
-	# get the sequences from the database (as array->array reference)
-	my $results = Wrapper::Mysql::mysql_get($query_get_sequences);
-	return($results);
 }#}}}
 
 # Sub: get_orthologs

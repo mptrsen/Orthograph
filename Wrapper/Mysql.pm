@@ -11,10 +11,10 @@ use Data::Dumper;
 my $config = $Orthograph::Config::config;  # copy config
 
 # MySQL settings
-my $mysql_dbname               = $config->{'mysql_dbname'};
-my $mysql_dbpwd                = $config->{'mysql_dbpassword'};
-my $mysql_dbserver             = $config->{'mysql_dbserver'};
-my $mysql_dbuser               = $config->{'mysql_dbuser'};
+my $mysql_dbname               = $config->{'mysql_database'};
+my $mysql_dbpwd                = $config->{'mysql_password'};
+my $mysql_dbserver             = $config->{'mysql_server'};
+my $mysql_dbuser               = $config->{'mysql_username'};
 
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
@@ -120,6 +120,78 @@ sub get_list_of_ogs {#{{{
 	return(\%ogslist);
 }#}}}
 
+
+sub get_ortholog_groups_for_set {
+	my $setid = shift @_ or croak "Usage: Wrapper::Mysql::get_ortholog_groups_for_set(SETID)";
+	my $data = {};
+	my $query = "SELECT o.ortholog_gene_id, a.id, a.sequence
+		FROM $mysql_table_orthologs         AS o
+    INNER JOIN $mysql_table_seqpairs    AS p
+    ON o.sequence_pair = p.id
+    INNER JOIN $mysql_table_aaseqs      AS a
+    ON a.id = p.aa_seq
+    INNER JOIN $mysql_table_set_details AS d
+    ON d.id = o.setid
+    WHERE d.id = ?";
+
+	my $dbh = &mysql_dbh();
+	my $sql = $dbh->prepare($query);
+	$sql->execute( $setid ) or die;
+	while (my @row = $sql->fetchrow_array()) {
+		# load the whole set into memory, i don't give a frak
+		$$data{$row[0]}{$row[1]} = $row[2];
+	}
+	$dbh->disconnect();	# disc asap
+
+	return $data;
+}
+
+sub get_transcripts {
+	my $specid = shift or croak "Usage: Wrapper::Mysql::get_transcripts(SPECIESID)";
+	# TODO rewrite this part using parametrized queries to protect from SQL injections?
+	my $query = "SELECT digest, sequence
+		FROM $mysql_table_ests
+		WHERE taxid = ?";
+	my $dbh = Wrapper::Mysql::mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute($specid);
+	my $data = $sth->fetchall_arrayref();
+	$sth->finish();
+	$dbh->disconnect();
+	return $data;
+}
+
+# Sub: get_hmmresults
+# Get hmmsearch results from the database.
+# Arguments: scalar string hmmsearch query
+# Returns: reference to array of arrays
+sub get_hmmresults {#{{{
+	my $hmmquery = shift or croak "Usage: Wrapper::Mysql::get_hmmresults(HMMQUERY)";
+	my $query_get_sequences = "SELECT $mysql_table_ests.digest,
+		  $mysql_table_ests.sequence,
+		  $mysql_table_hmmsearch.start,
+		  $mysql_table_hmmsearch.end
+		FROM $mysql_table_ests 
+		INNER JOIN $mysql_table_hmmsearch
+		ON $mysql_table_hmmsearch.target = $mysql_table_ests.digest
+		WHERE $mysql_table_hmmsearch.query = ?";
+
+	# get the sequences from the database (as array->array reference)
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query_get_sequences);
+	$sth->execute($hmmquery);
+	my $results = $sth->fetchall_arrayref();
+	$sth->finish();
+	$dbh->disconnect();
+	return $results;
+}#}}}
+
+# Sub: reciprocal_match
+# Test whether this ortholog id led to a reciprocal match in the database
+# Arguments: ortholog id, est digest
+# Returns: 1 on match, 0 otherwise
+sub reciprocal_match {
+}
 
 =head2 get_taxa_in_all_sets
 
@@ -346,12 +418,16 @@ sub get_hitlist_hashref {
 		$mysql_table_hmmsearch.evalue,
 		$mysql_table_orthologs.ortholog_gene_id, 
 		$mysql_table_hmmsearch.target,
+		$mysql_table_ests.header,
+		$mysql_table_ests.sequence,
 		$mysql_table_hmmsearch.start,
 		$mysql_table_hmmsearch.end,
 		$mysql_table_blast.target,
 		$mysql_table_blast.evalue,
 		$mysql_table_taxa.name
 		FROM $mysql_table_hmmsearch
+		INNER JOIN $mysql_table_ests
+			ON $mysql_table_hmmsearch.target = $mysql_table_ests.digest
 		INNER JOIN $mysql_table_orthologs
 			ON $mysql_table_hmmsearch.query = $mysql_table_orthologs.ortholog_gene_id
 		INNER JOIN $mysql_table_blast
@@ -370,17 +446,21 @@ sub get_hitlist_hashref {
 		";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
-	$sth->execute( $setid, $specid );
+	$sth->execute( $setid, $specid ) or croak;
 	my $result = { };
 	while (my $line = $sth->fetchrow_arrayref()) {
+		my $start = $$line[5] - 1;
+		my $length = $$line[6] - $start;
 		# first key is the hmmsearch evalue, second key is the orthoid
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
 			'hmmhit'       => $$line[2],
-			'start'        => $$line[3],
-			'end'          => $$line[4],
-			'blast_hit'    => $$line[5],
-			'blast_evalue' => $$line[6],
-			'species_name' => $$line[7],
+			'header'       => $$line[3],
+			'sequence'     => substr($$line[4], $start, $length),
+			'start'        => $$line[5],
+			'end'          => $$line[6],
+			'blast_hit'    => $$line[7],
+			'blast_evalue' => $$line[8],
+			'species_name' => $$line[9],
 		});
 	}
 	$sth->finish();

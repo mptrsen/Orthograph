@@ -229,7 +229,7 @@ while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, 
 				# this transcript can't be found again either
 				push @transcript_list, $$match{'hmmhit'};
 
-				$$transcripts_mapped_to{$orthoid} = $$match{'hmmhit'};
+				$$transcripts_mapped_to{$orthoid} = $match;
 
 				# reset 
 				undef $match;
@@ -250,7 +250,7 @@ while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, 
 
 
 while (my ($o, $t) = each %$transcripts_mapped_to) {
-	printf($tfh "%s : %s\n", $o, $t);
+	printf($tfh ">%s\t%s\n%s\n", $o, $$t{'header'}, $$t{'sequence'});
 }
 
 # yay

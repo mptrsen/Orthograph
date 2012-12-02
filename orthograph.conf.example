@@ -115,11 +115,11 @@ blast_evalue_threshold     = 1e-05
 #blast_score_threshold     = 10
 
 # Maximum number of HMMsearch hits to consider. This setting is useful to limit
-# the number of reciprocal searches for HMM searches with very large number of
-# hits. However, it is also useful to limit the scope of your HMM searches,
-# which you normally don't want to do. Unless you have an idea of how many
-# reciprocal searches are required to effectively verify or reject a candidate
-# ortholog, don't use this setting. 
+# the number of reciprocal searches for very large number of HMMsearch hits.
+# However, it is also useful to limit the scope of your HMM searches, which you
+# normally don't want to do. Unless you have an idea of how many reciprocal
+# searches are required to effectively verify or reject a candidate ortholog,
+# don't change this setting. 
 # Defaults to 100.
 #max_blast_searches         = 100
 
@@ -182,7 +182,6 @@ blast_max_hits             = 100
 # in a separate place. Defaults to 'sets' (in the current directory).
 #sets_dir    = /PATH/TO/SETS/DIR
 
-# Log file. If set (and not empty), all messages will also be written to this
-# file. If this is not set, messages are not written to a log file, but to
-# STDOUT and STDERR.
+# Log file. If set, all messages will also be written to this file. If this is
+# not set, messages are not written to a log file, but to STDOUT and STDERR.
 #logfile = /PATH/TO/LOGFILE

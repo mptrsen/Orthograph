@@ -32,7 +32,6 @@ GetOptions( $config,
   'clear_files',
   'debug',
   'estfile',
-  'hmmfile',
   'hmmsearch_evalue_threshold',
   'hmmsearch_output_dir',
   'hmmsearch_score_threshold',
@@ -42,10 +41,10 @@ GetOptions( $config,
 	'list-taxa|lt',
   'logfile',
   'max_blast_searches',
-  'mysql_dbname',
-  'mysql_dbpassword',
-  'mysql_dbserver',
-  'mysql_dbuser',
+  'mysql_database',
+  'mysql_password',
+  'mysql_server',
+  'mysql_username',
   'mysql_prefix',
   'mysql_table_aaseqs',
   'mysql_table_blast',
@@ -137,7 +136,6 @@ defined $config->{'clear_result_files'}         or $config->{'clear_result_files
 defined $config->{'debug'}                      or $config->{'debug'}                      = 0;
 defined $config->{'estfile'}                    or $config->{'estfile'}                    = '';
 defined $config->{'hmmbuild_program'}           or $config->{'hmmbuild_program'}           = 'hmmbuild';
-defined $config->{'hmmfile'}                    or $config->{'hmmfile'}                    = '';
 defined $config->{'hmmsearch_evalue_threshold'} or $config->{'hmmsearch_evalue_threshold'} = undef;
 defined $config->{'hmmsearch_program'}          or $config->{'hmmsearch_program'}          = 'hmmsearch';
 defined $config->{'hmmsearchoutdir'}            or $config->{'hmmsearchoutdir'}            = basename($config->{'hmmsearch_program'});
@@ -150,7 +148,6 @@ defined $config->{'ortholog_set'}               or $config->{'ortholog_set'}    
 defined $config->{'output_directory'}           or $config->{'output_directory'}           = '';
 defined $config->{'quiet'}                      or $config->{'quiet'}                      = 0;  # I like my quiet
 defined $config->{'reference_taxa'}             or $config->{'reference_taxa'}             = '';
-defined $config->{'reference_taxon'}            or $config->{'reference_taxon'}            = '';
 defined $config->{'sets_dir'}                   or $config->{'sets_dir'}                   = 'sets';
 defined $config->{'species_name'}               or $config->{'species_name'}               = '';
 defined $config->{'soft_threshold'}             or $config->{'soft_threshold'}             = 5;
