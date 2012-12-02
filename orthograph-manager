@@ -64,6 +64,10 @@ my $mysql_table_taxa        = $config->{'mysql_table_taxa'};
 my $mysql_table_temp        = $config->{'mysql_table_temp'};
 my $mysql_table_users       = $config->{'mysql_table_users'};
 
+my $listtaxa                = $config->{'list-taxa'};
+my $listsets                = $config->{'list-sets'};
+my $listogs                 = $config->{'list-ogs'};
+
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute_u_with'};
 
@@ -91,9 +95,6 @@ my $description       = '';
 my $isnucleotide      = 0;
 my $ispeptide         = 0;
 my $listests          = 0;
-my $listogs           = 0;
-my $listsets          = 0;
-my $listtaxa          = 0;
 my $name              = '';
 my $ogs_name          = '';
 my $overwrite         = 0;
@@ -105,8 +106,7 @@ my $temptable         = 'temp';
 my $total_seqs        = 0;
 my %names             = ( );
 
-
-my $infile = shift @ARGV or die "Usage: $0 FASTAFILE\n";
+my $infile = shift @ARGV;
 
 unless (defined $mysql_dbuser and defined $mysql_dbpwd ) {
 	die "Fatal: You must specify database username (--mysql_dbuser) and password (--mysql_dbpassword) AND core-ortholog set name (-s).\n";

@@ -383,7 +383,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
 		for (my $i = 0; $i < scalar @$hits; $i++) {
-			printf "     [%d] %s, e-value %2.1e\n", $i + 1, $hits->[$i]->{'target'}, $hits->[$i]->{'evalue'};
+			printf $stdout "     [%d] %s, e-value %2.1e\n",
+				$i + 1,
+				$hits->[$i]->{'target'},
+				$hits->[$i]->{'evalue'};
 		}
 	}
 
@@ -478,21 +481,21 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$outfh->close();
 	# yay
 	++$orthocount;
-	printf "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0];
+	printf $stdout "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0];
 
 }#}}}	# End hmmlist loop
 
 # report, end the program
 $timestamp_end = scalar time();
 $timestamp_diff = $timestamp_end - $timestamp_start;
-printf "\n%s analysis for %s completed in %d seconds.\n", $program_name, $species_name, $timestamp_diff;
-printf "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and verified %d as 1:1 orthologs (%2.2f%%).\n",
+printf $stdout "\n%s analysis for %s completed in %d seconds.\n", $program_name, $species_name, $timestamp_diff;
+printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and verified %d as 1:1 orthologs (%2.2f%%).\n",
 	$num_ests,
 	$hmmcount,
 	$hmmhitcount,
 	$orthocount,
 	((100 * $orthocount) / $hmmcount);
-printf "Now go look in your output directory %s.\n", $outdir;
+printf $stdout "Now go look in your output directory %s.\n", $outdir;
 
 # successfully exit :)
 exit(0);
@@ -556,10 +559,11 @@ sub intro {#{{{
 		print $stdout $message;
 		print $stdout "Writing to log file $logfile\n";
 	}
+	# default logfile: 'orthograph-' plus a timestamp
 	else {
 		$logdir = File::Spec->catdir($outdir, 'log');
 		if (-d $logdir) {
-			print "Using log dir $logdir.\n" unless $quiet;
+			print $stdout "Using log dir $logdir.\n" unless $quiet;
 		}
 		else {
 			$message .= "Log dir $logdir does not exist, creating...\n" unless $quiet;
@@ -860,7 +864,7 @@ sub preparedb {#{{{
 
 	# create all tables
 	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast) {
-		printf "$query;\n" if $verbose;
+		printf $stdout "$query;\n" if $verbose;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
 		  or print $stderr "Fatal: Could not execute SQL query: $!\n" and exit(1);

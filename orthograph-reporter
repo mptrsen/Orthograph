@@ -28,13 +28,14 @@ use DBI;            # database interface
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
-use Devel::Size qw( total_size );  # get total memory size of variables
+#use Devel::Size qw( total_size );  # get total memory size of variables
 
 # Custom modules
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
 use Wrapper::Mysql;
+use IO::Tee;
 
 my $config = $Orthograph::Config::config;	# copy config var
 
@@ -66,6 +67,9 @@ my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
 my $soft_threshold             = $config->{'soft_threshold'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'};
+
+my $outputdir                  = $config->{'output_directory'};
+my $logdir                     = File::Spec->catdir($outputdir, 'log');
 
 # mutually exclusive options
 die "Fatal: Can't operate in both verbose and quiet mode\n"
@@ -107,6 +111,9 @@ else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 # get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 
+# generate a table
+my $transcripts_mapped_to = { };
+
 # get the results in the form:
 # evalue => {
 #   orthoid => [
@@ -116,117 +123,131 @@ my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 #     etc.
 #   ]
 # }
-my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id);
+my $limit = 50;
+my $offset = 0;
 
-# this will hold all transcripts that were found so we can check for redundancy
-my @transcript_list;
+my $logfile = File::Spec->catfile($logdir, 'report.txt');
+my $logfh = IO::File->new($logfile, 'w')
+	or die "Fatal: Could not open report file $logfile\: $!\n";
+my $tablefile = File::Spec->catfile($logdir, 'table.txt');
+my $tfh = IO::File->new($tablefile, 'w')
+	or die "Fatal: Could not open table file $tablefile\: $!\n";
 
-# mysql can't sort evalues correctly when they are stored as char
-# so we do the sorting ourselves
-my @evalues_sorted = sort { $a <=> $b } keys %$hitlist;
+my $stdout = IO::Tee->new(
+	\*STDOUT,
+	$logfh,
+);
 
-# generate a table
-my $transcripts_mapped_to = { };
+while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, $limit, $offset) ) {
 
-# okay let's do the loop come on baby let's do the loop
-EVALUE:
-foreach my $evalue (@evalues_sorted) {
+	# this will hold all transcripts that were found so we can check for redundancy
+	my @transcript_list;
 
-	ORTHOID:
-	while (my ($orthoid, $list) = each (%{$$hitlist{$evalue}})) {
-		# reset the mismatch counter
-		$mismatches = 0;
+	# mysql can't sort evalues correctly when they are stored as char
+	# so we do the sorting ourselves
+	my @evalues_sorted = sort { $a <=> $b } keys %$hitlist;
 
-		# has this orthoid been assigned before?
-		next ORTHOID unless exists $$aaseqs_in_orthoid{$orthoid};
 
-		# sort by reciprocal hit evalue
-		my $sorted_list = [ sort { $$a{'blast_evalue'} <=> $$b{'blast_evalue'} } @$list ];
+	# okay let's do the loop come on baby let's do the loop
+	EVALUE:
+	foreach my $evalue (@evalues_sorted) {
 
-		print "checking out $orthoid with evalue $evalue: ", scalar @$sorted_list, " reciprocal hits\n"
-			if $verbose;
+		ORTHOID:
+		while (my ($orthoid, $list) = each (%{$$hitlist{$evalue}})) {
+			# reset the mismatch counter
+			$mismatches = 0;
 
-		RH:
-		foreach my $reciprocal_hit (@$sorted_list) {
-			# find out if the aaseq_id is one of those used for this orthoid
-			print "  checking out hit " , Dumper($reciprocal_hit)
+			# has this orthoid been assigned before?
+			next ORTHOID unless exists $$aaseqs_in_orthoid{$orthoid};
+
+			# sort by reciprocal hit evalue
+			my $sorted_list = [ sort { $$a{'blast_evalue'} <=> $$b{'blast_evalue'} } @$list ];
+
+			print $stdout "checking out $orthoid with evalue $evalue: ", scalar @$sorted_list, " reciprocal hits\n"
 				if $verbose;
 
-			# has this aaseq been used in building this hmm and has this not been found previously?
-			# grep is the nicer solution but may not be as fast as a loop that we can exit after one match.
-			# the first function from List::Util also returns after the first occurence.
-			# however no significant difference could be noted between the two in terms of runtime
-			# (in a real-life example with arrays of > 4000 elements)
-			if (grep(/$$reciprocal_hit{'blast_hit'}/, @{$$aaseqs_in_orthoid{$orthoid}}) and
-			    not grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
-
-				$match = $reciprocal_hit;
-
-				print "    $$reciprocal_hit{'blast_hit'} used in this HMM!\n"
+			RH:
+			foreach my $reciprocal_hit (@$sorted_list) {
+				# find out if the aaseq_id is one of those used for this orthoid
+				print $stdout "  checking out hit " , Dumper($reciprocal_hit)
 					if $verbose;
 
-				# one hit is enough if not in strict mode
-				last RH unless $strict;
-			}
-			else {  # not found
-				# cry
-				print "    $$reciprocal_hit{'blast_hit'} not used in this HMM (mismatch #", ++$mismatches, ") :(\n"
-					if $verbose;
+				# has this aaseq been used in building this hmm and has this not been found previously?
+				# grep is the nicer solution but may not be as fast as a loop that we can exit after one match.
+				# the first function from List::Util also returns after the first occurence.
+				# however no significant difference could be noted between the two in terms of runtime
+				# (in a real-life example with arrays of > 4000 elements)
+				if (grep(/$$reciprocal_hit{'blast_hit'}/, @{$$aaseqs_in_orthoid{$orthoid}}) and
+						not grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
 
-				# in a strict search, that's it for this orthoid
-				next ORTHOID if $strict;
+					$match = $reciprocal_hit;
 
-				# no match
-				undef $match;
-
-				# too many mismatches, we don't trust this one anymore
-				if ($mismatches >= $max_mismatches) {
-					print ">>    Too many mismatches, we don't trust this one anymore\n"
+					print $stdout "    $$reciprocal_hit{'blast_hit'} used in this HMM!\n"
 						if $verbose;
-					next ORTHOID;
+
+					# one hit is enough if not in strict mode
+					last RH unless $strict;
 				}
+				else {  # not found
+					# cry
+					print $stdout "    $$reciprocal_hit{'blast_hit'} not used in this HMM (mismatch #", ++$mismatches, ") :(\n"
+						if $verbose;
+
+					# in a strict search, that's it for this orthoid
+					next ORTHOID if $strict;
+
+					# no match
+					undef $match;
+
+					# too many mismatches, we don't trust this one anymore
+					if ($mismatches >= $max_mismatches) {
+						print $stdout ">>    Too many mismatches, we don't trust this one anymore\n"
+							if $verbose;
+						next ORTHOID;
+					}
+				}
+
+			# END RH
+			}
+			# so, was this a match?
+			if ($match) {
+
+				# yeah
+				printf $stdout ">>    assigned %s to %s\n",
+					$$match{'hmmhit'},
+					$orthoid,
+					#$$match{'blast_hit'},
+					#$$match{'blast_evalue'},
+					unless $quiet;
+
+				# this orthoid can't be found again
+				delete $$aaseqs_in_orthoid{$orthoid};
+
+				# this transcript can't be found again either
+				push @transcript_list, $$match{'hmmhit'};
+
+				$$transcripts_mapped_to{$orthoid} = $$match{'hmmhit'};
+
+				# reset 
+				undef $match;
+			}
+			else {
+				# this orthoid has no match
+				print $stdout "    $orthoid could not be assigned :((\n"
+					unless $quiet;
 			}
 
-		# END RH
-		}
-		# so, was this a match?
-		if ($match) {
+		# END ORTHOID
+		} 
 
-			# yeah
-			printf ">>    assigned %s to %s\n",
-				$$match{'hmmhit'},
-				$orthoid,
-				#$$match{'blast_hit'},
-				#$$match{'blast_evalue'},
-				unless $quiet;
-
-			# this orthoid can't be found again
-			delete $$aaseqs_in_orthoid{$orthoid};
-
-			# this transcript can't be found again either
-			push @transcript_list, $$match{'hmmhit'};
-
-			$$transcripts_mapped_to{$orthoid} = $$match{'hmmhit'};
-
-			# reset 
-			undef $match;
-		}
-		else {
-			# this orthoid has no match
-			print "    $orthoid could not be assigned :((\n"
-				unless $quiet;
-		}
-
-	# END ORTHOID
-	} 
-
-# END EVALUE
+	# END EVALUE
+	}
+	$offset += 50;
 }
 
 
-
 while (my ($o, $t) = each %$transcripts_mapped_to) {
-	warn sprintf("%s : %s\n", $o, $t);
+	printf($tfh "%s : %s\n", $o, $t);
 }
 
 exit;

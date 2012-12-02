@@ -340,11 +340,10 @@ Returns: hashref of hashrefs of arrayrefs of hashrefs - lol
 
 =cut
 sub get_hitlist_hashref {
-	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
-	my $setid  = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");
+	scalar @_ == 4 or croak("Usage: get_hitlist_for(SPECIESID, SETID, LIMIT, OFFSET)");
+	my ($specid, $setid, $limit, $offset) = @_;
 	my $query = "SELECT DISTINCT
 		$mysql_table_hmmsearch.evalue,
-		$mysql_table_hmmsearch.logevalue,
 		$mysql_table_orthologs.ortholog_gene_id, 
 		$mysql_table_hmmsearch.target,
 		$mysql_table_hmmsearch.start,
@@ -365,7 +364,9 @@ sub get_hitlist_hashref {
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
 		WHERE $mysql_table_set_details.id = ?
 		AND $mysql_table_hmmsearch.taxid  = ?
-		ORDER BY $mysql_table_hmmsearch.logevalue ASC
+		ORDER BY $mysql_table_hmmsearch.log_evalue ASC
+		LIMIT $limit 
+		OFFSET $offset
 		";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
@@ -384,7 +385,7 @@ sub get_hitlist_hashref {
 	}
 	$sth->finish();
 	$dbh->disconnect();
-	return $result;
+	scalar keys %$result > 0 ? return $result : return 0;
 }
 
 sub get_hit_transcripts {
