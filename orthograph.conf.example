@@ -143,10 +143,19 @@ blast_max_hits             = 100
 # conservative.
 #strict      = 1
 
-# Clear pre-existing data of the same species prior to the analysis. Useful if
-# you plan to run the same analysis multiple times, but doesn't hurt otherwise.
+# Clear pre-existing data of the same species from the database prior to the
+# analysis. Recommended if you plan to run the same analysis multiple times,
+# but doesn't hurt otherwise. 
 # This is the default, uncomment this line if you want to turn it off.
-#clear_data  = 0
+#clear_results_from_database  = 0
+
+# Delete old result files. This means the HMMsearch and BLAST report files found
+# in the output directory. If you plan to run the same analysis multiple times
+# with the same HMMsearch and BLAST settings, then don't have them deleted. This
+# will speed up the process significantly, since the search programs don't have
+# to be run again.
+# This is the default. Uncomment this line if you want the files deleted.
+#clear_result_files           = 1
 
 # Selenocysteine (U) may occur in some protein sequences. However, some
 # alignment programs do not accept this nonstandard amino acid symbol. You can

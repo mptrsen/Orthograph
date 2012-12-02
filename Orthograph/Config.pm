@@ -28,7 +28,8 @@ GetOptions( $config,
   'blast_score_threshold',
   'blastoutdir',
   'blastp_output_dir',
-  'clear_data',
+  'clear_database',
+  'clear_files',
   'debug',
   'estfile',
   'hmmfile',
@@ -131,7 +132,8 @@ defined $config->{'blast_max_hits'}             or $config->{'blast_max_hits'}  
 defined $config->{'blast_program'}              or $config->{'blast_program'}              = 'blastp';
 defined $config->{'blast_score_threshold'}      or $config->{'blast_score_threshold'}      = 10;
 defined $config->{'blastoutdir'}                or $config->{'blastoutdir'}                = basename($config->{'blast_program'});
-defined $config->{'clear_data'}                 or $config->{'clear_data'}                 = 1;
+defined $config->{'clear_results_from_database'} or $config->{'clear_results_from_database'} = 1;
+defined $config->{'clear_result_files'}         or $config->{'clear_result_files'}         = 0;
 defined $config->{'debug'}                      or $config->{'debug'}                      = 0;
 defined $config->{'estfile'}                    or $config->{'estfile'}                    = '';
 defined $config->{'hmmbuild_program'}           or $config->{'hmmbuild_program'}           = 'hmmbuild';

@@ -101,7 +101,8 @@ my $blast_max_hits             = $config->{'blast_max_hits'};
 my $blastoutdir                = $config->{'blastoutdir'};
 my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
 my $blast_score_threshold      = $config->{'blast_score_threshold'};
-my $clear_data                 = $config->{'clear_data'};
+my $clear_database             = $config->{'clear_results_from_database'};
+my $clear_files                = $config->{'clear_result_files'};
 my $debug                      = $config->{'debug'};
 my $estfile                    = $config->{'estfile'};
 my $hmmfile                    = $config->{'hmmfile'};
@@ -268,7 +269,7 @@ unless ($quiet) {#{{{
 $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 
 # clear database of data from the same species
-if ($clear_data) {
+if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = Benchmark->new();
 	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name!\n";
@@ -481,7 +482,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$outfh->close();
 	# yay
 	++$orthocount;
-	printf $stdout "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0];
+	printf $stdout "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $$orthologs[0][0] unless $quiet;
 
 }#}}}	# End hmmlist loop
 
@@ -629,7 +630,7 @@ sub intro {#{{{
 	# the HMMsearch output directory
 	if (-d $hmmoutdir) {
 		print $stdout "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
-		if ($clear_data) {
+		if ($clear_files) {
 			&cleardir($hmmoutdir);
 			print $stdout "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
 		}
@@ -645,7 +646,7 @@ sub intro {#{{{
   # the BLASTP output directory
   if (-d $blastoutdir) {
     print $stdout "BLASTP output dir $blastoutdir exists.\n" unless $quiet;
-		if ($clear_data) {
+		if ($clear_files) {
 			&cleardir($blastoutdir);
 			print $stdout "Purged BLAST output dir $blastoutdir of old result files.\n" unless $quiet;
 		}
@@ -660,7 +661,7 @@ sub intro {#{{{
 	# the aa output directory
 	if (-d $aaoutdir) {
 		print $stdout "AA output dir $aaoutdir exists.\n" unless $quiet;
-		if ($clear_data) {
+		if ($clear_files) {
 			&cleardir($aaoutdir);
 			print $stdout "Purged AA output dir $aaoutdir of old result files.\n" unless $quiet;
 		}
@@ -674,7 +675,7 @@ sub intro {#{{{
 	}
 
 	# do the backup; create a tarball if desired
-	unless ($clear_data) {
+	unless ($clear_files) {
 		my $tarfile = &create_tarball(@backup);
 		print $stdout "Old output files backed up in $tarfile.\n";
 		# and clear the directories
