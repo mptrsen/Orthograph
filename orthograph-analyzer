@@ -490,13 +490,13 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 $timestamp_end = scalar time();
 $timestamp_diff = $timestamp_end - $timestamp_start;
 printf $stdout "\n%s analysis for %s completed in %d seconds.\n", $program_name, $species_name, $timestamp_diff;
-printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and verified %d as 1:1 orthologs (%2.2f%%).\n",
+printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and identified %d as putative 1:1 orthologs (%2.2f%%).\n",
 	$num_ests,
 	$hmmcount,
 	$hmmhitcount,
 	$orthocount,
 	((100 * $orthocount) / $hmmcount);
-printf $stdout "Now go look in your output directory %s.\n", $outdir;
+printf $stdout "Now go look in your output directory %s and run %s.\n", $outdir, 'orthograph-reporter';
 
 # successfully exit :)
 exit(0);

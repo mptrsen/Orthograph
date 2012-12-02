@@ -123,7 +123,7 @@ my $transcripts_mapped_to = { };
 #     etc.
 #   ]
 # }
-my $limit = 50;
+my $limit = 2000;
 my $offset = 0;
 
 # this will hold all transcripts that were found so we can check for redundancy
@@ -245,7 +245,7 @@ while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, 
 
 	# END EVALUE
 	}
-	$offset += 50;
+	$offset += $limit;
 }
 
 

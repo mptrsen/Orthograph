@@ -20,8 +20,8 @@ mysql_dbuser       = USERNAME
 mysql_dbpassword   = PASSWORD
 mysql_dbname       = DATABASE
 
-# The path to your transcriptome data file. Best to use absolute paths. At the
-# moment, you may only supply one file, not a directory of files.
+# The path to your transcriptome data file. It is always best to use absolute
+# paths. You may only supply one file, not a directory of files.
 estfile            = FASTAFILE
 
 # Species name. Make sure to pick a unique name because otherwise results get
