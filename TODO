@@ -1,2 +1,1 @@
-Read up on MySQL FOREIGN KEY constraints and re-design the db structure using foreign keys in order to reduce information redundancy. This may be scheduled for later releases. # nah
-add log factory
+use File::Find for the recursive directory walker

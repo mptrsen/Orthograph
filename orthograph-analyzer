@@ -19,14 +19,15 @@
 # Pragmas
 use strict;         # make me write good code
 use warnings;       # cry if something seems odd
+use autodie;        # die automatically on I/O functions
 
 # Core modules
 use Archive::Tar;   # handling tar archives
 use Benchmark qw( timediff timestr );  # timing functions
 use Carp;           # carp and croak: warn and die with call stack
 use Config;         # allows checking for system configuration in $Config
-use DBD::mysql;	    # MySQL database driver 
-use DBI;	          # database interface 
+use DBD::mysql;     # MySQL database driver 
+use DBI;            # database interface 
 use Data::Dumper;   # great for debugging
 use Digest::SHA;    # SHA hashing: good idea or not?
 use File::Basename; # provides basename()
@@ -65,7 +66,7 @@ if ($use_threads == 1 and $Config{'useithreads'}) {
   $message .= "Using threads.\n\n";
   #use Wrapper::Threaded;
 }
-elsif ($use_threads == 1 and !$Config{'useithreads'}) {
+elsif ($use_threads == 1 and not $Config{'useithreads'}) {
   warn "Warning: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n\n";
 	$use_threads = 0;
 }
@@ -142,19 +143,20 @@ my $verbose                    = $config->{'verbose'};
 # # More variables
 #-------------------------------------------------- 
 #{{{
-my $alndir                  = '';
+my $EMPTY                   = q{};
+my $alndir                  = $EMPTY;
 my $blastcount              = 0;
-my $blastdb                 = '';
+my $blastdb                 = $EMPTY;
 my $blasthitcount_total     = 0;
-my $configfile              = '';
+my $configfile              = $EMPTY;
 my $count                   = 0;
 my $hmmcount                = 0;
-my $hmmdir                  = '';
+my $hmmdir                  = $EMPTY;
 my $hmmhitcount             = 0;
 my $hmmhitcount_total       = 0;
-my $hmmresultfileref        = '';
+my $hmmresultfileref        = $EMPTY;
 my $listspecies             = 0;
-my $logdir                  = '';
+my $logdir                  = $EMPTY;
 my $mysql_col_aaseq         = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
 my $mysql_col_date          = 'date';
@@ -182,7 +184,7 @@ my $num_ests                = 0;
 my $num_hmms                = 0;
 my $orthocount              = 0;
 my $preparedb               = 0;
-my $protfile                = '';
+my $protfile                = $EMPTY;
 my $set_id                  = 0;
 my $species_id              = 0;
 my $stderr                  = undef;
@@ -191,12 +193,12 @@ my $t0;  # these are used for timing
 my $t1;  # these are used for timing 
 my $timestamp_diff          = 0;
 my $timestamp_end           = 0; # will hold the time at the end
-my $timestamp_start         = scalar time();
-my @lt                      = localtime(time);
-my $timestring              = sprintf("%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1]);
+my $timestamp_start         = scalar time;
+my @lt                      = localtime time;
+my $timestring              = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
 # create new temporary directory and set it to not be deleted 
 my $tmpdir                  = File::Temp->newdir(
-                               'UNLINK' => 0, 
+                               'UNLINK' => 0,
                                'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
 my @backup                  = ( );
 my @hmmfiles                = ( );
@@ -211,9 +213,9 @@ $tmpdir->unlink_on_destroy(0) if $debug;
 # # tables if requested, then exit
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
-	$| = 1;
+	local $| = 1;
   print "Setting MySQL database $mysql_dbname to a clean slate... ";
-	$| = 0;
+	local $| = 0;
   &preparedb;
   print "OK\nMySQL database now ready to run $program_name.\n";
   exit;
@@ -279,7 +281,7 @@ if ($clear_database) {
 }
 
 # create a new entry in the taxa table, returns taxid
-$species_id = &insert_taxon_into_table($species_name);
+$species_id = &insert_taxon_into_table($species_name) or print $stderr "Warning: Insertion of species name into database failed: $DBI::errstr";
 print $stdout "Created new taxon id $species_id for '$species_name'\n" unless $quiet;
 
 # store est data into the database:
@@ -525,9 +527,10 @@ sub progress_bar {#{{{
 	$width ||= 25;
 	$char ||= '=';
 	my $num_width = length($total);
-	$| = 1;
+	local $| = 1;
 	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r", $char x (($width-1)*$got/$total) . '>', $got, $total, 100*$got/$total);
-	$| = 0;
+	local $| = 0;
+	return 1;
 }#}}}
 
 # Sub: intro
@@ -699,13 +702,11 @@ sub intro {#{{{
 
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $settest = Wrapper::Mysql::mysql_get("SELECT *
-	FROM $mysql_table_set_details
-	WHERE $mysql_col_name = '$orthoset'
-	LIMIT 1");
-	die("Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n")
-		unless $$settest[0][0];
+	unless ( Wrapper::Mysql::set_exists($orthoset) ) {
+		die "Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
+	}
 
+	# everything is fine
 	return 1;
 }#}}}
 
@@ -749,7 +750,7 @@ sub translate_est {#{{{
 # sub: backup_old_output_files
 # input: reference to list of relevant contigs
 sub schedule_for_backup {#{{{
-  my $outfile = shift @_;
+  my $outfile = shift;
 	if (-d $outfile) {	# it's a directory
 		my $dirh = IO::Dir->new($outfile);
 		while (my $file = $dirh->read()) {
@@ -761,6 +762,7 @@ sub schedule_for_backup {#{{{
   elsif (-f $outfile) {
     push(@backup, $outfile);
   }
+	return 1;
 }#}}}
 
 # sub: create_tarball
@@ -797,7 +799,7 @@ sub makedir {#{{{
 # Empties a directory of non-dotfiles
 # Arguments: scalar string dirname
 sub cleardir {#{{{
-	my $dir = shift(@_);
+	my $dir = shift;
 	opendir(my $dirh, $dir)
 		or print $stderr "Fatal: Couldn't open dir $dir\: $!" and exit(1);
 	foreach (readdir($dirh)) {
@@ -850,7 +852,7 @@ sub preparedb {#{{{
 		$mysql_col_taxid         INT UNSIGNED NOT NULL,       
 		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
 		$mysql_col_query         CHAR(32)     NOT NULL,       
-		$mysql_col_target        VARCHAR(255) NOT NULL,       
+		$mysql_col_target        INT UNSIGNED NOT NULL,       
 		$mysql_col_score         DOUBLE       NOT NULL,
 		$mysql_col_evalue        VARCHAR(100) NOT NULL,
 		$mysql_col_logevalue     DOUBLE       NOT NULL DEFAULT '-999',
@@ -861,6 +863,13 @@ sub preparedb {#{{{
 		INDEX ($mysql_col_target),
 		INDEX ($mysql_col_logevalue)
 		)";
+
+	my $query_create_log_evalues = "CREATE VIEW $mysql_table_logevalues AS
+		SELECT $mysql_table_hmmsearch.$mysql_col_logevalue AS $mysql_col_logevalue,
+			COUNT($mysql_table_hmmsearch.$mysql_col_logevalue) AS `count`
+		FROM $mysql_table_hmmsearch
+		GROUP BY $mysql_table_hmmsearch.$mysql_col_logevalue
+		ORDER BY $mysql_table_hmmsearch.$mysql_col_logevalue";
 	
 	# open connection
 	my $dbh = Wrapper::Mysql::mysql_dbh();
@@ -893,7 +902,7 @@ sub preparedb {#{{{
 # clears the database of previous results from the same species 
 sub clear_db {#{{{
 
-	my $species_name = shift @_;
+	my $species_name = shift;
 	return unless $species_name;
 
 	# get the species id from the database
@@ -1054,7 +1063,7 @@ sub make_hmms {#{{{
 
 		# does this HMM already exist?
 		# if so, skip to the next
-		if (-e $hmmfile and !&file_is_empty($hmmfile)) { next }
+		if (-e $hmmfile and not &file_is_empty($hmmfile)) { next }
 
 		# if it exists, but the file is empty (this happens if you cancel the build
 		# process), rebuild this HMM
@@ -1187,19 +1196,6 @@ sub make_blastdb {#{{{
 	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $!\n" and exit(1);
 	return $dbfile;
 }#}}}
-
-sub insert_taxon_into_table {
-	my $species_name = shift(@_);
-	unless ($species_name) { croak("Usage: insert_taxon_into_table(SPECIESNAME)") }
-
-	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
-	my $dbh = Wrapper::Mysql::mysql_dbh();
-	my $sth = $dbh->prepare($query);
-	$sth->execute( $species_name, 0 )
-		or print $stderr "Warning: Insertion of species name into database failed: $DBI::errstr";
-	$dbh->disconnect();
-	return(Wrapper::Mysql::get_taxid_for_species($species_name));
-}
 
 # Sub: load_data_infile
 # LOAD DATA LOCAL INFILE into a table

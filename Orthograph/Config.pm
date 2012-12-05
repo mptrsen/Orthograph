@@ -51,6 +51,7 @@ GetOptions( $config,
   'mysql_table_blastdbs',
   'mysql_table_ests',
   'mysql_table_hmmsearch',
+  'mysql_table_log_evalues',
   'mysql_table_orthologs',
   'mysql_table_sequence_pairs',
   'mysql_table_sequence_types',
@@ -100,6 +101,7 @@ defined $config->{'mysql_table_blast'}          or $config->{'mysql_table_blast'
 defined $config->{'mysql_table_blastdbs'}       or $config->{'mysql_table_blastdbs'}       = 'blastdbs';
 defined $config->{'mysql_table_ests'}           or $config->{'mysql_table_ests'}           = 'ests';
 defined $config->{'mysql_table_hmmsearch'}      or $config->{'mysql_table_hmmsearch'}      = 'hmmsearch';
+defined $config->{'mysql_table_log_evalues'}    or $config->{'mysql_table_log_evalues'}    = 'log_evalues';
 defined $config->{'mysql_table_ntseqs'}         or $config->{'mysql_table_ntseqs'}         = 'ntseqs';
 defined $config->{'mysql_table_ogs'}            or $config->{'mysql_table_ogs'}            = 'ogs';
 defined $config->{'mysql_table_orthologs'}      or $config->{'mysql_table_orthologs'}      = 'orthologs';

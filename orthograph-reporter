@@ -40,11 +40,6 @@ use IO::Tee;
 my $config = $Orthograph::Config::config;	# copy config var
 
 # MySQL settings
-my $mysql_dbname               = $config->{'mysql_dbname'};
-my $mysql_dbpwd                = $config->{'mysql_dbpassword'};
-my $mysql_dbserver             = $config->{'mysql_dbserver'};
-my $mysql_dbuser               = $config->{'mysql_dbuser'};
-
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests           = $config->{'mysql_table_ests'};
@@ -125,6 +120,8 @@ my $transcripts_mapped_to = { };
 # }
 my $limit = 2000;
 my $offset = 0;
+my $from = -999;
+my $to   = -600;
 
 # this will hold all transcripts that were found so we can check for redundancy
 my @transcript_list;
@@ -136,6 +133,15 @@ my $logfh = IO::File->new($logfile, 'w')
 my $tablefile = File::Spec->catfile($logdir, 'table.txt');
 my $tfh = IO::File->new($tablefile, 'w')
 	or die "Fatal: Could not open table file $tablefile\: $!\n";
+
+my $logevalue_count = Wrapper::Mysql::get_logevalue_count();
+my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
+
+print "getting ", $logevalues[0], " for setid $set_id and taxid $species_id\n";
+my $res = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $logevalues[0]);
+print Dumper($res);
+exit;
+$res = Wrapper::Mysql::get_results_for_logevalue_range($set_id, $species_id, $logevalues[0], $logevalues[1]); 
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(

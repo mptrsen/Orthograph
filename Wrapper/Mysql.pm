@@ -21,11 +21,25 @@ my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests           = $config->{'mysql_table_ests'};
 my $mysql_table_ogs            = $config->{'mysql_table_ogs'};
 my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
+my $mysql_table_log_evalues    = $config->{'mysql_table_log_evalues'};
 my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
 my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
 my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
 my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
 my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
+my $mysql_col_aaseq            = 'aa_seq';
+my $mysql_col_digest           = 'digest';
+my $mysql_col_end              = 'end';
+my $mysql_col_evalue           = 'evalue';
+my $mysql_col_id               = 'id';
+my $mysql_col_log_evalue       = 'log_evalue';
+my $mysql_col_name             = 'name';
+my $mysql_col_orthoid          = 'ortholog_gene_id';
+my $mysql_col_query            = 'query';
+my $mysql_col_setid            = 'setid';
+my $mysql_col_start            = 'start';
+my $mysql_col_target           = 'target';
+my $mysql_col_taxid            = 'taxid';
 my $outdir                     = $config->{'output_directory'};
 my $orthoset                   = $config->{'ortholog_set'};
 my $quiet                      = $config->{'quiet'};
@@ -363,6 +377,29 @@ sub get_set_id {
 	return $$result[0][0];
 }
 
+sub set_exists {
+	my $set = shift;
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare("SELECT * FROM $mysql_table_set_details WHERE $mysql_col_name = '$orthoset' LIMIT 1");
+	$sth->execute($set);
+	my $result = $sth->fetchrow_arrayref;
+	if ( $$result[0] ) { return 1 }
+	return 0;
+}
+
+sub insert_taxon_into_table {
+	my $species_name = shift(@_);
+	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_taxon_into_table(SPECIESNAME)") }
+	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute( $species_name, 0 )
+		or return 0;
+	$dbh->disconnect();
+	return &get_taxid_for_species($species_name);
+}
+
+
 # get a orthoid => list_of_aaseq_ids relationship from the db
 sub get_orthologs_for_set_hashref {
 	my $setid = shift(@_);
@@ -444,6 +481,7 @@ sub get_hitlist_hashref {
 		LIMIT $limit 
 		OFFSET $offset
 		";
+	print "fetching:\n$query\n";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $setid, $specid ) or croak;
@@ -466,6 +504,108 @@ sub get_hitlist_hashref {
 	$sth->finish();
 	$dbh->disconnect();
 	scalar keys %$result > 0 ? return $result : return 0;
+}
+
+=head2 get_logevalue_count()
+
+Returns a hashref as $hash->{$log_evalue} = number_of_occurences (an int)
+
+=cut
+
+sub get_logevalue_count {
+	my $query_get_logevalues = "SELECT $mysql_col_log_evalue, count FROM $mysql_table_log_evalues";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query_get_logevalues);
+	$sth->execute();
+	my $d = $sth->fetchall_arrayref();
+	$sth->finish();
+	$dbh->disconnect();
+	my $num_of_logevalues = { };
+	foreach my $row (@$d) {
+		$num_of_logevalues->{$$row[0]} = $$row[1];
+	}
+	return $num_of_logevalues;
+}
+
+sub get_results_for_logevalue_range {
+	my ($setid, $taxid, $min, $max) = @_;
+	my $query = "SELECT $mysql_table_hmmsearch.$mysql_col_evalue,
+			$mysql_table_orthologs.$mysql_col_orthoid,
+			$mysql_table_hmmsearch.$mysql_col_start,
+			$mysql_table_hmmsearch.$mysql_col_end,
+			$mysql_table_blast.$mysql_col_target,
+			$mysql_table_blast.$mysql_col_evalue,
+			$mysql_table_taxa.$mysql_col_name
+		FROM $mysql_table_log_evalues
+		LEFT JOIN $mysql_table_hmmsearch
+			ON $mysql_table_log_evalues.$mysql_col_log_evalue = $mysql_table_hmmsearch.$mysql_col_log_evalue
+		LEFT JOIN $mysql_table_ests
+			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
+		LEFT JOIN $mysql_table_orthologs
+			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid,
+		LEFT JOIN $mysql_table_blast
+			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_blast.$mysql_col_query
+		LEFT JOIN $mysql_table_aaseqs
+			ON $mysql_table_blast.$mysql_col_target = $mysql_table_aaseqs.$mysql_col_id
+		LEFT JOIN $mysql_table_taxa
+			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.$mysql_col_id
+		LEFT JOIN $mysql_table_set_details
+			ON $mysql_table_orthologs.$mysql_col_setid = $mysql_table_set_details.$mysql_col_id
+		WHERE $mysql_table_hmmsearch.$mysql_col_log_evalue IS NOT NULL
+			AND $mysql_table_ests.$mysql_col_digest          IS NOT NULL
+			AND $mysql_table_orthologs.$mysql_col_orthoid    IS NOT NULL
+			AND $mysql_table_blast.$mysql_col_query          IS NOT NULL
+			AND $mysql_table_aaseqs.$mysql_col_id            IS NOT NULL
+			AND $mysql_table_taxa.$mysql_col_id              IS NOT NULL
+			AND $mysql_table_set_details.$mysql_col_id       IS NOT NULL
+			AND $mysql_table_set_details.$mysql_col_id       = ?
+			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?
+			AND $mysql_table_hmmsearch.$mysql_col_log_evalue BETWEEN ? AND ?";
+}
+
+sub get_results_for_logevalue {
+	my $setid   = shift;
+	my $taxid   = shift;
+	my $logeval = shift;
+	my $query = "SELECT $mysql_table_hmmsearch.$mysql_col_evalue,
+			$mysql_table_orthologs.$mysql_col_orthoid,
+			$mysql_table_hmmsearch.$mysql_col_start,
+			$mysql_table_hmmsearch.$mysql_col_end,
+			$mysql_table_blast.$mysql_col_target,
+			$mysql_table_blast.$mysql_col_evalue,
+			$mysql_table_taxa.$mysql_col_name
+		FROM $mysql_table_log_evalues
+		LEFT JOIN $mysql_table_hmmsearch
+			ON $mysql_table_log_evalues.$mysql_col_log_evalue = $mysql_table_hmmsearch.$mysql_col_log_evalue
+		LEFT JOIN $mysql_table_ests
+			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
+		LEFT JOIN $mysql_table_orthologs
+			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
+		LEFT JOIN $mysql_table_blast
+			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_blast.$mysql_col_query
+		LEFT JOIN $mysql_table_aaseqs
+			ON $mysql_table_blast.$mysql_col_target = $mysql_table_aaseqs.$mysql_col_id
+		LEFT JOIN $mysql_table_taxa
+			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.$mysql_col_id
+		LEFT JOIN $mysql_table_set_details
+			ON $mysql_table_orthologs.$mysql_col_setid = $mysql_table_set_details.$mysql_col_id
+		WHERE $mysql_table_hmmsearch.$mysql_col_log_evalue IS NOT NULL
+			AND $mysql_table_ests.$mysql_col_digest          IS NOT NULL
+			AND $mysql_table_orthologs.$mysql_col_orthoid    IS NOT NULL
+			AND $mysql_table_blast.$mysql_col_query          IS NOT NULL
+			AND $mysql_table_aaseqs.$mysql_col_id            IS NOT NULL
+			AND $mysql_table_taxa.$mysql_col_id              IS NOT NULL
+			AND $mysql_table_set_details.$mysql_col_id       IS NOT NULL
+			AND $mysql_table_set_details.$mysql_col_id       = ?
+			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?
+			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?";
+	print $query, "\n";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute( $setid, $taxid, $logeval );
+	my $rows = $sth->fetchall_arrayref();
+	return $rows;
+
 }
 
 sub get_hit_transcripts {
