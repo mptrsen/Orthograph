@@ -28,6 +28,8 @@ use DBI;            # database interface
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
+use List::Util qw( min max sum );
+use Time::HiRes;    # high-resolution timer
 #use Devel::Size qw( total_size );  # get total memory size of variables
 
 # Custom modules
@@ -75,6 +77,7 @@ die "Fatal: Can't use both e-value and score thresholds\n"
 	if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold);
 
 # More variables
+my $bin_size             = 500;
 my $count                = 0;
 my $data_by_orthoid      = { };
 my $out                  = { };
@@ -89,6 +92,7 @@ my $set_id               = 0;
 my $match                = 0;
 my $mismatches           = 0;
 my $max_mismatches       = $soft_threshold;
+my ($t0, $t1)            = 0;
 
 # get the species id from the database
 $species_id = Wrapper::Mysql::get_taxid_for_species($speciesname);
@@ -109,6 +113,8 @@ my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 my $logevalue_count = Wrapper::Mysql::get_logevalue_count();
 my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
 
+my $logevalues_bins = &binify($bin_size, $logevalue_count);
+
 # generate a table
 my $transcripts_mapped_to = { };
 
@@ -125,6 +131,7 @@ my $limit = 2000;
 my $offset = 0;
 my $from = -999;
 my $to   = -600;
+my $results;
 
 # this will hold all transcripts that were found so we can check for redundancy
 my @transcript_list;
@@ -134,8 +141,6 @@ my $logfile = File::Spec->catfile($logdir, 'report.txt');
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open report file $logfile\: $!\n";
 my $tablefile = File::Spec->catfile($logdir, 'table.txt');
-my $tfh = IO::File->new($tablefile, 'w')
-	or die "Fatal: Could not open table file $tablefile\: $!\n";
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
@@ -143,19 +148,29 @@ my $stdout = IO::Tee->new(
 	$logfh,
 );
 
-while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, $limit, $offset) ) {
+# okay let's do the loop come on baby let's do the loop
+BIN:
+foreach my $bin (@$logevalues_bins) {
 
-	# mysql can't sort evalues correctly when they are stored as char
-	# so we do the sorting ourselves
-	my @evalues_sorted = sort { $a <=> $b } keys %$hitlist;
+	print Dumper($bin);
+	# only one evalue
+	if ($bin->{'min'} == $bin->{'max'}) {
+		$t0 = scalar time;
+		$results = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $bin->{'min'});
+		$t1 = scalar time;
+		if ($verbose) { printf $stdout "Fetched %d rows in %.2f seconds\n", scalar @$results, $t1 - $t0 }
+	}
+	else {
+		$t0 = scalar time;
+		$results = Wrapper::Mysql::get_results_for_logevalue_range($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
+		$t1 = scalar time;
+		if ($verbose) { printf $stdout "Fetched %d rows in %.2f seconds\n", scalar @$results, $t1 - $t0 }
+	}
 
-
-	# okay let's do the loop come on baby let's do the loop
 	EVALUE:
-	foreach my $evalue (@evalues_sorted) {
-
+	while (my ($logevalue, $result) = each %$results) {
 		ORTHOID:
-		while (my ($orthoid, $list) = each (%{$$hitlist{$evalue}})) {
+		while (my ($orthoid, $list) = each (%$result)) {
 			# reset the mismatch counter
 			$mismatches = 0;
 
@@ -165,8 +180,7 @@ while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, 
 			# sort by reciprocal hit evalue
 			my $sorted_list = [ sort { $$a{'blast_evalue'} <=> $$b{'blast_evalue'} } @$list ];
 
-			print $stdout "checking out $orthoid with evalue $evalue: ", scalar @$sorted_list, " reciprocal hits\n"
-				if $verbose;
+			#print $stdout "checking out $orthoid with logevalue $logevalue: ", scalar @$sorted_list, " reciprocal hits\n" if $verbose;
 
 			RH:
 			foreach my $reciprocal_hit (@$sorted_list) {
@@ -245,12 +259,59 @@ while ( my $hitlist = Wrapper::Mysql::get_hitlist_hashref($species_id, $set_id, 
 
 	# END EVALUE
 	}
-	$offset += $limit;
+# END RESULT
 }
 
 
+
+my $tfh = IO::File->new($tablefile, 'w')
+	or die "Fatal: Could not open table file $tablefile\: $!\n";
 while (my ($o, $t) = each %$transcripts_mapped_to) {
-	printf($tfh ">%s\t%s\n%s\n", $o, $$t{'header'}, $$t{'sequence'});
+	printf $tfh "%s\t%s\n", $o, $$t{'hmmhit'};
+}
+undef $tfh;
+
+=head2 binify(BIN_SIZE, VALUE_COUNT)
+
+binifies a value->count hashref, i.e. generates an arrayref of bins (order
+based on the numerical order of the hash keys), each of which contain a hashref
+with the min and max boundary of the bin:
+
+  [
+    {
+      'min' => min(THIS_BIN),
+      'max' => max(THIS_BIN)
+    },
+    { 
+      'min' => min(THIS_BIN),
+      'max' => max(THIS_BIN)
+    }
+  ]
+
+=cut
+
+sub binify {
+	my $bin_size    = shift;
+	my $value_count = shift;
+	my $bins        = [ ];
+	my $sum         = 0;
+	my @bin         = ( );
+	foreach my $value (sort {$a <=> $b} keys %$value_count) {
+		if ($sum + $value_count->{$value} < $bin_size) {
+			push @bin, $value;
+			$sum += $value_count->{$value};
+		}
+		else {
+			if (scalar @bin) {
+				push @$bins, { 'min' => min(@bin), 'max' => max(@bin) };
+				@bin = ( );
+				$sum = 0;
+			}
+			push @bin, $value;
+			$sum += $value_count->{$value};
+		}
+	}
+	return $bins;
 }
 
 # yay

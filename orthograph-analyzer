@@ -123,6 +123,7 @@ my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests           = $config->{'mysql_table_ests'};
 my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
+my $mysql_table_log_evalues    = $config->{'mysql_table_log_evalues'};
 my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
 my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
 my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
@@ -163,7 +164,7 @@ my $mysql_col_date          = 'date';
 my $mysql_col_digest        = 'digest';
 my $mysql_col_end           = 'end';
 my $mysql_col_evalue        = 'evalue';
-my $mysql_col_logevalue     = 'log_evalue';
+my $mysql_col_log_evalue    = 'log_evalue';
 my $mysql_col_hdr           = 'header';
 my $mysql_col_hmm           = 'hmm';
 my $mysql_col_id            = 'id';
@@ -281,7 +282,7 @@ if ($clear_database) {
 }
 
 # create a new entry in the taxa table, returns taxid
-$species_id = &insert_taxon_into_table($species_name) or print $stderr "Warning: Insertion of species name into database failed: $DBI::errstr";
+$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name) or print $stderr "Warning: Insertion of species name into database failed: $DBI::errstr";
 print $stdout "Created new taxon id $species_id for '$species_name'\n" unless $quiet;
 
 # store est data into the database:
@@ -371,7 +372,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
-	printf($stdout "%4d hits for %s (%2.1f%% complete)\n", 
+	printf($stdout "%4d first-tier hits for %s (%2.1f%% complete)\n", 
 		$hmmobj->hitcount(),
 		basename($hmmobj->hmmfile()),
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
@@ -462,8 +463,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 	# is this a valid candidate? 
 	# take the first element of the hit list, they share the same orthoid 
-	print Dumper($hmmobj->hits_arrayref()); exit;
-	if (Wrapper::Mysql::reciprocal_match($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'})) {
+	if (Wrapper::Mysql::reciprocal_match($hmmobj->hmmname, $hmmobj->hits_arrayref()->[1]->{'target'})) {
 
 		# yay
 		++$orthocount;
@@ -836,7 +836,7 @@ sub preparedb {#{{{
 		$mysql_col_target    CHAR(32)     NOT NULL,       
 		$mysql_col_score     DOUBLE       NOT NULL,
 		$mysql_col_evalue    VARCHAR(100) NOT NULL,
-		$mysql_col_logevalue DOUBLE       NOT NULL DEFAULT '-999',
+		$mysql_col_log_evalue DOUBLE       NOT NULL DEFAULT '-999',
 		$mysql_col_start     INT          NOT NULL,
 		$mysql_col_end       INT          NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
@@ -844,7 +844,7 @@ sub preparedb {#{{{
 		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
 		INDEX ($mysql_col_target),
-		INDEX ($mysql_col_logevalue)
+		INDEX ($mysql_col_log_evalue)
 		)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
@@ -855,21 +855,21 @@ sub preparedb {#{{{
 		$mysql_col_target        INT UNSIGNED NOT NULL,       
 		$mysql_col_score         DOUBLE       NOT NULL,
 		$mysql_col_evalue        VARCHAR(100) NOT NULL,
-		$mysql_col_logevalue     DOUBLE       NOT NULL DEFAULT '-999',
+		$mysql_col_log_evalue     DOUBLE       NOT NULL DEFAULT '-999',
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
 		INDEX ($mysql_col_target),
-		INDEX ($mysql_col_logevalue)
+		INDEX ($mysql_col_log_evalue)
 		)";
 
-	my $query_create_log_evalues = "CREATE VIEW $mysql_table_logevalues AS
-		SELECT $mysql_table_hmmsearch.$mysql_col_logevalue AS $mysql_col_logevalue,
-			COUNT($mysql_table_hmmsearch.$mysql_col_logevalue) AS `count`
+	my $query_create_log_evalues = "CREATE VIEW $mysql_table_log_evalues AS
+		SELECT $mysql_table_hmmsearch.$mysql_col_log_evalue AS $mysql_col_log_evalue,
+			COUNT($mysql_table_hmmsearch.$mysql_col_log_evalue) AS `count`
 		FROM $mysql_table_hmmsearch
-		GROUP BY $mysql_table_hmmsearch.$mysql_col_logevalue
-		ORDER BY $mysql_table_hmmsearch.$mysql_col_logevalue";
+		GROUP BY $mysql_table_hmmsearch.$mysql_col_log_evalue
+		ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
 	
 	# open connection
 	my $dbh = Wrapper::Mysql::mysql_dbh();
@@ -920,7 +920,7 @@ sub clear_db {#{{{
 		$n += $sth->execute( $specid );
 	}
 	my $sth = $dbh->prepare("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = ?");
-	$n      += $sth->execute($specid) or print $stderr "$!" and exit(1);
+	$n     += $sth->execute($specid) or print $stderr "$!" and exit(1);
 	# disconnect ASAP
 	$dbh->disconnect();
 
@@ -948,7 +948,7 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_target`,
 			`$mysql_col_score`,
 			`$mysql_col_evalue`,
-			`$mysql_col_logevalue`
+			`$mysql_col_log_evalue`
 			) VALUES (
 			?,
 			?,
@@ -985,7 +985,7 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_target`,
 			`$mysql_col_score`,
 			`$mysql_col_evalue`,
-			`$mysql_col_logevalue`,
+			`$mysql_col_log_evalue`,
 			`$mysql_col_start`,
 			`$mysql_col_end`
 			) VALUES (

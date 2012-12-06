@@ -1,3 +1,26 @@
+=head1 NAME 
+
+Wrapper::Mysql
+
+=head1 SYNOPSIS
+
+  use Wrapper::Mysql;
+
+  my $dbh = Wrapper::Mysql::mysql_dbh();
+  do_stuff_with_dbh();
+  undef $dbh;
+
+  Wrapper::Mysql::do($query);
+
+  my $result = Wrapper::Mysql::get($query);
+
+=head1 DESCRIPTION
+
+Wrapper module that provides MySQL functions. Deals with specific queries to
+handle the complex database structure in the Orthograph pipeline.
+
+=cut
+
 package Wrapper::Mysql;
 use strict;
 use warnings;
@@ -51,18 +74,32 @@ my $species_name               = $config->{'species_name'};
 my $verbose                    = $config->{'verbose'};
 #}}}
 
-# Sub: mysql_dbh
-# Get a database handle
-# Arguments: -
-# Returns: Database handle
+=head1 FUNCTIONS
+
+=head2 mysql_dbh()
+
+Get a database handle
+
+Arguments: -
+
+Returns: Database handle
+
+=cut
+
 sub mysql_dbh {#{{{
 	return DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd);
 }#}}}
 
-# Sub: mysql_get
-# Get from the database the result of a SQL query
-# Expects: QUERY as a string literal
-# Returns: Reference to array of arrays (result lines->fields)
+=head2 mysql_get($query)
+
+Get from the database the result of a SQL query
+
+Expects: QUERY as a string literal
+
+Returns: Reference to array of arrays (result lines->fields)
+
+=cut
+
 sub mysql_get {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_get(QUERY)\n" }
@@ -80,10 +117,16 @@ sub mysql_get {#{{{
 	return $results;
 }#}}}
 
-# Sub: mysql_do
-# Connect to a database, execute a single query (for repetitive queries, you better do that by hand).
-# Expects: scalar string SQL query. 
-# Returns 1 on result, dies otherwise.
+=head2 mysql_do($query)
+
+Connect to a database, execute a single $query (for repetitive queries, you
+better do that by hand for performance reasons).
+
+Expects: scalar string SQL query. 
+
+Returns 1 on result, dies otherwise.
+
+=cut
 
 sub mysql_do {#{{{
 	my $query = shift;
@@ -96,10 +139,16 @@ sub mysql_do {#{{{
 	return 1;
 }#}}}
 
-# Sub: get_ortholog_sets
-# Get list of ortholog sets from the database
-# Arguments: none
-# Returns: hash reference of set names => description
+=head2 get_ortholog_sets()
+
+Get list of ortholog sets from the database
+
+Arguments: none
+
+Returns: hash reference of set names => description
+
+=cut
+
 sub get_ortholog_sets {#{{{
 	my %sets = ();
 	my $query = "SELECT * FROM $mysql_table_set_details";
@@ -110,11 +159,16 @@ sub get_ortholog_sets {#{{{
 	return(\%sets);
 }#}}}
 
-#TODO merge with get_ortholog_sets() into one function that accepts a query
-# Sub: list_ogs
-# Get list of OGS in the database
-# Arguments: none
-# Returns: array reference (list of OGS)
+=head2 list_ogs
+
+Get list of OGS in the database
+
+Arguments: none
+
+Returns: array reference (list of OGS)
+
+=cut
+
 sub get_list_of_ogs {#{{{
 	my %ogslist = ();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
@@ -134,6 +188,12 @@ sub get_list_of_ogs {#{{{
 	return(\%ogslist);
 }#}}}
 
+
+=head2 get_ortholog_groups_for_set($setid)
+
+Returns a hashref of hashrefs to create an ortholog set from. Each key in the hashref (the ortholog group ID) is a hashref of sequence_ID => sequence.
+
+=cut
 
 sub get_ortholog_groups_for_set {
 	my $setid = shift @_ or croak "Usage: Wrapper::Mysql::get_ortholog_groups_for_set(SETID)";
@@ -377,15 +437,31 @@ sub get_set_id {
 	return $$result[0][0];
 }
 
+=head2 set_exists(SETNAME)
+
+Tests whether a named set exists in the database. Returns 1 on success (the set
+exists), 0 otherwise.
+
+=cut
+
 sub set_exists {
 	my $set = shift;
 	my $dbh = &mysql_dbh();
-	my $sth = $dbh->prepare("SELECT * FROM $mysql_table_set_details WHERE $mysql_col_name = '$orthoset' LIMIT 1");
+	my $sth = $dbh->prepare("SELECT * FROM $mysql_table_set_details WHERE $mysql_col_name = ? LIMIT 1");
 	$sth->execute($set);
 	my $result = $sth->fetchrow_arrayref;
 	if ( $$result[0] ) { return 1 }
 	return 0;
 }
+
+=head2 insert_taxon_into_table(TAXON_NAME)
+
+Inserts a (non-core) taxon into the database. The taxon shorthand will be NULL
+and the 'core' switch will be 0.
+
+Returns the newly generated taxon ID.
+
+=cut
 
 sub insert_taxon_into_table {
 	my $species_name = shift(@_);
@@ -432,15 +508,15 @@ Get the results in the form:
   evalue => {
     orthoid => [
       blast_hit => {
-				blasteval => E,
-				taxname_of_hit => S,
-			},
+        blasteval => e-value,
+        taxname_of_hit => string,
+      },
       etc.
+    ],
+    orthoid2 => [
+      blast_hit,
+      blast_hit,
     ]
-		orthoid2 => [
-      blast_hit,
-      blast_hit,
-		]
   }
 
 Arguments: scalar int SPECIESID, scalar int SETID
@@ -448,6 +524,7 @@ Arguments: scalar int SPECIESID, scalar int SETID
 Returns: hashref of hashrefs of arrayrefs of hashrefs - lol
 
 =cut
+
 sub get_hitlist_hashref {
 	scalar @_ == 4 or croak("Usage: get_hitlist_for(SPECIESID, SETID, LIMIT, OFFSET)");
 	my ($specid, $setid, $limit, $offset) = @_;
@@ -527,10 +604,20 @@ sub get_logevalue_count {
 	return $num_of_logevalues;
 }
 
+=head2 get_results_for_logevalue_range($setid, $taxonid, $min, $max)
+
+Fetch results from the database that are BETWEEN $min and $max in terms of log-evalue.
+
+Returns a [ rows->[ (columns) ] ] arrayref.
+
+=cut
+
 sub get_results_for_logevalue_range {
 	my ($setid, $taxid, $min, $max) = @_;
+	# complex parametrized query
 	my $query = "SELECT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
+			$mysql_table_hmmsearch.$mysql_col_target,
 			$mysql_table_hmmsearch.$mysql_col_start,
 			$mysql_table_hmmsearch.$mysql_col_end,
 			$mysql_table_blast.$mysql_col_target,
@@ -564,9 +651,34 @@ sub get_results_for_logevalue_range {
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $setid, $taxid, $min, $max );
-	my $rows = $sth->fetchall_arrayref();
-	return $rows;
+	my $result = { };
+	while (my $line = $sth->fetchrow_arrayref()) {
+		my $start = $$line[3] - 1;
+		my $length = $$line[4] - $start;
+		# first key is the hmmsearch evalue, second key is the orthoid
+		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
+			'hmmhit'       => $$line[2],
+			#'header'       => $$line[3],
+			#'sequence'     => substr($$line[4], $start, $length),
+			'start'        => $$line[3],
+			'end'          => $$line[4],
+			'blast_hit'    => $$line[5],
+			'blast_evalue' => $$line[6],
+			'species_name' => $$line[7],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	scalar keys %$result > 0 ? return $result : return 0;
 }
+
+=head2 get_results_for_logevalue($setid, $taxonid, $logevalue)
+
+Fetch results from the database that have $logevalue.
+
+Returns a [ rows->[ (columns) ] ] arrayref.
+
+=cut
 
 sub get_results_for_logevalue {
 	my $setid   = shift;
@@ -604,14 +716,36 @@ sub get_results_for_logevalue {
 			AND $mysql_table_set_details.$mysql_col_id       = ?
 			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?
 			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?";
-	print $query, "\n";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $setid, $taxid, $logeval );
-	my $rows = $sth->fetchall_arrayref();
-	return $rows;
-
+	my $result = { };
+	while (my $line = $sth->fetchrow_arrayref()) {
+		my $start = $$line[3] - 1;
+		my $length = $$line[4] - $start;
+		# first key is the hmmsearch evalue, second key is the orthoid
+		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
+			'hmmhit'       => $$line[2],
+			#'header'       => $$line[3],
+			#'sequence'     => substr($$line[4], $start, $length),
+			'start'        => $$line[3],
+			'end'          => $$line[4],
+			'blast_hit'    => $$line[5],
+			'blast_evalue' => $$line[6],
+			'species_name' => $$line[7],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	scalar keys %$result > 0 ? return $result : return 0;
 }
+
+=head2 get_hit_transcripts($species_id, $set_id)
+
+Returns a list of transcript digests that were hit during the HMM search for
+this $species_id and this $set_id. 
+
+=cut
 
 sub get_hit_transcripts {
 	my $specid = shift(@_) or croak("Usage: get_hitlist_for(SPECIESID, SETID)");

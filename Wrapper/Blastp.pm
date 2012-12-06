@@ -41,6 +41,9 @@ package without the immense overhead of the entire Bioperl backend.
   # do the blastp search
   $blastobj->blastp($infile, $outfile);
 
+  # get results 
+  $blastobj->blasthits_arrayref()
+
 =cut
 
 package Wrapper::Blastp;
