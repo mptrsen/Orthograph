@@ -36,6 +36,7 @@ use File::Temp;     # temporary files
 use FindBin;        # locate the dir of this script during compile time
 use IO::Dir;        # object-oriented access to dirs
 use IO::File;       # object-oriented access to files
+# look into File::Find instead of doing the directory walk yourself
 
 # Custom modules
 use lib $FindBin::Bin;     # $Bin is the directory of the original script
