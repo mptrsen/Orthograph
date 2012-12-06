@@ -542,7 +542,7 @@ sub get_results_for_logevalue_range {
 		LEFT JOIN $mysql_table_ests
 			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
 		LEFT JOIN $mysql_table_orthologs
-			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid,
+			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
 		LEFT JOIN $mysql_table_blast
 			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_blast.$mysql_col_query
 		LEFT JOIN $mysql_table_aaseqs
@@ -561,6 +561,11 @@ sub get_results_for_logevalue_range {
 			AND $mysql_table_set_details.$mysql_col_id       = ?
 			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?
 			AND $mysql_table_hmmsearch.$mysql_col_log_evalue BETWEEN ? AND ?";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute( $setid, $taxid, $min, $max );
+	my $rows = $sth->fetchall_arrayref();
+	return $rows;
 }
 
 sub get_results_for_logevalue {

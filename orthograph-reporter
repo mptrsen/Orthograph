@@ -106,6 +106,9 @@ else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 # get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 
+my $logevalue_count = Wrapper::Mysql::get_logevalue_count();
+my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
+
 # generate a table
 my $transcripts_mapped_to = { };
 
@@ -133,15 +136,6 @@ my $logfh = IO::File->new($logfile, 'w')
 my $tablefile = File::Spec->catfile($logdir, 'table.txt');
 my $tfh = IO::File->new($tablefile, 'w')
 	or die "Fatal: Could not open table file $tablefile\: $!\n";
-
-my $logevalue_count = Wrapper::Mysql::get_logevalue_count();
-my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
-
-print "getting ", $logevalues[0], " for setid $set_id and taxid $species_id\n";
-my $res = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $logevalues[0]);
-print Dumper($res);
-exit;
-$res = Wrapper::Mysql::get_results_for_logevalue_range($set_id, $species_id, $logevalues[0], $logevalues[1]); 
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
