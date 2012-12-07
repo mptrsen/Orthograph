@@ -19,6 +19,7 @@
 # Pragmas
 use strict;         # make me write clean code
 use warnings;       # cry if something seems odd
+use autodie;        # die automatically on I/O functions
 
 # Core modules
 use Carp;           # carp and croak: warn and die with call stack
@@ -28,9 +29,8 @@ use DBI;            # database interface
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
-use List::Util qw( min max sum );
+use List::Util qw( first min max sum );  # list functions
 use Time::HiRes;    # high-resolution timer
-#use Devel::Size qw( total_size );  # get total memory size of variables
 
 # Custom modules
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
@@ -118,6 +118,7 @@ my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 my $logevalue_count = Wrapper::Mysql::get_logevalue_count($species_id);
 my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
 
+
 # classify the log-evalues into "bins" that hold a limited number of values
 # this is done in order to speed up the database queries
 my $logevalues_bins = &binify($bin_size, $logevalue_count);
@@ -160,19 +161,17 @@ BIN:
 foreach my $bin (@$logevalues_bins) {
 
 	print Dumper($bin);
+	$t0 = scalar time;
 	# only one evalue
 	if ($bin->{'min'} == $bin->{'max'}) {
-		$t0 = scalar time;
 		$results = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $bin->{'min'});
-		$t1 = scalar time;
-		if ($verbose) { printf $stdout "Fetched %d rows in %.2f seconds\n", scalar @$results, $t1 - $t0 }
 	}
+	# evalue range
 	else {
-		$t0 = scalar time;
 		$results = Wrapper::Mysql::get_results_for_logevalue_range($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
-		$t1 = scalar time;
-		if ($verbose) { printf $stdout "Fetched %d rows in %.2f seconds\n", scalar @$results, $t1 - $t0 }
 	}
+	$t1 = scalar time;
+	if ($verbose) { printf $stdout "Fetched %d rows in %.2f seconds\n", scalar keys %$results, $t1 - $t0 }
 
 	EVALUE:
 	while (my ($logevalue, $result) = each %$results) {
@@ -182,30 +181,30 @@ foreach my $bin (@$logevalues_bins) {
 			$mismatches = 0;
 
 			# has this orthoid been assigned before?
-			next ORTHOID unless exists $$aaseqs_in_orthoid{$orthoid};
-
-			# sort by reciprocal hit evalue
-			my $sorted_list = [ sort { $$a{'blast_evalue'} <=> $$b{'blast_evalue'} } @$list ];
-
-			#print $stdout "checking out $orthoid with logevalue $logevalue: ", scalar @$sorted_list, " reciprocal hits\n" if $verbose;
+			next ORTHOID unless exists $aaseqs_in_orthoid->{$orthoid};
 
 			RH:
-			foreach my $reciprocal_hit (@$sorted_list) {
+			# sort by reciprocal hit evalue
+			foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list ) {
 				# find out if the aaseq_id is one of those used for this orthoid
 				print $stdout "  checking out hit " , Dumper($reciprocal_hit)
 					if $verbose;
 
-				# has this aaseq been used in building this hmm and has this not been found previously?
-				# grep is the nicer solution but may not be as fast as a loop that we can exit after one match.
-				# the first function from List::Util also returns after the first occurence.
-				# however no significant difference could be noted between the two in terms of runtime
-				# (in a real-life example with arrays of > 4000 elements)
-				if (grep(/$$reciprocal_hit{'blast_hit'}/, @{$$aaseqs_in_orthoid{$orthoid}}) and
-						not grep(/$$reciprocal_hit{'hmmhit'}/, @transcript_list)) {
+				# has this aaseq been used in building this hmm and has this not been
+				# found previously? 
+				# grep is the nicer solution but may not be as fast as a loop that we
+				# can exit after one match. 
+				# the first function from List::Util also returns after the first
+				# occurence. 
+				# however no significant difference could be noted between the two in
+				# terms of runtime (in a real-life example with arrays of > 4000
+				# elements)
+				if (first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} and
+						not first {/$reciprocal_hit->{'hmmhit'}/} @transcript_list) {
 
 					$match = $reciprocal_hit;
 
-					print $stdout "    $$reciprocal_hit{'blast_hit'} used in this HMM!\n"
+					print $stdout "    $reciprocal_hit->{'blast_hit'} used in this HMM!\n"
 						if $verbose;
 
 					# one hit is enough if not in strict mode
@@ -213,7 +212,7 @@ foreach my $bin (@$logevalues_bins) {
 				}
 				else {  # not found
 					# cry
-					print $stdout "    $$reciprocal_hit{'blast_hit'} not used in this HMM (mismatch #", ++$mismatches, ") :(\n"
+					print $stdout "    $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", ++$mismatches, ") :(\n"
 						if $verbose;
 
 					# in a strict search, that's it for this orthoid
@@ -245,6 +244,7 @@ foreach my $bin (@$logevalues_bins) {
 					unless $quiet;
 
 				# this orthoid can't be found again
+				# TODO don't delete yet... check whether transcripts overlap etc
 				delete $$aaseqs_in_orthoid{$orthoid};
 
 				# this transcript can't be found again either
@@ -325,7 +325,7 @@ sub binify {
 		}
 	}
 	# in case there is only one bin (happens when there are only few results), return that
-	if (scalar @$bins == 0) { @$bins = @bin }
+	if (scalar @$bins == 0) { push @$bins, { 'min' => min(@bin), 'max' => max(@bin) } }
 	return $bins;
 }
 

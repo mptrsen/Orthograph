@@ -19,6 +19,7 @@
 # Pragmas
 use strict;         # make me write clean code
 use warnings;       # cry if something seems odd
+use autodie;        # die automatically on I/O functions
 
 # Core modules
 use Carp;           # carp and croak: warn and die with call stack

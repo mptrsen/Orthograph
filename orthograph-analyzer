@@ -17,7 +17,7 @@
 #-------------------------------------------------- 
 
 # Pragmas
-use strict;         # make me write good code
+use strict;         # make me write clean code
 use warnings;       # cry if something seems odd
 use autodie;        # die automatically on I/O functions
 
@@ -865,6 +865,13 @@ sub preparedb {#{{{
 		INDEX ($mysql_col_log_evalue)
 		)";
 
+	my $query_create_log_evalues = "CREATE VIEW $mysql_table_log_evalues AS
+		SELECT $mysql_table_hmmsearch.$mysql_col_log_evalue AS $mysql_col_log_evalue,
+			COUNT($mysql_table_hmmsearch.$mysql_col_log_evalue) AS `count`
+		FROM $mysql_table_hmmsearch
+		GROUP BY $mysql_table_hmmsearch.$mysql_col_log_evalue
+		ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
+	
 	# open connection
 	my $dbh = Wrapper::Mysql::mysql_dbh();
 

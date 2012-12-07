@@ -498,7 +498,9 @@ sub create_log_evalues_view {
 sub get_orthologs_for_set_hashref {
 	my $setid = shift(@_);
 	unless ($setid) { croak("Usage: get_orthologs_for_set(SETID)") }
-	my $query = "SELECT $mysql_table_orthologs.ortholog_gene_id, $mysql_table_aaseqs.id 
+	my $query = "SELECT DISTINCT
+		$mysql_table_orthologs.ortholog_gene_id,
+		$mysql_table_aaseqs.id 
 		FROM $mysql_table_orthologs 
 		INNER JOIN $mysql_table_seqpairs 
 			ON $mysql_table_orthologs.sequence_pair = $mysql_table_seqpairs.id
@@ -633,7 +635,7 @@ Returns a [ rows->[ (columns) ] ] arrayref.
 sub get_results_for_logevalue_range {
 	my ($setid, $taxid, $min, $max) = @_;
 	# complex parametrized query
-	my $query = "SELECT $mysql_table_hmmsearch.$mysql_col_evalue,
+	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
 			$mysql_table_hmmsearch.$mysql_col_target,
 			$mysql_table_hmmsearch.$mysql_col_start,
@@ -702,7 +704,7 @@ sub get_results_for_logevalue {
 	my $setid   = shift;
 	my $taxid   = shift;
 	my $logeval = shift;
-	my $query = "SELECT $mysql_table_hmmsearch.$mysql_col_evalue,
+	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
 			$mysql_table_hmmsearch.$mysql_col_target,
 			$mysql_table_hmmsearch.$mysql_col_start,
