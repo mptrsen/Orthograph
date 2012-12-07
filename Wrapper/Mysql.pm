@@ -475,6 +475,24 @@ sub insert_taxon_into_table {
 	return &get_taxid_for_species($species_name);
 }
 
+sub create_log_evalues_view {
+	unless (scalar @_ == 1) { croak 'Usage: Wrapper::Mysql::create_log_evalues_view($species_id)' }
+	my $taxid = shift;
+	my $query_create_log_evalues = "CREATE OR REPLACE VIEW $mysql_table_log_evalues AS
+	  SELECT $mysql_table_hmmsearch.$mysql_col_log_evalue AS $mysql_col_log_evalue,
+	    COUNT($mysql_table_hmmsearch.$mysql_col_log_evalue) AS `count`
+	  FROM $mysql_table_hmmsearch
+	  WHERE $mysql_table_hmmsearch.$mysql_col_taxid = ?
+	  GROUP BY $mysql_table_hmmsearch.$mysql_col_log_evalue
+	  ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
+	print $query_create_log_evalues, "\n";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query_create_log_evalues);
+	$sth->execute( $taxid ) or return 0;
+	$dbh->disconnect();
+	return 1;
+}
+	
 
 # get a orthoid => list_of_aaseq_ids relationship from the db
 sub get_orthologs_for_set_hashref {
@@ -686,6 +704,7 @@ sub get_results_for_logevalue {
 	my $logeval = shift;
 	my $query = "SELECT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
+			$mysql_table_hmmsearch.$mysql_col_target,
 			$mysql_table_hmmsearch.$mysql_col_start,
 			$mysql_table_hmmsearch.$mysql_col_end,
 			$mysql_table_blast.$mysql_col_target,

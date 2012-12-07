@@ -115,9 +115,6 @@ unless (defined $mysql_dbuser and defined $mysql_dbpwd ) {
 # name == username unless defined name
 $name = $mysql_dbuser unless defined($name);
 
-# to start off with nt and aa sequence types
-my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
-
 # the queries for the individual tables
 my %create_table = (#{{{
 	# table: blastdbs
@@ -129,7 +126,7 @@ my %create_table = (#{{{
 	# table: ogs
 	'ogs' => "CREATE TABLE `$t{'ogs'}` (
     `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `type`         CHAR(3),
+    `type`         INT(1),
     `taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
     `version`      VARCHAR(255))",
 	
@@ -509,6 +506,9 @@ sub drop_tables {#{{{
 
 # create tables. makes use of the %create_table hash.
 sub create_tables {#{{{
+	# to start off with nt and aa sequence types
+	my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
+
 	my $dbh = Wrapper::Mysql::mysql_dbh();
 	foreach (values %create_table) {
 		print $_, ";\n";
@@ -550,7 +550,7 @@ sub load_taxon {#{{{
 	my $otherseqtable = $mode ? $t{'ntseqs'} : $t{'aaseqs'};
 	my $seqcol = $mode ? 'aa_seq' : 'nt_seq';
 	my $otherseqcol = $mode ? 'nt_seq' : 'aa_seq';
-	my $type = $mode ? 'aa' : 'nt';
+	my $type = $mode ? 2 : 1;  # 1 is 'nt', 2 is 'aa'
 	if ($mode) {
 		my $blastdb = shift(@_) or croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n"); 
 	}

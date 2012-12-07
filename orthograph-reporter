@@ -102,6 +102,10 @@ die "Fatal: No such species in database: '$speciesname'\n" unless ($species_id);
 $set_id = Wrapper::Mysql::get_set_id($setname);
 die "Fatal: No such set in database: '$setname'\n" unless ($set_id);
 
+# create view (a virtual table) for the log-evalues
+Wrapper::Mysql::create_log_evalues_view($species_id)
+	or die "Fatal: Could not create view: $!\n";
+
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
 if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
@@ -110,9 +114,12 @@ else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 # get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 
-my $logevalue_count = Wrapper::Mysql::get_logevalue_count();
+# get a log-evalue->count relationship from the database
+my $logevalue_count = Wrapper::Mysql::get_logevalue_count($species_id);
 my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
 
+# classify the log-evalues into "bins" that hold a limited number of values
+# this is done in order to speed up the database queries
 my $logevalues_bins = &binify($bin_size, $logevalue_count);
 
 # generate a table
@@ -297,20 +304,28 @@ sub binify {
 	my $sum         = 0;
 	my @bin         = ( );
 	foreach my $value (sort {$a <=> $b} keys %$value_count) {
+		# if adding this count would not exceed the bin size
 		if ($sum + $value_count->{$value} < $bin_size) {
 			push @bin, $value;
 			$sum += $value_count->{$value};
 		}
+		# this is too large, start a new bin
 		else {
+			# if the bin has content
 			if (scalar @bin) {
+				# put min and max into @$bins
 				push @$bins, { 'min' => min(@bin), 'max' => max(@bin) };
+				# empty this bin
 				@bin = ( );
 				$sum = 0;
 			}
+			# put this count into the bin
 			push @bin, $value;
 			$sum += $value_count->{$value};
 		}
 	}
+	# in case there is only one bin (happens when there are only few results), return that
+	if (scalar @$bins == 0) { @$bins = @bin }
 	return $bins;
 }
 
