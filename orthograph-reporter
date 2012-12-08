@@ -248,9 +248,8 @@ foreach my $bin (@$logevalues_bins) {
 						delete $$aaseqs_in_orthoid{$orthoid};
 					}
 					else {
-						$$transcripts_mapped_to{$orthoid} = &concatenate($$transcripts_mapped_to{$orthoid}, $match);
-						printf "No overlap, concatenated %s and %s to %s\n", $$transcripts_mapped_to{$orthoid}{'hmmhit'}, $$match{'hmmhit'}, $$transcripts_mapped_to{$orthoid}{'sequence'} if $verbose;
-						print Dumper($$transcripts_mapped_to{$orthoid}); exit;
+						$$transcripts_mapped_to{$orthoid} = &insert($$transcripts_mapped_to{$orthoid}, $match);
+						printf $stdout ">>    No overlap, added %s to %s\n", $$match{'hmmhit'}, $orthoid if $verbose;
 					}
 				}
 
@@ -281,9 +280,15 @@ foreach my $bin (@$logevalues_bins) {
 my $tfh = IO::File->new($tablefile, 'w')
 	or die "Fatal: Could not open table file $tablefile\: $!\n";
 while (my ($o, $t) = each %$transcripts_mapped_to) {
-	printf $tfh "%s\t%s\n", $o, $$t{'hmmhit'};
+	printf $tfh "%s", $o;
+	printf $tfh "\t%s[%d:%d]", $$_{'hmmhit'}, $$_{'start'}, $$_{'end'} foreach @$t;
+	print $tfh "\n";
 }
 undef $tfh;
+
+# yay
+exit;
+
 
 =head2 binify(BIN_SIZE, VALUE_COUNT)
 
@@ -348,9 +353,9 @@ sub overlap {
 				$$already_matched[$i]{'start'},
 				$$already_matched[$i]{'end'},
 				$$candidate{'start'},
-				$$candidate{'end'},
-			;
-			return 0
+				$$candidate{'end'}
+					if $verbose;
+			return 0;
 		}
 		# the fragments do not overlap
 		elsif ($$candidate{'start'} > $$already_matched[$i]{'end'}) { 
@@ -360,8 +365,8 @@ sub overlap {
 				$$already_matched[$i]{'start'},
 				$$already_matched[$i]{'end'},
 				$$candidate{'start'},
-				$$candidate{'end'},
-			;
+				$$candidate{'end'}
+					if $verbose;
 			return 0;
 		}
 	}
@@ -369,7 +374,7 @@ sub overlap {
 }
 
 # this shall insert a new match at the correct position in the list of matches.
-sub concatenate {
+sub insert {
 	my $already_matched = shift;
 	my $new_match       = shift;
 	my $distance        = 0;
@@ -377,22 +382,18 @@ sub concatenate {
 		# this $already_matched lies before $new_match
 		# TODO write a new class for the candidates!
 		if ($already_matched->[$i]->{'end'} < $new_match->{'start'}) {
-			$distance = $new_match->{'start'} - $already_matched->[$i]->{'end'};
 			# insert there
-			splice @{ $already_matched }, $i - 1, 0, 'N' x $distance;
 			splice @{ $already_matched }, $i - 1, 0, $new_match;
+			last;
 		}
 		# $already_matched lies after $new_match
-		else {
-			$distance = $$already_matched[$i]{'start'} - $$new_match{'end'};
-			splice @{ $already_matched }, $i, 0, 'N' x $distance;
+		elsif ($already_matched->[$i]->{'start'} > $new_match->{'end'}) {
+			# insert here
+			print "after, inserting\n";
 			splice @{ $already_matched }, $i, 0, $new_match;
+			last;
 		}
 	}
 	return $already_matched;
 }
-
-# yay
-exit;
-
 
