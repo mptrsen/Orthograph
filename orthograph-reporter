@@ -83,6 +83,7 @@ my $data_by_orthoid      = { };
 my $out                  = { };
 my $data_by_transcript   = { };
 my $data_by_evalue       = { };
+my $insert_n             = 1;
 my $table                = [ ];
 my $strict               = 0;
 my $sort_by              = 'blasteval';
@@ -160,7 +161,6 @@ my $stdout = IO::Tee->new(
 BIN:
 foreach my $bin (@$logevalues_bins) {
 
-	print Dumper($bin);
 	$t0 = scalar time;
 	# only one evalue
 	if ($bin->{'min'} == $bin->{'max'}) {
@@ -181,7 +181,8 @@ foreach my $bin (@$logevalues_bins) {
 			$mismatches = 0;
 
 			# has this orthoid been assigned before?
-			next ORTHOID unless exists $aaseqs_in_orthoid->{$orthoid};
+			# TODO don't skip, check whether the previous hit overlaps with this candidate
+			#next ORTHOID unless exists $aaseqs_in_orthoid->{$orthoid};
 
 			RH:
 			# sort by reciprocal hit evalue
@@ -190,17 +191,11 @@ foreach my $bin (@$logevalues_bins) {
 				print $stdout "  checking out hit " , Dumper($reciprocal_hit)
 					if $verbose;
 
-				# has this aaseq been used in building this hmm and has this not been
-				# found previously? 
-				# grep is the nicer solution but may not be as fast as a loop that we
-				# can exit after one match. 
-				# the first function from List::Util also returns after the first
-				# occurence. 
-				# however no significant difference could be noted between the two in
-				# terms of runtime (in a real-life example with arrays of > 4000
-				# elements)
-				if (first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} and
-						not first {/$reciprocal_hit->{'hmmhit'}/} @transcript_list) {
+				# has this aaseq been used in building this hmm and has this transcript
+				# not been found previously? 
+				# the function first from List::Util returns after the first occurence. 
+				if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
+					and not first {/$reciprocal_hit->{'hmmhit'}/} @transcript_list ) {
 
 					$match = $reciprocal_hit;
 
@@ -212,8 +207,8 @@ foreach my $bin (@$logevalues_bins) {
 				}
 				else {  # not found
 					# cry
-					print $stdout "    $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", ++$mismatches, ") :(\n"
-						if $verbose;
+					++$mismatches;
+					print $stdout "    $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
 
 					# in a strict search, that's it for this orthoid
 					next ORTHOID if $strict;
@@ -236,8 +231,10 @@ foreach my $bin (@$logevalues_bins) {
 
 				# yeah - here should be the part where the actual sequences are output
 				# in fasta format
-				printf $stdout ">>    assigned %s to %s (%d with %.1e)\n",
+				printf $stdout ">>    trying to assign %s [%d:%d] to %s (%d with %.1e)\n",
 					$$match{'hmmhit'},
+					$$match{'start'},
+					$$match{'end'},
 					$orthoid,
 					$$match{'blast_hit'},
 					$$match{'blast_evalue'},
@@ -245,12 +242,22 @@ foreach my $bin (@$logevalues_bins) {
 
 				# this orthoid can't be found again
 				# TODO don't delete yet... check whether transcripts overlap etc
-				delete $$aaseqs_in_orthoid{$orthoid};
+				if (exists $$transcripts_mapped_to{$orthoid}) {
+					if (&overlap($$transcripts_mapped_to{$orthoid}, $match)) {
+						#printf "%s and %s overlap, discarding the new hit\n", $$transcripts_mapped_to{$orthoid}{'hmmhit'}, $$match{'hmmhit'} if $verbose;
+						delete $$aaseqs_in_orthoid{$orthoid};
+					}
+					else {
+						$$transcripts_mapped_to{$orthoid} = &concatenate($$transcripts_mapped_to{$orthoid}, $match);
+						printf "No overlap, concatenated %s and %s to %s\n", $$transcripts_mapped_to{$orthoid}{'hmmhit'}, $$match{'hmmhit'}, $$transcripts_mapped_to{$orthoid}{'sequence'} if $verbose;
+						print Dumper($$transcripts_mapped_to{$orthoid}); exit;
+					}
+				}
 
 				# this transcript can't be found again either
 				push @transcript_list, $$match{'hmmhit'};
 
-				$$transcripts_mapped_to{$orthoid} = $match;
+				push @{$$transcripts_mapped_to{$orthoid}}, $match;
 
 				# reset 
 				undef $match;
@@ -327,6 +334,62 @@ sub binify {
 	# in case there is only one bin (happens when there are only few results), return that
 	if (scalar @$bins == 0) { push @$bins, { 'min' => min(@bin), 'max' => max(@bin) } }
 	return $bins;
+}
+
+sub overlap {
+	my $already_matched = shift;
+	my $candidate = shift;
+	# the fragments do not overlap
+	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
+		if ($$candidate{'end'} < $$already_matched[$i]{'start'} and $$candidate{'start'} < $$already_matched[$i]{'start'}) {
+			printf "%s and %s do not overlap (%d-%d and %d-%d)\n", 
+				$$already_matched[$i]{'hmmhit'},
+				$$candidate{'hmmhit'},
+				$$already_matched[$i]{'start'},
+				$$already_matched[$i]{'end'},
+				$$candidate{'start'},
+				$$candidate{'end'},
+			;
+			return 0
+		}
+		# the fragments do not overlap
+		elsif ($$candidate{'start'} > $$already_matched[$i]{'end'}) { 
+			printf "%s and %s do not overlap (%d-%d and %d-%d)\n", 
+				$$already_matched[$i]{'hmmhit'},
+				$$candidate{'hmmhit'},
+				$$already_matched[$i]{'start'},
+				$$already_matched[$i]{'end'},
+				$$candidate{'start'},
+				$$candidate{'end'},
+			;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+# this shall insert a new match at the correct position in the list of matches.
+sub concatenate {
+	my $already_matched = shift;
+	my $new_match       = shift;
+	my $distance        = 0;
+	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
+		# this $already_matched lies before $new_match
+		# TODO write a new class for the candidates!
+		if ($already_matched->[$i]->{'end'} < $new_match->{'start'}) {
+			$distance = $new_match->{'start'} - $already_matched->[$i]->{'end'};
+			# insert there
+			splice @{ $already_matched }, $i - 1, 0, 'N' x $distance;
+			splice @{ $already_matched }, $i - 1, 0, $new_match;
+		}
+		# $already_matched lies after $new_match
+		else {
+			$distance = $$already_matched[$i]{'start'} - $$new_match{'end'};
+			splice @{ $already_matched }, $i, 0, 'N' x $distance;
+			splice @{ $already_matched }, $i, 0, $new_match;
+		}
+	}
+	return $already_matched;
 }
 
 # yay

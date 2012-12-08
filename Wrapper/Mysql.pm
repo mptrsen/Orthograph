@@ -54,12 +54,14 @@ my $mysql_col_aaseq            = 'aa_seq';
 my $mysql_col_digest           = 'digest';
 my $mysql_col_end              = 'end';
 my $mysql_col_evalue           = 'evalue';
+my $mysql_col_header           = 'header';
 my $mysql_col_id               = 'id';
 my $mysql_col_log_evalue       = 'log_evalue';
 my $mysql_col_name             = 'name';
 my $mysql_col_orthoid          = 'ortholog_gene_id';
 my $mysql_col_query            = 'query';
 my $mysql_col_setid            = 'setid';
+my $mysql_col_sequence         = 'sequence';
 my $mysql_col_start            = 'start';
 my $mysql_col_target           = 'target';
 my $mysql_col_taxid            = 'taxid';
@@ -485,7 +487,6 @@ sub create_log_evalues_view {
 	  WHERE $mysql_table_hmmsearch.$mysql_col_taxid = ?
 	  GROUP BY $mysql_table_hmmsearch.$mysql_col_log_evalue
 	  ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
-	print $query_create_log_evalues, "\n";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query_create_log_evalues);
 	$sth->execute( $taxid ) or return 0;
@@ -638,6 +639,8 @@ sub get_results_for_logevalue_range {
 	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
 			$mysql_table_hmmsearch.$mysql_col_target,
+			$mysql_table_ests.$mysql_col_header,
+			$mysql_table_ests.$mysql_col_sequence,
 			$mysql_table_hmmsearch.$mysql_col_start,
 			$mysql_table_hmmsearch.$mysql_col_end,
 			$mysql_table_blast.$mysql_col_target,
@@ -673,18 +676,18 @@ sub get_results_for_logevalue_range {
 	$sth->execute( $setid, $taxid, $min, $max );
 	my $result = { };
 	while (my $line = $sth->fetchrow_arrayref()) {
-		my $start = $$line[3] - 1;
-		my $length = $$line[4] - $start;
+		my $start = $$line[5] - 1;
+		my $length = $$line[6] - $start;
 		# first key is the hmmsearch evalue, second key is the orthoid
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
 			'hmmhit'       => $$line[2],
-			#'header'       => $$line[3],
-			#'sequence'     => substr($$line[4], $start, $length),
-			'start'        => $$line[3],
-			'end'          => $$line[4],
-			'blast_hit'    => $$line[5],
-			'blast_evalue' => $$line[6],
-			'species_name' => $$line[7],
+			'header'       => $$line[3],
+			'sequence'     => substr($$line[4], $start, $length),
+			'start'        => $$line[5],
+			'end'          => $$line[6],
+			'blast_hit'    => $$line[7],
+			'blast_evalue' => $$line[8],
+			'species_name' => $$line[9],
 		});
 	}
 	$sth->finish();
@@ -707,6 +710,8 @@ sub get_results_for_logevalue {
 	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
 			$mysql_table_hmmsearch.$mysql_col_target,
+			$mysql_table_ests.$mysql_col_header,
+			$mysql_table_ests.$mysql_col_sequence,
 			$mysql_table_hmmsearch.$mysql_col_start,
 			$mysql_table_hmmsearch.$mysql_col_end,
 			$mysql_table_blast.$mysql_col_target,
@@ -742,18 +747,18 @@ sub get_results_for_logevalue {
 	$sth->execute( $setid, $taxid, $logeval );
 	my $result = { };
 	while (my $line = $sth->fetchrow_arrayref()) {
-		my $start = $$line[3] - 1;
-		my $length = $$line[4] - $start;
+		my $start = $$line[5] - 1;
+		my $length = $$line[6] - $start;
 		# first key is the hmmsearch evalue, second key is the orthoid
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
 			'hmmhit'       => $$line[2],
-			#'header'       => $$line[3],
-			#'sequence'     => substr($$line[4], $start, $length),
-			'start'        => $$line[3],
-			'end'          => $$line[4],
-			'blast_hit'    => $$line[5],
-			'blast_evalue' => $$line[6],
-			'species_name' => $$line[7],
+			'header'       => $$line[3],
+			'sequence'     => substr($$line[4], $start, $length),
+			'start'        => $$line[5],
+			'end'          => $$line[6],
+			'blast_hit'    => $$line[7],
+			'blast_evalue' => $$line[8],
+			'species_name' => $$line[9],
 		});
 	}
 	$sth->finish();
