@@ -184,12 +184,11 @@ foreach my $bin (@$logevalues_bins) {
 			# TODO don't skip, check whether the previous hit overlaps with this candidate
 			#next ORTHOID unless exists $aaseqs_in_orthoid->{$orthoid};
 
-			RH:
+			REHIT:
 			# sort by reciprocal hit evalue
 			foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list ) {
 				# find out if the aaseq_id is one of those used for this orthoid
-				print $stdout "  checking out hit " , Dumper($reciprocal_hit)
-					if $verbose;
+				#print $stdout "  checking out hit " , Dumper($reciprocal_hit) if $verbose;
 
 				# has this aaseq been used in building this hmm and has this transcript
 				# not been found previously? 
@@ -203,12 +202,12 @@ foreach my $bin (@$logevalues_bins) {
 						if $verbose;
 
 					# one hit is enough if not in strict mode
-					last RH unless $strict;
+					last REHIT unless $strict;
 				}
 				else {  # not found
 					# cry
 					++$mismatches;
-					print $stdout "    $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
+					print $stdout "    aaseq $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
 
 					# in a strict search, that's it for this orthoid
 					next ORTHOID if $strict;
@@ -244,12 +243,15 @@ foreach my $bin (@$logevalues_bins) {
 				# TODO don't delete yet... check whether transcripts overlap etc
 				if (exists $$transcripts_mapped_to{$orthoid}) {
 					if (&overlap($$transcripts_mapped_to{$orthoid}, $match)) {
-						#printf "%s and %s overlap, discarding the new hit\n", $$transcripts_mapped_to{$orthoid}{'hmmhit'}, $$match{'hmmhit'} if $verbose;
-						delete $$aaseqs_in_orthoid{$orthoid};
+						printf $stdout "discarding the new hit %s for %s\n", $$match{'hmmhit'}, $orthoid if $verbose;
+						next ORTHOID;
 					}
 					else {
-						$$transcripts_mapped_to{$orthoid} = &insert($$transcripts_mapped_to{$orthoid}, $match);
+						push @{ $$transcripts_mapped_to{$orthoid} }, $match;
+						#$$transcripts_mapped_to{$orthoid} = &insert($$transcripts_mapped_to{$orthoid}, $match);
 						printf $stdout ">>    No overlap, added %s to %s\n", $$match{'hmmhit'}, $orthoid if $verbose;
+						print "$orthoid so far: ", Dumper($$transcripts_mapped_to{$orthoid});
+						next ORTHOID;
 					}
 				}
 
@@ -280,8 +282,10 @@ foreach my $bin (@$logevalues_bins) {
 my $tfh = IO::File->new($tablefile, 'w')
 	or die "Fatal: Could not open table file $tablefile\: $!\n";
 while (my ($o, $t) = each %$transcripts_mapped_to) {
-	printf $tfh "%s", $o;
-	printf $tfh "\t%s[%d:%d]", $$_{'hmmhit'}, $$_{'start'}, $$_{'end'} foreach @$t;
+	print $tfh $o;
+	foreach my $hit (@$t) {
+		printf $tfh "\t%s[%d:%d]", $$hit{'hmmhit'}, $$hit{'start'}, $$hit{'end'};
+	}
 	print $tfh "\n";
 }
 undef $tfh;
@@ -344,10 +348,11 @@ sub binify {
 sub overlap {
 	my $already_matched = shift;
 	my $candidate = shift;
+	my $overlap   = 0;
 	# the fragments do not overlap
 	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
-		if ($$candidate{'end'} < $$already_matched[$i]{'start'} and $$candidate{'start'} < $$already_matched[$i]{'start'}) {
-			printf "%s and %s do not overlap (%d-%d and %d-%d)\n", 
+		if ($$candidate{'end'} <= $$already_matched[$i]{'start'}) {
+			printf $stdout "%s and %s do not overlap (%d-%d and %d-%d)\n", 
 				$$already_matched[$i]{'hmmhit'},
 				$$candidate{'hmmhit'},
 				$$already_matched[$i]{'start'},
@@ -355,11 +360,11 @@ sub overlap {
 				$$candidate{'start'},
 				$$candidate{'end'}
 					if $verbose;
-			return 0;
+			$overlap = 0;
 		}
 		# the fragments do not overlap
-		elsif ($$candidate{'start'} > $$already_matched[$i]{'end'}) { 
-			printf "%s and %s do not overlap (%d-%d and %d-%d)\n", 
+		elsif ($$candidate{'start'} >= $$already_matched[$i]{'end'}) { 
+			printf $stdout "%s and %s do not overlap (%d-%d and %d-%d)\n", 
 				$$already_matched[$i]{'hmmhit'},
 				$$candidate{'hmmhit'},
 				$$already_matched[$i]{'start'},
@@ -367,9 +372,22 @@ sub overlap {
 				$$candidate{'start'},
 				$$candidate{'end'}
 					if $verbose;
-			return 0;
+			$overlap = 0;
+		}
+		# the fragments do overlap
+		else {
+			printf $stdout "%s and %s overlap (%d-%d and %d-%d)\n", 
+				$$already_matched[$i]{'hmmhit'},
+				$$candidate{'hmmhit'},
+				$$already_matched[$i]{'start'},
+				$$already_matched[$i]{'end'},
+				$$candidate{'start'},
+				$$candidate{'end'}
+					if $verbose;
+		 	$overlap = 1;
 		}
 	}
+	if ($overlap == 0) { return 0 }
 	return 1;
 }
 
@@ -377,22 +395,30 @@ sub overlap {
 sub insert {
 	my $already_matched = shift;
 	my $new_match       = shift;
-	my $distance        = 0;
+	my $insert          = 0;
+	my $position        = 0;
 	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
 		# this $already_matched lies before $new_match
 		# TODO write a new class for the candidates!
 		if ($already_matched->[$i]->{'end'} < $new_match->{'start'}) {
 			# insert there
-			splice @{ $already_matched }, $i - 1, 0, $new_match;
-			last;
+			printf "%s before %s, inserting\n", $new_match->{'hmmhit'}, $already_matched->[$i]->{'hmmhit'};
+			$insert = 1;
+			$position = $i - 1;
 		}
 		# $already_matched lies after $new_match
 		elsif ($already_matched->[$i]->{'start'} > $new_match->{'end'}) {
 			# insert here
-			print "after, inserting\n";
-			splice @{ $already_matched }, $i, 0, $new_match;
-			last;
+			printf "%s after %s, inserting\n", $new_match->{'hmmhit'}, $already_matched->[$i]->{'hmmhit'};
+			$insert = 1;
+			$position = $i;
 		}
+		else {
+			$insert = 0;
+		}
+	}
+	if ($insert) {
+		splice @{ $already_matched }, $position, 0, $new_match;
 	}
 	return $already_matched;
 }

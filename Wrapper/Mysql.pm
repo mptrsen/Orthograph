@@ -596,7 +596,7 @@ sub get_hitlist_hashref {
 			'end'          => $$line[6],
 			'blast_hit'    => $$line[7],
 			'blast_evalue' => $$line[8],
-			'species_name' => $$line[9],
+			'reftaxon'     => $$line[9],
 		});
 	}
 	$sth->finish();
@@ -687,7 +687,7 @@ sub get_results_for_logevalue_range {
 			'end'          => $$line[6],
 			'blast_hit'    => $$line[7],
 			'blast_evalue' => $$line[8],
-			'species_name' => $$line[9],
+			'reftaxon'     => $$line[9],
 		});
 	}
 	$sth->finish();
@@ -758,7 +758,7 @@ sub get_results_for_logevalue {
 			'end'          => $$line[6],
 			'blast_hit'    => $$line[7],
 			'blast_evalue' => $$line[8],
-			'species_name' => $$line[9],
+			'reftaxon'     => $$line[9],
 		});
 	}
 	$sth->finish();
