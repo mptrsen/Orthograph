@@ -200,9 +200,9 @@ foreach my $bin (@$logevalues_bins) {
 				if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
 					and not first {/$reciprocal_hit->{'hmmhit'}/} @transcript_list ) {
 
-					$match = $reciprocal_hit;
-
 					print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} used in $orthoid!\n" if $verbose;
+
+					$match = $reciprocal_hit;
 
 					# one hit is enough if not in strict mode
 					last REHIT unless $strict;
@@ -227,39 +227,44 @@ foreach my $bin (@$logevalues_bins) {
 
 			# END RH
 			}
-			# so, was this a match?
+			# so, was this a match we can trust?
 			if ($match) {
 
 				# yeah - here should be the part where the actual sequences are output
-				# in fasta format
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
 					$orthoid,
-					$$match{'hmmhit'},
-					$$match{'start'},
-					$$match{'end'},
+					$match->{'hmmhit'},
+					$match->{'start'},
+					$match->{'end'},
 					$orthoid,
 					unless $quiet;
 
-				# this orthoid can't be found again
-				# TODO don't delete yet... check whether transcripts overlap etc
+				# if this orthoid has been hit before, check whether the new cancidate
+				# overlaps with previous hits
 				if (exists $$transcripts_mapped_to{$orthoid}) {
-					if (&overlap($$transcripts_mapped_to{$orthoid}, $match)) {
-						printf $stdout "Overlap with previous hit for %s: discarded %s.\n", $orthoid, $$match{'hmmhit'} unless $quiet;
+					# yep, it overlaps, so we can't assign this transcript because better
+					# e-values have precedence. just go to the next one.
+					if (&overlap($transcripts_mapped_to->{$orthoid}, $match)) {
+						printf $stdout "Overlap with previous hit for %s: discarded %s.\n", $orthoid, $match->{'hmmhit'} unless $quiet;
 						next ORTHOID;
 					}
+					# does not overlap, add to list of transcripts for this ortholog group
 					else {
-						push @{ $$transcripts_mapped_to{$orthoid} }, $match;
-						#$$transcripts_mapped_to{$orthoid} = &insert($$transcripts_mapped_to{$orthoid}, $match);
-						printf $stdout "No overlap, added %s to %s.\n", $$match{'hmmhit'}, $orthoid unless $quiet;
+						push @{ $transcripts_mapped_to->{$orthoid} }, $match;
+						printf $stdout "No overlap with previous hits: added %s to %s.\n", $match->{'hmmhit'}, $orthoid unless $quiet;
+						# this transcript can't be found again
+						push @transcript_list, $match->{'hmmhit'};
+						# ok, next one
 						next ORTHOID;
 					}
 				}
 
-				# this transcript can't be found again
-				push @transcript_list, $$match{'hmmhit'};
+				# this has not been hit before, 
+				printf $stdout "Assigned %s to %s\n", $match->{'hmmhit'}, $orthoid;
+				push @{ $transcripts_mapped_to->{$orthoid} }, $match;
 
-				printf $stdout "Assigned %s to %s\n", $$match{'hmmhit'}, $orthoid;
-				push @{$$transcripts_mapped_to{$orthoid}}, $match;
+				# this transcript can't be found again
+				push @transcript_list, $match->{'hmmhit'};
 
 				# reset 
 				undef $match;
@@ -285,7 +290,10 @@ my $tfh = IO::File->new($tablefile, 'w')
 while (my ($o, $t) = each %$transcripts_mapped_to) {
 	print $tfh $o;
 	foreach my $hit (sort { $a->{'start'} <=> $b->{'start'} } @$t) {
-		printf $tfh "\t%s[%d:%d]", $$hit{'hmmhit'}, $$hit{'start'}, $$hit{'end'};
+		printf $tfh "\t%s[%d:%d]",
+			$hit->{'hmmhit'},
+			$hit->{'start'},
+			$hit->{'end'};
 	}
 	print $tfh "\n";
 }
@@ -311,6 +319,8 @@ with the min and max boundary of the bin:
       'max' => max(THIS_BIN)
     }
   ]
+
+This is useful for constructing database queries using BETWEEN filters.
 
 =cut
 
