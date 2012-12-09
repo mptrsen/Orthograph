@@ -625,79 +625,11 @@ sub get_logevalue_count {
 	return $num_of_logevalues;
 }
 
-=head2 get_results_for_logevalue_range($setid, $taxonid, $min, $max)
+=head2 get_results_for_logevalue($setid, $taxonid, $min [, $max])
 
-Fetch results from the database that are BETWEEN $min and $max in terms of log-evalue.
+Fetch results from the database that have e-value $min or are BETWEEN $min AND $max.
 
-Returns a [ rows->[ (columns) ] ] arrayref.
-
-=cut
-
-sub get_results_for_logevalue_range {
-	my ($setid, $taxid, $min, $max) = @_;
-	# complex parametrized query
-	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_evalue,
-			$mysql_table_orthologs.$mysql_col_orthoid,
-			$mysql_table_hmmsearch.$mysql_col_target,
-			$mysql_table_ests.$mysql_col_header,
-			$mysql_table_ests.$mysql_col_sequence,
-			$mysql_table_hmmsearch.$mysql_col_start,
-			$mysql_table_hmmsearch.$mysql_col_end,
-			$mysql_table_blast.$mysql_col_target,
-			$mysql_table_blast.$mysql_col_evalue,
-			$mysql_table_taxa.$mysql_col_name
-		FROM $mysql_table_log_evalues
-		LEFT JOIN $mysql_table_hmmsearch
-			ON $mysql_table_log_evalues.$mysql_col_log_evalue = $mysql_table_hmmsearch.$mysql_col_log_evalue
-		LEFT JOIN $mysql_table_ests
-			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
-		LEFT JOIN $mysql_table_orthologs
-			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
-		LEFT JOIN $mysql_table_blast
-			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_blast.$mysql_col_query
-		LEFT JOIN $mysql_table_aaseqs
-			ON $mysql_table_blast.$mysql_col_target = $mysql_table_aaseqs.$mysql_col_id
-		LEFT JOIN $mysql_table_taxa
-			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.$mysql_col_id
-		LEFT JOIN $mysql_table_set_details
-			ON $mysql_table_orthologs.$mysql_col_setid = $mysql_table_set_details.$mysql_col_id
-		WHERE $mysql_table_hmmsearch.$mysql_col_log_evalue IS NOT NULL
-			AND $mysql_table_ests.$mysql_col_digest          IS NOT NULL
-			AND $mysql_table_orthologs.$mysql_col_orthoid    IS NOT NULL
-			AND $mysql_table_blast.$mysql_col_query          IS NOT NULL
-			AND $mysql_table_aaseqs.$mysql_col_id            IS NOT NULL
-			AND $mysql_table_taxa.$mysql_col_id              IS NOT NULL
-			AND $mysql_table_set_details.$mysql_col_id       IS NOT NULL
-			AND $mysql_table_set_details.$mysql_col_id       = ?
-			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?
-			AND $mysql_table_hmmsearch.$mysql_col_log_evalue BETWEEN ? AND ?";
-	my $dbh = &mysql_dbh();
-	my $sth = $dbh->prepare($query);
-	$sth->execute( $setid, $taxid, $min, $max );
-	my $result = { };
-	while (my $line = $sth->fetchrow_arrayref()) {
-		my $start = $$line[5] - 1;
-		my $length = $$line[6] - $start;
-		# first key is the hmmsearch evalue, second key is the orthoid
-		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
-			'hmmhit'       => $$line[2],
-			'header'       => $$line[3],
-			'sequence'     => substr($$line[4], $start, $length),
-			'start'        => $$line[5],
-			'end'          => $$line[6],
-			'blast_hit'    => $$line[7],
-			'blast_evalue' => $$line[8],
-			'reftaxon'     => $$line[9],
-		});
-	}
-	$sth->finish();
-	$dbh->disconnect();
-	scalar keys %$result > 0 ? return $result : return 0;
-}
-
-=head2 get_results_for_logevalue($setid, $taxonid, $logevalue)
-
-Fetch results from the database that have $logevalue.
+The function intelligently does the correct query depending on the number of arguments.
 
 Returns a [ rows->[ (columns) ] ] arrayref.
 
@@ -706,7 +638,9 @@ Returns a [ rows->[ (columns) ] ] arrayref.
 sub get_results_for_logevalue {
 	my $setid   = shift;
 	my $taxid   = shift;
-	my $logeval = shift;
+	my $min     = shift;
+	my $max     = shift;
+	# generic query
 	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
 			$mysql_table_hmmsearch.$mysql_col_target,
@@ -740,12 +674,25 @@ sub get_results_for_logevalue {
 			AND $mysql_table_taxa.$mysql_col_id              IS NOT NULL
 			AND $mysql_table_set_details.$mysql_col_id       IS NOT NULL
 			AND $mysql_table_set_details.$mysql_col_id       = ?
-			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?
-			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?";
+			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?";
+
+	# modify the generic query
+	# e-value range
+	if ($max) { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue BETWEEN ? AND ?" }
+	# single e-value
+	else      { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?" }
+
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
-	$sth->execute( $setid, $taxid, $logeval );
+
+	# e-value range
+	if ($max) { $sth->execute( $setid, $taxid, $min, $max ) }
+	# single e-value
+	else      { $sth->execute( $setid, $taxid, $min )       }
+
+	# will hold the result
 	my $result = { };
+
 	while (my $line = $sth->fetchrow_arrayref()) {
 		my $start = $$line[5] - 1;
 		my $length = $$line[6] - $start;

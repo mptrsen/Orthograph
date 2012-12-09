@@ -39,7 +39,7 @@ use Orthograph::Functions;             # functions for all Orthograph tools
 use Wrapper::Mysql;
 use IO::Tee;
 
-my $config = $Orthograph::Config::config;	# copy config var
+my $config = $Orthograph::Config::config;	# copy config variables
 
 # MySQL settings
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
@@ -52,29 +52,49 @@ my $mysql_table_seqpairs       = $config->{'sequence_pairs'};
 my $mysql_table_taxa           = $config->{'taxa'};
 my $mysql_table_orthologs      = $config->{'orthologs'};
 
+# directory and output settings
 my $outdir                     = $config->{'output_directory'};
+my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $quiet                      = $config->{'quiet'};
 my $verbose                    = $config->{'verbose'};
 
+# settings for this specific analysis
 my $setname                    = $config->{'ortholog_set'};
 my $speciesname                = $config->{'species_name'};
 my $reference_taxa             = $config->{'reference_taxa'};
-
 my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
 my $soft_threshold             = $config->{'soft_threshold'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'};
 
-my $outputdir                  = $config->{'output_directory'};
-my $logdir                     = File::Spec->catdir($outputdir, 'log');
+
+# open log and table output files 
+my $logfile = File::Spec->catfile($logdir, 'report.log');
+my $logfh = IO::File->new($logfile, 'w')
+	or die "Fatal: Could not open report file '$logfile'\: $!\n";
+my $tablefile = File::Spec->catfile($logdir, 'table.txt');
+
+# setup IO::Tee
+my $stdout = IO::Tee->new(
+	\*STDOUT,
+	$logfh,
+);
+my $stderr = IO::Tee->new(
+	\*STDERR,
+	$logfh,
+);
 
 # mutually exclusive options
-die "Fatal: Can't operate in both verbose and quiet mode\n"
-	if ($verbose and $quiet);
+if ($verbose and $quiet) {
+	print $stderr "Fatal: Can't operate in both verbose and quiet mode\n";
+	exit(1);
+}
 
 # mutually exclusive options
-die "Fatal: Can't use both e-value and score thresholds\n"
-	if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold);
+if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold) {
+	print $stderr "Fatal: Can't use both e-value and score thresholds\n";
+	exit(1);
+}
 
 # More variables
 my $bin_size             = 500;
@@ -86,26 +106,32 @@ my $data_by_evalue       = { };
 my $insert_n             = 1;
 my $table                = [ ];
 my $strict               = 0;
-my $sort_by              = 'blasteval';
 my @reftaxa              = ( );
 my $species_id           = 0;
 my $set_id               = 0;
 my $match                = 0;
 my $mismatches           = 0;
 my $max_mismatches       = $soft_threshold;
+my $results              = undef;
 my ($t0, $t1)            = 0;
 
 # get the species id from the database
 $species_id = Wrapper::Mysql::get_taxid_for_species($speciesname);
-die "Fatal: No such species in database: '$speciesname'\n" unless ($species_id);
+unless ($species_id) {
+	print $stderr "Fatal: No such species in database: '$speciesname'\n";
+	exit(1);
+}
 
 # get the set id from the database
 $set_id = Wrapper::Mysql::get_set_id($setname);
-die "Fatal: No such set in database: '$setname'\n" unless ($set_id);
+unless ($set_id) {
+	print $stderr "Fatal: No such set in database: '$setname'\n";
+	exit(1);
+}
 
 # create view (a virtual table) for the log-evalues
 Wrapper::Mysql::create_log_evalues_view($species_id)
-	or die "Fatal: Could not create view: $!\n";
+	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
 
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
@@ -116,51 +142,31 @@ else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 
 # get a log-evalue->count relationship from the database
-my $logevalue_count = Wrapper::Mysql::get_logevalue_count($species_id);
-my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
-
-
 # classify the log-evalues into "bins" that hold a limited number of values
 # this is done in order to speed up the database queries
+my $logevalue_count = Wrapper::Mysql::get_logevalue_count($species_id);
+my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
 my $logevalues_bins = &binify($bin_size, $logevalue_count);
 
 # generate a table
 my $transcripts_mapped_to = { };
 
-# get the results in the form:
-# evalue => {
-#   orthoid => [
-#     reciprocal_hit,
-#     reciprocal_hit,
-#     reciprocal_hit,
-#     etc.
-#   ]
-# }
-my $limit = 2000;
-my $offset = 0;
-my $from = -999;
-my $to   = -600;
-my $results;
-
 # this will hold all transcripts that were found so we can check for redundancy
 my @transcript_list;
-
-# open log and table output files 
-my $logfile = File::Spec->catfile($logdir, 'report.txt');
-my $logfh = IO::File->new($logfile, 'w')
-	or die "Fatal: Could not open report file $logfile\: $!\n";
-my $tablefile = File::Spec->catfile($logdir, 'table.txt');
-
-# setup IO::Tee
-my $stdout = IO::Tee->new(
-	\*STDOUT,
-	$logfh,
-);
 
 # okay let's do the loop come on baby let's do the loop
 BIN:
 foreach my $bin (@$logevalues_bins) {
 
+	# get the results in the form:
+	# evalue => {
+	#   orthoid => [
+	#     reciprocal_hit,
+	#     reciprocal_hit,
+	#     reciprocal_hit,
+	#     etc.
+	#   ]
+	# }
 	$t0 = scalar time;
 	# only one evalue
 	if ($bin->{'min'} == $bin->{'max'}) {
@@ -168,10 +174,10 @@ foreach my $bin (@$logevalues_bins) {
 	}
 	# evalue range
 	else {
-		$results = Wrapper::Mysql::get_results_for_logevalue_range($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
+		$results = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
 	}
 	$t1 = scalar time;
-	if ($verbose) { printf $stdout "Fetched %d rows in %.2f seconds\n", scalar keys %$results, $t1 - $t0 }
+	printf $stdout "Fetched %d rows in %.2f seconds\n", scalar keys %$results, $t1 - $t0 if $verbose;
 
 	EVALUE:
 	while (my ($logevalue, $result) = each %$results) {
@@ -180,9 +186,7 @@ foreach my $bin (@$logevalues_bins) {
 			# reset the mismatch counter
 			$mismatches = 0;
 
-			# has this orthoid been assigned before?
-			# TODO don't skip, check whether the previous hit overlaps with this candidate
-			#next ORTHOID unless exists $aaseqs_in_orthoid->{$orthoid};
+			print "Checking $orthoid for ortholog hits...\n" if $verbose;
 
 			REHIT:
 			# sort by reciprocal hit evalue
@@ -198,8 +202,7 @@ foreach my $bin (@$logevalues_bins) {
 
 					$match = $reciprocal_hit;
 
-					print $stdout "    $reciprocal_hit->{'blast_hit'} used in this HMM!\n"
-						if $verbose;
+					print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} used in $orthoid!\n" if $verbose;
 
 					# one hit is enough if not in strict mode
 					last REHIT unless $strict;
@@ -207,7 +210,7 @@ foreach my $bin (@$logevalues_bins) {
 				else {  # not found
 					# cry
 					++$mismatches;
-					print $stdout "    aaseq $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
+					print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
 
 					# in a strict search, that's it for this orthoid
 					next ORTHOID if $strict;
@@ -217,9 +220,8 @@ foreach my $bin (@$logevalues_bins) {
 
 					# too many mismatches, we don't trust this one anymore
 					if ($mismatches >= $max_mismatches) {
-						print $stdout ">>    Too many mismatches, we don't trust this one anymore\n"
-							if $verbose;
-						next ORTHOID;
+						print $stdout "    Too many mismatches, we don't trust this one anymore.\n" if $verbose;
+						last REHIT;
 					}
 				}
 
@@ -230,34 +232,33 @@ foreach my $bin (@$logevalues_bins) {
 
 				# yeah - here should be the part where the actual sequences are output
 				# in fasta format
-				printf $stdout ">>    trying to assign %s [%d:%d] to %s (%d with %.1e)\n",
+				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
+					$orthoid,
 					$$match{'hmmhit'},
 					$$match{'start'},
 					$$match{'end'},
 					$orthoid,
-					$$match{'blast_hit'},
-					$$match{'blast_evalue'},
 					unless $quiet;
 
 				# this orthoid can't be found again
 				# TODO don't delete yet... check whether transcripts overlap etc
 				if (exists $$transcripts_mapped_to{$orthoid}) {
 					if (&overlap($$transcripts_mapped_to{$orthoid}, $match)) {
-						printf $stdout "discarding the new hit %s for %s\n", $$match{'hmmhit'}, $orthoid if $verbose;
+						printf $stdout "Overlap with previous hit for %s: discarded %s.\n", $orthoid, $$match{'hmmhit'} unless $quiet;
 						next ORTHOID;
 					}
 					else {
 						push @{ $$transcripts_mapped_to{$orthoid} }, $match;
 						#$$transcripts_mapped_to{$orthoid} = &insert($$transcripts_mapped_to{$orthoid}, $match);
-						printf $stdout ">>    No overlap, added %s to %s\n", $$match{'hmmhit'}, $orthoid if $verbose;
-						print "$orthoid so far: ", Dumper($$transcripts_mapped_to{$orthoid});
+						printf $stdout "No overlap, added %s to %s.\n", $$match{'hmmhit'}, $orthoid unless $quiet;
 						next ORTHOID;
 					}
 				}
 
-				# this transcript can't be found again either
+				# this transcript can't be found again
 				push @transcript_list, $$match{'hmmhit'};
 
+				printf $stdout "Assigned %s to %s\n", $$match{'hmmhit'}, $orthoid;
 				push @{$$transcripts_mapped_to{$orthoid}}, $match;
 
 				# reset 
@@ -265,7 +266,7 @@ foreach my $bin (@$logevalues_bins) {
 			}
 			else {
 				# this orthoid has no match
-				print $stdout "    $orthoid could not be assigned :((\n"
+				print $stdout "No orthology detected for $orthoid.\n"
 					unless $quiet;
 			}
 
@@ -280,10 +281,10 @@ foreach my $bin (@$logevalues_bins) {
 
 
 my $tfh = IO::File->new($tablefile, 'w')
-	or die "Fatal: Could not open table file $tablefile\: $!\n";
+	or print $stderr "Fatal: Could not open table file $tablefile\: $!\n" and exit(1);
 while (my ($o, $t) = each %$transcripts_mapped_to) {
 	print $tfh $o;
-	foreach my $hit (@$t) {
+	foreach my $hit (sort { $a->{'start'} <=> $b->{'start'} } @$t) {
 		printf $tfh "\t%s[%d:%d]", $$hit{'hmmhit'}, $$hit{'start'}, $$hit{'end'};
 	}
 	print $tfh "\n";
@@ -351,24 +352,12 @@ sub overlap {
 	my $overlap   = 0;
 	# the fragments do not overlap
 	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
-		if ($$candidate{'end'} <= $$already_matched[$i]{'start'}) {
-			printf $stdout "%s and %s do not overlap (%d-%d and %d-%d)\n", 
+		if ($$candidate{'end'} <= $$already_matched[$i]{'start'} or $$candidate{'start'} >= $$already_matched[$i]{'end'}) {
+			printf $stdout "%s[%d:%d] and %s[%d:%d] do not overlap.\n", 
 				$$already_matched[$i]{'hmmhit'},
-				$$candidate{'hmmhit'},
 				$$already_matched[$i]{'start'},
 				$$already_matched[$i]{'end'},
-				$$candidate{'start'},
-				$$candidate{'end'}
-					if $verbose;
-			$overlap = 0;
-		}
-		# the fragments do not overlap
-		elsif ($$candidate{'start'} >= $$already_matched[$i]{'end'}) { 
-			printf $stdout "%s and %s do not overlap (%d-%d and %d-%d)\n", 
-				$$already_matched[$i]{'hmmhit'},
 				$$candidate{'hmmhit'},
-				$$already_matched[$i]{'start'},
-				$$already_matched[$i]{'end'},
 				$$candidate{'start'},
 				$$candidate{'end'}
 					if $verbose;
@@ -376,50 +365,17 @@ sub overlap {
 		}
 		# the fragments do overlap
 		else {
-			printf $stdout "%s and %s overlap (%d-%d and %d-%d)\n", 
+			printf $stdout "%s[%d:%d] and %s[%d:%d] overlap.\n", 
 				$$already_matched[$i]{'hmmhit'},
-				$$candidate{'hmmhit'},
 				$$already_matched[$i]{'start'},
 				$$already_matched[$i]{'end'},
+				$$candidate{'hmmhit'},
 				$$candidate{'start'},
 				$$candidate{'end'}
 					if $verbose;
-		 	$overlap = 1;
+		 	return 1;
 		}
 	}
 	if ($overlap == 0) { return 0 }
 	return 1;
 }
-
-# this shall insert a new match at the correct position in the list of matches.
-sub insert {
-	my $already_matched = shift;
-	my $new_match       = shift;
-	my $insert          = 0;
-	my $position        = 0;
-	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
-		# this $already_matched lies before $new_match
-		# TODO write a new class for the candidates!
-		if ($already_matched->[$i]->{'end'} < $new_match->{'start'}) {
-			# insert there
-			printf "%s before %s, inserting\n", $new_match->{'hmmhit'}, $already_matched->[$i]->{'hmmhit'};
-			$insert = 1;
-			$position = $i - 1;
-		}
-		# $already_matched lies after $new_match
-		elsif ($already_matched->[$i]->{'start'} > $new_match->{'end'}) {
-			# insert here
-			printf "%s after %s, inserting\n", $new_match->{'hmmhit'}, $already_matched->[$i]->{'hmmhit'};
-			$insert = 1;
-			$position = $i;
-		}
-		else {
-			$insert = 0;
-		}
-	}
-	if ($insert) {
-		splice @{ $already_matched }, $position, 0, $new_match;
-	}
-	return $already_matched;
-}
-

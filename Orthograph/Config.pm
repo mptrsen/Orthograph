@@ -32,6 +32,7 @@ GetOptions( $config,
   'clear_files',
   'debug',
   'estfile',
+	'evalue_bin_size=i',
   'hmmsearch_evalue_threshold',
   'hmmsearch_output_dir',
   'hmmsearch_score_threshold',
@@ -67,19 +68,18 @@ GetOptions( $config,
   'substitute_u_with=s',
   'blast_evalue_threshold=f',
   'blast_max_hits=i',
-  'c=s',
+  'configfile|c=s',
   'debug|d',
   'estfile|E=s',
   'hmmsearch_evalue_threshold=f',
   'hmmsearch_score=i',
   'hmmsearchprog=s',
-  'list_species|l',
   'logfile|log=s',
   'preparedb',
-  'quiet',
+  'quiet|q',
   'species_name=s',
   'verbose|v',
-) or die("Fatal: I don't know what you want me to do. Terminating.\n");#}}}
+) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);#}}}
 
 #--------------------------------------------------
 # # These variables can be set in the config file
@@ -137,6 +137,7 @@ defined $config->{'clear_results_from_database'} or $config->{'clear_results_fro
 defined $config->{'clear_result_files'}         or $config->{'clear_result_files'}         = 0;
 defined $config->{'debug'}                      or $config->{'debug'}                      = 0;
 defined $config->{'estfile'}                    or $config->{'estfile'}                    = '';
+defined $config->{'evalue_bin_size'}            or $config->{'evalue_bin_size'}            = 500;
 defined $config->{'hmmbuild_program'}           or $config->{'hmmbuild_program'}           = 'hmmbuild';
 defined $config->{'hmmsearch_evalue_threshold'} or $config->{'hmmsearch_evalue_threshold'} = undef;
 defined $config->{'hmmsearch_program'}          or $config->{'hmmsearch_program'}          = 'hmmsearch';
@@ -205,7 +206,8 @@ sub get_configfile {
 	# every argument
 	for (my $i = 0; $i < scalar @ARGV; ++$i) {
 		# is this '-c'?
-		if ($ARGV[$i] =~ /-c\b/) {
+		if ($ARGV[$i] =~ /(-c|-configfile)\b/) {
+			unless ($ARGV[$i+1]) { print "Config file name missing (you specified -c but didn't provide a name). Exiting.\n" and exit(1)}
 			# does the next one begin with a hyphen?
 			if ($ARGV[$i+1] !~ /^-/) {
 				$configfile = $ARGV[$i+1];
@@ -235,13 +237,13 @@ Config file example:
 sub parse_config {#{{{
 	my $file = shift;
 	my $conf = { };
-	my $fh = IO::File->new($file) or die "Fatal: Could not open config file '$file'\: $!\n";
+	my $fh = IO::File->new($file) or print "Fatal: Could not open config file '$file'\: $!\n" and exit(1);
 
 	while (my $line = $fh->getline()) {
 		next if $line =~ /^\s*$/; # skip empty lines
 		next if $line =~ /^\s*#/; # skip comment lines starting with '#'
 		if ($line !~ /^\s*\w+\s*=\s*[\/]?\w+/) {
-			die "Fatal: Invalid format in line $. of config file $file:\n$line\n"
+			print "Fatal: Invalid format in line $. of config file $file:\n$line\n" and exit(1);
 		}
 		
 		# split by '=' producing a maximum of two items; the value may contain whitespace
@@ -252,7 +254,7 @@ sub parse_config {#{{{
 		  s/^\s+//; # remove all leading whitespace
 		}
 
-		die "Fatal: Configuration option '$key' defined twice in line $. of config file '$file'\n"
+		print "Fatal: Configuration option '$key' defined twice in line $. of config file '$file'\n" and exit(1)
 		  if defined $conf->{$key};
 		$conf->{$key} = $val;
 	}

@@ -621,7 +621,7 @@ sub intro {#{{{
 	}
 	else {
 		print $stdout "Alignment dir $alndir does not exist, creating...\n" unless $quiet;
-		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
+		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
 	}
 
 	# the HMM directory
@@ -631,7 +631,7 @@ sub intro {#{{{
 	}
 	else {
 		print $stdout "HMM dir $hmmdir does not exist, creating...\n" unless $quiet;
-		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
+		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 
 	# the EST file
@@ -655,7 +655,7 @@ sub intro {#{{{
 	}
 	else {
 		print $stdout "HMMsearch output dir $hmmoutdir does not exist, creating...\n" unless $quiet;
-		&makedir($hmmoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
+		&makedir($hmmoutdir) or print $stderr "Fatal: Failed to create directory $hmmoutdir\n" and exit(1);
 	}
 
   # the BLASTP output directory
@@ -671,7 +671,7 @@ sub intro {#{{{
   }
   else {
     print $stdout "BLASTP output dir $blastoutdir does not exist, creating...\n" unless $quiet;
-    &makedir($blastoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
+    &makedir($blastoutdir) or print $stderr "Fatal: Failed to create directory $blastoutdir\n" and exit(1);
   }
 	# the aa output directory
 	if (-d $aaoutdir) {
@@ -865,13 +865,6 @@ sub preparedb {#{{{
 		INDEX ($mysql_col_log_evalue)
 		)";
 
-	my $query_create_log_evalues = "CREATE VIEW $mysql_table_log_evalues AS
-		SELECT $mysql_table_hmmsearch.$mysql_col_log_evalue AS $mysql_col_log_evalue,
-			COUNT($mysql_table_hmmsearch.$mysql_col_log_evalue) AS `count`
-		FROM $mysql_table_hmmsearch
-		GROUP BY $mysql_table_hmmsearch.$mysql_col_log_evalue
-		ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
-	
 	# open connection
 	my $dbh = Wrapper::Mysql::mysql_dbh();
 
@@ -1044,11 +1037,11 @@ sub make_hmms {#{{{
 	my $hmmsuffix = '.hmm';
 	# does the alignment dir exist?
 	if (!-e $alndir) {
-		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
+		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
 	}
 	# does the HMM dir exist?
 	if (!-e $hmmdir) {
-		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
+		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 	print $stdout "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
