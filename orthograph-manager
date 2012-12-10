@@ -66,9 +66,14 @@ my $mysql_table_temp        = $config->{'mysql_table_temp'};
 my $mysql_table_users       = $config->{'mysql_table_users'};
 
 my $create                  = $config->{'create'};
+my $delete_all              = $config->{'destroy'};
+my $delete_ogs              = $config->{'delete_ogs'};
+my $delete_set              = $config->{'delete_set'};
 my $listtaxa                = $config->{'list-taxa'};
 my $listsets                = $config->{'list-sets'};
 my $listogs                 = $config->{'list-ogs'};
+my $isnucleotide            = $config->{'load-ogs-nucleotide'};
+my $ispeptide               = $config->{'load-ogs-peptide'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute_u_with'};
@@ -89,12 +94,7 @@ my %t            = (
 );
 
 my $blastdir          = '';
-my $delete_all        = 0;
-my $delete_ogs        = '';
-my $delete_set        = '';
 my $description       = '';
-my $isnucleotide      = 0;
-my $ispeptide         = 0;
 my $listests          = 0;
 my $name              = '';
 my $ogs_name          = '';
@@ -103,7 +103,7 @@ my $reassignorthologs = 0;
 my $setdir            = '';
 my $setname           = '';
 my $sql               = '';
-my $temptable         = 'temp';
+my $temptable         = $mysql_table_temp;
 my $total_seqs        = 0;
 my %names             = ( );
 
@@ -115,81 +115,6 @@ unless (defined $mysql_dbuser and defined $mysql_dbpwd ) {
 
 # name == username unless defined name
 $name = $mysql_dbuser unless defined($name);
-
-# the queries for the individual tables
-my %create_table = (#{{{
-	# table: blastdbs
-	'blastdbs' => "CREATE TABLE `$t{'blastdbs'}` (
-    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
-    `blastdb_path` VARCHAR(255) DEFAULT NULL)",
-	
-	# table: ogs
-	'ogs' => "CREATE TABLE `$t{'ogs'}` (
-    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `type`         INT(1),
-    `taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
-    `version`      VARCHAR(255))",
-	
-	# table: ortholog_set
-	'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
-    `id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `setid`            INT UNSIGNED NOT NULL,
-    `ortholog_gene_id` VARCHAR(10)  NOT NULL,
-    `sequence_pair`    INT UNSIGNED NOT NULL,
-    UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair))",
-
-	# table: sequence_pairs
-	'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
-    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT    UNSIGNED,
-    `ogs_id`       INT    UNSIGNED,
-    `aa_seq`       INT    UNSIGNED, INDEX(aa_seq),
-    `nt_seq`       INT    UNSIGNED, INDEX(nt_seq), 
-    `date`         INT    UNSIGNED,
-    `user`         INT    UNSIGNED, UNIQUE(aa_seq))",
-
-	# table: sequences_aa
-	'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
-    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT             NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(512),             INDEX(header),
-    `sequence`     MEDIUMBLOB,
-    `user`         INT UNSIGNED,
-    `date`         INT UNSIGNED)
-		",
-
-	# table: sequences_nt
-	'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
-    `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `taxid`        INT             NOT NULL, INDEX(taxid),
-    `header`       VARCHAR(512), 
-    `sequence`     MEDIUMBLOB,
-    `user`         INT UNSIGNED,
-    `date`         INT UNSIGNED)",
-
-	# table: set_details
-	'set_details' => "CREATE TABLE `$t{'set_details'}` (
-    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255), UNIQUE(name),
-    `description`  BLOB)",
-
-	# table: taxa
-	'taxa' => "CREATE TABLE `$t{'taxa'}` (
-    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(20),  UNIQUE(name),
-    `longname`     VARCHAR(255), 
-		`core`         TINYINT UNSIGNED NOT NULL)",
-	
-	# table: users
-	'users' => "CREATE TABLE `$t{'users'}` (
-    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `name`         VARCHAR(255), UNIQUE(name))",
-	# table: seqtypes
-	'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
-    `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    `type`         CHAR(3),     UNIQUE(type))",
-);#}}}
 
 #--------------------------------------------------
 # # if you really want to delete everything...
@@ -507,6 +432,82 @@ sub drop_tables {#{{{
 
 # create tables. makes use of the %create_table hash.
 sub create_tables {#{{{
+
+	# the queries for the individual tables
+	my %create_table = (#{{{
+		# table: blastdbs
+		'blastdbs' => "CREATE TABLE `$t{'blastdbs'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
+			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
+		
+		# table: ogs
+		'ogs' => "CREATE TABLE `$t{'ogs'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`type`         INT(1),
+			`taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
+			`version`      VARCHAR(255))",
+		
+		# table: ortholog_set
+		'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
+			`id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`setid`            INT UNSIGNED NOT NULL,
+			`ortholog_gene_id` VARCHAR(10)  NOT NULL,
+			`sequence_pair`    INT UNSIGNED NOT NULL,
+			UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair))",
+
+		# table: sequence_pairs
+		'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
+			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`taxid`        INT    UNSIGNED,
+			`ogs_id`       INT    UNSIGNED,
+			`aa_seq`       INT    UNSIGNED, INDEX(aa_seq),
+			`nt_seq`       INT    UNSIGNED, INDEX(nt_seq), 
+			`date`         INT    UNSIGNED,
+			`user`         INT    UNSIGNED, UNIQUE(aa_seq))",
+
+		# table: sequences_aa
+		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
+			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`taxid`        INT             NOT NULL, INDEX(taxid),
+			`header`       VARCHAR(512),             INDEX(header),
+			`sequence`     MEDIUMBLOB,
+			`user`         INT UNSIGNED,
+			`date`         INT UNSIGNED)
+			",
+
+		# table: sequences_nt
+		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
+			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`taxid`        INT             NOT NULL, INDEX(taxid),
+			`header`       VARCHAR(512), 
+			`sequence`     MEDIUMBLOB,
+			`user`         INT UNSIGNED,
+			`date`         INT UNSIGNED)",
+
+		# table: set_details
+		'set_details' => "CREATE TABLE `$t{'set_details'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`name`         VARCHAR(255), UNIQUE(name),
+			`description`  BLOB)",
+
+		# table: taxa
+		'taxa' => "CREATE TABLE `$t{'taxa'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`name`         VARCHAR(20),  UNIQUE(name),
+			`longname`     VARCHAR(255), 
+			`core`         TINYINT UNSIGNED NOT NULL)",
+		
+		# table: users
+		'users' => "CREATE TABLE `$t{'users'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`name`         VARCHAR(255), UNIQUE(name))",
+		# table: seqtypes
+		'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`type`         CHAR(3),     UNIQUE(type))",
+	);#}}}
+
 	# to start off with nt and aa sequence types
 	my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
 
