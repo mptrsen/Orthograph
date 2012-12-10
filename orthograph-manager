@@ -65,6 +65,7 @@ my $mysql_table_taxa        = $config->{'mysql_table_taxa'};
 my $mysql_table_temp        = $config->{'mysql_table_temp'};
 my $mysql_table_users       = $config->{'mysql_table_users'};
 
+# Actions
 my $create                  = $config->{'create'};
 my $delete_all              = $config->{'destroy'};
 my $delete_ogs              = $config->{'delete_ogs'};
@@ -72,8 +73,11 @@ my $delete_set              = $config->{'delete_set'};
 my $listtaxa                = $config->{'list-taxa'};
 my $listsets                = $config->{'list-sets'};
 my $listogs                 = $config->{'list-ogs'};
-my $isnucleotide            = $config->{'load-ogs-nucleotide'};
-my $ispeptide               = $config->{'load-ogs-peptide'};
+my $isnucleotide            = $config->{'load_ogs_nucleotide'};
+my $ispeptide               = $config->{'load_ogs_peptide'};
+
+# other variables
+my $verbose                 = $config->{'verbose'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute_u_with'};
@@ -107,7 +111,7 @@ my $temptable         = $mysql_table_temp;
 my $total_seqs        = 0;
 my %names             = ( );
 
-my $infile = shift @ARGV;
+my $infile = '';
 
 unless (defined $mysql_dbuser and defined $mysql_dbpwd ) {
 	die "Fatal: You must specify database username (--mysql_dbuser) and password (--mysql_dbpassword) AND core-ortholog set name (-s).\n";
@@ -131,11 +135,11 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will create a new orthograph database called $mysql_dbname. Any existing database structures will be erased. Are you sure (y/n)? ";
+	print "This will create a new Orthograph database called '$mysql_dbname'. Any existing database structures will be erased. Are you sure (y/n)? ";
 	&get_yn() or exit;
 	&drop_tables;
 	&create_tables;
-	print "Created Orthograph database.\n";
+	print "Created Orthograph database '$mysql_dbname'.\n";
 	exit;
 }
 
@@ -169,11 +173,13 @@ elsif ($listtaxa) {
 }
 
 elsif ($isnucleotide) {
+	$infile = $isnucleotide;
 	# 0 for nucleotide
 	&load_taxon($infile, 0) or die("Fatal: Nucleotide loading failed\n");
 	exit;
 }
 elsif ($ispeptide) {
+	$infile = $ispeptide;
 	unless ($blastdir) {
 		$blastdir = &getblastdir();
 	}
