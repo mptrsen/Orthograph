@@ -424,7 +424,7 @@ sub mysql_check {#{{{
 
 # drop all tables. no really, all that start with $prefix.
 sub drop_tables {#{{{
-	my $dbh = Wrapper::Mysql::mysql_dbh() or exit(1)
+	my $dbh = Wrapper::Mysql::mysql_dbh() or exit(1);
 	print 'DROPing tables: ', join(", ", values(%t)), "\n" if $verbose;
 	foreach my $table (keys(%t)) {
 		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
