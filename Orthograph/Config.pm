@@ -109,6 +109,7 @@ defined $config->{'mysql_table_orthologs'}      or $config->{'mysql_table_orthol
 defined $config->{'mysql_table_sequence_pairs'} or $config->{'mysql_table_sequence_pairs'} = 'sequence_pairs';
 defined $config->{'mysql_table_sequence_types'} or $config->{'mysql_table_sequence_types'} = 'sequence_types';
 defined $config->{'mysql_table_set_details'}    or $config->{'mysql_table_set_details'}    = 'set_details';
+defined $config->{'mysql_table_temp'}           or $config->{'mysql_table_temp'}           = 'temp';
 defined $config->{'mysql_table_taxa'}           or $config->{'mysql_table_taxa'}           = 'taxa';
 defined $config->{'mysql_table_users'}          or $config->{'mysql_table_users'}          = 'users';
 
