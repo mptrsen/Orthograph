@@ -28,6 +28,7 @@ GetOptions( $config,
   'blast_score_threshold',
   'blastoutdir',
   'blastp_output_dir',
+	'create',
   'clear_database',
   'clear_files',
   'debug',
@@ -133,6 +134,7 @@ defined $config->{'blast_max_hits'}             or $config->{'blast_max_hits'}  
 defined $config->{'blast_program'}              or $config->{'blast_program'}              = 'blastp';
 defined $config->{'blast_score_threshold'}      or $config->{'blast_score_threshold'}      = 10;
 defined $config->{'blastoutdir'}                or $config->{'blastoutdir'}                = basename($config->{'blast_program'});
+defined $config->{'create'}                     or $config->{'create'}                      = 0;
 defined $config->{'clear_results_from_database'} or $config->{'clear_results_from_database'} = 1;
 defined $config->{'clear_result_files'}         or $config->{'clear_result_files'}         = 0;
 defined $config->{'debug'}                      or $config->{'debug'}                      = 0;
@@ -146,7 +148,7 @@ defined $config->{'makeblastdb_program'}        or $config->{'makeblastdb_progra
 defined $config->{'translate_program'}          or $config->{'translate_program'}          = 'fastatranslate';
 defined $config->{'hmmsearch_score_threshold'}  or $config->{'hmmsearch_score_threshold'}  = $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
 defined $config->{'logfile'}                    or $config->{'logfile'}                    = '';
-defined $config->{'max_blast_searches'}         or $config->{'max_blast_searches'}         = 100;
+defined $config->{'max_blast_searches'}         or $config->{'max_blast_searches'}         = 1000;
 defined $config->{'ortholog_set'}               or $config->{'ortholog_set'}               = '';
 defined $config->{'output_directory'}           or $config->{'output_directory'}           = '';
 defined $config->{'quiet'}                      or $config->{'quiet'}                      = 0;  # I like my quiet

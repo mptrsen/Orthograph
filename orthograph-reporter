@@ -154,6 +154,8 @@ my $transcripts_mapped_to = { };
 # this will hold all transcripts that were found so we can check for redundancy
 my @transcript_list;
 
+print "The first query may take a while, please be patient...\n" unless $quiet;
+
 # okay let's do the loop come on baby let's do the loop
 BIN:
 foreach my $bin (@$logevalues_bins) {

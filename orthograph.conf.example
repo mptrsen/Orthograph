@@ -16,9 +16,9 @@
 #
 # # MySQL connection settings.
 #
-mysql_dbuser       = USERNAME
-mysql_dbpassword   = PASSWORD
-mysql_dbname       = DATABASE
+mysql_username     = USERNAME
+mysql_password     = PASSWORD
+mysql_database     = DATABASE
 
 # The path to your transcriptome data file. It is always best to use absolute
 # paths. You may only supply one file, not a directory of files.
@@ -120,8 +120,8 @@ blast_evalue_threshold     = 1e-05
 # normally don't want to do. Unless you have an idea of how many reciprocal
 # searches are required to effectively verify or reject a candidate ortholog,
 # don't change this setting. 
-# Defaults to 100.
-#max_blast_searches         = 100
+# Defaults to 1000.
+#max_blast_searches         = 1000
 
 # The soft threshold is a special concept of Orthograph: While checking in
 # strict mode (see below) whether the reciprocal hits are part of the ortholog
