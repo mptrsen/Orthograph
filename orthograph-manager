@@ -120,6 +120,9 @@ $name = $mysql_dbuser unless defined($name);
 # # if you really want to delete everything...
 #-------------------------------------------------- 
 if ($delete_all) {
+	print "This will erase your Orthograph database structure. Are you sure (y/n)? ";
+	&get_yn() or exit;
+	print "OK, whatever you say.\n";
 	&drop_tables;
 	print "OK.\n";
 	exit;
@@ -128,12 +131,11 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will create a new orthograph database. Any existing database structures will be erased. Are you sure (y/n)? ";
+	print "This will create a new orthograph database called $mysql_dbname. Any existing database structures will be erased. Are you sure (y/n)? ";
 	&get_yn() or exit;
-	print "OK, whatever you say.\n";
 	&drop_tables;
 	&create_tables;
-	print "Database cleared\n";
+	print "Created Orthograph database.\n";
 	exit;
 }
 
@@ -422,8 +424,8 @@ sub mysql_check {#{{{
 
 # drop all tables. no really, all that start with $prefix.
 sub drop_tables {#{{{
-	my $dbh = Wrapper::Mysql::mysql_dbh() or die "Could not connect to MySQL database server: $!\n";
-	print 'DROPing tables: ', join(", ", values(%t)), "\n";
+	my $dbh = Wrapper::Mysql::mysql_dbh() or exit(1)
+	print 'DROPing tables: ', join(", ", values(%t)), "\n" if $verbose;
 	foreach my $table (keys(%t)) {
 		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
 	}
@@ -513,7 +515,7 @@ sub create_tables {#{{{
 
 	my $dbh = Wrapper::Mysql::mysql_dbh();
 	foreach (values %create_table) {
-		print $_, ";\n";
+		print $_, ";\n" if $verbose;
 		$dbh->do($_) or die "Could not exec query: $!\n";
 	}
 	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
