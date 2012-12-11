@@ -133,7 +133,7 @@ undef %C;
 # more variables
 
 defined $config->{'aaoutdir'}                    or $config->{'aaoutdir'}                   = 'aa';
-defined $config->{'alignment_program'}           or $config->{'alignment_program'}          = 'alignment';
+defined $config->{'alignment_program'}           or $config->{'alignment_program'}          = 'mafft-linsi';
 defined $config->{'backup_extension'}            or $config->{'backup_extension'}           = '.bak';
 defined $config->{'blast_evalue_threshold'}      or $config->{'blast_evalue_threshold'}     = 10;
 defined $config->{'blast_max_hits'}              or $config->{'blast_max_hits'}             = 10;
@@ -163,6 +163,7 @@ defined $config->{'logfile'}                     or $config->{'logfile'}        
 defined $config->{'max_blast_searches'}          or $config->{'max_blast_searches'}         = 1000;
 defined $config->{'ortholog_set'}                or $config->{'ortholog_set'}               = '';
 defined $config->{'output_directory'}            or $config->{'output_directory'}           = '';
+defined $config->{'prepare'}                     or $config->{'prepare'}                    = 0;  
 defined $config->{'quiet'}                       or $config->{'quiet'}                      = 0;  # I like my quiet
 defined $config->{'reference_taxa'}              or $config->{'reference_taxa'}             = '';
 defined $config->{'sets_dir'}                    or $config->{'sets_dir'}                   = 'sets';
