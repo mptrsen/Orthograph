@@ -32,8 +32,8 @@ At the moment, threads are not implemented anyway.
 QUICKSTART
 ==========
 
-For a fast start into analysis using Orthograph, follow these steps. This
-assumes all required software packages are installed and work. 
+For a fast start into analysis using Orthograph, follow these steps. They
+assume that all required software packages are installed and work. 
 
 0. These conventions are used throughout this documentation:
 
@@ -45,7 +45,7 @@ not part of the command.
   mysql> SOME STATEMENT;
 
 This means you should enter SOME STATEMENT at the MySQL prompt. The 'mysql>' is
-not part of the statement.
+not part of the statement, but the semicolon is.
 
 1. Set up the MySQL database. 
 
@@ -55,22 +55,23 @@ what your credentials are).
 There must exist a database for your usage and a database user must have the
 usual permissions on it. If you are the administrator of your local machine and
 installed MySQL yourself, you have those privileges. However, you should never
-do ordinary work as root (the administrator), so login to MySQL as root:
+do ordinary work as root (the administrator), so let's create a working user.
+Login to MySQL as root:
 
   $ mysql -u root -p
-	Enter password:
+  Enter password:
 
-You will be greeted by MySQL and then given a new prompt. Issue the following
-statement:
+Enter the MySQL administrator password. You will be greeted by MySQL and then
+given a new prompt. Issue the following statement:
 
   mysql> CREATE USER 'USERNAME'@'localhost' IDENTIFIED BY 'PASSWORD';
 
-Substitute USERNAME and PASSWORD with your username and password of choice.
-The single quotes are important.  Next, you need to create a database and grant
-the working user the necessary permissions on it:
+Substitute USERNAME and PASSWORD with your username and password of choice. The
+single quotes are important. Next, you will create a database and grant the
+working user the necessary permissions on it:
 
   mysql> CREATE DATABASE orthograph;
-	mysql> GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';
+  mysql> GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';
 
 You may use a different database name, of course. Make a note of your new user
 name, the password and the database name. You will need it later.
@@ -91,8 +92,8 @@ work.
 
 3. Create the tables. Make the orthograph_manager script executable and use it:
 
-	$ chmod +x orthograph-manager
-	$ ./orthograph-manager -create
+  $ chmod +x orthograph-manager
+  $ ./orthograph-manager -create
 
 The -create switch tells the script to setup the database structure for
 Orthograph.  It will create a number of tables, all of which start with the
@@ -100,7 +101,7 @@ prefix 'orthograph_'.
 
 4. Upload your ortholog set into the database:
 
-	$ ./orthograph-manager FASTAFILE
+  $ ./orthograph-manager FASTAFILE
 
 You will be asked for information about the ortholog set you are loading. If
 you made a mistake during input of the information, you may cancel the process
@@ -123,7 +124,7 @@ name. You will need it later.
 
 5. Load proteome sequences into the database :
 
-	$ ./orthograph-manager -load_ogs_peptide FASTAFILE
+  $ ./orthograph-manager -load_ogs_peptide FASTAFILE
 
 You need to load data for every taxon separately (this may change in the
 future), and you should load data for as many taxa in the orthologs file as
@@ -141,27 +142,35 @@ process at any time using Ctrl+C.
 
 6. Optional: Load nucleotide data into the database:
 
-	$ ./orthograph-manager -load_ogs_nucleotide FASTAFILE
+  $ ./orthograph-manager -load_ogs_nucleotide FASTAFILE
 
 At the moment, output of nucleotide data is not implemented anyway, so skip this
 step. 
 
-7. Create the required database structure for Orthograph. Make orthograph
-executable and run it with the -prepare option:
+7. Create the required database structure for Orthograph. Make
+orthograph-analyzer executable and run it with the -prepare option:
 
-	$ chmod +x orthograph-analyzer
-	$ ./orthograph-analyzer -prepare
+  $ chmod +x orthograph-analyzer
+  $ ./orthograph-analyzer -prepare
 
-If you didn't save your config file as orthograph.conf, you must tell
-Orthograph where to find the config file with the -c option:
+If you saved your config file as something else than orthograph.conf, you must
+tell Orthograph where to find the config file with the -c option:
 
-	$ ./orthograph-analyzer -c CONFIGFILE -prepare
+  $ ./orthograph-analyzer -c CONFIGFILE -prepare
 
-8. Start Orthograph! 
+This is useful if you want to run multiple analyses using different config
+files.
+
+8. Complete your config file if you didn't fill out everything before.
+
+Supply the rest of the mandatory settings and consider changing some optional
+ones.
+
+9. Start Orthograph! 
 
   $ ./orthograph-analyzer
 
-9. Get some coffee, sit back and watch (or do something else).
+10. Get some coffee, sit back and watch (or do something else).
 
 Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog
 set, if they don't exist. This may take a long time depending on the size of
@@ -184,9 +193,9 @@ c) aa. This contains the actual result of your analysis. The hit sequences are
 output along with the core-ortholog sequences from your ortholog set, grouped
 by ortholog groups.
 
-11. ???
+12. ???
 
-12. Profit!
+13. Profit!
 
 
 COMMON PROBLEMS
