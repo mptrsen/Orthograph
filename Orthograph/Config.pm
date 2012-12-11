@@ -134,7 +134,7 @@ undef %C;
 # more variables
 
 defined $config->{'aaoutdir'}                    or $config->{'aaoutdir'}                   = 'aa';
-defined $config->{'alignment_program'}           or $config->{'alignment_program'}          = 'mafft-linsi';
+defined $config->{'alignment_program'}           or $config->{'alignment_program'}          = 'mafft-linsi --anysymbol';
 defined $config->{'backup_extension'}            or $config->{'backup_extension'}           = '.bak';
 defined $config->{'blast_evalue_threshold'}      or $config->{'blast_evalue_threshold'}     = 10;
 defined $config->{'blast_max_hits'}              or $config->{'blast_max_hits'}             = 10;
