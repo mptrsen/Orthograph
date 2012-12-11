@@ -9,6 +9,7 @@ Orthograph requires the following software packages to be installed on the syste
 Package      Version Download from
 -------------------------------------------------------------------------------
 MySQL        5.1     http://www.mysql.com
+MAFFT        6.951   http://mafft.cbrc.jp/alignment/software/
 HMMer3       3.0     http://hmmer.janelia.org
 NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
@@ -31,59 +32,98 @@ At the moment, threads are not implemented anyway.
 QUICKSTART
 ==========
 
-For a fast start into analysis using Orthograph, follow these steps. If anything
-doesn't work, you'll have to read the rest of this document to find out why :-)
+For a fast start into analysis using Orthograph, follow these steps. This
+assumes all required software packages are installed and work. 
+
+0. These conventions are used throughout this documentation:
+
+  $ some_command
+
+This means you should enter some_command at the shell prompt. The '$' sigil is
+not part of the command.
+
+  mysql> SOME STATEMENT;
+
+This means you should enter SOME STATEMENT at the MySQL prompt. The 'mysql>' is
+not part of the statement.
 
 1. Set up the MySQL database. 
 
-There must exist a database for your usage and a database user must have
-permissions to DROP and CREATE tables and of course to SELECT, DELETE and
-INSERT into them. If you are the administrator of your local machine and
-installed MySQL yourself, you have those privileges, so login to MySQL and
-issue the following statement:
+Skip this step if you already have a MySQL account and a database (and know
+what your credentials are).
 
-CREATE DATABASE orthograph;
+There must exist a database for your usage and a database user must have the
+usual permissions on it. If you are the administrator of your local machine and
+installed MySQL yourself, you have those privileges. However, you should never
+do ordinary work as root (the administrator), so login to MySQL as root:
 
-You may use a different database name, of course. Make a note of the name. You
-will need it later.
+  $ mysql -u root -p
+	Enter password:
 
-2. Create the tables. Make the orthograph_manager script executable and use it:
+You will be greeted by MySQL and then given a new prompt. Issue the following
+statement:
 
-	chmod +x orthograph-manager
-	./orthograph-manager -u USERNAME -p PASSWORD -D DBNAME -create
+  mysql> CREATE USER 'USERNAME'@'localhost' IDENTIFIED BY 'PASSWORD';
 
-Supply MySQL username, password and the database name (default: 'orthograph'). The
--create switch tells the script to setup the database structure for Orthograph.
-It will create a number of tables, all of which start with the prefix
-'orthograph_'. 
+Substitute USERNAME and PASSWORD with your username and password of choice.
+The single quotes are important.  Next, you need to create a database and grant
+the working user the necessary permissions on it:
 
-3. Upload your ortholog set into the database:
+  mysql> CREATE DATABASE orthograph;
+	mysql> GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';
 
-	./orthograph-manager -u USERNAME -p PASSWORD FASTAFILE
+You may use a different database name, of course. Make a note of your new user
+name, the password and the database name. You will need it later.
 
-Supply username and password and a fasta file. If you picked a database name
-other than 'orthograph', you must also provide it with the -D option:
+2. Create a config file. 
 
-	./orthograph-manager -u USERNAME -p PASSWORD -D DATABASE FASTAFILE
+Copy the supplied config file orthograph.conf.example to orthograph.conf and
+edit it. The file is commented to help you start off. Most options are
+self-explanatory. 
 
-You will be asked for information about the ortholog set you are loading. The
-fasta file must have an OrthoDB-style header format as in the following example:
+For now, it is sufficient to supply the MySQL settings (server, database,
+username, password). 
+
+Note: The config file is read by all three Orthograph tools. Especially the
+mandatory part of the file is important as it contains critical settings for
+the database interaction. Without these settings none of the programs will
+work.
+
+3. Create the tables. Make the orthograph_manager script executable and use it:
+
+	$ chmod +x orthograph-manager
+	$ ./orthograph-manager -create
+
+The -create switch tells the script to setup the database structure for
+Orthograph.  It will create a number of tables, all of which start with the
+prefix 'orthograph_'. 
+
+4. Upload your ortholog set into the database:
+
+	$ ./orthograph-manager FASTAFILE
+
+You will be asked for information about the ortholog set you are loading. If
+you made a mistake during input of the information, you may cancel the process
+at any time using Ctrl+C. I'm sorry if you mistyped the last taxon name and have
+to start over :)
+
+The fasta file must have an OrthoDB-style header format as in the following
+example:
 
 	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
 
-That is, there must exist five space-separated fields, the last one of which
-may contain whitespace as well. This is output by OrthoDB
-(http://cegg.unige.ch/orthodb5) by default, so you don't have to worry about
-that if you downloaded your ortholog set from OrthoDB.  However, dependent on
-your OrthoDB query, you may need to filter your file so that it contains only
-the taxa you want in the ortholog set. A filter script is provided upon
-request. If you didn't get your data from OrthoDB, read `perldoc
+That is, there must exist five space-separated fields, the last one of which may
+contain whitespace as well. This is output by OrthoDB [3] by default, so you
+don't have to worry about that if you downloaded your ortholog set from OrthoDB.
+However, dependent on your OrthoDB query, you may need to filter your file so
+that it contains only the taxa you want in the ortholog set. A filter script is
+provided upon request.  If you didn't get your data from OrthoDB, read `perldoc
 orthograph_manager` for further information. Make a note of your ortholog set
 name. You will need it later.
 
-4. Load proteome sequences into the database :
+5. Load proteome sequences into the database :
 
-	./orthograph-manager -u USERNAME -p PASSWORD -pep FASTAFILE
+	$ ./orthograph-manager -load_ogs_peptide FASTAFILE
 
 You need to load data for every taxon separately (this may change in the
 future), and you should load data for as many taxa in the orthologs file as
@@ -91,52 +131,35 @@ possible. You will be asked for information about the file you are loading.
 These sequences are used for the reciprocal BLAST databases. If you don't load
 any peptide data, your analysis will be flawed. 
 
-At least some of the protein IDs must correspond to the fourth header field in
-the OrthoDB file. Repeat this step for as many taxa in your ortholog set as you
-have peptide sequences for.
+Some of the protein IDs must correspond to the second header field in the
+OrthoDB file. This is important, as these are regarded as part of the ortholog
+groups. Repeat this step for as many taxa in your ortholog set as you have
+peptide sequences for.
 
 If you made a mistake during input of the information, you may cancel the
 process at any time using Ctrl+C. 
 
-5. Optional: Load nucleotide data into the database:
+6. Optional: Load nucleotide data into the database:
 
-	./orthograph-manager -u USERNAME -p PASSWORD -nuc FASTAFILE
+	$ ./orthograph-manager -load_ogs_nucleotide FASTAFILE
 
 At the moment, output of nucleotide data is not implemented anyway, so skip this
 step. 
 
-6. Create a config file. 
-
-Save the supplied config file orthograph.conf.example as orthograph.conf and
-edit it. The file is commented to help you start off. Most options are
-self-explanatory. 
-
-Note: The config file is read by all three Orthograph tools. Especially the
-mandatory part of the file is important as it contains critical variables for
-the database interaction. Without these settings none of the programs will
-work.
-
 7. Create the required database structure for Orthograph. Make orthograph
 executable and run it with the -prepare option:
 
-	chmod +x orthograph-analyzer
-	./orthograph-analyzer -prepare
+	$ chmod +x orthograph-analyzer
+	$ ./orthograph-analyzer -prepare
 
-If you picked a non-default database name AND you didn't save your config file
-as orthograph.conf, you must tell Orthograph where to find the config file with
-the -c option:
+If you didn't save your config file as orthograph.conf, you must tell
+Orthograph where to find the config file with the -c option:
 
-	./orthograph-analyzer -c CONFIGFILE -prepare
+	$ ./orthograph-analyzer -c CONFIGFILE -prepare
 
 8. Start Orthograph! 
 
-  ./orthograph-analyzer
-
-Orthograph expects its config file in orthograph.conf. If you didn't save your
-config file as orthograph.conf, you must tell Orthograph where it is with the
--c option:
-
-	./orthograph-analyzer -c CONFIGFILE
+  $ ./orthograph-analyzer
 
 9. Get some coffee, sit back and watch (or do something else).
 
@@ -150,12 +173,6 @@ are verified with a reciprocal search against the BLAST database of all
 proteomes. The results are cached in the database. Orthograph-reporter can
 afterwards be used to establish orthograph relationships and report about the
 results in various ways.
-
-10. At the moment, orthograph-analyzer generates output files. However, these
-should be taken with a grain of salt, as they mostly replicate the output of
-HaMStR, i.e., they are generated on a by-HMM basis, meaning redundancy may
-occur (non-unique ortholog assignment, duplicate assignment of transcripts
-etc.).
 
 The output directory contains three subdirectories:
 
@@ -176,8 +193,8 @@ COMMON PROBLEMS
 ===============
 "No sequences found. Something went wrong. Check your input file. Exiting." 
 
-Really check your input file. Is it empty? Is it a valid fasta file? If it looks
-ok, try deleting the translated version. 
+Really, check your input file. Is it empty? Is it a valid fasta file? If it
+looks ok, try deleting the translated version. 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++ The rest of this document is outdated! So is `perldoc orthograph`. +++
@@ -194,10 +211,10 @@ instructions.
 INVOCATION
 ==========
 
-Orthograph allows parsing a config file, which by default is named 'orthograph.conf'.
-Available options can be obtained using 'perldoc orthograph'. Many options can be
-set or overridden on the command line. For those switches, also see `perldoc
-orthograph`.
+Orthograph allows parsing a config file, which by default is named
+'orthograph.conf'.  Available options can be obtained using 'perldoc
+orthograph'. Many options can be set or overridden on the command line. For
+those switches, also see `perldoc orthograph`.
 
 MySQL PERFORMANCE
 =================
@@ -210,3 +227,4 @@ Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany
 
 [1] http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special systems
 [2] http://forums.mysql.com/read.php?51,389833,389833
+[3] http://cegg.unige.ch/orthodb5
