@@ -140,9 +140,9 @@ defined $config->{'blast_max_hits'}              or $config->{'blast_max_hits'} 
 defined $config->{'blast_program'}               or $config->{'blast_program'}              = 'blastp';
 defined $config->{'blast_score_threshold'}       or $config->{'blast_score_threshold'}      = 10;
 defined $config->{'blastoutdir'}                 or $config->{'blastoutdir'}                = basename($config->{'blast_program'});
-defined $config->{'create'}                      or $config->{'create'}                      = 0;
-defined $config->{'clear_results_from_database'} or $config->{'clear_results_from_database'} = 1;
 defined $config->{'clear_result_files'}          or $config->{'clear_result_files'}         = 0;
+defined $config->{'clear_results_from_database'} or $config->{'clear_results_from_database'} = 1;
+defined $config->{'create'}                      or $config->{'create'}                      = 0;
 defined $config->{'debug'}                       or $config->{'debug'}                      = 0;
 defined $config->{'delete_ogs'}                  or $config->{'delete_ogs'}                 = '';
 defined $config->{'delete_set'}                  or $config->{'delete_set'}                 = '';
@@ -152,14 +152,13 @@ defined $config->{'evalue_bin_size'}             or $config->{'evalue_bin_size'}
 defined $config->{'hmmbuild_program'}            or $config->{'hmmbuild_program'}           = 'hmmbuild';
 defined $config->{'hmmsearch_evalue_threshold'}  or $config->{'hmmsearch_evalue_threshold'} = undef;
 defined $config->{'hmmsearch_program'}           or $config->{'hmmsearch_program'}          = 'hmmsearch';
+defined $config->{'hmmsearch_program'}           or $config->{'hmmsearch_program'}          = 'hmmsearch';
+defined $config->{'hmmsearch_score_threshold'}   or $config->{'hmmsearch_score_threshold'}  = $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
 defined $config->{'hmmsearchoutdir'}             or $config->{'hmmsearchoutdir'}            = basename($config->{'hmmsearch_program'});
 defined $config->{'load-ogs-nucleotide'}         or $config->{'load-ogs-nucleotide'}        = '';
 defined $config->{'load-ogs-peptide'}            or $config->{'load-ogs-peptide'}           = '';
-defined $config->{'hmmsearch_program'}           or $config->{'hmmsearch_program'}          = 'hmmsearch';
-defined $config->{'makeblastdb_program'}         or $config->{'makeblastdb_program'}        = 'makeblastdb';
-defined $config->{'translate_program'}           or $config->{'translate_program'}          = 'fastatranslate';
-defined $config->{'hmmsearch_score_threshold'}   or $config->{'hmmsearch_score_threshold'}  = $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
 defined $config->{'logfile'}                     or $config->{'logfile'}                    = '';
+defined $config->{'makeblastdb_program'}         or $config->{'makeblastdb_program'}        = 'makeblastdb';
 defined $config->{'max_blast_searches'}          or $config->{'max_blast_searches'}         = 1000;
 defined $config->{'ortholog_set'}                or $config->{'ortholog_set'}               = '';
 defined $config->{'output_directory'}            or $config->{'output_directory'}           = '';
@@ -167,10 +166,11 @@ defined $config->{'prepare'}                     or $config->{'prepare'}        
 defined $config->{'quiet'}                       or $config->{'quiet'}                      = 0;  # I like my quiet
 defined $config->{'reference_taxa'}              or $config->{'reference_taxa'}             = '';
 defined $config->{'sets_dir'}                    or $config->{'sets_dir'}                   = 'sets';
-defined $config->{'species_name'}                or $config->{'species_name'}               = '';
 defined $config->{'soft_threshold'}              or $config->{'soft_threshold'}             = 5;
+defined $config->{'species_name'}                or $config->{'species_name'}               = '';
 # substitution character for selenocysteine, which normally leads to blast freaking out
 defined $config->{'substitute_u_with'}           or $config->{'substitute_u_with'}          = 'X';
+defined $config->{'translate_program'}           or $config->{'translate_program'}          = 'fastatranslate';
 defined $config->{'verbose'}                     or $config->{'verbose'}                    = 0;
 #}}}
 
