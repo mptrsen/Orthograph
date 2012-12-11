@@ -1100,10 +1100,10 @@ sub align {#{{{
 	my @alignment_cmd = qq($alignment_program $fafile 2> /dev/null);	# this prints the alignment to STDOUT, must be captured somehow
 	print $stdout "@alignment_cmd\n" if $debug;
 	my $alnf = File::Spec->catfile($alndir, $orthoid . '.aln.fa');
-	my $alnfh = IO::File->new($alnf, 'w')
-		or print $stderr "Fatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
 	my $aln = `@alignment_cmd`
 		or print $stderr "Fatal: Alignment for $orthoid failed: $?\n" and exit(1);
+	my $alnfh = IO::File->new($alnf, 'w')
+		or print $stderr "Fatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
 	print $alnfh $aln
 		or print $stderr "Fatal: Could not write alignment to file $alnf\: $!\n" and exit(1);
 	$alnfh->close();
@@ -1142,6 +1142,7 @@ sub hmmbuild {#{{{
 	my $hmmsuffix = '.hmm';
 	my $hmmname = basename($hmmfile, $hmmsuffix);
 	my @hmmbuild_cmd = qq($hmmbuild_program -n $hmmname $hmmfile $alnfile > /dev/null);
+	print $stdout "@hmmbuild_cmd\n" if $debug;
 	system(@hmmbuild_cmd) and
 		return 0;
 	return $hmmfile;
@@ -1187,6 +1188,7 @@ sub make_blastdb {#{{{
 
 	# make blast database
 	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset > /dev/null);
+	print $stdout "@makeblastdbcmd\n" if $debug;
 	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $!\n" and exit(1);
 	return $dbfile;
 }#}}}

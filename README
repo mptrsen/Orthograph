@@ -14,6 +14,9 @@ HMMer3       3.0     http://hmmer.janelia.org
 NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
 
+Make sure you get the correct versions (most packages are provided as 32 Bit and
+64 Bit versions).
+
 The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
 IO::Dir (used for platform-independent path handling) as well as DBI and
 DBD::Mysql for database handling and Digest::SHA should be present in your
