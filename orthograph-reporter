@@ -190,47 +190,11 @@ foreach my $bin (@$logevalues_bins) {
 
 			print "Checking $orthoid for ortholog hits...\n" if $verbose;
 
-			REHIT:
-			# sort by reciprocal hit evalue
-			foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list ) {
-				# find out if the aaseq_id is one of those used for this orthoid
-				#print $stdout "  checking out hit " , Dumper($reciprocal_hit) if $verbose;
+			
 
-				# has this aaseq been used in building this hmm and has this transcript
-				# not been found previously? 
-				# the function first from List::Util returns after the first occurence. 
-				if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
-					and not first {/$reciprocal_hit->{'hmmhit'}/} @transcript_list ) {
-
-					print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} used in $orthoid!\n" if $verbose;
-
-					$match = $reciprocal_hit;
-
-					# one hit is enough if not in strict mode
-					last REHIT unless $strict;
-				}
-				else {  # not found
-					# cry
-					++$mismatches;
-					print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
-
-					# in a strict search, that's it for this orthoid
-					next ORTHOID if $strict;
-
-					# no match
-					undef $match;
-
-					# too many mismatches, we don't trust this one anymore
-					if ($mismatches >= $max_mismatches) {
-						print $stdout "    Too many mismatches, we don't trust this one anymore.\n" if $verbose;
-						last REHIT;
-					}
-				}
-
-			# END RH
-			}
+			#-------------------------------------------------- 
 			# so, was this a match we can trust?
-			if ($match) {
+			if ($match = &get_reciprocal_match($orthoid, $list)) {
 
 				# yeah - here should be the part where the actual sequences are output
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
@@ -243,15 +207,15 @@ foreach my $bin (@$logevalues_bins) {
 
 				# if this orthoid has been hit before, check whether the new cancidate
 				# overlaps with previous hits
-				if (exists $$transcripts_mapped_to{$orthoid}) {
-					# yep, it overlaps, so we can't assign this transcript because better
-					# e-values have precedence. just go to the next one.
+				if (exists $transcripts_mapped_to->{$orthoid}) {
 					if (&overlap($transcripts_mapped_to->{$orthoid}, $match)) {
+						# yep, it overlaps, so we can't assign this transcript because better
+						# e-values have precedence. just go to the next one
 						printf $stdout "Overlap with previous hit for %s: discarded %s.\n", $orthoid, $match->{'hmmhit'} unless $quiet;
 						next ORTHOID;
 					}
-					# does not overlap, add to list of transcripts for this ortholog group
 					else {
+						# does not overlap, add to list of transcripts for this ortholog group
 						push @{ $transcripts_mapped_to->{$orthoid} }, $match;
 						printf $stdout "No overlap with previous hits: added %s to %s.\n", $match->{'hmmhit'}, $orthoid unless $quiet;
 						# this transcript can't be found again
@@ -261,7 +225,7 @@ foreach my $bin (@$logevalues_bins) {
 					}
 				}
 
-				# this has not been hit before, 
+				# this has not been hit before, just assign
 				printf $stdout "Assigned %s to %s\n", $match->{'hmmhit'}, $orthoid;
 				push @{ $transcripts_mapped_to->{$orthoid} }, $match;
 
@@ -289,9 +253,10 @@ foreach my $bin (@$logevalues_bins) {
 
 my $tfh = IO::File->new($tablefile, 'w')
 	or print $stderr "Fatal: Could not open table file $tablefile\: $!\n" and exit(1);
-while (my ($o, $t) = each %$transcripts_mapped_to) {
-	print $tfh $o;
-	foreach my $hit (sort { $a->{'start'} <=> $b->{'start'} } @$t) {
+while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
+	my $core_sequences = Wrapper::Mysql::get_ortholog_group($orthoid);
+	print $tfh $orthoid;
+	foreach my $hit (sort { $a->{'start'} <=> $b->{'start'} } @$transcripts) {
 		printf $tfh "\t%s[%d:%d]",
 			$hit->{'hmmhit'},
 			$hit->{'start'},
@@ -356,6 +321,48 @@ sub binify {
 	# in case there is only one bin (happens when there are only few results), return that
 	if (scalar @$bins == 0) { push @$bins, { 'min' => min(@bin), 'max' => max(@bin) } }
 	return $bins;
+}
+
+sub get_reciprocal_match {
+	my $orthoid = shift;
+	my $list = shift;
+	foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list ) {
+		# find out if the aaseq_id is one of those used for this orthoid
+		#print $stdout "  checking out hit " , Dumper($reciprocal_hit) if $verbose;
+
+		# has this aaseq been used in building this hmm and has this transcript
+		# not been found previously? 
+		# the function first from List::Util returns after the first occurence. 
+		if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
+			and not first {/$reciprocal_hit->{'hmmhit'}/} @transcript_list ) {
+
+			print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} used in $orthoid!\n" if $verbose;
+
+			$match = $reciprocal_hit;
+
+			# one hit is enough if not in strict mode
+			return $match unless $strict;
+		}
+		else {  # not found
+			# cry
+			++$mismatches;
+			print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
+
+			# in a strict search, that's it for this orthoid
+			return undef if $strict;
+
+			# no match
+			undef $match;
+
+			# too many mismatches, we don't trust this one anymore
+			if ($mismatches >= $max_mismatches) {
+				print $stdout "    Too many mismatches, we don't trust this one anymore.\n" if $verbose;
+				return undef;
+			}
+		}
+
+	# END RH
+	}
 }
 
 sub overlap {
