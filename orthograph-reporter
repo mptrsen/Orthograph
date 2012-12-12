@@ -26,6 +26,7 @@ use Carp;           # carp and croak: warn and die with call stack
 use Data::Dumper;   # great for debugging
 use DBD::mysql;     # MySQL database driver
 use DBI;            # database interface
+use Blah::Module;
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
