@@ -103,8 +103,9 @@ my $blast_max_hits             = $config->{'blast_max_hits'};
 my $blastoutdir                = $config->{'blastoutdir'};
 my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
 my $blast_score_threshold      = $config->{'blast_score_threshold'};
-my $clear_database             = $config->{'clear_results_from_database'};
-my $clear_files                = $config->{'clear_result_files'};
+my $clear_database             = $config->{'clear_database'};
+my $clear_files                = $config->{'clear_files'};
+my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
 my $estfile                    = $config->{'estfile'};
 my $hmmfile                    = $config->{'hmmfile'};
@@ -275,16 +276,15 @@ $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 # clear database of data from the same species
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
-	$t0 = Benchmark->new();
+	$t0 = scalar time;
 	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name!\n";
-	$t1 = Benchmark->new();
-	print $stdout "Deleted $n_deleted records from database.\n" unless $quiet;
-	print $stdout 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
+	$t1 = scalar time;
+	printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
 
-# create a new entry in the taxa table, returns taxid
-$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name) or print $stderr "Warning: Insertion of species name into database failed: $DBI::errstr";
-print $stdout "Created new taxon id $species_id for '$species_name'\n" unless $quiet;
+# get the taxon id. create a new entry in the taxa table or return existing one
+$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name) or print $stderr "Warning: Failed to get species id: $DBI::errstr";
+print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 
 # store est data into the database:
 print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
@@ -293,7 +293,7 @@ print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on
 $t0 = Benchmark->new();
 &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 $t1 = Benchmark->new();
-print $stdout 'Transaction took ', timestr(timediff($t1, $t0)), ".\n" unless $quiet;
+printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
 
 # get number of sequences for this species, report or die
@@ -690,15 +690,16 @@ sub intro {#{{{
 	}
 
 	# do the backup; create a tarball if desired
-	unless ($clear_files) {
-		my $tarfile = &create_tarball(@backup);
-		print $stdout "Old output files backed up in $tarfile.\n";
-		# and clear the directories
+	print $stdout "Backing up old output files...\n" unless $quiet;
+	my $tarfile = &create_tarball(@backup);
+	print $stdout "Old output files backed up in $tarfile.\n" unless $quiet;
+	undef(@backup);	# not needed anymore
+	undef($tarfile);
+	if ($clear_files) {
+		# empty the directories
 		&cleardir($hmmoutdir);
 		&cleardir($blastoutdir);
 		&cleardir($aaoutdir);
-		undef(@backup);	# not needed anymore
-		undef($tarfile);
 	}
 
 	# does the set exist?

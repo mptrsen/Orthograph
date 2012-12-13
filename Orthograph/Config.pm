@@ -20,38 +20,48 @@ our $config = &getconfig;
 #-------------------------------------------------- 
 #{{{
 GetOptions( $config,
-  'aaoutdir',
-  'alignment_program',
-  'backup_extension',
-  'blast_evalue_threshold',
-  'blast_score_threshold',
-  'blastoutdir',
-  'blastp_output_dir',
+	'continue',
 	'create',
-  'clear_database',
-  'clear_files',
-  'debug',
 	'delete_ogs',
 	'delete_set',
 	'destroy',
-  'estfile',
 	'evalue_bin_size=i',
-  'hmmsearch_evalue_threshold',
-  'hmmsearch_output_dir',
-  'hmmsearch_score_threshold',
 	'list-ests|le',
 	'list-ogs|lo',
 	'list-sets|ls',
 	'list-taxa|lt',
 	'load_ogs_nucleotide=s',
 	'load_ogs_peptide=s',
+	'prepare',
+  'aaoutdir',
+  'alignment_program',
+  'backup_extension',
+  'blast_evalue_threshold',
+  'blast_evalue_threshold=f',
+  'blast_max_hits=i',
+  'blast_score_threshold',
+  'blastoutdir',
+  'blastp_output_dir',
+  'clear_database',
+  'clear_files',
+  'configfile|c=s',
+  'debug',
+  'debug|d',
+  'estfile',
+  'estfile|E=s',
+  'hmmsearch_evalue_threshold',
+  'hmmsearch_evalue_threshold=f',
+  'hmmsearch_output_dir',
+  'hmmsearch_score=i',
+  'hmmsearch_score_threshold',
+  'hmmsearchprog=s',
   'logfile',
+  'logfile|log=s',
   'max_blast_searches',
   'mysql_database',
   'mysql_password',
-  'mysql_server',
-  'mysql_username',
   'mysql_prefix',
+  'mysql_server',
   'mysql_table_aaseqs',
   'mysql_table_blast',
   'mysql_table_blastdbs',
@@ -63,27 +73,18 @@ GetOptions( $config,
   'mysql_table_sequence_types',
   'mysql_table_set_details',
   'mysql_table_taxa',
+  'mysql_username',
   'ortholog_set',
   'output_directory',
-	'prepare',
+  'preparedb',
   'quiet',
+  'quiet|q',
   'reference_taxa=s',
   'reference_taxon=s',
   'sets_dir=s',
   'soft_threshold=i',
-  'substitute_u_with=s',
-  'blast_evalue_threshold=f',
-  'blast_max_hits=i',
-  'configfile|c=s',
-  'debug|d',
-  'estfile|E=s',
-  'hmmsearch_evalue_threshold=f',
-  'hmmsearch_score=i',
-  'hmmsearchprog=s',
-  'logfile|log=s',
-  'preparedb',
-  'quiet|q',
   'species_name=s',
+  'substitute_u_with=s',
   'verbose|v',
 ) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);#}}}
 
@@ -140,9 +141,10 @@ defined $config->{'blast_max_hits'}              or $config->{'blast_max_hits'} 
 defined $config->{'blast_program'}               or $config->{'blast_program'}              = 'blastp';
 defined $config->{'blast_score_threshold'}       or $config->{'blast_score_threshold'}      = 10;
 defined $config->{'blastoutdir'}                 or $config->{'blastoutdir'}                = basename($config->{'blast_program'});
-defined $config->{'clear_result_files'}          or $config->{'clear_result_files'}         = 0;
-defined $config->{'clear_results_from_database'} or $config->{'clear_results_from_database'} = 1;
-defined $config->{'create'}                      or $config->{'create'}                      = 0;
+defined $config->{'clear_files'}                 or $config->{'clear_files'}                = 0;
+defined $config->{'clear_database'}              or $config->{'clear_database'}             = 1;
+defined $config->{'continue'}                    or $config->{'continue'}                   = 0;
+defined $config->{'create'}                      or $config->{'create'}                     = 0;
 defined $config->{'debug'}                       or $config->{'debug'}                      = 0;
 defined $config->{'delete_ogs'}                  or $config->{'delete_ogs'}                 = '';
 defined $config->{'delete_set'}                  or $config->{'delete_set'}                 = '';
@@ -150,10 +152,10 @@ defined $config->{'destroy'}                     or $config->{'destroy'}        
 defined $config->{'estfile'}                     or $config->{'estfile'}                    = '';
 defined $config->{'evalue_bin_size'}             or $config->{'evalue_bin_size'}            = 500;
 defined $config->{'hmmbuild_program'}            or $config->{'hmmbuild_program'}           = 'hmmbuild';
-defined $config->{'hmmsearch_evalue_threshold'}  or $config->{'hmmsearch_evalue_threshold'} = undef;
+defined $config->{'hmmsearch_evalue_threshold'}  or $config->{'hmmsearch_evalue_threshold'} = defined $config->{'hmmsearch_score_threshold'} ? undef : 10;
 defined $config->{'hmmsearch_program'}           or $config->{'hmmsearch_program'}          = 'hmmsearch';
 defined $config->{'hmmsearch_program'}           or $config->{'hmmsearch_program'}          = 'hmmsearch';
-defined $config->{'hmmsearch_score_threshold'}   or $config->{'hmmsearch_score_threshold'}  = $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
+defined $config->{'hmmsearch_score_threshold'}   or $config->{'hmmsearch_score_threshold'}  = defined $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
 defined $config->{'hmmsearchoutdir'}             or $config->{'hmmsearchoutdir'}            = basename($config->{'hmmsearch_program'});
 defined $config->{'load-ogs-nucleotide'}         or $config->{'load-ogs-nucleotide'}        = '';
 defined $config->{'load-ogs-peptide'}            or $config->{'load-ogs-peptide'}           = '';

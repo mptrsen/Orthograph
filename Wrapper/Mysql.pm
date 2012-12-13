@@ -468,6 +468,7 @@ Returns the newly generated taxon ID.
 sub insert_taxon_into_table {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_taxon_into_table(SPECIESNAME)") }
+	if (my $taxid = &get_taxid_for_species($species_name)) { return $taxid }
 	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
