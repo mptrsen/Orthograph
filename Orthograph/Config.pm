@@ -176,6 +176,12 @@ defined $config->{'translate_program'}           or $config->{'translate_program
 defined $config->{'verbose'}                     or $config->{'verbose'}                    = 0;
 #}}}
 
+# compound options
+if ($config->{'continue'}) {
+	$config->{'clear_files'}    = 0;
+	$config->{'clear_database'} = 0;
+}
+
 # if something went wrong
 die unless $config;
 

@@ -290,9 +290,9 @@ print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 # LOAD DATA INFILE; third arg must be ref to array of column names
-$t0 = Benchmark->new();
+$t0 = scalar time;
 &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
-$t1 = Benchmark->new();
+$t1 = scalar time;
 printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
 
@@ -611,7 +611,7 @@ sub intro {#{{{
 		if ($verbose and $quiet);
 
 	# mutually exclusive options
-	print $stderr "Fatal: Can't use both e-value and score thresholds\n" and exit(1)
+	print $stderr "Fatal: Can't use both hmmsearch e-value and score thresholds\n" and exit(1)
 		if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold);
 
 	# the alignment directory (for ortholog set creation)
