@@ -47,10 +47,10 @@ my $config = $Orthograph::Config::config;
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
-my $mysql_dbname            = $config->{'mysql_database'};
-my $mysql_dbpwd             = $config->{'mysql_password'};
-my $mysql_dbserver          = $config->{'mysql_server'};
-my $mysql_dbuser            = $config->{'mysql_username'};
+my $mysql_dbname            = $config->{'mysql-database'};
+my $mysql_dbpwd             = $config->{'mysql-password'};
+my $mysql_dbserver          = $config->{'mysql-server'};
+my $mysql_dbuser            = $config->{'mysql-username'};
 my $mysql_table_blastdbs    = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests        = $config->{'mysql_table_ests'};
 my $mysql_table_hmmsearch   = $config->{'mysql_table_hmmsearch'};
@@ -68,19 +68,19 @@ my $mysql_table_users       = $config->{'mysql_table_users'};
 # Actions
 my $create                  = $config->{'create'};
 my $delete_all              = $config->{'destroy'};
-my $delete_ogs              = $config->{'delete_ogs'};
-my $delete_set              = $config->{'delete_set'};
+my $delete_ogs              = $config->{'delete-ogs'};
+my $delete_set              = $config->{'delete-set'};
 my $listtaxa                = $config->{'list-taxa'};
 my $listsets                = $config->{'list-sets'};
 my $listogs                 = $config->{'list-ogs'};
-my $isnucleotide            = $config->{'load_ogs_nucleotide'};
-my $ispeptide               = $config->{'load_ogs_peptide'};
+my $isnucleotide            = $config->{'load-ogs-nucleotide'};
+my $ispeptide               = $config->{'load-ogs-peptide'};
 
 # other variables
 my $verbose                 = $config->{'verbose'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst                 = $config->{'substitute_u_with'};
+my $u_subst                 = $config->{'substitute-u-with'};
 
 # table names. too lazy to change all of them, so i'll just reuse the old hash structure
 my %t            = (
@@ -114,7 +114,7 @@ my %names             = ( );
 my $infile = '';
 
 unless (defined $mysql_dbuser and defined $mysql_dbpwd ) {
-	die "Fatal: You must specify database username (--mysql_dbuser) and password (--mysql_dbpassword) AND core-ortholog set name (-s).\n";
+	die "Fatal: You must specify database username (--mysql-username) and password (--mysql-password).\n";
 }
 
 # name == username unless defined name

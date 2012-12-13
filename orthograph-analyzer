@@ -86,40 +86,41 @@ printf "%s = %s\n", $_, $config->{$_} foreach sort keys %$config;
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
-my $alignment_program          = $config->{'alignment_program'};
-my $hmmbuild_program           = $config->{'hmmbuild_program'};
-my $translateprog              = $config->{'translate_program'};
-my $hmmsearchprog              = $config->{'hmmsearch_program'};
-my $blastprog                  = $config->{'blast_program'};
-my $makeblastdbprog            = $config->{'makeblastdb_program'};
+my $alignment_program          = $config->{'alignment-program'};
+my $hmmbuild_program           = $config->{'hmmbuild-program'};
+my $translateprog              = $config->{'translate-program'};
+my $hmmsearchprog              = $config->{'hmmsearch-program'};
+my $blastprog                  = $config->{'blast-program'};
+my $makeblastdbprog            = $config->{'makeblastdb-program'};
 
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
 my $aaoutdir                   = $config->{'aaoutdir'};
-my $backup_ext                 = $config->{'backup_extension'};
-my $blast_max_hits             = $config->{'blast_max_hits'};
+my $backup_ext                 = $config->{'backup-extension'};
+my $blast_max_hits             = $config->{'blast-max-hits'};
 my $blastoutdir                = $config->{'blastoutdir'};
-my $blast_evalue_threshold     = $config->{'blast_evalue_threshold'};
-my $blast_score_threshold      = $config->{'blast_score_threshold'};
-my $clear_database             = $config->{'clear_database'};
-my $clear_files                = $config->{'clear_files'};
+my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
+my $blast_score_threshold      = $config->{'blast-score-threshold'};
+my $clear_database             = $config->{'clear-database'};
+my $clear_files                = $config->{'clear-files'};
+my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
 my $estfile                    = $config->{'estfile'};
 my $hmmfile                    = $config->{'hmmfile'};
-my $hmmoutdir                  = $config->{'hmmsearch_output_dir'};
-my $hmmsearch_evalue_threshold = $config->{'hmmsearch_evalue_threshold'};
-my $hmmsearch_score_threshold  = $config->{'hmmsearch_score_threshold'};
+my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
+my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
+my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $logfile                    = $config->{'logfile'};
-my $max_blast_searches         = $config->{'max_blast_searches'};
+my $max_blast_searches         = $config->{'max-blast-searches'};
 
 # MySQL settings
-my $mysql_dbname               = $config->{'mysql_database'};
-my $mysql_dbpwd                = $config->{'mysql_password'};
-my $mysql_dbserver             = $config->{'mysql_server'};
-my $mysql_dbuser               = $config->{'mysql_username'};
+my $mysql_dbname               = $config->{'mysql-database'};
+my $mysql_dbpwd                = $config->{'mysql-password'};
+my $mysql_dbserver             = $config->{'mysql-server'};
+my $mysql_dbuser               = $config->{'mysql-username'};
 
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
@@ -131,15 +132,15 @@ my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
 my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
 my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
 my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
-my $outdir                     = $config->{'output_directory'};
-my $orthoset                   = $config->{'ortholog_set'};
+my $outdir                     = $config->{'output-directory'};
+my $orthoset                   = $config->{'ortholog-set'};
 my $preparedb                  = $config->{'prepare'};
 my $quiet                      = $config->{'quiet'};
-my $reftaxa                    = $config->{'reference_taxa'};
+my $reftaxa                    = $config->{'reference-taxa'};
 # substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst                    = $config->{'substitute_u_with'};
-my $sets_dir                   = $config->{'sets_dir'};
-my $species_name               = $config->{'species_name'};
+my $u_subst                    = $config->{'substitute-u-with'};
+my $sets_dir                   = $config->{'sets-dir'};
+my $species_name               = $config->{'species-name'};
 my $verbose                    = $config->{'verbose'};
 #}}}
 
@@ -152,7 +153,6 @@ my $alndir                  = $EMPTY;
 my $blastcount              = 0;
 my $blastdb                 = $EMPTY;
 my $blasthitcount_total     = 0;
-my $configfile              = $EMPTY;
 my $count                   = 0;
 my $hmmcount                = 0;
 my $hmmdir                  = $EMPTY;
@@ -1228,6 +1228,7 @@ sub load_data_infile {#{{{
 		}
 		printf($tmpfh "%s,%d,%d,%s,%s\n", 
 			# good idea or not?
+			# good idea
 			Digest::SHA->sha256_hex($h, $s),
 			$species_id,
 			$timestamp_start,

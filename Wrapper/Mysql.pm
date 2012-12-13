@@ -34,10 +34,10 @@ use Data::Dumper;
 my $config = $Orthograph::Config::config;  # copy config
 
 # MySQL settings
-my $mysql_dbname               = $config->{'mysql_database'};
-my $mysql_dbpwd                = $config->{'mysql_password'};
-my $mysql_dbserver             = $config->{'mysql_server'};
-my $mysql_dbuser               = $config->{'mysql_username'};
+my $mysql_dbname               = $config->{'mysql-database'};
+my $mysql_dbpwd                = $config->{'mysql-password'};
+my $mysql_dbserver             = $config->{'mysql-server'};
+my $mysql_dbuser               = $config->{'mysql-username'};
 
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
@@ -65,14 +65,14 @@ my $mysql_col_sequence         = 'sequence';
 my $mysql_col_start            = 'start';
 my $mysql_col_target           = 'target';
 my $mysql_col_taxid            = 'taxid';
-my $outdir                     = $config->{'output_directory'};
-my $orthoset                   = $config->{'ortholog_set'};
+my $outdir                     = $config->{'output-directory'};
+my $orthoset                   = $config->{'ortholog-set'};
 my $quiet                      = $config->{'quiet'};
-my $reftaxa                    = $config->{'reference_taxa'};
+my $reftaxa                    = $config->{'reference-taxa'};
 # substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst                    = $config->{'substitute_u_with'};
-my $sets_dir                   = $config->{'sets_dir'};
-my $species_name               = $config->{'species_name'};
+my $u_subst                    = $config->{'substitute-u-with'};
+my $sets_dir                   = $config->{'sets-dir'};
+my $species_name               = $config->{'species-name'};
 my $verbose                    = $config->{'verbose'};
 #}}}
 

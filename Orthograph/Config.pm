@@ -13,6 +13,7 @@ our @ISA = qw( Exporter );
 our @EXPORT_OK = qw( $config );
 
 my $program_name = 'Orthograph';
+my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');
 our $config = &getconfig; 
 
 #--------------------------------------------------
@@ -22,46 +23,46 @@ our $config = &getconfig;
 GetOptions( $config,
 	'continue',
 	'create',
-	'delete_ogs',
-	'delete_set',
+	'delete-ogs',
+	'delete-set',
 	'destroy',
-	'evalue_bin_size=i',
+	'evalue-bin-size=i',
 	'list-ests|le',
 	'list-ogs|lo',
 	'list-sets|ls',
 	'list-taxa|lt',
-	'load_ogs_nucleotide=s',
-	'load_ogs_peptide=s',
+	'load-ogs-nucleotide=s',
+	'load-ogs-peptide=s',
 	'prepare',
   'aaoutdir',
-  'alignment_program',
-  'backup_extension',
-  'blast_evalue_threshold',
-  'blast_evalue_threshold=f',
-  'blast_max_hits=i',
-  'blast_score_threshold',
+  'alignment-program',
+  'backup-extension',
+  'blast-evalue-threshold',
+  'blast-evalue-threshold=f',
+  'blast-max-hits=i',
+  'blast-score-threshold',
   'blastoutdir',
-  'blastp_output_dir',
-  'clear_database',
-  'clear_files',
+  'blastp-output-dir',
+  'clear-database!',
+  'clear-files!',
   'configfile|c=s',
   'debug',
   'debug|d',
   'estfile',
   'estfile|E=s',
-  'hmmsearch_evalue_threshold',
-  'hmmsearch_evalue_threshold=f',
-  'hmmsearch_output_dir',
-  'hmmsearch_score=i',
-  'hmmsearch_score_threshold',
+  'hmmsearch-evalue-threshold',
+  'hmmsearch-evalue-threshold=f',
+  'hmmsearch-output-dir',
+  'hmmsearch-score=i',
+  'hmmsearch-score-threshold',
   'hmmsearchprog=s',
   'logfile',
   'logfile|log=s',
-  'max_blast_searches',
-  'mysql_database',
-  'mysql_password',
-  'mysql_prefix',
-  'mysql_server',
+  'max-blast-searches',
+  'mysql-database',
+  'mysql-password',
+  'mysql-prefix',
+  'mysql-server',
   'mysql_table_aaseqs',
   'mysql_table_blast',
   'mysql_table_blastdbs',
@@ -73,18 +74,18 @@ GetOptions( $config,
   'mysql_table_sequence_types',
   'mysql_table_set_details',
   'mysql_table_taxa',
-  'mysql_username',
-  'ortholog_set',
-  'output_directory',
+  'mysql-username',
+  'ortholog-set',
+  'output-directory',
   'preparedb',
   'quiet',
   'quiet|q',
-  'reference_taxa=s',
-  'reference_taxon=s',
-  'sets_dir=s',
-  'soft_threshold=i',
-  'species_name=s',
-  'substitute_u_with=s',
+  'reference-taxa=s',
+  'reference-taxon=s',
+  'sets-dir=s',
+  'soft-threshold=i',
+  'species-name=s',
+  'substitute-u-with=s',
   'verbose|v',
 ) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);#}}}
 
@@ -96,11 +97,11 @@ GetOptions( $config,
 
 
 # MySQL settings
-defined $config->{'mysql_database'}              or $config->{'mysql_database'}               = 'orthograph';
-defined $config->{'mysql_password'}              or $config->{'mysql_password'}               = 'root';
-defined $config->{'mysql_server'}                or $config->{'mysql_server'}                 = 'localhost';
-defined $config->{'mysql_username'}              or $config->{'mysql_username'}               = 'root';
-defined $config->{'mysql_prefix'}                or $config->{'mysql_prefix'}                 = 'orthograph';
+defined $config->{'mysql-database'}              or $config->{'mysql-database'}               = 'orthograph';
+defined $config->{'mysql-password'}              or $config->{'mysql-password'}               = 'root';
+defined $config->{'mysql-server'}                or $config->{'mysql-server'}                 = 'localhost';
+defined $config->{'mysql-username'}              or $config->{'mysql-username'}               = 'root';
+defined $config->{'mysql-prefix'}                or $config->{'mysql-prefix'}                 = 'orthograph';
 
 # MySQL tables
 defined $config->{'mysql_table_aaseqs'}          or $config->{'mysql_table_aaseqs'}         = 'aaseqs';
@@ -120,7 +121,7 @@ defined $config->{'mysql_table_taxa'}            or $config->{'mysql_table_taxa'
 defined $config->{'mysql_table_users'}           or $config->{'mysql_table_users'}          = 'users';
 
 # make sure there is exactly one underscore at the end of the prefix
-(my $mysql_prefix = $config->{'mysql_prefix'}) =~ s/_*$/_/;
+(my $mysql_prefix = $config->{'mysql-prefix'}) =~ s/_*$/_/;
 
 # temporary hash to prepend the prefix
 my %C = map { $_ => $mysql_prefix . $config->{$_} } grep { $_ =~ /^mysql_table_/ } keys %$config;
@@ -134,52 +135,53 @@ undef %C;
 # more variables
 
 defined $config->{'aaoutdir'}                    or $config->{'aaoutdir'}                   = 'aa';
-defined $config->{'alignment_program'}           or $config->{'alignment_program'}          = 'mafft-linsi --anysymbol';
-defined $config->{'backup_extension'}            or $config->{'backup_extension'}           = '.bak';
-defined $config->{'blast_evalue_threshold'}      or $config->{'blast_evalue_threshold'}     = 10;
-defined $config->{'blast_max_hits'}              or $config->{'blast_max_hits'}             = 100;
-defined $config->{'blast_program'}               or $config->{'blast_program'}              = 'blastp';
-defined $config->{'blast_score_threshold'}       or $config->{'blast_score_threshold'}      = 10;
-defined $config->{'blastoutdir'}                 or $config->{'blastoutdir'}                = basename($config->{'blast_program'});
-defined $config->{'clear_files'}                 or $config->{'clear_files'}                = 0;
-defined $config->{'clear_database'}              or $config->{'clear_database'}             = 1;
+defined $config->{'alignment-program'}           or $config->{'alignment-program'}          = 'mafft-linsi --anysymbol';
+defined $config->{'backup-extension'}            or $config->{'backup-extension'}           = '.bak';
+defined $config->{'blast-evalue-threshold'}      or $config->{'blast-evalue-threshold'}     = 10;
+defined $config->{'blast-max-hits'}              or $config->{'blast-max-hits'}             = 100;
+defined $config->{'blast-program'}               or $config->{'blast-program'}              = 'blastp';
+defined $config->{'blast-score-threshold'}       or $config->{'blast-score-threshold'}      = 10;
+defined $config->{'blastoutdir'}                 or $config->{'blastoutdir'}                = basename($config->{'blast-program'});
+defined $config->{'clear-files'}                 or $config->{'clear-files'}                = 0;
+defined $config->{'clear-database'}              or $config->{'clear-database'}             = 1;
+defined $config->{'configfile'}                  or $config->{'configfile'}                 = $configfile;
 defined $config->{'continue'}                    or $config->{'continue'}                   = 0;
 defined $config->{'create'}                      or $config->{'create'}                     = 0;
 defined $config->{'debug'}                       or $config->{'debug'}                      = 0;
-defined $config->{'delete_ogs'}                  or $config->{'delete_ogs'}                 = '';
-defined $config->{'delete_set'}                  or $config->{'delete_set'}                 = '';
+defined $config->{'delete-ogs'}                  or $config->{'delete-ogs'}                 = '';
+defined $config->{'delete-set'}                  or $config->{'delete-set'}                 = '';
 defined $config->{'destroy'}                     or $config->{'destroy'}                    = 0;
 defined $config->{'estfile'}                     or $config->{'estfile'}                    = '';
-defined $config->{'evalue_bin_size'}             or $config->{'evalue_bin_size'}            = 500;
-defined $config->{'hmmbuild_program'}            or $config->{'hmmbuild_program'}           = 'hmmbuild';
-defined $config->{'hmmsearch_evalue_threshold'}  or $config->{'hmmsearch_evalue_threshold'} = defined $config->{'hmmsearch_score_threshold'} ? undef : 10;
-defined $config->{'hmmsearch_program'}           or $config->{'hmmsearch_program'}          = 'hmmsearch';
-defined $config->{'hmmsearch_program'}           or $config->{'hmmsearch_program'}          = 'hmmsearch';
-defined $config->{'hmmsearch_score_threshold'}   or $config->{'hmmsearch_score_threshold'}  = defined $config->{'hmmsearch_evalue_threshold'} ? undef : 10;
-defined $config->{'hmmsearchoutdir'}             or $config->{'hmmsearchoutdir'}            = basename($config->{'hmmsearch_program'});
+defined $config->{'evalue-bin-size'}             or $config->{'evalue-bin-size'}            = 500;
+defined $config->{'hmmbuild-program'}            or $config->{'hmmbuild-program'}           = 'hmmbuild';
+defined $config->{'hmmsearch-evalue-threshold'}  or $config->{'hmmsearch-evalue-threshold'} = defined $config->{'hmmsearch-score-threshold'} ? undef : 10;
+defined $config->{'hmmsearch-program'}           or $config->{'hmmsearch-program'}          = 'hmmsearch';
+defined $config->{'hmmsearch-program'}           or $config->{'hmmsearch-program'}          = 'hmmsearch';
+defined $config->{'hmmsearch-score-threshold'}   or $config->{'hmmsearch-score-threshold'}  = defined $config->{'hmmsearch-evalue-threshold'} ? undef : 10;
+defined $config->{'hmmsearchoutdir'}             or $config->{'hmmsearchoutdir'}            = basename($config->{'hmmsearch-program'});
 defined $config->{'load-ogs-nucleotide'}         or $config->{'load-ogs-nucleotide'}        = '';
 defined $config->{'load-ogs-peptide'}            or $config->{'load-ogs-peptide'}           = '';
 defined $config->{'logfile'}                     or $config->{'logfile'}                    = '';
-defined $config->{'makeblastdb_program'}         or $config->{'makeblastdb_program'}        = 'makeblastdb';
-defined $config->{'max_blast_searches'}          or $config->{'max_blast_searches'}         = 1000;
-defined $config->{'ortholog_set'}                or $config->{'ortholog_set'}               = '';
-defined $config->{'output_directory'}            or $config->{'output_directory'}           = '';
+defined $config->{'makeblastdb-program'}         or $config->{'makeblastdb-program'}        = 'makeblastdb';
+defined $config->{'max-blast-searches'}          or $config->{'max-blast-searches'}         = 1000;
+defined $config->{'ortholog-set'}                or $config->{'ortholog-set'}               = '';
+defined $config->{'output-directory'}            or $config->{'output-directory'}           = '';
 defined $config->{'prepare'}                     or $config->{'prepare'}                    = 0;  
 defined $config->{'quiet'}                       or $config->{'quiet'}                      = 0;  # I like my quiet
-defined $config->{'reference_taxa'}              or $config->{'reference_taxa'}             = '';
-defined $config->{'sets_dir'}                    or $config->{'sets_dir'}                   = 'sets';
-defined $config->{'soft_threshold'}              or $config->{'soft_threshold'}             = 5;
-defined $config->{'species_name'}                or $config->{'species_name'}               = '';
+defined $config->{'reference-taxa'}              or $config->{'reference-taxa'}             = '';
+defined $config->{'sets-dir'}                    or $config->{'sets-dir'}                   = 'sets';
+defined $config->{'soft-threshold'}              or $config->{'soft-threshold'}             = 5;
+defined $config->{'species-name'}                or $config->{'species-name'}               = '';
 # substitution character for selenocysteine, which normally leads to blast freaking out
-defined $config->{'substitute_u_with'}           or $config->{'substitute_u_with'}          = 'X';
-defined $config->{'translate_program'}           or $config->{'translate_program'}          = 'fastatranslate';
+defined $config->{'substitute-u-with'}           or $config->{'substitute-u-with'}          = 'X';
+defined $config->{'translate-program'}           or $config->{'translate-program'}          = 'fastatranslate';
 defined $config->{'verbose'}                     or $config->{'verbose'}                    = 0;
 #}}}
 
 # compound options
 if ($config->{'continue'}) {
-	$config->{'clear_files'}    = 0;
-	$config->{'clear_database'} = 0;
+	$config->{'clear-files'}    = 0;
+	$config->{'clear-database'} = 0;
 }
 
 # if something went wrong
@@ -194,7 +196,6 @@ Returns a hashref that contains all config variables from both the config file a
 =cut
 
 sub getconfig {
-	my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');
 	# in case the user tells us to use a different one with -c
 	$configfile = &get_configfile($configfile);
 
@@ -265,7 +266,7 @@ sub parse_config {#{{{
 	while (my $line = $fh->getline()) {
 		next if $line =~ /^\s*$/; # skip empty lines
 		next if $line =~ /^\s*#/; # skip comment lines starting with '#'
-		if ($line !~ /^\s*\w+\s*=\s*[\/]?\w+/) {
+		if ($line !~ /^\s*\S+\s*=\s*[\/]?\S+/) {
 			print "Fatal: Invalid format in line $. of config file $file:\n$line\n" and exit(1);
 		}
 		
