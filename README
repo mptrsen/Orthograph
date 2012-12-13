@@ -4,7 +4,11 @@ Hidden Markov models
 SYSTEM REQUIREMENTS
 ===================
 
-Orthograph requires the following software packages to be installed on the system:
+Orthograph requires the following software packages to be installed on the
+system. The whole package was tested and works with these versions, and newer
+versions should be no problem. Downwards compatibility (i.e., older versions)
+has not been tested. Should be fine, too, but be wary with MAFFT, its developers
+change or drop options frequently across versions.
 
 Package      Version Download from
 -------------------------------------------------------------------------------
@@ -14,17 +18,16 @@ HMMer3       3.0     http://hmmer.janelia.org
 NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
 
-Make sure you get the correct versions (most packages are provided as 32 Bit and
-64 Bit versions).
+Make sure you get the correct versions for your operating system (most packages
+are provided as 32 bit and 64 bit versions).
 
-The standard Perl modules File::Spec, File::Basename, File::Path, IO::File and
-IO::Dir (used for platform-independent path handling) as well as DBI and
-DBD::Mysql for database handling and Digest::SHA should be present in your
-Perl distribution. Update your Perl installation if not and see [1] and [2] if
-you are installing Orthograph on a Windows system under Cygwin. You might run into
-problems getting the MySQL driver, HMMer3 and Exonerate to work. Don't use
-Windows.
+Don't worry about your Perl version if you run a reasonably recent Linux or UNIX
+system, but see [1] and [2] if you are trying to install Orthograph on a Windows
+system under Cygwin. You might run into problems getting the MySQL driver,
+HMMer3 and Exonerate to work. Really, don't use Windows. 
 
+If you get an error like "Can't locate Some/Module.pm in @INC", you need to
+update your Perl installation; see REQUIRED PERL MODULES for more information.
 If your Perl installation was not compiled with thread support, but you would
 like to use Orthograph with multithreading emulation on multiprocessor platforms,
 you may want to install the 'forks' module from CPAN. Alternatively, you can
@@ -233,6 +236,13 @@ MySQL PERFORMANCE
 
 Orthograph makes extensive use of MySQL query caching. For optimal performance,
 make sure that query caching is enabled in your MySQL instance.
+
+REQUIRED PERL MODULES
+=====================
+The following Perl modules should be present in any standard Perl distribution:
+File::Spec, File::Basename, File::Path, IO::File and IO::Dir (used for
+platform-independent path handling) as well as DBI and DBD::Mysql for database
+handling, Archive::Tar, Carp, Benchmark, FindBin, and Digest::SHA. 
 
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>

@@ -523,6 +523,20 @@ sub get_orthologs_for_set_hashref {
 	return $result;
 }
 
+=head2 get_ortholog_group($orthoid)
+
+Get a specific ortholog group, i.e. aa headers and sequences.
+
+=cut
+
+sub get_ortholog_group {
+	my $orthoid = shift;
+	my $query = "SELECT $mysql_table_aaseqs.$mysql_col_header,
+		$mysql_table_aaseqs.$mysql_col_sequence
+		FROM
+	";
+}
+
 =head2 get_hitlist_hashref(SPECIESID, SETID)
 
 Get the results in the form:
