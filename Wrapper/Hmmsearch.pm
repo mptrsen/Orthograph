@@ -153,17 +153,18 @@ sub search {#{{{
   my $outfile = File::Spec->catfile($outdir, basename($hmmfile).'.domtbl');
   # return right away if this search has been conducted before
   if (-e $outfile) {
+		print STDERR "HMMsearch output file exists in '$outfile'\n" if $debug;
     $self->resultfile($outfile);
     return $self;
   }
   else {
+		print STDERR "HMMsearch output file does not exist in '$outfile', conducting new search\n" if $debug;
 		my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
     my @hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option $hmmfile $protfile);
-    print STDERR "\n@hmmsearchline\n\n"
-      if $debug;
+    print STDERR "\n@hmmsearchline\n\n" if $debug;
     # do the search
     my $result = [ `@hmmsearchline` ];
-    confess("Fatal: hmmsearch failed on $protfile with HMM $hmmfile: $!")
+    confess("Fatal: hmmsearch failed on '$protfile' with HMM '$hmmfile': $!")
       unless (scalar @$result);
 		$self->{'resultfile'} = $outfile;
 		return $self;
