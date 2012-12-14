@@ -286,14 +286,16 @@ if ($clear_database) {
 $species_id = Wrapper::Mysql::insert_taxon_into_table($species_name) or print $stderr "Warning: Failed to get species id: $DBI::errstr";
 print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 
-# store est data into the database:
-print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+unless ($continue) {
+	# store est data into the database:
+	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
-# LOAD DATA INFILE; third arg must be ref to array of column names
-$t0 = scalar time;
-&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
-$t1 = scalar time;
-printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
+	# LOAD DATA INFILE; third arg must be ref to array of column names
+	$t0 = scalar time;
+	&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	$t1 = scalar time;
+	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
+}
 
 
 # get number of sequences for this species, report or die
@@ -551,7 +553,7 @@ sub intro {#{{{
 	else {
 		# no IO::Tee because the log dir has not been created yet 
 		$message .= "Output dir $outdir does not exist, creating...\n" unless $quiet;
-		&makedir($outdir) or die "Fatal: Failed to create directory $outdir\n";
+		&makedir($outdir) or die "Fatal: Failed to create output directory '$outdir'\n";
 	}
 
 	# the other dirs
@@ -858,6 +860,8 @@ sub preparedb {#{{{
 		$mysql_col_score         DOUBLE       NOT NULL,
 		$mysql_col_evalue        VARCHAR(100) NOT NULL,
 		$mysql_col_log_evalue     DOUBLE       NOT NULL DEFAULT '-999',
+		$mysql_col_start         INT UNSIGNED NOT NULL,
+		$mysql_col_end           INT UNSIGNED NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
@@ -929,7 +933,7 @@ sub clear_db {#{{{
 sub insert_results_into_table {#{{{
 	my $table = shift;
 	my $hits  = shift;
-	# may have been called with 3 args, then we are dealing with a blast result
+	# called with 3 args, we are dealing with a blast result
 	my $blastdb = (scalar @_ == 1) ? shift : undef;
 	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
 	my $hitcount;
@@ -943,8 +947,12 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_target`,
 			`$mysql_col_score`,
 			`$mysql_col_evalue`,
-			`$mysql_col_log_evalue`
+			`$mysql_col_log_evalue`,
+			`$mysql_col_start`,
+			`$mysql_col_end`,
 			) VALUES (
+			?,
+			?,
 			?,
 			?,
 			?,
@@ -965,13 +973,15 @@ sub insert_results_into_table {#{{{
 				$hit->{'score'},  # score
 				$hit->{'evalue'},  # evalue
 				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,  # natural logarithm only if not 0
+				$hit->{'start'},
+				$hit->{'end'},
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
 		$dbh->disconnect;
 		return $hitcount;
 	}
-	# this is a HMMsearch result, need 7 columns
+	# this is a HMMsearch result, need 8 columns
 	else {
 		# SQL query for pushing HMMsearch results to the db
 		my $query_insert_result = "INSERT IGNORE INTO $table (
