@@ -400,8 +400,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
-	&insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref());
-	print $stdout "     ... pushed to database.\n" if $verbose;
+	my $count = &insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref());
+	print $stdout "     ... pushed $count hits to database.\n" if $verbose;
 	++$hmmhitcount;
 	
 	#--------------------------------------------------
@@ -440,7 +440,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# generate a blast output file name from the HMM name and the hit number
 		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . $hmmresults[$n]->[0] . '-' . basename($blastdb) .  '.blast');
 
-		# do the blastp search; skip if no hits obtained
+		# do the blastp search
 		$blastobj->blastp($tmpfile, $blastoutfile);
 
 		printf($stdout "       %4d BLASTP hits detected for [%d] against %s, e-value below %2.1e\n",
@@ -455,8 +455,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		if ($blastobj->hitcount() == 0) { next HMMRESULT }
 
 		# insert the blast results into the db. 3-argument form.
-		&insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
-		print $stdout "            ... pushed to database.\n" if $verbose;
+		my $count = &insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+		print $stdout "            ... pushed $count hits to database.\n" if $verbose;
 	} #}}}
 
 	if ($hmmcount <= scalar(@hmmfiles) / 100) {
@@ -651,7 +651,7 @@ sub intro {#{{{
 			&cleardir($hmmoutdir);
 			print $stdout "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
 		}
-		else {
+		elsif ($backup) {
 			&schedule_for_backup($hmmoutdir);
 		}
 	}
@@ -667,7 +667,7 @@ sub intro {#{{{
 			&cleardir($blastoutdir);
 			print $stdout "Purged BLAST output dir $blastoutdir of old result files.\n" unless $quiet;
 		}
-		else {
+		elsif ($backup) {
 			&schedule_for_backup($blastoutdir);
 		}
   }
@@ -682,7 +682,7 @@ sub intro {#{{{
 			&cleardir($aaoutdir);
 			print $stdout "Purged AA output dir $aaoutdir of old result files.\n" unless $quiet;
 		}
-		else {
+		elsif ($backup) {
 			&schedule_for_backup($aaoutdir);
 		}
 	}
@@ -764,6 +764,9 @@ sub schedule_for_backup {#{{{
 		$dirh->close();
 	}
   elsif (-f $outfile) {
+		# yo dawg i heard you like backups so i made a backup of your backups... don't
+		next if $outfile =~ /^backup/;  
+		# ok, this file will be backed up
     push(@backup, $outfile);
   }
 	return 1;
@@ -828,26 +831,26 @@ sub preparedb {#{{{
 		`$mysql_col_hdr`       VARCHAR(255) NOT NULL,       
 		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
 		PRIMARY KEY (`$mysql_col_id`),
-		UNIQUE INDEX (`$mysql_col_digest`),
+		UNIQUE INDEX (`$mysql_col_digest`(4)),
 		INDEX (`$mysql_col_taxid`),
 		INDEX (`$mysql_col_hdr`)
 		)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		$mysql_col_id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		$mysql_col_taxid     INT UNSIGNED NOT NULL,       
-		$mysql_col_query     VARCHAR(255) NOT NULL,       
-		$mysql_col_target    CHAR(32)     NOT NULL,       
-		$mysql_col_score     DOUBLE       NOT NULL,
-		$mysql_col_evalue    VARCHAR(100) NOT NULL,
+		$mysql_col_id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		$mysql_col_taxid      INT UNSIGNED NOT NULL,       
+		$mysql_col_query      VARCHAR(255) NOT NULL,       
+		$mysql_col_target     CHAR(32)     NOT NULL,       
+		$mysql_col_score      DOUBLE       NOT NULL,
+		$mysql_col_evalue     VARCHAR(100) NOT NULL,
 		$mysql_col_log_evalue DOUBLE       NOT NULL DEFAULT '-999',
-		$mysql_col_start     INT          NOT NULL,
-		$mysql_col_end       INT          NOT NULL,
+		$mysql_col_start      INT UNSIGNED NOT NULL,
+		$mysql_col_end        INT UNSIGNED NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX ($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
-		INDEX ($mysql_col_target),
+		INDEX ($mysql_col_target(4)),
 		INDEX ($mysql_col_log_evalue)
 		)";
 	
@@ -859,13 +862,13 @@ sub preparedb {#{{{
 		$mysql_col_target        INT UNSIGNED NOT NULL,       
 		$mysql_col_score         DOUBLE       NOT NULL,
 		$mysql_col_evalue        VARCHAR(100) NOT NULL,
-		$mysql_col_log_evalue     DOUBLE       NOT NULL DEFAULT '-999',
+		$mysql_col_log_evalue    DOUBLE       NOT NULL DEFAULT '-999',
 		$mysql_col_start         INT UNSIGNED NOT NULL,
 		$mysql_col_end           INT UNSIGNED NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
 		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
-		INDEX ($mysql_col_query),
+		INDEX ($mysql_col_query(4)),
 		INDEX ($mysql_col_target),
 		INDEX ($mysql_col_log_evalue)
 		)";
@@ -913,7 +916,7 @@ sub clear_db {#{{{
 
 	# clear previous results from the same species
 	my $dbh = Wrapper::Mysql::mysql_dbh();
-	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch) {
+	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
 		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = ?";
 		my $sth = $dbh->prepare($query);
 		$n += $sth->execute( $specid );
@@ -949,7 +952,7 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_evalue`,
 			`$mysql_col_log_evalue`,
 			`$mysql_col_start`,
-			`$mysql_col_end`,
+			`$mysql_col_end`
 			) VALUES (
 			?,
 			?,
