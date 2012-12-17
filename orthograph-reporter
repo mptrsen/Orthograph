@@ -54,6 +54,7 @@ my $mysql_table_orthologs      = $config->{'orthologs'};
 
 # directory and output settings
 my $outdir                     = $config->{'output-directory'};
+my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir'});
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $quiet                      = $config->{'quiet'};
 my $verbose                    = $config->{'verbose'};
@@ -251,18 +252,37 @@ foreach my $bin (@$logevalues_bins) {
 
 
 
+# a tablefile
 my $tfh = IO::File->new($tablefile, 'w')
 	or print $stderr "Fatal: Could not open table file $tablefile\: $!\n" and exit(1);
+
+# walk the orthologs
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
-	my $core_sequences = Wrapper::Mysql::get_ortholog_group($orthoid);
+	my ($hdr, $seq);
 	print $tfh $orthoid;
 	foreach my $hit (sort { $a->{'start'} <=> $b->{'start'} } @$transcripts) {
 		printf $tfh "\t%s[%d:%d]",
 			$hit->{'hmmhit'},
 			$hit->{'start'},
 			$hit->{'end'};
+		$hdr .= $hit->{'header'} . ':[' . $hit->{'start'} . '-' . $hit->{'end'} . '] ';
+		$seq .= $hit->{'sequence'};
 	}
 	print $tfh "\n";
+
+	# get the core ortholog sequences for this group
+	my $core_sequences = Wrapper::Mysql::get_ortholog_group($set_id, $orthoid);
+	# new fasta file
+	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
+	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
+	# remove space at the end
+	chop $seq;
+	# join the headers
+	#$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'start'} . ':' . $_->{'end'} . ']' } @$transcripts );
+	# join the sequences
+	#$seq = join '', map { $_->{'sequence'} } @$transcripts ;
+	printf $fafh ">%s\n%s\n", $hdr, $seq;
+	undef $fafh;
 }
 undef $tfh;
 

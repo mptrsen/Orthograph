@@ -62,6 +62,7 @@ my $mysql_col_orthoid          = 'ortholog_gene_id';
 my $mysql_col_query            = 'query';
 my $mysql_col_setid            = 'setid';
 my $mysql_col_sequence         = 'sequence';
+my $mysql_col_seqpair          = 'sequence_pair';
 my $mysql_col_start            = 'start';
 my $mysql_col_target           = 'target';
 my $mysql_col_taxid            = 'taxid';
@@ -530,11 +531,24 @@ Get a specific ortholog group, i.e. aa headers and sequences.
 =cut
 
 sub get_ortholog_group {
+	my $setid   = shift;
 	my $orthoid = shift;
-	my $query = "SELECT $mysql_table_aaseqs.$mysql_col_header,
-		$mysql_table_aaseqs.$mysql_col_sequence
-		FROM
-	";
+	my $query = "SELECT DISTINCT 
+		$mysql_table_aaseqs.$mysql_col_header, $mysql_table_aaseqs.$mysql_col_sequence
+		FROM $mysql_table_aaseqs
+		LEFT JOIN $mysql_table_seqpairs
+			ON $mysql_table_aaseqs.$mysql_col_id = $mysql_table_seqpairs.$mysql_col_aaseq
+		LEFT JOIN $mysql_table_orthologs
+			ON $mysql_table_seqpairs.$mysql_col_id = $mysql_table_orthologs.$mysql_col_seqpair
+		WHERE $mysql_table_seqpairs.$mysql_col_id IS NOT NULL
+		AND   $mysql_table_orthologs.$mysql_col_seqpair IS NOT NULL
+		AND   $mysql_table_orthologs.$mysql_col_setid = ?
+		AND   $mysql_table_orthologs.$mysql_col_orthoid = ?";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute($setid, $orthoid);
+	my $data = $sth->fetchall_arrayref();
+	return $data;
 }
 
 =head2 get_hitlist_hashref(SPECIESID, SETID)
