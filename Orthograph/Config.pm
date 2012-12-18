@@ -163,7 +163,7 @@ defined $config->{'load-ogs-nucleotide'}         or $config->{'load-ogs-nucleoti
 defined $config->{'load-ogs-peptide'}            or $config->{'load-ogs-peptide'}           = '';
 defined $config->{'logfile'}                     or $config->{'logfile'}                    = '';
 defined $config->{'makeblastdb-program'}         or $config->{'makeblastdb-program'}        = 'makeblastdb';
-defined $config->{'max-blast-searches'}          or $config->{'max-blast-searches'}         = 1000;
+defined $config->{'max-blast-searches'}          or $config->{'max-blast-searches'}         = 100;
 defined $config->{'ortholog-set'}                or $config->{'ortholog-set'}               = '';
 defined $config->{'output-directory'}            or $config->{'output-directory'}           = '';
 defined $config->{'prepare'}                     or $config->{'prepare'}                    = 0;  
