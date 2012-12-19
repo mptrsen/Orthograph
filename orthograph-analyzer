@@ -98,6 +98,7 @@ my $makeblastdbprog            = $config->{'makeblastdb-program'};
 #-------------------------------------------------- 
 #{{{
 my $aaoutdir                   = $config->{'aaoutdir'};
+my $backup                     = $config->{'backup'};
 my $backup_ext                 = $config->{'backup-extension'};
 my $blast_max_hits             = $config->{'blast-max-hits'};
 my $blastoutdir                = $config->{'blastoutdir'};

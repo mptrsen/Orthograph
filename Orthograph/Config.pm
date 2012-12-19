@@ -36,6 +36,7 @@ GetOptions( $config,
 	'prepare',
   'aaoutdir',
   'alignment-program',
+	'backup',
   'backup-extension',
   'blast-evalue-threshold',
   'blast-evalue-threshold=f',
@@ -136,6 +137,7 @@ undef %C;
 
 defined $config->{'aaoutdir'}                    or $config->{'aaoutdir'}                   = 'aa';
 defined $config->{'alignment-program'}           or $config->{'alignment-program'}          = 'mafft-linsi --anysymbol';
+defined $config->{'backup'}                      or $config->{'backup'}                     = 1;
 defined $config->{'backup-extension'}            or $config->{'backup-extension'}           = '.bak';
 defined $config->{'blast-evalue-threshold'}      or $config->{'blast-evalue-threshold'}     = 10;
 defined $config->{'blast-max-hits'}              or $config->{'blast-max-hits'}             = 100;
