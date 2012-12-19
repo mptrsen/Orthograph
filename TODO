@@ -1,2 +1,2 @@
 use File::Find for the recursive directory walker
-Check whther the executables exist :P
+Check whether the executables exist :P
