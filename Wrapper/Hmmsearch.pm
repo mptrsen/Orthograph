@@ -99,7 +99,7 @@ sub searchprog {#{{{
 
 =head2 evalue_threshold
 
-Sets or returns the e-value threshold to use for the blastp search. Defaults to
+Sets or returns the e-value threshold to use for the HMM search. Defaults to
 10. Note that e-value and score thresholds are mutually exclusive; if you set
 one, this automatically unsets the other.
 
@@ -118,7 +118,7 @@ sub evalue_threshold {#{{{
 
 =head2 score_threshold
 
-Sets or returns the score threshold to use for the blastp search. Defaults to
+Sets or returns the score threshold to use for the HMM search. Defaults to
 0 (disabled). Note that e-value and score thresholds are mutually exclusive; if
 you set one, this automatically unsets the other.
 
