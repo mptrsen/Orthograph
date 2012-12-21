@@ -39,17 +39,18 @@ my $mysql_dbpwd                = $config->{'mysql-password'};
 my $mysql_dbserver             = $config->{'mysql-server'};
 my $mysql_dbuser               = $config->{'mysql-username'};
 
+my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests           = $config->{'mysql_table_ests'};
-my $mysql_table_ogs            = $config->{'mysql_table_ogs'};
 my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
 my $mysql_table_log_evalues    = $config->{'mysql_table_log_evalues'};
-my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
-my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
-my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
-my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
+my $mysql_table_ntseqs         = $config->{'mysql_table_ntseqs'};
+my $mysql_table_ogs            = $config->{'mysql_table_ogs'};
 my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
+my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
+my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
+my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
 my $mysql_col_aaseq            = 'aa_seq';
 my $mysql_col_digest           = 'digest';
 my $mysql_col_end              = 'end';
@@ -58,6 +59,7 @@ my $mysql_col_header           = 'header';
 my $mysql_col_id               = 'id';
 my $mysql_col_log_evalue       = 'log_evalue';
 my $mysql_col_name             = 'name';
+my $mysql_col_ntseq            = 'nt_seq';
 my $mysql_col_orthoid          = 'ortholog_gene_id';
 my $mysql_col_query            = 'query';
 my $mysql_col_setid            = 'setid';
@@ -775,4 +777,17 @@ sub get_hit_transcripts {
 	return @result;
 }
 	
+sub get_nuc_for_pep {
+	my $pepid = shift @_ or croak "Usage: get_nuc_for_pep(PEPTIDE_ID)\n";
+	my $query = "SELECT $mysql_table_seqpairs.$mysql_col_ntseq 
+		FROM $mysql_table_seqpairs
+		WHERE $mysql_table_seqpairs.$mysql_col_aaseq = ?";
+	print $query, "\n", $pepid, "\n";
+	my $dbh = &mysql_dbh();
+	my $sth = $dbh->prepare($query);
+	$sth->execute($pepid);
+	my $data = $sth->fetchall_arrayref();
+	print Dumper($data); exit;
+}
+
 1;

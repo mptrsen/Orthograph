@@ -116,6 +116,7 @@ my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $logfile                    = $config->{'logfile'};
 my $max_blast_searches         = $config->{'max-blast-searches'};
+my $makeset                    = $config->{'make-set'};
 
 # MySQL settings
 my $mysql_dbname               = $config->{'mysql-database'};
@@ -185,6 +186,7 @@ my $mysql_col_target        = 'target';
 my $mysql_col_taxid         = 'taxid';
 my $mysql_col_taxon         = 'taxon';
 my $mysql_dbi               = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
+my $num_bp                  = 0;
 my $num_ests                = 0;
 my $num_hmms                = 0;
 my $orthocount              = 0;
@@ -247,6 +249,9 @@ $hmmdir = &make_hmms($orthoset);
 # prepare the BLAST database
 $blastdb = &make_blastdb($set_id);
 
+# exit here if we were only supposed to create the set
+exit if $makeset;
+
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
@@ -293,7 +298,7 @@ unless ($continue) {
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	$num_bp = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 }
@@ -302,8 +307,9 @@ unless ($continue) {
 # get number of sequences for this species, report or die
 $num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
 if ($num_ests != 0) {
-	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
+	printf($stdout "%d sequences (%d total bp) of %s in database '%s' on %s. \n",
 		$num_ests,
+		$num_bp,
 		$species_name,
 		$mysql_dbname,
 		$mysql_dbserver) unless $quiet;
@@ -506,13 +512,13 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 $timestamp_end = scalar time();
 $timestamp_diff = $timestamp_end - $timestamp_start;
 printf $stdout "\n%s analysis for %s completed in %d seconds.\n", $program_name, $species_name, $timestamp_diff;
-printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and identified %d as putative 1:1 orthologs (%2.2f%%).\n",
+printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d total HMM hits (%.2f average hits per HMM).\n",
 	$num_ests,
 	$hmmcount,
-	$hmmhitcount,
-	$orthocount,
-	((100 * $orthocount) / $hmmcount);
-printf $stdout "Now go look in your output directory %s and run %s.\n", $outdir, 'orthograph-reporter';
+	$hmmhitcount_total,
+	$hmmhitcount_total / $hmmcount,
+;
+printf $stdout "Now run %s and go look in your output directory %s.\n", "'orthograph-reporter'", $outdir;
 
 # successfully exit :)
 exit(0);
@@ -1183,7 +1189,10 @@ sub make_blastdb {#{{{
 	# database not extant, we have to create it
 	print $stdout "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
 		unless $quiet;
-	my $infh = File::Temp->new();
+	my $infh = File::Temp->new( UNLINK => 0 );
+	# don't delete this file if debugging
+	$infh->unlink_on_destroy(0) if $debug;
+
 	# get the sequences from the database
 	my $sequences = Wrapper::Mysql::get_aaseqs_for_set($setid);
 
@@ -1217,6 +1226,7 @@ sub load_data_infile {#{{{
 	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
 	my $columns;
 	my $list;
+	my $bp = 0;
 	if (scalar(@_)) {
 		$columns = shift(@_);
 		unless (ref($columns)) {
@@ -1249,6 +1259,7 @@ sub load_data_infile {#{{{
 			$h,
 			$s
 		);
+		$bp += length $s;
 	}
 	$tmpfh->close();
 	# no need to close the protfh since we're already through it, it gets closed automagically
@@ -1262,7 +1273,7 @@ sub load_data_infile {#{{{
 	$num_ests = $sth->execute();
 	# disconnect ASAP and die if errors
 	$dbh->disconnect;
-	defined($DBI::errstr) ? die($DBI::errstr, "\n") :	return $num_ests;
+	defined($DBI::errstr) ? die($DBI::errstr, "\n") :	return $bp;
 }#}}}
 
 # Sub: get_transcripts 

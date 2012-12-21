@@ -37,6 +37,7 @@ use lib $FindBin::Bin;                 # $Bin is the directory of the original s
 use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
 use Wrapper::Mysql;
+use Wrapper::Exonerate;
 use IO::Tee;
 
 my $config = $Orthograph::Config::config;	# copy config variables
@@ -265,6 +266,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
 	print $tfh $orthoid;
 	foreach my $hit (@$transcripts) {
+		my $corresponding_nuc = Wrapper::Mysql::get_nuc_for_pep($hit->{'blast_hit'});
+		exit;
 		my $length = $hit->{'end'} - $hit->{'start'};
 		printf $tfh "\t%s[%d:%d]",
 			$hit->{'hmmhit'},

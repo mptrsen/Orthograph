@@ -59,6 +59,7 @@ GetOptions( $config,
   'hmmsearchprog=s',
   'logfile',
   'logfile|log=s',
+	'make-set',
   'max-blast-searches',
   'mysql-database',
   'mysql-password',
@@ -164,6 +165,7 @@ defined $config->{'hmmsearchoutdir'}             or $config->{'hmmsearchoutdir'}
 defined $config->{'load-ogs-nucleotide'}         or $config->{'load-ogs-nucleotide'}        = '';
 defined $config->{'load-ogs-peptide'}            or $config->{'load-ogs-peptide'}           = '';
 defined $config->{'logfile'}                     or $config->{'logfile'}                    = '';
+defined $config->{'make-set'}                    or $config->{'make-set'}                   = 0;
 defined $config->{'makeblastdb-program'}         or $config->{'makeblastdb-program'}        = 'makeblastdb';
 defined $config->{'max-blast-searches'}          or $config->{'max-blast-searches'}         = 100;
 defined $config->{'ortholog-set'}                or $config->{'ortholog-set'}               = '';
