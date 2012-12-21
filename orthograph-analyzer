@@ -1185,7 +1185,10 @@ sub make_blastdb {#{{{
 	# database not extant, we have to create it
 	print $stdout "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
 		unless $quiet;
-	my $infh = File::Temp->new();
+	my $infh = File::Temp->new( UNLINK => 0 );
+	# don't delete this file if debugging
+	$infh->unlink_on_destroy(0) if $debug;
+
 	# get the sequences from the database
 	my $sequences = Wrapper::Mysql::get_aaseqs_for_set($setid);
 
