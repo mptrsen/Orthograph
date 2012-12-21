@@ -3,6 +3,7 @@ package Wrapper::Exonerate;
 use strict;
 use warnings;
 use File::Basename; # basename of files
+use File::Temp;
 use IO::File; # object-oriented access to files
 use Carp; # extended dying functions
 use Data::Dumper;
@@ -118,13 +119,28 @@ sub search {
 	my $self = shift;
 	# some exonerate options
 	my $exonerate_model = $exhaustive ? 'protein2genome:bestfit' : 'protein2genome';
-	my $exonerate_exhaustive = $exhaustive ? '--exhaustive yes' : '';
+	my $exhaustive = $exhaustive ? '--exhaustive yes' : '';
 
 	# roll your own output for exonerate
 	my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
 
 	# the complete command line
-	my $exonerate_cmd = qq( $searchprog --score $self->score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exonerate_exhaustive $self->query_sequence $self->target_sequence 2> /dev/null );
+	my $exonerate_cmd = qq( $searchprog --score $self->score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exhaustive $self->query_file $self->target_file 2> /dev/null );
+
+}
+
+sub query_header {
+	my $self = shift;
+	if    (scalar @_ == 0) { return $self->{'query'}->{'header'} }
+	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->query_header($header)', "\n" }
+	$self->{'query'}->{'header'} = shift @_;
+}
+
+sub target_header {
+	my $self = shift;
+	if    (scalar @_ == 0) { return $self->{'target'}->{'header'} }
+	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->target_header($header)', "\n" }
+	$self->{'target'}->{'header'} = shift @_;
 }
 
 =head2 query_sequence
@@ -151,4 +167,26 @@ sub target_sequence {
 	if    (scalar @_ == 0) { return $self->{'target'}->{'sequence'} }
 	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->target_sequence($sequence)', "\n" }
 	$self->{'target'}->{'sequence'} = shift @_;
+}
+
+sub query_file {
+	my $self = shift;
+	unless (scalar @_ > 0) {
+		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open query file '$tmpfh' for writing: $!\n";
+		printf $tmpfh ">%s\n%s\n", $self->query_header, $self->query_sequence or confess "Fatal: Could not write to query file '$tmpfh': $!\n";
+		$self->{'queryfile'} = $tmpfh;
+		return 1;
+	}
+	return $self->{'queryfile'};
+}
+
+sub target_file {
+	my $self = shift;
+	unless (scalar @_ > 0) {
+		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open target file '$tmpfh' for writing: $!\n";
+		printf $tmpfh ">%s\n%s\n", $self->target_header, $self->target_sequence or confess "Fatal: Could not write to target file '$tmpfh': $!\n";
+		$self->{'targetfile'} = $tmpfh;
+		return 1;
+	}
+	return $self->{'targetfile'};
 }
