@@ -116,6 +116,7 @@ my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $logfile                    = $config->{'logfile'};
 my $max_blast_searches         = $config->{'max-blast-searches'};
+my $makeset                    = $config->{'make-set'};
 
 # MySQL settings
 my $mysql_dbname               = $config->{'mysql-database'};
@@ -247,6 +248,9 @@ $set_id = Wrapper::Mysql::get_set_id($orthoset);
 $hmmdir = &make_hmms($orthoset);
 # prepare the BLAST database
 $blastdb = &make_blastdb($set_id);
+
+# exit here if we were only supposed to create the set
+exit if $makeset;
 
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 

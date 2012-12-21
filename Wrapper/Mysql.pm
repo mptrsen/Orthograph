@@ -782,7 +782,7 @@ sub get_nuc_for_pep {
 	my $query = "SELECT $mysql_table_seqpairs.$mysql_col_ntseq 
 		FROM $mysql_table_seqpairs
 		WHERE $mysql_table_seqpairs.$mysql_col_aaseq = ?";
-	print $query, "\n", $pepid;
+	print $query, "\n", $pepid, "\n";
 	my $dbh = &mysql_dbh();
 	my $sth = $dbh->prepare($query);
 	$sth->execute($pepid);
