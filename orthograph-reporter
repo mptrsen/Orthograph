@@ -260,7 +260,7 @@ my $tfh = IO::File->new($tablefile, 'w')
 my $fill_with_x = 1;
 my $num_n = 0;
 
-# walk the orthologs
+# walk the orthologs, concatenate in order if multiple
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $prev_end);
 	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
@@ -291,10 +291,11 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my $core_sequences = Wrapper::Mysql::get_ortholog_group($set_id, $orthoid);
 	# new fasta file
 	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
+	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
 	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'start'} . '-' . $_->{'end'} . ']' } @$transcripts );
-	# join the sequences
+	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
 }
@@ -321,7 +322,8 @@ with the min and max boundary of the bin:
     }
   ]
 
-This is useful for constructing database queries using BETWEEN filters.
+This is useful for constructing database queries using BETWEEN filters, because
+these would take forever on very large datasets.
 
 =cut
 

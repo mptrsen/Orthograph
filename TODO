@@ -1,3 +1,4 @@
 use File::Find for the recursive directory walker
 Check whether the executables exist :P
 Make sure the user makes sure the OGS headers correspond!
+add seqtype col to est table, also load the original est file
