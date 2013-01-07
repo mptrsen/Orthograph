@@ -92,7 +92,20 @@ Returns: Database handle
 =cut
 
 sub mysql_dbh {#{{{
-	my $dbh = DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd);
+	my $dbh = undef;
+	my $timeout = 600;
+	my $slept = 0;
+	my $sleep_for = 10;
+
+	until ($dbh = DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd)) {
+		if ($slept >= $timeout) { 
+			carp "Warning: Connection retry timeout exceeded\n" and return undef;
+		}
+		carp "Warning: Connection failed, retrying in $sleep_for seconds\n";
+		sleep $sleep_for;
+		$slept += 10;
+	}
+
 	if ($dbh) { return $dbh }
 	return undef;
 }#}}}

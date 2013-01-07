@@ -287,7 +287,7 @@ $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = scalar time;
-	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name!\n";
+	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
 	$t1 = scalar time;
 	printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
@@ -847,6 +847,7 @@ sub preparedb {#{{{
 		UNIQUE INDEX (`$mysql_col_digest`(4)),
 		INDEX (`$mysql_col_taxid`),
 		INDEX (`$mysql_col_hdr`)
+		ENGINE=MyISAM
 		)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
