@@ -83,9 +83,10 @@ my $config = $Orthograph::Config::config;
 
 # report configuration
 $message .= "Using the following configuration settings:\n";
-foreach sort keys %$config {
+foreach (sort keys %$config) {
 	$message .= sprintf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
 }
+$message .= "\n";
 
 #--------------------------------------------------
 # # Programs in the order of their use
@@ -1300,6 +1301,7 @@ sub load_data_infile {#{{{
 	# afterwards re-index the table
 	print $stdout "Flushing tables...\n" if $verbose;
 	$dbh->do($query_flush_tables);
+	if (defined $DBI::errstr and $verbose) { print $stderr "Warning: Could not flush tables: $DBI::errstr\n" }
 	print $stdout "Disabling keys on $table_ests...\n" if $verbose;
 	$dbh->do($query_disable_keys);
 	my $sth = $dbh->prepare($query);
@@ -1308,6 +1310,7 @@ sub load_data_infile {#{{{
 	$dbh->do($query_enable_keys);
 	print $stdout "Flushing tables...\n" if $verbose;
 	$dbh->do($query_flush_tables);
+	if (defined $DBI::errstr and $verbose) { print $stderr "Warning: Could not flush tables: $DBI::errstr\n" }
 	# disconnect ASAP and die if errors
 	$dbh->disconnect;
 	if (defined($DBI::errstr)) { print $stderr "$DBI::errstr\n" and exit(1) }
