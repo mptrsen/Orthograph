@@ -1288,7 +1288,6 @@ sub load_data_infile {#{{{
 	# no need to close the protfh since we're already through it, it gets closed automagically
 
 	# load data from csv file into database
-	my $query_flush_tables = "FLUSH TABLES";
 	my $query_disable_keys = "ALTER TABLE $table_ests DISABLE KEYS";
 	my $query_enable_keys = "ALTER TABLE $table_ests ENABLE KEYS";
 	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table_ests FIELDS TERMINATED BY ',' ($list)";
@@ -1299,18 +1298,13 @@ sub load_data_infile {#{{{
 
 	# flush tables, then disable indexes before loading the data. 
 	# afterwards re-index the table
-	print $stdout "Flushing tables...\n" if $verbose;
-	$dbh->do($query_flush_tables);
-	if (defined $DBI::errstr and $verbose) { print $stderr "Warning: Could not flush tables: $DBI::errstr\n" }
 	print $stdout "Disabling keys on $table_ests...\n" if $verbose;
 	$dbh->do($query_disable_keys);
 	my $sth = $dbh->prepare($query);
+	print $stdout "Uploading data...\n" if $verbose;
 	$num_ests = $sth->execute();
 	print $stdout "Re-indexing $table_ests...\n" if $verbose;
 	$dbh->do($query_enable_keys);
-	print $stdout "Flushing tables...\n" if $verbose;
-	$dbh->do($query_flush_tables);
-	if (defined $DBI::errstr and $verbose) { print $stderr "Warning: Could not flush tables: $DBI::errstr\n" }
 	# disconnect ASAP and die if errors
 	$dbh->disconnect;
 	if (defined($DBI::errstr)) { print $stderr "$DBI::errstr\n" and exit(1) }
