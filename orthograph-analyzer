@@ -772,6 +772,7 @@ sub schedule_for_backup {#{{{
 		my $dirh = IO::Dir->new($outfile);
 		while (my $file = $dirh->read()) {
 			next if $file =~ /^\./;
+			next if $file =~ /^backup/;
 			&schedule_for_backup(File::Spec->catfile($outfile, $file));
 		}
 		$dirh->close();
@@ -1282,16 +1283,27 @@ sub load_data_infile {#{{{
 	# no need to close the protfh since we're already through it, it gets closed automagically
 
 	# load data from csv file into database
+	my $query_flush_tables = "FLUSH TABLES";
+	my $query_disable_keys = "ALTER TABLE $table_ests DISABLE KEYS";
+	my $query_enable_keys = "ALTER TABLE $table_ests ENABLE KEYS";
 	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table_ests FIELDS TERMINATED BY ',' ($list)";
 
 	# open connection and do the transaction
 	my $dbh = Wrapper::Mysql::mysql_dbh()
 		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
+
+	# flush tables, then disable indexes before loading the data. 
+	# afterwards re-index the table
+	$dbh->do($query_flush_tables);
+	$dbh->do($query_disable_keys);
 	my $sth = $dbh->prepare($query);
 	$num_ests = $sth->execute();
+	$dbh->do($query_enable_keys);
+	$dbh->do($query_flush_tables);
 	# disconnect ASAP and die if errors
 	$dbh->disconnect;
-	defined($DBI::errstr) ? die($DBI::errstr, "\n") :	return $bp;
+	if (defined($DBI::errstr)) { print $stderr "$DBI::errstr\n" and exit(1) }
+	return $bp;
 }#}}}
 
 # Sub: get_transcripts 
