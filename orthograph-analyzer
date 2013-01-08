@@ -421,7 +421,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#-------------------------------------------------- 
 
 	# get hmmsearch results from database; use the first array item since they all share the query (HMM) ID 
-	my @hmmresults = @{ Wrapper::Mysql::get_hmmresults($hmmobj->hits_arrayref->[0]{'query'}) }
+	my @hmmresults = @{ Wrapper::Mysql::get_hmmresults($hmmobj->hits_arrayref->[0]{'query'}, $species_id) }
 		or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
 
 	# don't do too many blast searches...
@@ -844,7 +844,7 @@ sub preparedb {#{{{
 		`$mysql_col_hdr`       VARCHAR(255) NOT NULL,       
 		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
 		PRIMARY KEY (`$mysql_col_id`),
-		UNIQUE INDEX (`$mysql_col_digest`(4)),
+		INDEX (`$mysql_col_digest`(4)),
 		INDEX (`$mysql_col_taxid`),
 		INDEX (`$mysql_col_hdr`)
 		ENGINE=MyISAM
