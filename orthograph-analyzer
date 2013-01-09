@@ -867,7 +867,6 @@ sub preparedb {#{{{
 		$mysql_col_start      INT UNSIGNED NOT NULL,
 		$mysql_col_end        INT UNSIGNED NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
-		UNIQUE INDEX ($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query),
 		INDEX ($mysql_col_target(4)),
@@ -886,7 +885,6 @@ sub preparedb {#{{{
 		$mysql_col_start         INT UNSIGNED NOT NULL,
 		$mysql_col_end           INT UNSIGNED NOT NULL,
 		PRIMARY KEY ($mysql_col_id),
-		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
 		INDEX ($mysql_col_taxid),
 		INDEX ($mysql_col_query(4)),
 		INDEX ($mysql_col_target),
@@ -1038,7 +1036,7 @@ sub insert_results_into_table {#{{{
 
 		# this is a reference to an array of hashes
 		foreach my $hit (@$hits) {
-			$sql->execute(
+			my $affected_rows = $sql->execute(
 				$species_id,
 				$hit->{'query'},  # query (HMM)
 				$hit->{'target'}, # target (header)
@@ -1048,7 +1046,7 @@ sub insert_results_into_table {#{{{
 				$hit->{'start'},	# start of hit domain
 				$hit->{'end'}			# end of hit domain
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
-			++$hitcount;
+			if ($affected_rows > 0) { ++$hitcount }
 		}
 		$dbh->disconnect;
 		return $hitcount;
