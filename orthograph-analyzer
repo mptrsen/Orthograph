@@ -304,7 +304,7 @@ print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 
 unless ($continue) {
 	# store est data into the database:
-	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver:\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
@@ -1259,6 +1259,7 @@ sub load_data_infile {#{{{
 	# Create temporary csv file for high-speed reading into database
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
 	my $protfh = Seqload::Fasta->open($protfile);
+	print $stdout "Writing data to temporary file...\n" if $verbose;
 	while (my ($h, $s) = $protfh->next_seq()) {
 		$h =~ s/,/ /g;	# remove all commas from the header, they confuse the csv parser
 		$s =~ s/-//g;	# remove all gaps from the sequence

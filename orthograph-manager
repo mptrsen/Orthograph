@@ -470,10 +470,10 @@ sub create_tables {#{{{
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT    UNSIGNED,
 			`ogs_id`       INT    UNSIGNED,
-			`aa_seq`       INT    UNSIGNED, INDEX(aa_seq),
-			`nt_seq`       INT    UNSIGNED, INDEX(nt_seq), 
+			`aa_seq`       INT    UNSIGNED, UNIQUE(aa_seq),
+			`nt_seq`       INT    UNSIGNED, UNIQUE(nt_seq), 
 			`date`         INT    UNSIGNED,
-			`user`         INT    UNSIGNED, UNIQUE(aa_seq))",
+			`user`         INT    UNSIGNED)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
@@ -482,8 +482,7 @@ sub create_tables {#{{{
 			`header`       VARCHAR(512),             INDEX(header),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
-			`date`         INT UNSIGNED)
-			",
+			`date`         INT UNSIGNED)",
 
 		# table: sequences_nt
 		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (

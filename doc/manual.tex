@@ -3,6 +3,7 @@
 \usepackage[utf8]{inputenc}	
 \usepackage{lmodern}			
 \usepackage{microtype}	
+\usepackage{hyperref}
 
 \title{Orthograph}
 \author{Malte Petersen}
@@ -29,6 +30,39 @@ overlap when two weaker-scoring domains are close to each other, and this may
 lead to some hits getting excluded because overlaps are not allowed in ortholog
 regions. 
 
+\section{SHA-256 checksums}
+
+Orthograph uses SHA-256 checksums of the sequences to unambiguously identify
+them in the database. Please note that while SHA-256 has a tremendously large
+hash space and has not yet been compromised, i.e., there is no known collision
+attack against the algorithm, a collision (two different objects producing the
+same checksum) is still possible. However, the probability for that event is
+vanishingly small: There need to be more than $10^{15}$ objects for the SHA-256
+hashes to exceed a collision probability of $10^{-18}$. Since the hash space is
+expected to contain only a number of sequence objects in the range of $10^6$ to
+$10^{12}$, it is statistically safe to assume that every checksum is unique. 
+
+Thomas Pornin said on \href{http://stackoverflow.com/questions/4014090/is-it-safe-to-ignore-the-possibility-of-sha-collisions-in-practice}{http://stackoverflow.com/questions/4014090/is-it-safe-to-ignore-the-possibility-of-sha-collisions-in-practice}:
+
+\begin{quote}
+The usual answer goes thus: what is the probability that a rogue asteroid
+crashes on Earth within the next second, obliterating
+civilization-as-we-know-it, and killing off a few billion people? It can be
+argued that any unlucky event with a probability lower than that is not
+actually very important.
+
+If we have a ``perfect'' hash function with output size $n$, and we have $p$
+messages to hash (individual message length is not important), then the
+probability of a collision is about $\frac{p^2}{2^{n+1}}$ (this is an
+approximation which is valid for ``small'' $p$, i.e., substantially smaller
+than $2^{\frac{n}{2}}$). For instance, with SHA-256 ($n=256$) and one billion
+messages ($p=10^9$) the probability is about $4.3 \cdot 10^{-60}$.
+
+A mass-murderer space rock happens about once every 30 million years on
+average. This leads to a probability of such an event occurring in the next
+second to about $10^{-15}$. That's \emph{45 orders of magnitude} more probable
+than the SHA-256 collision. Briefly stated, if you find SHA-256 collisions
+scary then your priorities are wrong.
+\end{quote}
+
 \end{document}
-
-
