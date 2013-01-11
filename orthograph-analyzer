@@ -989,6 +989,7 @@ sub insert_results_into_table {#{{{
 
 		my $dbh = Wrapper::Mysql::mysql_dbh()
 			or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
+		$dbh->do("START TRANSACTION");
 		my $sql = $dbh->prepare($query_insert_result);
 
 		# this is a reference to an array of hashes
@@ -1006,6 +1007,7 @@ sub insert_results_into_table {#{{{
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
+		$dbh->do("COMMIT");
 		$dbh->disconnect;
 		return $hitcount;
 	}
@@ -1032,6 +1034,7 @@ sub insert_results_into_table {#{{{
 			?)";
 
 		my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+		$dbh->do("START TRANSACTION");
 		my $sql = $dbh->prepare($query_insert_result);
 
 		# this is a reference to an array of hashes
@@ -1048,6 +1051,7 @@ sub insert_results_into_table {#{{{
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			if ($affected_rows > 0) { ++$hitcount }
 		}
+		$dbh->do("COMMIT");
 		$dbh->disconnect;
 		return $hitcount;
 	}
