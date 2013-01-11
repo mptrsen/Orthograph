@@ -265,7 +265,8 @@ sub get_transcripts {
 # Returns: reference to array of arrays
 sub get_hmmresults {#{{{
 	my ($hmmquery, $taxid) = @_ or croak "Usage: Wrapper::Mysql::get_hmmresults(HMMQUERY)";
-	my $query_get_sequences = "SELECT $mysql_table_ests.digest,
+	# disable query cache for this one
+	my $query_get_sequences = "SELECT SQL_NO_CACHE $mysql_table_ests.digest,
 		  $mysql_table_ests.sequence,
 		  $mysql_table_hmmsearch.start,
 		  $mysql_table_hmmsearch.end
@@ -279,7 +280,9 @@ sub get_hmmresults {#{{{
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_get_sequences);
-	$sth->execute($hmmquery, $taxid);
+	do {
+		$sth->execute($hmmquery, $taxid);
+	} while ($sth->err);
 	my $results = $sth->fetchall_arrayref();
 	$sth->finish();
 	$dbh->disconnect();
