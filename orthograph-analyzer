@@ -456,7 +456,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		my $blastobj = Wrapper::Blastp->new($blastdb);
 
 		# generate a blast output file name from the HMM name and the hit number
-		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . $hmmresults[$n]->[0] . '-' . basename($blastdb) .  '.blast');
+		my $filename = sprintf "%s-%s-[%d-%d]-%s.blast", $hmmobj->hmmname, $hmmresults[$n]->[0], $start, $end, basename($blastdb);
+		my $blastoutfile = File::Spec->catfile($blastoutdir, $filename);
 
 		# do the blastp search
 		$blastobj->blastp($tmpfile, $blastoutfile);
@@ -857,38 +858,37 @@ sub preparedb {#{{{
 		)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		$mysql_col_id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		$mysql_col_taxid      INT UNSIGNED NOT NULL,       
-		$mysql_col_query      VARCHAR(255) NOT NULL,       
-		$mysql_col_target     CHAR(32)     NOT NULL,       
-		$mysql_col_score      DOUBLE       NOT NULL,
-		$mysql_col_evalue     VARCHAR(100) NOT NULL,
-		$mysql_col_log_evalue DOUBLE       NOT NULL DEFAULT '-999',
-		$mysql_col_start      INT UNSIGNED NOT NULL,
-		$mysql_col_end        INT UNSIGNED NOT NULL,
-		PRIMARY KEY ($mysql_col_id),
-		INDEX ($mysql_col_taxid),
-		INDEX ($mysql_col_query),
-		INDEX ($mysql_col_target(4)),
-		INDEX ($mysql_col_log_evalue)
+		`$mysql_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		`$mysql_col_taxid`      INT UNSIGNED NOT NULL,       
+		`$mysql_col_query`      VARCHAR(255) NOT NULL,       
+		`$mysql_col_target`     CHAR(32)     NOT NULL,       
+		`$mysql_col_score`      DOUBLE       NOT NULL,
+		`$mysql_col_evalue`     CHAR(8)      NOT NULL,
+		`$mysql_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
+		`$mysql_col_start`      INT UNSIGNED NOT NULL,
+		`$mysql_col_end`        INT UNSIGNED NOT NULL,
+		PRIMARY KEY (`$mysql_col_id`),
+		INDEX (`$mysql_col_taxid`),
+		INDEX (`$mysql_col_query`),
+		INDEX (`$mysql_col_target`(4)),
+		INDEX (`$mysql_col_log_evalue`)
 		)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		$mysql_col_id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
-		$mysql_col_taxid         INT UNSIGNED NOT NULL,       
-		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
-		$mysql_col_query         CHAR(32)     NOT NULL,       
-		$mysql_col_target        INT UNSIGNED NOT NULL,       
-		$mysql_col_score         DOUBLE       NOT NULL,
-		$mysql_col_evalue        VARCHAR(100) NOT NULL,
-		$mysql_col_log_evalue    DOUBLE       NOT NULL DEFAULT '-999',
-		$mysql_col_start         INT UNSIGNED NOT NULL,
-		$mysql_col_end           INT UNSIGNED NOT NULL,
-		PRIMARY KEY ($mysql_col_id),
-		INDEX ($mysql_col_taxid),
-		INDEX ($mysql_col_query(4)),
-		INDEX ($mysql_col_target),
-		INDEX ($mysql_col_log_evalue)
+		`$mysql_col_id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
+		`$mysql_col_taxid`         INT UNSIGNED NOT NULL,       
+		`$mysql_col_query`         CHAR(32)     NOT NULL,       
+		`$mysql_col_target`        INT UNSIGNED NOT NULL,       
+		`$mysql_col_score`         DOUBLE       NOT NULL,
+		`$mysql_col_evalue`        CHAR(8)      NOT NULL,
+		`$mysql_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
+		`$mysql_col_start`         INT UNSIGNED NOT NULL,
+		`$mysql_col_end`           INT UNSIGNED NOT NULL,
+		PRIMARY KEY (`$mysql_col_id`),
+		INDEX (`$mysql_col_taxid`),
+		INDEX (`$mysql_col_query`(4)),
+		INDEX (`$mysql_col_target`),
+		INDEX (`$mysql_col_log_evalue`)
 		)";
 
 	# open connection
