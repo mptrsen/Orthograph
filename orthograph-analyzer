@@ -49,7 +49,7 @@ use Orthograph::Functions; # functions for all Orthograph tools
 use Orthograph::Config;    # configuration in global hashref $config; also handles command line arguments
 
 my $program_name = 'Orthograph';
-my $version = 'alpha4';
+my $version = 'beta2';
 # this message will be printed later when we have a log file handle
 my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
 	"Reciprocal Approach with Profile Hidden Markov models\n" .
