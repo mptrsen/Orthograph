@@ -92,7 +92,22 @@ Returns: Database handle
 =cut
 
 sub mysql_dbh {#{{{
-	return DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd);
+	my $dbh = undef;
+	my $timeout = 600;
+	my $slept = 0;
+	my $sleep_for = 10;
+
+	until ($dbh = DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd)) {
+		if ($slept >= $timeout) { 
+			carp "Warning: Connection retry timeout exceeded\n" and return undef;
+		}
+		carp "Warning: Connection failed, retrying in $sleep_for seconds\n";
+		sleep $sleep_for;
+		$slept += 10;
+	}
+
+	if ($dbh) { return $dbh }
+	return undef;
 }#}}}
 
 =head2 mysql_get($query)
@@ -111,7 +126,8 @@ sub mysql_get {#{{{
   # prepare anonymous array
 	my $results = [ ];
   # connect and fetch stuff
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sql = $dbh->prepare($query);
 	$sql->execute() or return 0;
 	while (my @result = $sql->fetchrow_array() ) {
@@ -137,7 +153,8 @@ sub mysql_do {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_do(QUERY)\n" }
 	my @fields = @_;
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sql = $dbh->prepare($query);
 	$sql->execute(@fields) or die;
 	$dbh->disconnect();
@@ -213,7 +230,8 @@ sub get_ortholog_groups_for_set {
     ON d.id = o.setid
     WHERE d.id = ?";
 
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sql = $dbh->prepare($query);
 	$sql->execute( $setid ) or die;
 	while (my @row = $sql->fetchrow_array()) {
@@ -231,7 +249,8 @@ sub get_transcripts {
 	my $query = "SELECT digest, sequence
 		FROM $mysql_table_ests
 		WHERE taxid = ?";
-	my $dbh = Wrapper::Mysql::mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth->execute($specid);
 	my $data = $sth->fetchall_arrayref();
@@ -245,20 +264,25 @@ sub get_transcripts {
 # Arguments: scalar string hmmsearch query
 # Returns: reference to array of arrays
 sub get_hmmresults {#{{{
-	my $hmmquery = shift or croak "Usage: Wrapper::Mysql::get_hmmresults(HMMQUERY)";
-	my $query_get_sequences = "SELECT $mysql_table_ests.digest,
+	my ($hmmquery, $taxid) = @_ or croak "Usage: Wrapper::Mysql::get_hmmresults(HMMQUERY)";
+	# disable query cache for this one
+	my $query_get_sequences = "SELECT SQL_NO_CACHE $mysql_table_ests.digest,
 		  $mysql_table_ests.sequence,
 		  $mysql_table_hmmsearch.start,
 		  $mysql_table_hmmsearch.end
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
 		ON $mysql_table_hmmsearch.target = $mysql_table_ests.digest
-		WHERE $mysql_table_hmmsearch.query = ?";
+		WHERE $mysql_table_hmmsearch.query = ?
+		AND $mysql_table_hmmsearch.taxid = ?";
 
 	# get the sequences from the database (as array->array reference)
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query_get_sequences);
-	$sth->execute($hmmquery);
+	do {
+		$sth->execute($hmmquery, $taxid);
+	} while ($sth->err);
 	my $results = $sth->fetchall_arrayref();
 	$sth->finish();
 	$dbh->disconnect();
@@ -451,7 +475,8 @@ exists), 0 otherwise.
 
 sub set_exists {
 	my $set = shift;
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare("SELECT * FROM $mysql_table_set_details WHERE $mysql_col_name = ? LIMIT 1");
 	$sth->execute($set);
 	my $result = $sth->fetchrow_arrayref;
@@ -473,7 +498,8 @@ sub insert_taxon_into_table {
 	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_taxon_into_table(SPECIESNAME)") }
 	if (my $taxid = &get_taxid_for_species($species_name)) { return $taxid }
 	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $species_name, 0 )
 		or return 0;
@@ -491,7 +517,8 @@ sub create_log_evalues_view {
 	  WHERE $mysql_table_hmmsearch.$mysql_col_taxid = ?
 	  GROUP BY $mysql_table_hmmsearch.$mysql_col_log_evalue
 	  ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query_create_log_evalues);
 	$sth->execute( $taxid ) or return 0;
 	$dbh->disconnect();
@@ -514,7 +541,8 @@ sub get_orthologs_for_set_hashref {
 		INNER JOIN $mysql_table_set_details 
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
 		WHERE $mysql_table_set_details.id = ?";
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $setid );
 	my $result = { };
@@ -546,7 +574,8 @@ sub get_ortholog_group {
 		AND   $mysql_table_orthologs.$mysql_col_seqpair IS NOT NULL
 		AND   $mysql_table_orthologs.$mysql_col_setid = ?
 		AND   $mysql_table_orthologs.$mysql_col_orthoid = ?";
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth->execute($setid, $orthoid);
 	my $data = $sth->fetchall_arrayref();
@@ -611,7 +640,8 @@ sub get_hitlist_hashref {
 		OFFSET $offset
 		";
 	print "fetching:\n$query\n";
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth->execute( $setid, $specid ) or croak;
 	my $result = { };
@@ -643,7 +673,8 @@ Returns a hashref as $hash->{$log_evalue} = number_of_occurences (an int)
 
 sub get_logevalue_count {
 	my $query_get_logevalues = "SELECT $mysql_col_log_evalue, count FROM $mysql_table_log_evalues";
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query_get_logevalues);
 	$sth->execute();
 	my $d = $sth->fetchall_arrayref();
@@ -713,7 +744,8 @@ sub get_results_for_logevalue {
 	# single e-value
 	else      { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?" }
 
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query);
 
 	# e-value range
@@ -783,7 +815,8 @@ sub get_nuc_for_pep {
 		FROM $mysql_table_seqpairs
 		WHERE $mysql_table_seqpairs.$mysql_col_aaseq = ?";
 	print $query, "\n", $pepid, "\n";
-	my $dbh = &mysql_dbh();
+	my $dbh = &mysql_dbh()
+		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth->execute($pepid);
 	my $data = $sth->fetchall_arrayref();

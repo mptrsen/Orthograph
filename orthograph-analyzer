@@ -48,9 +48,9 @@ use Orthograph::Functions; # functions for all Orthograph tools
 use Orthograph::Config;    # configuration in global hashref $config; also handles command line arguments
 
 my $program_name = 'Orthograph';
-my $version = 'alpha4';
+my $version = 'beta2';
 # this message will be printed later when we have a log file handle
-my $message = "$program_name\: Orthology prediction using a Graph-based,\n" .
+my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
 	"Reciprocal Approach with Profile Hidden Markov models\n" .
 	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
 	"Version $version\n\n";
@@ -80,7 +80,12 @@ else {
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
 
-printf "%s = %s\n", $_, $config->{$_} foreach sort keys %$config;
+# report configuration
+$message .= "Using the following configuration settings:\n";
+foreach (sort keys %$config) {
+	$message .= sprintf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
+}
+$message .= "\n";
 
 #--------------------------------------------------
 # # Programs in the order of their use
@@ -115,6 +120,7 @@ my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $logfile                    = $config->{'logfile'};
 my $max_blast_searches         = $config->{'max-blast-searches'};
+my $makeset                    = $config->{'make-set'};
 
 # MySQL settings
 my $mysql_dbname               = $config->{'mysql-database'};
@@ -183,7 +189,8 @@ my $mysql_col_start         = 'start';
 my $mysql_col_target        = 'target';
 my $mysql_col_taxid         = 'taxid';
 my $mysql_col_taxon         = 'taxon';
-my $mysql_dbi               = "dbi\:mysql\:$mysql_dbname\:$mysql_dbserver";
+my $mysql_dbi               = "dbi:mysql:$mysql_dbname:$mysql_dbserver";
+my $num_bp                  = 0;
 my $num_ests                = 0;
 my $num_hmms                = 0;
 my $orthocount              = 0;
@@ -239,18 +246,25 @@ if ($listspecies) {
 &intro;
 
 # get the set id
-$set_id = Wrapper::Mysql::get_set_id($orthoset);
+$set_id = Wrapper::Mysql::get_set_id($orthoset)
+	or print $stderr "Warning: Could not get set id from database: $DBI::errstr\n";
 
 # prepare the HMMs
 $hmmdir = &make_hmms($orthoset);
 # prepare the BLAST database
 $blastdb = &make_blastdb($set_id);
 
+# exit here if we were only supposed to create the set
+exit if $makeset;
+
 #--------------------------------------------------
 # # create list of reference taxa and HMM files 
 #-------------------------------------------------- 
 if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
-else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
+else {
+	@reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id)
+		or print $stderr "Warning: Could not get reference taxa from database: $DBI::errstr\n"
+}
 @hmmfiles = &hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
 
@@ -277,22 +291,23 @@ $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = scalar time;
-	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name!\n";
+	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
 	$t1 = scalar time;
 	printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
 
 # get the taxon id. create a new entry in the taxa table or return existing one
-$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name) or print $stderr "Warning: Failed to get species id: $DBI::errstr";
+$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name)
+	or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
 print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 
 unless ($continue) {
 	# store est data into the database:
-	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver:\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	$num_bp = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 }
@@ -301,8 +316,9 @@ unless ($continue) {
 # get number of sequences for this species, report or die
 $num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
 if ($num_ests != 0) {
-	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
+	printf($stdout "%d sequences (%d total bp) of %s in database '%s' on %s. \n",
 		$num_ests,
+		$num_bp,
 		$species_name,
 		$mysql_dbname,
 		$mysql_dbserver) unless $quiet;
@@ -358,7 +374,7 @@ Wrapper::Blastp->searchprog($blastprog);
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-printf($stdout "HMMsearching the protein file using all %d HMMs in %s\:\n", scalar(@hmmfiles), $hmmdir)
+printf($stdout "HMMsearching the protein file using all %d HMMs in %s:\n", scalar(@hmmfiles), $hmmdir)
 	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
@@ -409,7 +425,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#-------------------------------------------------- 
 
 	# get hmmsearch results from database; use the first array item since they all share the query (HMM) ID 
-	my @hmmresults = @{Wrapper::Mysql::get_hmmresults($hmmobj->hits_arrayref->[0]{'query'})};
+	my @hmmresults = @{ Wrapper::Mysql::get_hmmresults($hmmobj->hits_arrayref->[0]{'query'}, $species_id) }
+		or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
 
 	# don't do too many blast searches...
 	my $max = scalar(@hmmresults) >= $max_blast_searches ? $max_blast_searches : scalar(@hmmresults);
@@ -438,7 +455,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		my $blastobj = Wrapper::Blastp->new($blastdb);
 
 		# generate a blast output file name from the HMM name and the hit number
-		my $blastoutfile = File::Spec->catfile($blastoutdir, $hmmobj->hmmname . '-' . $hmmresults[$n]->[0] . '-' . basename($blastdb) .  '.blast');
+		my $filename = sprintf "%s-%s-[%d-%d]-%s.blast", $hmmobj->hmmname, $hmmresults[$n]->[0], $start, $end, basename($blastdb);
+		my $blastoutfile = File::Spec->catfile($blastoutdir, $filename);
 
 		# do the blastp search
 		$blastobj->blastp($tmpfile, $blastoutfile);
@@ -505,13 +523,13 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 $timestamp_end = scalar time();
 $timestamp_diff = $timestamp_end - $timestamp_start;
 printf $stdout "\n%s analysis for %s completed in %d seconds.\n", $program_name, $species_name, $timestamp_diff;
-printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d HMM hits and identified %d as putative 1:1 orthologs (%2.2f%%).\n",
+printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d total HMM hits (%.2f average hits per HMM).\n",
 	$num_ests,
 	$hmmcount,
-	$hmmhitcount,
-	$orthocount,
-	((100 * $orthocount) / $hmmcount);
-printf $stdout "Now go look in your output directory %s and run %s.\n", $outdir, 'orthograph-reporter';
+	$hmmhitcount_total,
+	$hmmhitcount_total / $hmmcount,
+;
+printf $stdout "Now run %s and go look in your output directory %s.\n", "'orthograph-reporter'", $outdir;
 
 # successfully exit :)
 exit(0);
@@ -694,7 +712,7 @@ sub intro {#{{{
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;
 	my $tarfile = &create_tarball(@backup);
-	print $stdout "Old output files backed up in $tarfile.\n" unless $quiet;
+	printf($stdout "Old output files backed up in %s (%d files).\n", $tarfile, scalar @backup) unless $quiet;
 	undef(@backup);	# not needed anymore
 	undef($tarfile);
 	if ($clear_files) {
@@ -707,7 +725,7 @@ sub intro {#{{{
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	unless ( Wrapper::Mysql::set_exists($orthoset) ) {
-		die "Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
+		die "Fatal: Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
 	}
 
 	# everything is fine
@@ -759,6 +777,7 @@ sub schedule_for_backup {#{{{
 		my $dirh = IO::Dir->new($outfile);
 		while (my $file = $dirh->read()) {
 			next if $file =~ /^\./;
+			next if $file =~ /^backup/;
 			&schedule_for_backup(File::Spec->catfile($outfile, $file));
 		}
 		$dirh->close();
@@ -782,7 +801,7 @@ sub create_tarball {#{{{
 	my $tarball = Archive::Tar->new();
 	$tarball->setcwd($outdir);
 	$tarball->add_files(@files);
-	$tarball->write($tarfile, COMPRESS_BZIP) or print $stderr "Fatal: Could not create tarball: $!\n" and exit(1);
+	$tarball->write($tarfile, COMPRESS_BZIP) or print $stderr "Fatal: Could not create tarball in '$tarfile': $!\n" and exit(1);
 	return $tarfile;
 }#}}}
 
@@ -808,14 +827,14 @@ sub makedir {#{{{
 sub cleardir {#{{{
 	my $dir = shift;
 	opendir(my $dirh, $dir)
-		or print $stderr "Fatal: Couldn't open dir $dir\: $!" and exit(1);
+		or print $stderr "Fatal: Couldn't open dir $dir: $!" and exit(1);
 	foreach (readdir($dirh)) {
 		next if $_ =~ /^\.\.?$/;
 		unlink(File::Spec->catfile($dir, $_))
 			or print $stderr "Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!";
 	}
 	closedir($dirh)
-		or print $stderr "Fatal: Couldn't close dir $dir\: $!" and exit(1);
+		or print $stderr "Fatal: Couldn't close dir $dir: $!" and exit(1);
 	return 1;
 }#}}}
 
@@ -831,50 +850,49 @@ sub preparedb {#{{{
 		`$mysql_col_hdr`       VARCHAR(255) NOT NULL,       
 		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
 		PRIMARY KEY (`$mysql_col_id`),
-		UNIQUE INDEX (`$mysql_col_digest`(4)),
+		INDEX (`$mysql_col_digest`(4)),
 		INDEX (`$mysql_col_taxid`),
 		INDEX (`$mysql_col_hdr`)
+		ENGINE=MyISAM
 		)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		$mysql_col_id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		$mysql_col_taxid      INT UNSIGNED NOT NULL,       
-		$mysql_col_query      VARCHAR(255) NOT NULL,       
-		$mysql_col_target     CHAR(32)     NOT NULL,       
-		$mysql_col_score      DOUBLE       NOT NULL,
-		$mysql_col_evalue     VARCHAR(100) NOT NULL,
-		$mysql_col_log_evalue DOUBLE       NOT NULL DEFAULT '-999',
-		$mysql_col_start      INT UNSIGNED NOT NULL,
-		$mysql_col_end        INT UNSIGNED NOT NULL,
-		PRIMARY KEY ($mysql_col_id),
-		UNIQUE INDEX ($mysql_col_query, $mysql_col_target),
-		INDEX ($mysql_col_taxid),
-		INDEX ($mysql_col_query),
-		INDEX ($mysql_col_target(4)),
-		INDEX ($mysql_col_log_evalue)
+		`$mysql_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		`$mysql_col_taxid`      INT UNSIGNED NOT NULL,       
+		`$mysql_col_query`      VARCHAR(255) NOT NULL,       
+		`$mysql_col_target`     CHAR(32)     NOT NULL,       
+		`$mysql_col_score`      DOUBLE       NOT NULL,
+		`$mysql_col_evalue`     CHAR(8)      NOT NULL,
+		`$mysql_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
+		`$mysql_col_start`      INT UNSIGNED NOT NULL,
+		`$mysql_col_end`        INT UNSIGNED NOT NULL,
+		PRIMARY KEY (`$mysql_col_id`),
+		INDEX (`$mysql_col_taxid`),
+		INDEX (`$mysql_col_query`),
+		INDEX (`$mysql_col_target`(4)),
+		INDEX (`$mysql_col_log_evalue`)
 		)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		$mysql_col_id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
-		$mysql_col_taxid         INT UNSIGNED NOT NULL,       
-		$mysql_col_blastdbpath   VARCHAR(255) NOT NULL,
-		$mysql_col_query         CHAR(32)     NOT NULL,       
-		$mysql_col_target        INT UNSIGNED NOT NULL,       
-		$mysql_col_score         DOUBLE       NOT NULL,
-		$mysql_col_evalue        VARCHAR(100) NOT NULL,
-		$mysql_col_log_evalue    DOUBLE       NOT NULL DEFAULT '-999',
-		$mysql_col_start         INT UNSIGNED NOT NULL,
-		$mysql_col_end           INT UNSIGNED NOT NULL,
-		PRIMARY KEY ($mysql_col_id),
-		UNIQUE INDEX($mysql_col_query, $mysql_col_target),
-		INDEX ($mysql_col_taxid),
-		INDEX ($mysql_col_query(4)),
-		INDEX ($mysql_col_target),
-		INDEX ($mysql_col_log_evalue)
+		`$mysql_col_id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
+		`$mysql_col_taxid`         INT UNSIGNED NOT NULL,       
+		`$mysql_col_query`         CHAR(32)     NOT NULL,       
+		`$mysql_col_target`        INT UNSIGNED NOT NULL,       
+		`$mysql_col_score`         DOUBLE       NOT NULL,
+		`$mysql_col_evalue`        CHAR(8)      NOT NULL,
+		`$mysql_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
+		`$mysql_col_start`         INT UNSIGNED NOT NULL,
+		`$mysql_col_end`           INT UNSIGNED NOT NULL,
+		PRIMARY KEY (`$mysql_col_id`),
+		INDEX (`$mysql_col_taxid`),
+		INDEX (`$mysql_col_query`(4)),
+		INDEX (`$mysql_col_target`),
+		INDEX (`$mysql_col_log_evalue`)
 		)";
 
 	# open connection
-	my $dbh = Wrapper::Mysql::mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh()
+		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
 
 	# drop all tables
 	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
@@ -882,7 +900,7 @@ sub preparedb {#{{{
 		print $stdout "$query_drop;\n" if $verbose;
 		my $sql = $dbh->prepare($query_drop);
 		$sql->execute()
-		  or print $stderr "Fatal: Could not execute SQL query: $!\n" and exit(1);
+		  or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
 	}
 
 	# create all tables
@@ -890,7 +908,7 @@ sub preparedb {#{{{
 		printf $stdout "$query;\n" if $verbose;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
-		  or print $stderr "Fatal: Could not execute SQL query: $!\n" and exit(1);
+		  or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
 	}
 
 	# disconnect
@@ -908,21 +926,25 @@ sub clear_db {#{{{
 	return unless $species_name;
 
 	# get the species id from the database
-	my $specid = &Wrapper::Mysql::get_taxid_for_species($species_name);
+	my $specid = &Wrapper::Mysql::get_taxid_for_species($species_name)
+		or print $stderr "Warning: Could  not get species ID from database: $DBI::errstr\n";
 	return unless $specid;
 
 	# count number of records 
 	my $n = 0;
 
 	# clear previous results from the same species
-	my $dbh = Wrapper::Mysql::mysql_dbh();
+	my $dbh = Wrapper::Mysql::mysql_dbh()
+		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
+
 	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
 		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = ?";
 		my $sth = $dbh->prepare($query);
 		$n += $sth->execute( $specid );
 	}
 	my $sth = $dbh->prepare("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = ?");
-	$n     += $sth->execute($specid) or print $stderr "$!" and exit(1);
+	$n     += $sth->execute($specid)
+		or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
 	# disconnect ASAP
 	$dbh->disconnect();
 
@@ -963,7 +985,10 @@ sub insert_results_into_table {#{{{
 			?,
 			?,
 			?)";
-		my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+
+		my $dbh = Wrapper::Mysql::mysql_dbh()
+			or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
+		$dbh->do("START TRANSACTION");
 		my $sql = $dbh->prepare($query_insert_result);
 
 		# this is a reference to an array of hashes
@@ -981,6 +1006,7 @@ sub insert_results_into_table {#{{{
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
+		$dbh->do("COMMIT");
 		$dbh->disconnect;
 		return $hitcount;
 	}
@@ -1007,11 +1033,12 @@ sub insert_results_into_table {#{{{
 			?)";
 
 		my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+		$dbh->do("START TRANSACTION");
 		my $sql = $dbh->prepare($query_insert_result);
 
 		# this is a reference to an array of hashes
 		foreach my $hit (@$hits) {
-			$sql->execute(
+			my $affected_rows = $sql->execute(
 				$species_id,
 				$hit->{'query'},  # query (HMM)
 				$hit->{'target'}, # target (header)
@@ -1021,8 +1048,9 @@ sub insert_results_into_table {#{{{
 				$hit->{'start'},	# start of hit domain
 				$hit->{'end'}			# end of hit domain
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
-			++$hitcount;
+			if ($affected_rows > 0) { ++$hitcount }
 		}
+		$dbh->do("COMMIT");
 		$dbh->disconnect;
 		return $hitcount;
 	}
@@ -1047,7 +1075,8 @@ sub file_is_empty {
 # Returns: True if successful
 sub make_hmms {#{{{
 	my $set = shift;
-	my $set_id = Wrapper::Mysql::get_set_id($set);
+	my $set_id = Wrapper::Mysql::get_set_id($set)
+		or print $stderr "Warning: Could not get set ID for set '$set' from database: $DBI::errstr\n";
 	my $hmmsuffix = '.hmm';
 	# does the alignment dir exist?
 	if (!-e $alndir) {
@@ -1060,7 +1089,8 @@ sub make_hmms {#{{{
 	print $stdout "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
 	# get the ortholog set from the database
-	my $data = Wrapper::Mysql::get_ortholog_groups_for_set($set_id);
+	my $data = Wrapper::Mysql::get_ortholog_groups_for_set($set_id)
+		or print $stderr "Warning: Could not get ortholog groups for set '$set' from database: $DBI::errstr\n";
 
 	my $num_orthoids = scalar(keys(%$data));
 	my $o = 0;
@@ -1082,21 +1112,21 @@ sub make_hmms {#{{{
 		my $fafh = IO::File->new($fafile, 'w');
 		foreach my $id (keys(%{$data->{$orthoid}})) {
 			printf($fafh ">%s\n%s\n", $id, $$data{$orthoid}{$id})
-				or die("Fatal: Could not write to file '$fafh'\: $!\n");
+				or die("Fatal: Could not write to file '$fafh': $!\n");
 		}
 		$fafh->close();
 
 		# align
 		my $alnfile = &align($fafile, $orthoid)
-			or die("Fatal: Alignment failed for '$fafh'\: $!\n");
+			or die("Fatal: Alignment failed for '$fafh': $!\n");
 
 		# convert to stockholm
 		my $stockhfile = &fasta2stockholm($alnfile, $orthoid)
-			or die("Fatal: Conversion to Stockholm format failed for '$alnfile'\: $!\n");
+			or die("Fatal: Conversion to Stockholm format failed for '$alnfile': $!\n");
 
 		# build HMM
 		&hmmbuild($stockhfile, $hmmfile)
-			or die("Fatal: HMM generation failed for '$alnfile'\: $!\n");
+			or die("Fatal: HMM generation failed for '$alnfile': $!\n");
 	}
 	undef($data);	# free memory... well, it's bound to go out of scope anyway
 	return($hmmdir);
@@ -1119,7 +1149,7 @@ sub align {#{{{
 	my $alnfh = IO::File->new($alnf, 'w')
 		or print $stderr "Fatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
 	print $alnfh $aln
-		or print $stderr "Fatal: Could not write alignment to file $alnf\: $!\n" and exit(1);
+		or print $stderr "Fatal: Could not write alignment to file $alnf: $!\n" and exit(1);
 	$alnfh->close();
 	return $alnf;
 }#}}}
@@ -1138,7 +1168,7 @@ sub fasta2stockholm {#{{{
 	print $stockhfh "# STOCKHOLM 1.0\n";
 	while (my ($h, $s) = $fh->next_seq()) {
 		printf($stockhfh "%-50s %s\n", $h, $s)
-			or print $stderr "Fatal: Could not write Stockholm file $stockhfh\: $!" and exit(1);
+			or print $stderr "Fatal: Could not write Stockholm file $stockhfh: $!" and exit(1);
 	}
 	print $stockhfh "//";
 	close($stockhfh);
@@ -1182,9 +1212,13 @@ sub make_blastdb {#{{{
 	# database not extant, we have to create it
 	print $stdout "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
 		unless $quiet;
-	my $infh = File::Temp->new();
+	my $infh = File::Temp->new( UNLINK => 0 );
+	# don't delete this file if debugging
+	$infh->unlink_on_destroy(0) if $debug;
+
 	# get the sequences from the database
-	my $sequences = Wrapper::Mysql::get_aaseqs_for_set($setid);
+	my $sequences = Wrapper::Mysql::get_aaseqs_for_set($setid)
+		or print $stderr "Warning: Could not get sequences for set '$orthoset' from database: $DBI::errstr\n";
 
 	# write to output file
 	while (my ($h, $s) = each %$sequences) {
@@ -1194,7 +1228,7 @@ sub make_blastdb {#{{{
 		}
 		# but write out anyway
 		printf($infh ">%s\n%s\n", $h, $s)
-			or print $stderr "Fatal: Could not write to makeblastdb input file $infile\: $!\n" and exit(1);
+			or print $stderr "Fatal: Could not write to makeblastdb input file $infile: $!\n" and exit(1);
 	}
 	undef $sequences;
 	close($infh);
@@ -1216,6 +1250,7 @@ sub load_data_infile {#{{{
 	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
 	my $columns;
 	my $list;
+	my $bp = 0;
 	if (scalar(@_)) {
 		$columns = shift(@_);
 		unless (ref($columns)) {
@@ -1227,6 +1262,7 @@ sub load_data_infile {#{{{
 	# Create temporary csv file for high-speed reading into database
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
 	my $protfh = Seqload::Fasta->open($protfile);
+	print $stdout "Writing data to temporary file...\n" if $verbose;
 	while (my ($h, $s) = $protfh->next_seq()) {
 		$h =~ s/,/ /g;	# remove all commas from the header, they confuse the csv parser
 		$s =~ s/-//g;	# remove all gaps from the sequence
@@ -1248,20 +1284,33 @@ sub load_data_infile {#{{{
 			$h,
 			$s
 		);
+		$bp += length $s;
 	}
 	$tmpfh->close();
 	# no need to close the protfh since we're already through it, it gets closed automagically
 
 	# load data from csv file into database
+	my $query_disable_keys = "ALTER TABLE $table_ests DISABLE KEYS";
+	my $query_enable_keys = "ALTER TABLE $table_ests ENABLE KEYS";
 	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table_ests FIELDS TERMINATED BY ',' ($list)";
 
-	# open connection
-	my $dbh = Wrapper::Mysql::mysql_dbh();
+	# open connection and do the transaction
+	my $dbh = Wrapper::Mysql::mysql_dbh()
+		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
+
+	# flush tables, then disable indexes before loading the data. 
+	# afterwards re-index the table
+	print $stdout "Disabling keys on $table_ests...\n" if $verbose;
+	$dbh->do($query_disable_keys);
 	my $sth = $dbh->prepare($query);
+	print $stdout "Uploading data...\n" if $verbose;
 	$num_ests = $sth->execute();
+	print $stdout "Re-indexing $table_ests...\n" if $verbose;
+	$dbh->do($query_enable_keys);
 	# disconnect ASAP and die if errors
 	$dbh->disconnect;
-	defined($DBI::errstr) ? die($DBI::errstr, "\n") :	return $num_ests;
+	if (defined($DBI::errstr)) { print $stderr "$DBI::errstr\n" and exit(1) }
+	return $bp;
 }#}}}
 
 # Sub: get_transcripts 
@@ -1272,10 +1321,11 @@ sub get_transcripts {#{{{
 	my $species_id = shift;
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 	my $nseqs = 0;
-	my $data = Wrapper::Mysql::get_transcripts($species_id);
+	my $data = Wrapper::Mysql::get_transcripts($species_id)
+		or print $stderr "Warning: Could not get transcript sequences from database: $DBI::errstr\n";
 	while (my $row = shift @$data) {
 		printf($tmpfh ">%s\n%s\n", $$row[0], $$row[1])
-			or print $stderr "Fatal: Could not write to file $tmpfh\: $!\n" and exit(1);
+			or print $stderr "Fatal: Could not write to file $tmpfh: $!\n" and exit(1);
 		++$nseqs;
 	}
 	print $stdout "Wrote $nseqs sequences to $tmpfh\n" unless $quiet;
@@ -1316,7 +1366,10 @@ sub get_orthologs {#{{{
 			AND $mysql_table_ests.$mysql_col_digest       = ?
 			AND $mysql_table_seqpairs.$mysql_col_aaseq    = $mysql_table_aaseqs.$mysql_col_id
 		ORDER BY $mysql_table_hmmsearch.$mysql_col_evalue, $mysql_table_blast.$mysql_col_evalue";
-	my $dbh = Wrapper::Mysql::mysql_dbh();
+
+	# open connection and do the transaction
+	my $dbh = Wrapper::Mysql::mysql_dbh()
+		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
 	my $sql = $dbh->prepare($query);
 	$sql->execute( $orthoid, $estdigest );
 	my $result = $sql->fetchall_arrayref();
