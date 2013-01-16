@@ -196,46 +196,46 @@ foreach my $bin (@$logevalues_bins) {
 
 			#-------------------------------------------------- 
 			# so, was this a match we can trust?
-			if ($match = &get_reciprocal_match($orthoid, $list)) {
+			if ($this_match = &get_reciprocal_match($orthoid, $list)) {
 
 				# yeah - here should be the part where the actual sequences are output
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
 					$orthoid,
-					$match->{'hmmhit'},
-					$match->{'start'},
-					$match->{'end'},
+					$this_match->{'hmmhit'},
+					$this_match->{'start'},
+					$this_match->{'end'},
 					$orthoid,
 					unless $quiet;
 
 				# if this orthoid has been hit before, check whether the new cancidate
 				# overlaps with previous hits
 				if (exists $transcripts_mapped_to->{$orthoid}) {
-					if (&overlap($transcripts_mapped_to->{$orthoid}, $match)) {
+					if (&overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 						# yep, it overlaps, so we can't assign this transcript because better
 						# e-values have precedence. just go to the next one
-						printf $stdout "Overlap with previous hit for %s: discarded %s.\n", $orthoid, $match->{'hmmhit'} unless $quiet;
+						printf $stdout "Overlap with previous hit for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
 						next ORTHOID;
 					}
 					else {
 						# does not overlap, add to list of transcripts for this ortholog group
-						push @{ $transcripts_mapped_to->{$orthoid} }, $match;
-						printf $stdout "No overlap with previous hits: added %s to %s.\n", $match->{'hmmhit'}, $orthoid unless $quiet;
+						push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
+						printf $stdout "No overlap with previous hits: added %s to %s.\n", $this_match->{'hmmhit'}, $orthoid unless $quiet;
 						# this transcript can't be found again
-						push @transcript_list, $match->{'hmmhit'};
+						push @transcript_list, $this_match->{'hmmhit'};
 						# ok, next one
 						next ORTHOID;
 					}
 				}
 
 				# this has not been hit before, just assign
-				printf $stdout "Assigned %s to %s\n", $match->{'hmmhit'}, $orthoid;
-				push @{ $transcripts_mapped_to->{$orthoid} }, $match;
+				printf $stdout "Assigned %s to %s\n", $this_match->{'hmmhit'}, $orthoid;
+				push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
 
 				# this transcript can't be found again
-				push @transcript_list, $match->{'hmmhit'};
+				push @transcript_list, $this_match->{'hmmhit'};
 
 				# reset 
-				undef $match;
+				undef $this_match;
 			}
 			else {
 				# this orthoid has no match
