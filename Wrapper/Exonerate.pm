@@ -9,7 +9,7 @@ use Carp; # extended dying functions
 use Data::Dumper;
 
 my $verbose    = 0;
-my $debug      = 0;
+my $debug      = 1;
 my $exhaustive = 0;
 my $outdir     = File::Spec->catdir('.');
 my $searchprog = 'exonerate';
@@ -145,13 +145,30 @@ sub search {
 	my $exonerate_model = $exhaustive ? 'protein2genome:bestfit' : 'protein2genome';
 	my $exhaustive = $exhaustive ? '--exhaustive yes' : '';
 
+	# write these to fasta files each
+	my $queryfile = &fastaify($self->{'query'}->{'header'}, $self->{'query'}->{'sequence'});
+	my $targetfile = &fastaify($self->{'target'}->{'header'}, $self->{'target'}->{'sequence'});
 	# roll your own output for exonerate
 	my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
+	$exonerate_ryo = "%tcs";
 
 	# the complete command line
-	my $exonerate_cmd = qq( $searchprog --score $self->score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exhaustive $self->query_file $self->target_file 2> /dev/null );
+	my $exonerate_cmd = qq( $searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile );
+	print "$exonerate_cmd\n" if $debug;
 	$self->{'result'} = [ `$exonerate_cmd` ] or confess "Error running exonerate: $!\n";
 	return 1;
+}
+
+sub result {
+	my $self = shift;
+	return $self->{'result'};
+}
+
+sub cdna_sequence {
+	my $self = shift;
+	$self->{'cdna_sequence'} = join '', @{ $self->{'result'} };
+	$self->{'cdna_sequence'} =~ s/\s//g;
+	return $self->{'cdna_sequence'};
 }
 
 sub query_header {
@@ -200,7 +217,8 @@ sub query_file {
 	my $self = shift;
 	unless (scalar @_ > 0) {
 		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open query file for writing: $!\n";
-		printf $tmpfh ">%s\n%s\n", $self->query_header, $self->query_sequence or confess "Fatal: Could not write to query file '$tmpfh': $!\n";
+		printf $tmpfh ">%s\n%s\n", $self->{'query'}->{'header'}, $self->{'query'}->{'sequence'} or confess "Fatal: Could not write to query file '$tmpfh': $!\n";
+		print "wrote to $tmpfh\n" if $debug;
 		$self->{'queryfile'} = $tmpfh;
 		return 1;
 	}
@@ -211,9 +229,20 @@ sub target_file {
 	my $self = shift;
 	unless (scalar @_ > 0) {
 		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open target file for writing: $!\n";
-		printf $tmpfh ">%s\n%s\n", $self->target_header, $self->target_sequence or confess "Fatal: Could not write to target file '$tmpfh': $!\n";
+		printf $tmpfh ">%s\n%s\n", $self->{'target'}->{'header'}, $self->{'target'}->{'sequence'} or confess "Fatal: Could not write to target file '$tmpfh': $!\n";
+		print "wrote to $tmpfh\n" if $debug;
 		$self->{'targetfile'} = $tmpfh;
 		return 1;
 	}
 	return $self->{'targetfile'};
+}
+
+sub fastaify {
+	my $header = shift;
+	my $sequence = shift;
+	my $fh = File::Temp->new(UNLINK=>0);
+	$fh->unlink_on_destroy(0) if $debug;
+	printf { $fh } ">%s\n%s\n", $header, $sequence;
+	close $fh;
+	return $fh;
 }
