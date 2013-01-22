@@ -99,28 +99,29 @@ GetOptions( $config,
 
 
 # MySQL settings
-defined $config->{'mysql-database'}              or $config->{'mysql-database'}               = 'orthograph';
-defined $config->{'mysql-password'}              or $config->{'mysql-password'}               = 'root';
-defined $config->{'mysql-server'}                or $config->{'mysql-server'}                 = 'localhost';
-defined $config->{'mysql-username'}              or $config->{'mysql-username'}               = 'root';
-defined $config->{'mysql-prefix'}                or $config->{'mysql-prefix'}                 = 'orthograph';
+$config->{'mysql-database'}             //= 'orthograph';
+$config->{'mysql-password'}             //= 'root';
+$config->{'mysql-server'}               //= 'localhost';
+$config->{'mysql-username'}             //= 'root';
+$config->{'mysql-prefix'}               //= 'orthograph';
+$config->{'mysql-timeout'}              //= 600;
 
 # MySQL tables
-defined $config->{'mysql_table_aaseqs'}          or $config->{'mysql_table_aaseqs'}         = 'aaseqs';
-defined $config->{'mysql_table_blast'}           or $config->{'mysql_table_blast'}          = 'blast';
-defined $config->{'mysql_table_blastdbs'}        or $config->{'mysql_table_blastdbs'}       = 'blastdbs';
-defined $config->{'mysql_table_ests'}            or $config->{'mysql_table_ests'}           = 'ests';
-defined $config->{'mysql_table_hmmsearch'}       or $config->{'mysql_table_hmmsearch'}      = 'hmmsearch';
-defined $config->{'mysql_table_log_evalues'}     or $config->{'mysql_table_log_evalues'}    = 'log_evalues';
-defined $config->{'mysql_table_ntseqs'}          or $config->{'mysql_table_ntseqs'}         = 'ntseqs';
-defined $config->{'mysql_table_ogs'}             or $config->{'mysql_table_ogs'}            = 'ogs';
-defined $config->{'mysql_table_orthologs'}       or $config->{'mysql_table_orthologs'}      = 'orthologs';
-defined $config->{'mysql_table_sequence_pairs'}  or $config->{'mysql_table_sequence_pairs'} = 'sequence_pairs';
-defined $config->{'mysql_table_sequence_types'}  or $config->{'mysql_table_sequence_types'} = 'sequence_types';
-defined $config->{'mysql_table_set_details'}     or $config->{'mysql_table_set_details'}    = 'set_details';
-defined $config->{'mysql_table_temp'}            or $config->{'mysql_table_temp'}           = 'temp';
-defined $config->{'mysql_table_taxa'}            or $config->{'mysql_table_taxa'}           = 'taxa';
-defined $config->{'mysql_table_users'}           or $config->{'mysql_table_users'}          = 'users';
+$config->{'mysql_table_aaseqs'}         //= 'aaseqs';
+$config->{'mysql_table_blast'}          //= 'blast';
+$config->{'mysql_table_blastdbs'}       //= 'blastdbs';
+$config->{'mysql_table_ests'}           //= 'ests';
+$config->{'mysql_table_hmmsearch'}      //= 'hmmsearch';
+$config->{'mysql_table_log_evalues'}    //= 'log_evalues';
+$config->{'mysql_table_ntseqs'}         //= 'ntseqs';
+$config->{'mysql_table_ogs'}            //= 'ogs';
+$config->{'mysql_table_orthologs'}      //= 'orthologs';
+$config->{'mysql_table_sequence_pairs'} //= 'sequence_pairs';
+$config->{'mysql_table_sequence_types'} //= 'sequence_types';
+$config->{'mysql_table_set_details'}    //= 'set_details';
+$config->{'mysql_table_temp'}           //= 'temp';
+$config->{'mysql_table_taxa'}           //= 'taxa';
+$config->{'mysql_table_users'}          //= 'users';
 
 # make sure there is exactly one underscore at the end of the prefix
 (my $mysql_prefix = $config->{'mysql-prefix'}) =~ s/_*$/_/;
@@ -136,50 +137,50 @@ undef %C;
 
 # more variables
 
-defined $config->{'aaoutdir'}                    or $config->{'aaoutdir'}                   = 'aa';
-defined $config->{'alignment-program'}           or $config->{'alignment-program'}          = 'mafft-linsi --anysymbol';
-defined $config->{'backup'}                      or $config->{'backup'}                     = 1;
-defined $config->{'backup-extension'}            or $config->{'backup-extension'}           = '.bak';
-defined $config->{'blast-evalue-threshold'}      or $config->{'blast-evalue-threshold'}     = 10;
-defined $config->{'blast-max-hits'}              or $config->{'blast-max-hits'}             = 100;
-defined $config->{'blast-program'}               or $config->{'blast-program'}              = 'blastp';
-defined $config->{'blast-score-threshold'}       or $config->{'blast-score-threshold'}      = 10;
-defined $config->{'blastoutdir'}                 or $config->{'blastoutdir'}                = basename($config->{'blast-program'});
-defined $config->{'clear-files'}                 or $config->{'clear-files'}                = 0;
-defined $config->{'clear-database'}              or $config->{'clear-database'}             = 1;
-defined $config->{'configfile'}                  or $config->{'configfile'}                 = $configfile;
-defined $config->{'continue'}                    or $config->{'continue'}                   = 0;
-defined $config->{'create'}                      or $config->{'create'}                     = 0;
-defined $config->{'debug'}                       or $config->{'debug'}                      = 0;
-defined $config->{'delete-ogs'}                  or $config->{'delete-ogs'}                 = '';
-defined $config->{'delete-set'}                  or $config->{'delete-set'}                 = '';
-defined $config->{'destroy'}                     or $config->{'destroy'}                    = 0;
-defined $config->{'estfile'}                     or $config->{'estfile'}                    = '';
-defined $config->{'evalue-bin-size'}             or $config->{'evalue-bin-size'}            = 500;
-defined $config->{'hmmbuild-program'}            or $config->{'hmmbuild-program'}           = 'hmmbuild';
-defined $config->{'hmmsearch-evalue-threshold'}  or $config->{'hmmsearch-evalue-threshold'} = defined $config->{'hmmsearch-score-threshold'} ? undef : 10;
-defined $config->{'hmmsearch-program'}           or $config->{'hmmsearch-program'}          = 'hmmsearch';
-defined $config->{'hmmsearch-program'}           or $config->{'hmmsearch-program'}          = 'hmmsearch';
-defined $config->{'hmmsearch-score-threshold'}   or $config->{'hmmsearch-score-threshold'}  = defined $config->{'hmmsearch-evalue-threshold'} ? undef : 10;
-defined $config->{'hmmsearchoutdir'}             or $config->{'hmmsearchoutdir'}            = basename($config->{'hmmsearch-program'});
-defined $config->{'load-ogs-nucleotide'}         or $config->{'load-ogs-nucleotide'}        = '';
-defined $config->{'load-ogs-peptide'}            or $config->{'load-ogs-peptide'}           = '';
-defined $config->{'logfile'}                     or $config->{'logfile'}                    = '';
-defined $config->{'make-set'}                    or $config->{'make-set'}                   = 0;
-defined $config->{'makeblastdb-program'}         or $config->{'makeblastdb-program'}        = 'makeblastdb';
-defined $config->{'max-blast-searches'}          or $config->{'max-blast-searches'}         = 100;
-defined $config->{'ortholog-set'}                or $config->{'ortholog-set'}               = '';
-defined $config->{'output-directory'}            or $config->{'output-directory'}           = '';
-defined $config->{'prepare'}                     or $config->{'prepare'}                    = 0;  
-defined $config->{'quiet'}                       or $config->{'quiet'}                      = 0;  # I like my quiet
-defined $config->{'reference-taxa'}              or $config->{'reference-taxa'}             = '';
-defined $config->{'sets-dir'}                    or $config->{'sets-dir'}                   = 'sets';
-defined $config->{'soft-threshold'}              or $config->{'soft-threshold'}             = 5;
-defined $config->{'species-name'}                or $config->{'species-name'}               = '';
+$config->{'aaoutdir'}                   //= 'aa';
+$config->{'alignment-program'}          //= 'mafft-linsi --anysymbol';
+$config->{'backup'}                     //= 1;
+$config->{'backup-extension'}           //= '.bak';
+$config->{'blast-evalue-threshold'}     //= 10;
+$config->{'blast-max-hits'}             //= 100;
+$config->{'blast-program'}              //= 'blastp';
+$config->{'blast-score-threshold'}      //= 10;
+$config->{'blastoutdir'}                //= basename($config->{'blast-program'});
+$config->{'clear-files'}                //= 0;
+$config->{'clear-database'}             //= 1;
+$config->{'configfile'}                 //= $configfile;
+$config->{'continue'}                   //= 0;
+$config->{'create'}                     //= 0;
+$config->{'debug'}                      //= 0;
+$config->{'delete-ogs'}                 //= '';
+$config->{'delete-set'}                 //= '';
+$config->{'destroy'}                    //= 0;
+$config->{'estfile'}                    //= '';
+$config->{'evalue-bin-size'}            //= 500;
+$config->{'hmmbuild-program'}           //= 'hmmbuild';
+$config->{'hmmsearch-evalue-threshold'} //= defined $config->{'hmmsearch-score-threshold'} ? undef : 10;
+$config->{'hmmsearch-program'}          //= 'hmmsearch';
+$config->{'hmmsearch-program'}          //= 'hmmsearch';
+$config->{'hmmsearch-score-threshold'}  //= defined $config->{'hmmsearch-evalue-threshold'} ? undef : 10;
+$config->{'hmmsearchoutdir'}            //= basename($config->{'hmmsearch-program'});
+$config->{'load-ogs-nucleotide'}        //= '';
+$config->{'load-ogs-peptide'}           //= '';
+$config->{'logfile'}                    //= '';
+$config->{'make-set'}                   //= 0;
+$config->{'makeblastdb-program'}        //= 'makeblastdb';
+$config->{'max-blast-searches'}         //= 100;
+$config->{'ortholog-set'}               //= '';
+$config->{'output-directory'}           //= '';
+$config->{'prepare'}                    //= 0;  
+$config->{'quiet'}                      //= 0;  # I like my quiet
+$config->{'reference-taxa'}             //= '';
+$config->{'sets-dir'}                   //= 'sets';
+$config->{'soft-threshold'}             //= 5;
+$config->{'species-name'}               //= '';
 # substitution character for selenocysteine, which normally leads to blast freaking out
-defined $config->{'substitute-u-with'}           or $config->{'substitute-u-with'}          = 'X';
-defined $config->{'translate-program'}           or $config->{'translate-program'}          = 'fastatranslate';
-defined $config->{'verbose'}                     or $config->{'verbose'}                    = 0;
+$config->{'substitute-u-with'}          //= 'X';
+$config->{'translate-program'}          //= 'fastatranslate';
+$config->{'verbose'}                    //= 0;
 #}}}
 
 # compound options

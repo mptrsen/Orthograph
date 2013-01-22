@@ -38,6 +38,7 @@ my $mysql_dbname               = $config->{'mysql-database'};
 my $mysql_dbpwd                = $config->{'mysql-password'};
 my $mysql_dbserver             = $config->{'mysql-server'};
 my $mysql_dbuser               = $config->{'mysql-username'};
+my $mysql_timeout              = $config->{'mysql-timeout'};
 
 my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
@@ -93,12 +94,11 @@ Returns: Database handle
 
 sub mysql_dbh {#{{{
 	my $dbh = undef;
-	my $timeout = 600;
 	my $slept = 0;
 	my $sleep_for = 10;
 
 	until ($dbh = DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd)) {
-		if ($slept >= $timeout) { 
+		if ($slept >= $mysql_timeout) { 
 			carp "Warning: Connection retry timeout exceeded\n" and return undef;
 		}
 		carp "Warning: Connection failed, retrying in $sleep_for seconds\n";

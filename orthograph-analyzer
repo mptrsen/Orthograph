@@ -968,7 +968,6 @@ sub insert_results_into_table {#{{{
 	if ($blastdb) {
 		my $query_insert_result = "INSERT IGNORE INTO $table (
 			`$mysql_col_taxid`,
-			`$mysql_col_blastdbpath`,
 			`$mysql_col_query`,
 			`$mysql_col_target`,
 			`$mysql_col_score`,
@@ -977,7 +976,6 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_start`,
 			`$mysql_col_end`
 			) VALUES (
-			?,
 			?,
 			?,
 			?,
@@ -996,7 +994,6 @@ sub insert_results_into_table {#{{{
 		foreach my $hit (@$hits) {
 			$sql->execute(
 				$species_id,
-				$blastdb,
 				$hit->{'query'},  # query (HMM)
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
@@ -1011,6 +1008,7 @@ sub insert_results_into_table {#{{{
 		$dbh->disconnect;
 		return $hitcount;
 	}
+
 	# this is a HMMsearch result, need 8 columns
 	else {
 		# SQL query for pushing HMMsearch results to the db
