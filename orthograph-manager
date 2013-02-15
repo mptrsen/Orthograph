@@ -303,7 +303,7 @@ print "Successfully loaded $total_seqs sequences from $infile into $temptable on
 
 # get name and longname from the temp table; they do not get updated automatically
 $dbh = Wrapper::Mysql::mysql_dbh();
-$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM temp");
+$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM $temptable");
 $sql->execute();
 while (my @result = $sql->fetchrow) {
 	$names{$result[0]} = '';

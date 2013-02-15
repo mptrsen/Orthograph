@@ -39,6 +39,7 @@ my $mysql_dbpwd                = $config->{'mysql-password'};
 my $mysql_dbserver             = $config->{'mysql-server'};
 my $mysql_dbuser               = $config->{'mysql-username'};
 my $mysql_timeout              = $config->{'mysql-timeout'};
+my $sleep_for                  = 10;
 
 my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
@@ -95,7 +96,6 @@ Returns: Database handle
 sub mysql_dbh {#{{{
 	my $dbh = undef;
 	my $slept = 0;
-	my $sleep_for = 10;
 
 	until ($dbh = DBI->connect("DBI:mysql:$mysql_dbname:$mysql_dbserver;mysql_local_infile=1", $mysql_dbuser, $mysql_dbpwd)) {
 		if ($slept >= $mysql_timeout) { 
@@ -103,7 +103,7 @@ sub mysql_dbh {#{{{
 		}
 		carp "Warning: Connection failed, retrying in $sleep_for seconds\n";
 		sleep $sleep_for;
-		$slept += 10;
+		$slept += $sleep_for;
 	}
 
 	if ($dbh) { return $dbh }
@@ -153,10 +153,16 @@ sub mysql_do {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_do(QUERY)\n" }
 	my @fields = @_;
+	my $slept = 0;
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sql = $dbh->prepare($query);
-	$sql->execute(@fields) or die;
+	until ($sql->execute(@fields)) { 
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	$dbh->disconnect();
 	return 1;
 }#}}}
@@ -220,6 +226,7 @@ Returns a hashref of hashrefs to create an ortholog set from. Each key in the ha
 sub get_ortholog_groups_for_set {
 	my $setid = shift @_ or croak "Usage: Wrapper::Mysql::get_ortholog_groups_for_set(SETID)";
 	my $data = {};
+	my $slept = 0;
 	my $query = "SELECT o.ortholog_gene_id, a.id, a.sequence
 		FROM $mysql_table_orthologs         AS o
     INNER JOIN $mysql_table_seqpairs    AS p
@@ -233,7 +240,12 @@ sub get_ortholog_groups_for_set {
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sql = $dbh->prepare($query);
-	$sql->execute( $setid ) or die;
+	until ($sql->execute( $setid )) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	while (my @row = $sql->fetchrow_array()) {
 		# load the whole set into memory, i don't give a frak
 		$$data{$row[0]}{$row[1]} = $row[2];
@@ -245,14 +257,19 @@ sub get_ortholog_groups_for_set {
 
 sub get_transcripts {
 	my $specid = shift or croak "Usage: Wrapper::Mysql::get_transcripts(SPECIESID)";
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
+	my $slept = 0;
 	my $query = "SELECT digest, sequence
 		FROM $mysql_table_ests
 		WHERE taxid = ?";
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
-	$sth->execute($specid);
+	until ($sth->execute($specid)) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	my $data = $sth->fetchall_arrayref();
 	$sth->finish();
 	$dbh->disconnect();
@@ -475,10 +492,16 @@ exists), 0 otherwise.
 
 sub set_exists {
 	my $set = shift;
+	my $slept = 0;
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare("SELECT * FROM $mysql_table_set_details WHERE $mysql_col_name = ? LIMIT 1");
-	$sth->execute($set);
+	until ($sth->execute($set)) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	my $result = $sth->fetchrow_arrayref;
 	if ( $$result[0] ) { return 1 }
 	return 0;
@@ -495,14 +518,19 @@ Returns the newly generated taxon ID.
 
 sub insert_taxon_into_table {
 	my $species_name = shift(@_);
+	my $slept = 0;
 	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_taxon_into_table(SPECIESNAME)") }
 	if (my $taxid = &get_taxid_for_species($species_name)) { return $taxid }
 	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
-	$sth->execute( $species_name, 0 )
-		or return 0;
+	until ($sth->execute( $species_name, 0 )) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	$dbh->disconnect();
 	return &get_taxid_for_species($species_name);
 }
@@ -510,6 +538,7 @@ sub insert_taxon_into_table {
 sub create_log_evalues_view {
 	unless (scalar @_ == 1) { croak 'Usage: Wrapper::Mysql::create_log_evalues_view($species_id)' }
 	my $taxid = shift;
+	my $slept = 0;
 	my $query_create_log_evalues = "CREATE OR REPLACE VIEW $mysql_table_log_evalues AS
 	  SELECT $mysql_table_hmmsearch.$mysql_col_log_evalue AS $mysql_col_log_evalue,
 	    COUNT($mysql_table_hmmsearch.$mysql_col_log_evalue) AS `count`
@@ -520,7 +549,12 @@ sub create_log_evalues_view {
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_create_log_evalues);
-	$sth->execute( $taxid ) or return 0;
+	until ($sth->execute( $taxid )) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	$dbh->disconnect();
 	return 1;
 }
@@ -544,7 +578,12 @@ sub get_orthologs_for_set_hashref {
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
-	$sth->execute( $setid );
+	until ($sth->execute( $setid )) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	my $result = { };
 	while (my $line = $sth->fetchrow_arrayref()) {
 		push( @{$$result{$$line[0]}}, $$line[1] );
@@ -577,7 +616,12 @@ sub get_ortholog_group {
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
-	$sth->execute($setid, $orthoid);
+	until ($sth->execute($setid, $orthoid)) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	my $data = $sth->fetchall_arrayref();
 	return $data;
 }
@@ -643,7 +687,12 @@ sub get_hitlist_hashref {
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
-	$sth->execute( $setid, $specid ) or croak;
+	until ($sth->execute( $setid, $specid )) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	my $result = { };
 	while (my $line = $sth->fetchrow_arrayref()) {
 		my $start = $$line[5] - 1;
@@ -673,10 +722,16 @@ Returns a hashref as $hash->{$log_evalue} = number_of_occurences (an int)
 
 sub get_logevalue_count {
 	my $query_get_logevalues = "SELECT $mysql_col_log_evalue, count FROM $mysql_table_log_evalues";
+	my $slept = 0;
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_get_logevalues);
-	$sth->execute();
+	until ($sth->execute()) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	my $d = $sth->fetchall_arrayref();
 	$sth->finish();
 	$dbh->disconnect();
@@ -749,9 +804,23 @@ sub get_results_for_logevalue {
 	my $sth = $dbh->prepare($query);
 
 	# e-value range
-	if ($max) { $sth->execute( $setid, $taxid, $min, $max ) }
+	if ($max) {
+		until ( $sth->execute($setid, $taxid, $min, $max) ) {
+			warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+			if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+			sleep $sleep_for;
+			$slept += $sleep_for;
+		}
+	}
 	# single e-value
-	else      { $sth->execute( $setid, $taxid, $min )       }
+	else      {
+		until ( $sth->execute($setid, $taxid, $min) ) {
+			warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+			if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+			sleep $sleep_for;
+			$slept += $sleep_for;
+		}
+	} 
 
 	# will hold the result
 	my $result = { };
@@ -811,6 +880,7 @@ sub get_hit_transcripts {
 	
 sub get_nuc_for_pep {
 	my $pepid = shift @_ or croak "Usage: get_nuc_for_pep(PEPTIDE_ID)\n";
+	my $slept = 0;
 	my $query = "SELECT $mysql_table_seqpairs.$mysql_col_ntseq 
 		FROM $mysql_table_seqpairs
 		WHERE $mysql_table_seqpairs.$mysql_col_aaseq = ?";
@@ -818,7 +888,12 @@ sub get_nuc_for_pep {
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
-	$sth->execute($pepid);
+	until ($sth->execute($pepid) {
+		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
+		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
 	my $data = $sth->fetchall_arrayref();
 	print Dumper($data); exit;
 }

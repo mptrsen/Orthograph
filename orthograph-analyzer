@@ -189,6 +189,7 @@ my $mysql_col_start         = 'start';
 my $mysql_col_target        = 'target';
 my $mysql_col_taxid         = 'taxid';
 my $mysql_col_taxon         = 'taxon';
+my $mysql_col_user          = 'user';
 my $mysql_dbi               = "dbi:mysql:$mysql_dbname:$mysql_dbserver";
 my $num_bp                  = 0;
 my $num_ests                = 0;
@@ -846,6 +847,7 @@ sub preparedb {#{{{
 		`$mysql_col_id`        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 		`$mysql_col_digest`    CHAR(32)     NOT NULL,           
 		`$mysql_col_taxid`     INT UNSIGNED NOT NULL,       
+		`$mysql_col_user`      INT UNSIGNED NOT NULL,       
 		`$mysql_col_date`      INT UNSIGNED,
 		`$mysql_col_hdr`       VARCHAR(255) NOT NULL,       
 		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
