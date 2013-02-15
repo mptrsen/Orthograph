@@ -563,6 +563,7 @@ sub create_log_evalues_view {
 # get a orthoid => list_of_aaseq_ids relationship from the db
 sub get_orthologs_for_set_hashref {
 	my $setid = shift(@_);
+	my $slept = 0;
 	unless ($setid) { croak("Usage: get_orthologs_for_set(SETID)") }
 	my $query = "SELECT DISTINCT
 		$mysql_table_orthologs.ortholog_gene_id,
@@ -602,6 +603,7 @@ Get a specific ortholog group, i.e. aa headers and sequences.
 sub get_ortholog_group {
 	my $setid   = shift;
 	my $orthoid = shift;
+	my $slept = 0;
 	my $query = "SELECT DISTINCT 
 		$mysql_table_aaseqs.$mysql_col_header, $mysql_table_aaseqs.$mysql_col_sequence
 		FROM $mysql_table_aaseqs
@@ -653,6 +655,7 @@ Returns: hashref of hashrefs of arrayrefs of hashrefs - lol
 sub get_hitlist_hashref {
 	scalar @_ == 4 or croak("Usage: get_hitlist_for(SPECIESID, SETID, LIMIT, OFFSET)");
 	my ($specid, $setid, $limit, $offset) = @_;
+	my $slept = 0;
 	my $query = "SELECT DISTINCT
 		$mysql_table_hmmsearch.evalue,
 		$mysql_table_orthologs.ortholog_gene_id, 
@@ -757,6 +760,7 @@ sub get_results_for_logevalue {
 	my $taxid   = shift;
 	my $min     = shift;
 	my $max     = shift;
+	my $slept   = 0;
 	# generic query
 	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_evalue,
 			$mysql_table_orthologs.$mysql_col_orthoid,
@@ -888,7 +892,7 @@ sub get_nuc_for_pep {
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
-	until ($sth->execute($pepid) {
+	until ($sth->execute($pepid)) {
 		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
 		if ($slept > $mysql_timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
 		sleep $sleep_for;

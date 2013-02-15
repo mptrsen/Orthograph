@@ -196,7 +196,7 @@ foreach my $bin (@$logevalues_bins) {
 
 			#-------------------------------------------------- 
 			# so, was this a match we can trust?
-			if ($this_match = &get_reciprocal_match($orthoid, $list)) {
+			if (my $this_match = &get_reciprocal_match($orthoid, $list)) {
 
 				# yeah - here should be the part where the actual sequences are output
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
