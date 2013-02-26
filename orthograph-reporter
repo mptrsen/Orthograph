@@ -116,6 +116,10 @@ my $mismatches           = 0;
 my $max_mismatches       = $soft_threshold;
 my $results              = undef;
 my ($t0, $t1)            = 0;
+my $stats                = { };
+my $starttime            = scalar time;
+my $endtime              = 0;
+my $totaltime            = 0;
 
 # get the species id from the database
 $species_id = Wrapper::Mysql::get_taxid_for_species($speciesname);
@@ -181,7 +185,7 @@ foreach my $bin (@$logevalues_bins) {
 		$results = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
 	}
 	$t1 = scalar time;
-	printf $stdout "Fetched %d rows in %.2f seconds\n", scalar keys %$results, $t1 - $t0 if $verbose;
+	printf $stdout "Fetched %d rows for log evalue range (%.2e to %.2e) in %.2f seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
 
 	EVALUE:
 	while (my ($logevalue, $result) = each %$results) {
@@ -267,7 +271,6 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	print $tfh $orthoid;
 	foreach my $hit (@$transcripts) {
 		my $corresponding_nuc = Wrapper::Mysql::get_nuc_for_pep($hit->{'blast_hit'});
-		exit;
 		my $length = $hit->{'end'} - $hit->{'start'};
 		printf $tfh "\t%s[%d:%d]",
 			$hit->{'hmmhit'},
@@ -302,7 +305,9 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 undef $tfh;
 
 # yay
-print $stdout "## End of Orthograph report for $speciesname\n";
+$endtime = scalar time;
+$totaltime = $endtime - $starttime;
+print $stdout "## Orthograph report for $speciesname completed in $totaltime total seconds\n";
 exit;
 
 
