@@ -302,6 +302,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 undef $tfh;
 
 # yay
+print $stdout "## End of Orthograph report for $speciesname\n";
 exit;
 
 
