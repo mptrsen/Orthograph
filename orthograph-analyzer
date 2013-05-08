@@ -839,6 +839,13 @@ sub cleardir {#{{{
 	return 1;
 }#}}}
 
+sub get_real_table_names {
+	my $real_table_ests      = $mysql_table_ests      . '_' . $species_name;
+	my $real_table_hmmsearch = $mysql_table_hmmsearch . '_' . $species_name;
+	my $real_table_blast     = $mysql_table_blast     . '_' . $species_name;
+	return ($real_table_ests, $real_table_hmmsearch, $real_table_blast);
+}
+
 # Sub: preparedb
 # Generate a clean database, deleting all existing tables and starting from scratch
 # Returns: True on success
