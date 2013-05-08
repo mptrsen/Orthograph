@@ -219,6 +219,9 @@ my @seqobjs                 = ( );
 
 $tmpdir->unlink_on_destroy(0) if $debug;
 
+# get real table names
+($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = Wrapper::Mysql::get_real_table_names();
+
 #--------------------------------------------------
 # # Special case: Prepare the MySQL database by dropping and recreating all
 # # tables if requested, then exit
@@ -292,7 +295,10 @@ $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = scalar time;
-	my $n_deleted = &clear_db($species_name) or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
+	my $n_deleted = &clear_db($species_name);
+	if ($n_deleted == 0 and $DBI::errstr) {
+		print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
+	}
 	$t1 = scalar time;
 	printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
@@ -839,13 +845,6 @@ sub cleardir {#{{{
 	return 1;
 }#}}}
 
-sub get_real_table_names {
-	my $real_table_ests      = $mysql_table_ests      . '_' . $species_name;
-	my $real_table_hmmsearch = $mysql_table_hmmsearch . '_' . $species_name;
-	my $real_table_blast     = $mysql_table_blast     . '_' . $species_name;
-	return ($real_table_ests, $real_table_hmmsearch, $real_table_blast);
-}
-
 # Sub: preparedb
 # Generate a clean database, deleting all existing tables and starting from scratch
 # Returns: True on success
@@ -862,8 +861,7 @@ sub preparedb {#{{{
 		INDEX (`$mysql_col_digest`(4)),
 		INDEX (`$mysql_col_taxid`),
 		INDEX (`$mysql_col_hdr`)
-		ENGINE=MyISAM
-		)";
+		) ENGINE=MYISAM AUTO_INCREMENT=0";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
 		`$mysql_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -935,7 +933,7 @@ sub clear_db {#{{{
 	return unless $species_name;
 
 	# get the species id from the database
-	my $specid = &Wrapper::Mysql::get_taxid_for_species($species_name)
+	my $specid = Wrapper::Mysql::get_taxid_for_species($species_name)
 		or print $stderr "Warning: Could  not get species ID from database: $DBI::errstr\n";
 	return unless $specid;
 
@@ -951,9 +949,11 @@ sub clear_db {#{{{
 		my $sth = $dbh->prepare($query);
 		$n += $sth->execute( $specid );
 	}
-	my $sth = $dbh->prepare("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = ?");
-	$n     += $sth->execute($specid)
-		or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
+	#--------------------------------------------------
+	# my $sth = $dbh->prepare("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = ?");
+	# $n     += $sth->execute($specid)
+	# 	or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
+	#-------------------------------------------------- 
 	# disconnect ASAP
 	$dbh->disconnect();
 
@@ -1311,9 +1311,9 @@ sub load_data_infile {#{{{
 	$dbh->do($query_disable_keys);
 	my $sth = $dbh->prepare($query);
 	print $stdout "Uploading data...\n" if $verbose;
-	$num_ests = $sth->execute();
+	$num_ests = $sth->execute() or die "Fatal: MySQL transaction failed\n";
 	print $stdout "Re-indexing $table_ests...\n" if $verbose;
-	$dbh->do($query_enable_keys);
+	$dbh->do($query_enable_keys) or die "Fatal: MySQL transaction failed\n";
 	# disconnect ASAP and die if errors
 	$dbh->disconnect;
 	if (defined($DBI::errstr)) { print $stderr "$DBI::errstr\n" and exit(1) }
