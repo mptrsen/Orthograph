@@ -81,8 +81,6 @@ my $species_name               = $config->{'species-name'};
 my $verbose                    = $config->{'verbose'};
 #}}}
 
-# get real table names (individual per species)
-($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = get_real_table_names();
 
 =head1 FUNCTIONS
 
@@ -906,7 +904,7 @@ sub get_nuc_for_pep {
 }
 
 sub get_real_table_names {
-	my $specid = Wrapper::Mysql::get_taxid_for_species($species_name);
+	my $specid = shift @_;
 	my $real_table_ests      = $mysql_table_ests      . '_' . $specid;
 	my $real_table_hmmsearch = $mysql_table_hmmsearch . '_' . $specid;
 	my $real_table_blast     = $mysql_table_blast     . '_' . $specid;

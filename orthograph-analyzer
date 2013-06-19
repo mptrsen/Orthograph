@@ -219,8 +219,13 @@ my @seqobjs                 = ( );
 
 $tmpdir->unlink_on_destroy(0) if $debug;
 
+# get the taxon id. create a new entry in the taxa table or return existing one
+$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name)
+	or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
+$message .= "Got taxon id $species_id for '$species_name'\n" unless $quiet;
+
 # get real table names
-($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = Wrapper::Mysql::get_real_table_names();
+($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
 
 #--------------------------------------------------
 # # Special case: Prepare the MySQL database by dropping and recreating all
@@ -302,11 +307,6 @@ if ($clear_database) {
 	$t1 = scalar time;
 	printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
-
-# get the taxon id. create a new entry in the taxa table or return existing one
-$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name)
-	or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
-print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 
 unless ($continue) {
 	# store est data into the database:
