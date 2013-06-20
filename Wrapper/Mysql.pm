@@ -78,8 +78,10 @@ my $reftaxa                    = $config->{'reference-taxa'};
 my $u_subst                    = $config->{'substitute-u-with'};
 my $sets_dir                   = $config->{'sets-dir'};
 my $species_name               = $config->{'species-name'};
+my $g_species_id               = undef;	# global variable
 my $verbose                    = $config->{'verbose'};
 #}}}
+
 
 
 =head1 FUNCTIONS
@@ -377,7 +379,7 @@ sub get_number_of_ests_for_specid {
 	my $specid = shift @_ or croak "Usage: get_number_of_ests_for_specid(SPECID)";
 
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $result = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests WHERE taxid = '$specid'");
+	my $result = &mysql_get("SELECT COUNT(*) FROM $mysql_table_ests");
 
 	return $$result[0][0];
 }
@@ -458,7 +460,10 @@ sub get_taxid_for_species {
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT id FROM $mysql_table_taxa WHERE core = 0 AND longname = '$species_name'";
 	my $result = &mysql_get($query);
-	if ($result) { return $$result[0][0] }
+	if ($result) { 
+		$g_species_id = $$result[0][0];
+		return $$result[0][0];
+	}
 	return 0;
 }
 
@@ -533,7 +538,11 @@ sub insert_taxon_into_table {
 		$slept += $sleep_for;
 	}
 	$dbh->disconnect();
-	return &get_taxid_for_species($species_name);
+
+	$g_species_id = &get_taxid_for_species($species_name) or croak;
+	# get the real table names
+	($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = get_real_table_names($g_species_id) or return undef;
+	return $g_species_id;
 }
 
 sub create_log_evalues_view {
@@ -908,6 +917,9 @@ sub get_real_table_names {
 	my $real_table_ests      = $mysql_table_ests      . '_' . $specid;
 	my $real_table_hmmsearch = $mysql_table_hmmsearch . '_' . $specid;
 	my $real_table_blast     = $mysql_table_blast     . '_' . $specid;
+	$mysql_table_ests        = $real_table_ests;
+	$mysql_table_hmmsearch   = $real_table_hmmsearch;
+	$mysql_table_blast       = $real_table_blast;
 	return ($real_table_ests, $real_table_hmmsearch, $real_table_blast);
 }
 

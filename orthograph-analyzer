@@ -300,17 +300,15 @@ $protfile = &translate_est(File::Spec->catfile($estfile));#{{{
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = scalar time;
-	my $n_deleted = &clear_db($species_name);
-	if ($n_deleted == 0 and $DBI::errstr) {
-		print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
-	}
+	#my $n_deleted = &clear_db($species_name);
+	&preparedb or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
 	$t1 = scalar time;
-	printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
+	#printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
 
 unless ($continue) {
 	# store est data into the database:
-	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver:\n" unless $quiet;
+	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
@@ -442,18 +440,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	for (my $n = 0; $n < $max; ++$n) { #{{{
  		++$count;
 
-		# setup a temporary file to hold the sequence to be blasted
-		my $tmpfile = File::Temp->new(
-			'UNLINK' => 0, 
-			'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmobj->hmmfile) . '-XXXX'));
-		# don't delete this file if debugging
-		$tmpfile->unlink_on_destroy(0) if $debug;
-		# get sequence length
-		my ($start, $end) = ($hmmresults[$n][2] - 1, $hmmresults[$n][3] - 1);
-		my $length = $end - $start;
-		# write fasta header and sequence to the tempfile
-		printf($tmpfile ">%s\n%s\n", $hmmresults[$n]->[0], substr($hmmresults[$n]->[1], $start, $length));
-		printf($stdout "Wrote sequence [%d] (from %d to %d) to tmpfile %s\n", $n + 1, $start, $end, $tmpfile) if $debug;
+		my $tmpfile = &write_sequence_to_tempfile($hmmresults[$n], $hmmobj->hmmfile);
 
 		#--------------------------------------------------
 		# # run blastp 
@@ -462,8 +449,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		my $blastobj = Wrapper::Blastp->new($blastdb);
 
 		# generate a blast output file name from the HMM name and the hit number
-		my $filename = sprintf "%s-%s-[%d-%d]-%s.blast", $hmmobj->hmmname, $hmmresults[$n]->[0], $start, $end, basename($blastdb);
-		my $blastoutfile = File::Spec->catfile($blastoutdir, $filename);
+		my $blastoutfile = &generate_blast_output_filename($hmmobj->hmmname, $hmmresults[$n]);
 
 		# do the blastp search
 		$blastobj->blastp($tmpfile, $blastoutfile);
@@ -945,15 +931,10 @@ sub clear_db {#{{{
 		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
 
 	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
-		my $query = "DELETE FROM $table WHERE $mysql_col_taxid = ?";
+		my $query = "DROP TABLE $table";
 		my $sth = $dbh->prepare($query);
-		$n += $sth->execute( $specid );
+		$n += $sth->execute();
 	}
-	#--------------------------------------------------
-	# my $sth = $dbh->prepare("DELETE FROM $mysql_table_taxa WHERE $mysql_col_id = ?");
-	# $n     += $sth->execute($specid)
-	# 	or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
-	#-------------------------------------------------- 
 	# disconnect ASAP
 	$dbh->disconnect();
 
@@ -1285,7 +1266,7 @@ sub load_data_infile {#{{{
 		printf($tmpfh "%s,%d,%d,%s,%s\n", 
 			# good idea or not?
 			# good idea
-			Digest::SHA->sha256_hex($h, $s),
+			Digest::SHA->sha256_hex($s),
 			$species_id,
 			$timestamp_start,
 			$h,
@@ -1383,6 +1364,34 @@ sub get_orthologs {#{{{
 	$dbh->disconnect();
 	return $result;
 }#}}}
+
+sub write_sequence_to_tempfile {
+	my $result = shift @_;
+	my $hmmfilename = shift @_;
+	# setup a temporary file to hold the sequence to be blasted
+	my $tmpfile = File::Temp->new(
+		'UNLINK' => 0, 
+		'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmfilename) . '-XXXX'));
+	# don't delete this file if debugging
+	$tmpfile->unlink_on_destroy(0) if $debug;
+	# get sequence length
+	my ($start, $end) = ($result->[2] - 1, $result->[3] - 1);
+	my $length = $end - $start;
+	# write fasta header and sequence to the tempfile
+	printf($tmpfile ">%s\n%s\n", $result->[0], substr($result->[1], $start, $length));
+	printf($stdout "Wrote sequence (from %d to %d) to tmpfile %s\n", $start, $end, $tmpfile) if $debug;
+
+	return $tmpfile;
+}
+
+sub generate_blast_output_filename {
+	my $hmmname = shift @_;
+	my $hmmresult = shift @_;
+	my ($start, $end) = ($hmmresult->[2] - 1, $hmmresult->[3] - 1);
+	my $filename = sprintf "%s-%s-[%d-%d]-%s.blast", $hmmname, $hmmresult->[0], $start, $end, basename($blastdb);
+	return File::Spec->catfile($blastoutdir, $filename);
+}
+
 
 __END__
 
