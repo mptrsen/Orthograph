@@ -856,7 +856,7 @@ sub get_results_for_logevalue {
 	}
 	$sth->finish();
 	$dbh->disconnect();
-	scalar keys %$result > 0 ? return $result : return 0;
+	scalar keys %$result > 0 ? return $result : return undef;
 }
 
 =head2 get_hit_transcripts($species_id, $set_id)

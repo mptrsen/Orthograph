@@ -30,6 +30,12 @@ Exonerate to work. Really, don't use Windows.
 If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.
 
+DATA REQUIREMENTS
+=================
+
+Orthograph is an orthology prediction pipeline. 
+
+
 QUICKSTART
 ==========
 

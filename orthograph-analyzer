@@ -188,6 +188,7 @@ my $mysql_col_setid         = 'setid';
 my $mysql_col_start         = 'start';
 my $mysql_col_target        = 'target';
 my $mysql_col_taxid         = 'taxid';
+my $mysql_col_type          = 'type';
 my $mysql_col_taxon         = 'taxon';
 my $mysql_col_user          = 'user';
 my $mysql_dbi               = "dbi:mysql:$mysql_dbname:$mysql_dbserver";
@@ -312,7 +313,7 @@ unless ($continue) {
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	$num_bp = &load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 }
@@ -321,9 +322,8 @@ unless ($continue) {
 # get number of sequences for this species, report or die
 $num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
 if ($num_ests != 0) {
-	printf($stdout "%d sequences (%d total bp) of %s in database '%s' on %s. \n",
+	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
 		$num_ests,
-		$num_bp,
 		$species_name,
 		$mysql_dbname,
 		$mysql_dbserver) unless $quiet;
@@ -839,7 +839,7 @@ sub preparedb {#{{{
 		`$mysql_col_id`        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 		`$mysql_col_digest`    CHAR(32)     NOT NULL,           
 		`$mysql_col_taxid`     INT UNSIGNED NOT NULL,       
-		`$mysql_col_user`      INT UNSIGNED NOT NULL,       
+		`$mysql_col_type`      TINYINT(4) UNSIGNED NOT NULL,
 		`$mysql_col_date`      INT UNSIGNED,
 		`$mysql_col_hdr`       VARCHAR(255) NOT NULL,       
 		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
