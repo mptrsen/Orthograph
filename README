@@ -131,7 +131,7 @@ name. You will need it later.
 
 5. Load proteome sequences into the database :
 
-  $ ./orthograph-manager -load_ogs_peptide FASTAFILE
+  $ ./orthograph-manager -load-ogs-peptide FASTAFILE
 
 You need to load data for every taxon separately (this may change in the
 future), and you should load data for as many taxa in the orthologs file as
@@ -149,7 +149,7 @@ process at any time using Ctrl+C.
 
 6. Optional: Load nucleotide sequence data into the database:
 
-  $ ./orthograph-manager -load_ogs_nucleotide FASTAFILE
+  $ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
 
 The nucleotide sequences are expected to be the coding sequences for the
 peptide sequences you loaded earlier. The headers have to correspond EXACTLY,
