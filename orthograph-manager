@@ -135,11 +135,11 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will create a new Orthograph database called '$mysql_dbname'. Any existing database structures will be erased. Are you sure (y/n)? ";
+	print "This will create a new Orthograph table structure in the database '$mysql_dbname' with the table prefix '$mysql_dbname'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
 	&get_yn() or exit;
 	&drop_tables;
 	&create_tables;
-	print "Created Orthograph database '$mysql_dbname'.\n";
+	print "Created Orthograph table structure in database '$mysql_dbname'.\n";
 	exit;
 }
 
