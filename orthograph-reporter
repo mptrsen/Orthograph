@@ -128,6 +128,9 @@ unless ($species_id) {
 	exit(1);
 }
 
+# get real table names
+($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
+
 # get the set id from the database
 $set_id = Wrapper::Mysql::get_set_id($setname);
 unless ($set_id) {
@@ -186,6 +189,9 @@ foreach my $bin (@$logevalues_bins) {
 	}
 	$t1 = scalar time;
 	printf $stdout "Fetched %d rows for log evalue range (%.2e to %.2e) in %.2f seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
+
+	# skip empty bins
+	next unless %$results;
 
 	EVALUE:
 	while (my ($logevalue, $result) = each %$results) {
@@ -270,7 +276,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
 	print $tfh $orthoid;
 	foreach my $hit (@$transcripts) {
-		my $corresponding_nuc = Wrapper::Mysql::get_nuc_for_pep($hit->{'blast_hit'});
+		# my $corresponding_nuc = Wrapper::Mysql::get_nuc_for_pep($hit->{'blast_hit'});
 		my $length = $hit->{'end'} - $hit->{'start'};
 		printf $tfh "\t%s[%d:%d]",
 			$hit->{'hmmhit'},
