@@ -262,3 +262,4 @@ sub fastaify {
 	close $fh;
 	return $fh;
 }
+
