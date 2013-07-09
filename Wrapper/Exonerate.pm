@@ -34,12 +34,12 @@ my $evalue_threshold = 10;
 my $score_threshold = 10;
 
 sub new {
-	my ($class, $query, $target) = @_;
+	my ($class) = @_;
 
 	my $self = {
-		'query'      => $query,
-		'target'     => $target,
-		'resultfile' => '',
+		'query'      => undef,
+		'target'     => undef,
+		'resultfile' => undef,
 		'hitcount'   => 0,
 	};
 	bless $self, $class;
@@ -155,29 +155,38 @@ Searches query against target sequence(s) and stores the result in the object (a
 
 =cut
 
-sub search {
+sub align {
 	my $self = shift;
 	# some exonerate options
 	my $exonerate_model = $exhaustive ? 'protein2genome:bestfit' : 'protein2genome';
 	my $exhaustive = $exhaustive ? '--exhaustive yes' : '';
 
 	# write these to fasta files each
-	my $queryfile = &fastaify($self->{'query'}->{'header'}, $self->{'query'}->{'sequence'});
-	my $targetfile = &fastaify($self->{'target'}->{'header'}, $self->{'target'}->{'sequence'});
+	my $queryfile = &fastaify('query', $self->{'query'});
+	my $targetfile = &fastaify('target', $self->{'target'});
 	# roll your own output for exonerate
 	my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
-	$exonerate_ryo = "%tcs";
+	$exonerate_ryo = "%tcb\n%tce\n%tcs\n";
 
 	# the complete command line
 	my $exonerate_cmd = qq( $searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile );
 	print "$exonerate_cmd\n" if $debug;
 	$self->{'result'} = [ `$exonerate_cmd` ] or confess "Error running exonerate: $!\n";
+	if (scalar @{$self->{'result'}} == 0) { return 0 }
+	chomp @{$self->{'result'}};
+	$self->{'cdna_start'} = shift @{$self->{'result'}};
+	$self->{'cdna_end'} = shift @{$self->{'result'}};
 	return 1;
 }
 
-sub result {
+sub cdna_start {
 	my $self = shift;
-	return $self->{'result'};
+	return $self->{'cdna_start'};
+}
+
+sub cdna_end {
+	my $self = shift;
+	return $self->{'cdna_end'};
 }
 
 sub cdna_sequence {
@@ -187,45 +196,31 @@ sub cdna_sequence {
 	return $self->{'cdna_sequence'};
 }
 
-sub query_header {
-	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'query'}->{'header'} }
-	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->query_header($header)', "\n" }
-	$self->{'query'}->{'header'} = shift @_;
-}
-
-sub target_header {
-	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'target'}->{'header'} }
-	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->target_header($header)', "\n" }
-	$self->{'target'}->{'header'} = shift @_;
-}
-
-=head2 query_sequence
+=head2 query
 
 Sets or returns the query sequence.
 
 =cut
 
-sub query_sequence {
+sub query {
 	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'query'}->{'sequence'} }
+	if    (scalar @_ == 0) { return $self->{'query'} }
 	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->query_sequence($sequence)', "\n" }
-	$self->{'query'}->{'sequence'} = shift @_;
+	$self->{'query'} = shift @_;
 	return 1;
 }
 
-=head2 target_sequence
+=head2 target
 
 Sets or returns the target sequence.
 
 =cut
 
-sub target_sequence {
+sub target {
 	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'target'}->{'sequence'} }
+	if    (scalar @_ == 0) { return $self->{'target'} }
 	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->target_sequence($sequence)', "\n" }
-	$self->{'target'}->{'sequence'} = shift @_;
+	$self->{'target'} = shift @_;
 	return 1;
 }
 
@@ -233,7 +228,7 @@ sub query_file {
 	my $self = shift;
 	unless (scalar @_ > 0) {
 		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open query file for writing: $!\n";
-		printf $tmpfh ">%s\n%s\n", $self->{'query'}->{'header'}, $self->{'query'}->{'sequence'} or confess "Fatal: Could not write to query file '$tmpfh': $!\n";
+		printf $tmpfh ">%s\n%s\n", 'query', $self->{'query'} or confess "Fatal: Could not write to query file '$tmpfh': $!\n";
 		print "wrote to $tmpfh\n" if $debug;
 		$self->{'queryfile'} = $tmpfh;
 		return 1;
@@ -245,7 +240,7 @@ sub target_file {
 	my $self = shift;
 	unless (scalar @_ > 0) {
 		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open target file for writing: $!\n";
-		printf $tmpfh ">%s\n%s\n", $self->{'target'}->{'header'}, $self->{'target'}->{'sequence'} or confess "Fatal: Could not write to target file '$tmpfh': $!\n";
+		printf $tmpfh ">%s\n%s\n", 'target', $self->{'target'} or confess "Fatal: Could not write to target file '$tmpfh': $!\n";
 		print "wrote to $tmpfh\n" if $debug;
 		$self->{'targetfile'} = $tmpfh;
 		return 1;

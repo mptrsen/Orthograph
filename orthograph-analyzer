@@ -313,7 +313,7 @@ unless ($continue) {
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 }

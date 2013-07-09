@@ -210,8 +210,7 @@ sub getconfig {
 		$config = &parse_config($configfile);
 	}#}}}
 	else {
-		warn "Fatal: Config file '$configfile' not found!\n";
-		return 0;
+		die "Fatal: Config file '$configfile' not found!\n";
 	}
 
 	return $config;
