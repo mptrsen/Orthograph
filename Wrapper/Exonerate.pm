@@ -18,6 +18,7 @@ package Wrapper::Exonerate;
 
 use strict;
 use warnings;
+use autodie;
 use File::Basename; # basename of files
 use File::Temp;
 use IO::File; # object-oriented access to files
@@ -54,12 +55,12 @@ Sets verbose output on (TRUE) or off (FALSE). Default is FALSE.
 
 =cut
 
-sub verbose {#{{{
+sub verbose {
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
   unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->verbose(1|0)") }
   $verbose = shift;
-}#}}}
+}
 
 =head2 debug
 
@@ -67,12 +68,12 @@ Sets debug output on (TRUE) or off (FALSE). Default is FALSE.
 
 =cut
 
-sub debug {#{{{
+sub debug {
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
   unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->debug(1|0)") }
   $debug = shift;
-}#}}}
+}
 
 =head2 exhaustive
 
@@ -94,12 +95,12 @@ scalar F<pathname>. Defaults to F<.>.
 
 =cut
 
-sub outdir {#{{{
+sub outdir {
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
   unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->outdir(OUTDIR)") }
   $outdir = shift;
-}#}}}
+}
 
 =head2 searchprog
 
@@ -107,22 +108,21 @@ Sets the Exonerate program. Expects a string. Defaults to 'F<exonerate>'.
 
 =cut
 
-sub searchprog {#{{{
+sub searchprog {
   my $class = shift;
   if (ref $class) { confess("Class method called as object method") }
   unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->searchprog(COMMAND)") }
   $searchprog = shift;
-}#}}}
+}
 
 =head2 score_threshold
 
 Sets or returns the score threshold to use for the exonerate search. Defaults to
-0 (disabled). Note that e-value and score thresholds are mutually exclusive; if
-you set one, this automatically unsets the other.
+0 (disabled). 
 
 =cut
 
-sub score_threshold {#{{{
+sub score_threshold {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	if (scalar(@_) == 0) { return $score_threshold }
@@ -130,7 +130,7 @@ sub score_threshold {#{{{
 	$score_threshold = shift(@_);
 	unless ($score_threshold =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $score_threshold\n") }
 	$evalue_threshold = 0;
-}#}}}
+}
 
 
 =head1 Object methods
@@ -162,27 +162,46 @@ sub search {
 	my $exhaustive = $exhaustive ? '--exhaustive yes' : '';
 
 	# write these to fasta files each
-	my $queryfile = &fastaify($self->{'query'}->{'header'}, $self->{'query'}->{'sequence'});
-	my $targetfile = &fastaify($self->{'target'}->{'header'}, $self->{'target'}->{'sequence'});
+	my ($queryfile, $targetfile);
+	unless ($self->query_file()) {
+		$queryfile = &fastaify($self->{'query'}->{'header'}, $self->{'query'}->{'sequence'});
+	}
+	unless ($self->target_file()) {
+		$targetfile = &fastaify($self->{'target'}->{'header'}, $self->{'target'}->{'sequence'});
+	}
+
+	$self->query_file($queryfile);
+	$self->target_file($targetfile);
+  my $outfile = File::Spec->catfile($outdir, $self->{'query'}->{'header'} . '-' . $self->{'target'}->{'header'} . '.exonerateout');
+
 	# roll your own output for exonerate
-	my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
-	$exonerate_ryo = "%tcs";
+	#my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
+	# just the target coding sequence (tcs)
+	my $exonerate_ryo = "%tcs";
 
 	# the complete command line
-	my $exonerate_cmd = qq( $searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile );
+	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile > $outfile);
 	print "$exonerate_cmd\n" if $debug;
-	$self->{'result'} = [ `$exonerate_cmd` ] or confess "Error running exonerate: $!\n";
+	system($exonerate_cmd) and confess "Error running exonerate: $!\n";
+	$self->{'resultfile'} = $outfile;
 	return 1;
 }
 
 sub result {
 	my $self = shift;
-	return $self->{'result'};
+	if ($self->{'result'}) { return $self->{'result'} }
+	else {
+		my $fh = IO::File->new($self->{'resultfile'});
+		$self->{'result'} = [ <$fh> ];
+		$fh->close;
+		chomp @{$self->{'result'}};
+		return $self->{'result'};
+	}
 }
 
 sub cdna_sequence {
 	my $self = shift;
-	$self->{'cdna_sequence'} = join '', @{ $self->{'result'} };
+	$self->{'cdna_sequence'} = join '', @{ $self->result };
 	$self->{'cdna_sequence'} =~ s/\s//g;
 	return $self->{'cdna_sequence'};
 }
@@ -231,34 +250,23 @@ sub target_sequence {
 
 sub query_file {
 	my $self = shift;
-	unless (scalar @_ > 0) {
-		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open query file for writing: $!\n";
-		printf $tmpfh ">%s\n%s\n", $self->{'query'}->{'header'}, $self->{'query'}->{'sequence'} or confess "Fatal: Could not write to query file '$tmpfh': $!\n";
-		print "wrote to $tmpfh\n" if $debug;
-		$self->{'queryfile'} = $tmpfh;
-		return 1;
-	}
-	return $self->{'queryfile'};
+	if (scalar @_ == 0) { return $self->{'queryfile'} }
+	else { $self->{'queryfile'} = shift @_ }
 }
 
 sub target_file {
 	my $self = shift;
-	unless (scalar @_ > 0) {
-		my $tmpfh = File::Temp->new( 'UNLINK' => 0 ) or confess "Fatal: Could not open target file for writing: $!\n";
-		printf $tmpfh ">%s\n%s\n", $self->{'target'}->{'header'}, $self->{'target'}->{'sequence'} or confess "Fatal: Could not write to target file '$tmpfh': $!\n";
-		print "wrote to $tmpfh\n" if $debug;
-		$self->{'targetfile'} = $tmpfh;
-		return 1;
-	}
-	return $self->{'targetfile'};
+	if (scalar @_ == 0) { return $self->{'targetfile'} }
+	else { $self->{'targetfile'} = shift @_ }
 }
 
 sub fastaify {
 	my $header = shift;
 	my $sequence = shift;
-	my $fh = File::Temp->new(UNLINK=>0);
+	my $fh = File::Temp->new(UNLINK=>1);
 	$fh->unlink_on_destroy(0) if $debug;
 	printf { $fh } ">%s\n%s\n", $header, $sequence;
 	close $fh;
+	print "Wrote '$header' to Fasta file '$fh'\n" if $debug;
 	return $fh;
 }
