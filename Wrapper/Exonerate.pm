@@ -40,7 +40,7 @@ sub new {
 	my $self = {
 		'query'      => $query,
 		'target'     => $target,
-		'resultfile' => '',
+		'resultfile' => undef,
 		'hitcount'   => 0,
 	};
 	bless $self, $class;
@@ -161,7 +161,6 @@ sub search {
 	my $exonerate_model = $exhaustive ? 'protein2genome:bestfit' : 'protein2genome';
 	my $exhaustive = $exhaustive ? '--exhaustive yes' : '';
 
-	# write these to fasta files each
 	my ($queryfile, $targetfile);
 	unless ($self->query_file()) {
 		$queryfile = &fastaify($self->{'query'}->{'header'}, $self->{'query'}->{'sequence'});
@@ -182,9 +181,21 @@ sub search {
 	# the complete command line
 	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile > $outfile);
 	print "$exonerate_cmd\n" if $debug;
+
+	# run the beast now
 	system($exonerate_cmd) and confess "Error running exonerate: $!\n";
 	$self->{'resultfile'} = $outfile;
 	return 1;
+}
+
+sub cdna_start {
+	my $self = shift;
+	return $self->{'cdna_start'};
+}
+
+sub cdna_end {
+	my $self = shift;
+	return $self->{'cdna_end'};
 }
 
 sub result {
@@ -206,45 +217,31 @@ sub cdna_sequence {
 	return $self->{'cdna_sequence'};
 }
 
-sub query_header {
-	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'query'}->{'header'} }
-	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->query_header($header)', "\n" }
-	$self->{'query'}->{'header'} = shift @_;
-}
-
-sub target_header {
-	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'target'}->{'header'} }
-	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->target_header($header)', "\n" }
-	$self->{'target'}->{'header'} = shift @_;
-}
-
-=head2 query_sequence
+=head2 query
 
 Sets or returns the query sequence.
 
 =cut
 
-sub query_sequence {
+sub query {
 	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'query'}->{'sequence'} }
+	if    (scalar @_ == 0) { return $self->{'query'} }
 	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->query_sequence($sequence)', "\n" }
-	$self->{'query'}->{'sequence'} = shift @_;
+	$self->{'query'} = shift @_;
 	return 1;
 }
 
-=head2 target_sequence
+=head2 target
 
 Sets or returns the target sequence.
 
 =cut
 
-sub target_sequence {
+sub target {
 	my $self = shift;
-	if    (scalar @_ == 0) { return $self->{'target'}->{'sequence'} }
+	if    (scalar @_ == 0) { return $self->{'target'} }
 	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->target_sequence($sequence)', "\n" }
-	$self->{'target'}->{'sequence'} = shift @_;
+	$self->{'target'} = shift @_;
 	return 1;
 }
 
@@ -270,3 +267,4 @@ sub fastaify {
 	print "Wrote '$header' to Fasta file '$fh'\n" if $debug;
 	return $fh;
 }
+

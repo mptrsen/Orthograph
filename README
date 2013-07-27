@@ -33,7 +33,13 @@ update your Perl installation; see REQUIRED PERL MODULES for more information.
 DATA REQUIREMENTS
 =================
 
-Orthograph is an orthology prediction pipeline. 
+Orthograph is an orthology prediction pipeline that attempts to map transcript
+sequences to known orthologous groups. It is not meant to infer orthology de
+novo among genomes or transcriptomes, but relies on the orthology information in
+pre-defined sets. Because of this requirements, it is essential that your input
+data conforms to some data standards as listed below.
+
+### data standards should follow ###
 
 
 QUICKSTART
@@ -182,13 +188,13 @@ ones that will affect the searches.
 Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog
 set, if they don't exist. This may take a long time depending on the size of
 your set, but rest assured, once the pHMMs exist, subsequent analyses will be
-faster by that amount of time.
+faster by that amount of time. 
 
 After that, your input file is searched using all pHMMs. Candidate orthologs
 are verified with a reciprocal search against the BLAST database of all
 proteomes in your ortholog set. The results are cached in the database.
 Orthograph-reporter can afterwards be used to establish ortholog relationships
-and report about the results in various ways.
+and report about the results in various ways. 
 
 The output directory contains four subdirectories:
 
@@ -213,7 +219,8 @@ COMMON PROBLEMS
 "No sequences found. Something went wrong. Check your input file. Exiting." 
 
 Really, check your input file. Is it empty? Is it a valid fasta file? If it
-looks ok, try deleting the translated version. 
+looks ok, try deleting the translated version so Orthograph is forced to
+recreate it. 
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++ The rest of this document is outdated! So is `perldoc orthograph`. +++

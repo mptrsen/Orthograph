@@ -35,7 +35,7 @@ use Data::Dumper;   # good for debugging
 use lib $FindBin::Bin;                   # $Bin is the directory of the original script
 use Seqload::Fasta qw( check_if_fasta ); # object-oriented access to fasta files
 use Orthograph::Functions;               # functions for all Orthograph tools
-use Orthograph::Config;                  # configuration in global hashref $config
+use Orthograph::Config or die;                  # configuration in global hashref $config
 use Wrapper::Mysql;                      # because SQL queries in main code look ugly
 
 #--------------------------------------------------
@@ -135,11 +135,11 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will create a new Orthograph database called '$mysql_dbname'. Any existing database structures will be erased. Are you sure (y/n)? ";
+	print "This will create a new Orthograph table structure in the database '$mysql_dbname' with the table prefix '$mysql_dbname'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
 	&get_yn() or exit;
 	&drop_tables;
 	&create_tables;
-	print "Created Orthograph database '$mysql_dbname'.\n";
+	print "Created Orthograph table structure in database '$mysql_dbname'.\n";
 	exit;
 }
 
@@ -180,11 +180,8 @@ elsif ($isnucleotide) {
 }
 elsif ($ispeptide) {
 	$infile = $ispeptide;
-	unless ($blastdir) {
-		$blastdir = &getblastdir();
-	}
 	# 1 for amino-acid
-	&load_taxon($infile, 1, $blastdir) or die("Fatal: Peptide loading failed\n");
+	&load_taxon($infile, 1) or die("Fatal: Peptide loading failed\n");
 	exit;
 }
 
@@ -479,7 +476,7 @@ sub create_tables {#{{{
 		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512),             INDEX(header),
+			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -488,7 +485,7 @@ sub create_tables {#{{{
 		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512), 
+			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -554,16 +551,14 @@ sub get_yn {
 #		scalar string BLAST directory for creating the BLAST database
 # Returns: 1 on success, 0 otherwise
 sub load_taxon {#{{{
+	croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n") unless scalar @_ == 2;
 	my $inf = shift(@_);
 	my $mode = shift(@_);
-	my $seqtable = $mode ? $t{'aaseqs'} : $t{'ntseqs'};
+	my $seqtable = $mode      ? $t{'aaseqs'} : $t{'ntseqs'};
 	my $otherseqtable = $mode ? $t{'ntseqs'} : $t{'aaseqs'};
-	my $seqcol = $mode ? 'aa_seq' : 'nt_seq';
-	my $otherseqcol = $mode ? 'nt_seq' : 'aa_seq';
-	my $type = $mode ? 2 : 1;  # 1 is 'nt', 2 is 'aa'
-	if ($mode) {
-		my $blastdb = shift(@_) or croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n"); 
-	}
+	my $seqcol = $mode        ? 'aa_seq'     : 'nt_seq';
+	my $otherseqcol = $mode   ? 'nt_seq'     : 'aa_seq';
+	my $type = $mode          ? 2            : 1;  # 1 is 'nt', 2 is 'aa'
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
 	# get taxon shorthand
@@ -673,7 +668,7 @@ sub load_taxon {#{{{
 	$dbh->disconnect();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $seqpairs = &Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
-	printf("Loaded %d new sequences into database %s on %s.\n", $$seqpairs[0][0], $mysql_dbname, $mysql_dbserver);
+	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $mysql_dbname, $mysql_dbserver);
 	return 1;
 }#}}}
 
@@ -702,7 +697,8 @@ sub create_blastdb {#{{{
 		return 0;
 	}
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $blastdir = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} WHERE ");
+	# TODO make this work
+	my $blastdir = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} WHERE  = ");
 	my $outfile = File::Spec->catfile($taxsh);
 	my @makeblastdbcmd = qq(makeblastdb -in $infile -out $outfile -input_type fasta -title $taxsh);
 }#}}}
