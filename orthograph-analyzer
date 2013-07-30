@@ -309,13 +309,24 @@ if ($clear_database) {
 
 unless ($continue) {
 	# store est data into the database:
+	print $stdout "Storing nucleotide sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+
+	# LOAD DATA INFILE; third arg must be ref to array of column names
+	$t0 = scalar time;
+	&load_data_infile($estfile, $mysql_table_ests, 2, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	$t1 = scalar time;
+	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
+
+	# store translated est data into the database:
 	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($protfile, $mysql_table_ests, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	&load_data_infile($protfile, $mysql_table_ests, 1, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
+
+	
 }
 
 
@@ -333,7 +344,7 @@ else {
 }
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
-$protfile = &get_transcripts($species_id);
+$protfile = &get_transcripts($species_id, 1);
 #}}}
 
 #--------------------------------------------------
@@ -396,10 +407,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
-	printf($stdout "%4d first-tier hits for %s (%2.1f%% complete)\n", 
-		$hmmobj->hitcount(),
+	printf($stdout "Done searching for %s (%2.1f%% complete)\n", 
 		basename($hmmobj->hmmfile()),
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
+	printf($stdout "  %d first-tier hits\n", $hmmobj->hitcount()) if $verbose;
 	# and do not care further with HMM files that did not return any result
 	if ($hmmobj->hitcount() == 0) { 
 		next HMMFILE;
@@ -1234,24 +1245,25 @@ sub make_blastdb {#{{{
 # Arguments: scalar string filename, scalar string tablename, reference to list of columns
 # Returns: scalar int number of loaded rows
 sub load_data_infile {#{{{
-	my $protfile = shift(@_);
-	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
+	my $infile = shift(@_);
+	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($infile, $mysql_table_ests, $type [, $columns_reference])';
+	my $type = shift(@_) or croak 'Usage: &load_data_infile($infile, $mysql_table_ests, $type [, $columns_reference])';
 	my $columns;
 	my $list;
 	my $bp = 0;
 	if (scalar(@_)) {
 		$columns = shift(@_);
 		unless (ref($columns)) {
-			croak 'Usage: &load_data_infile($protfile, $mysql_table_ests [, $columns_reference])';
+			croak 'Usage: &load_data_infile($infile, $mysql_table_ests [, $columns_reference])';
 		}
 		$list = join(',', @$columns);
 	}
 
 	# Create temporary csv file for high-speed reading into database
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
-	my $protfh = Seqload::Fasta->open($protfile);
+	my $infh = Seqload::Fasta->open($infile);
 	print $stdout "Writing data to temporary file...\n" if $verbose;
-	while (my ($h, $s) = $protfh->next_seq()) {
+	while (my ($h, $s) = $infh->next_seq()) {
 		$h =~ s/,/ /g;	# remove all commas from the header, they confuse the csv parser
 		$s =~ s/-//g;	# remove all gaps from the sequence
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
@@ -1263,19 +1275,20 @@ sub load_data_infile {#{{{
 				print $stderr "Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n";
 			}
 		}
-		printf($tmpfh "%s,%d,%d,%s,%s\n", 
+		printf($tmpfh "%s,%d,%d,%d,%s,%s\n", 
 			# good idea or not?
 			# good idea
 			Digest::SHA->sha256_hex($s),
 			$species_id,
+			$type,
 			$timestamp_start,
 			$h,
-			$s
+			$s,
 		);
 		$bp += length $s;
 	}
 	$tmpfh->close();
-	# no need to close the protfh since we're already through it, it gets closed automagically
+	# no need to close the infh since we're already through it, it gets closed automagically
 
 	# load data from csv file into database
 	my $query_disable_keys = "ALTER TABLE $table_ests DISABLE KEYS";
@@ -1307,9 +1320,10 @@ sub load_data_infile {#{{{
 # Returns: Filehandle
 sub get_transcripts {#{{{
 	my $species_id = shift;
+	my $type = shift;
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 	my $nseqs = 0;
-	my $data = Wrapper::Mysql::get_transcripts($species_id)
+	my $data = Wrapper::Mysql::get_transcripts($species_id, $type)
 		or print $stderr "Warning: Could not get transcript sequences from database: $DBI::errstr\n";
 	while (my $row = shift @$data) {
 		printf($tmpfh ">%s\n%s\n", $$row[0], $$row[1])

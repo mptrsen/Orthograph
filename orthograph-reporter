@@ -196,7 +196,7 @@ foreach my $bin (@$logevalues_bins) {
 	EVALUE:
 	while (my ($logevalue, $result) = each %$results) {
 		ORTHOID:
-		while (my ($orthoid, $list) = each (%$result)) {
+		while (my ($orthoid, $list_of_hits) = each (%$result)) {
 			# reset the mismatch counter
 			$mismatches = 0;
 
@@ -206,7 +206,7 @@ foreach my $bin (@$logevalues_bins) {
 
 			#-------------------------------------------------- 
 			# so, was this a match we can trust?
-			if (my $this_match = &get_reciprocal_match($orthoid, $list)) {
+			if (my $this_match = &get_reciprocal_match($orthoid, $list_of_hits)) {
 
 				# yeah - here should be the part where the actual sequences are output
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
@@ -277,6 +277,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	print $tfh $orthoid;
 	foreach my $hit (@$transcripts) {
 		# my $corresponding_nuc = Wrapper::Mysql::get_nuc_for_pep($hit->{'blast_hit'});
+		my $orf = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
 		my $length = $hit->{'end'} - $hit->{'start'};
 		printf $tfh "\t%s[%d:%d]",
 			$hit->{'hmmhit'},
@@ -373,8 +374,8 @@ sub binify {
 
 sub get_reciprocal_match {
 	my $orthoid = shift;
-	my $list = shift;
-	foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list ) {
+	my $list_of_hits = shift;
+	foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list_of_hits ) {
 		# find out if the aaseq_id is one of those used for this orthoid
 		#print $stdout "  checking out hit " , Dumper($reciprocal_hit) if $verbose;
 
@@ -382,7 +383,7 @@ sub get_reciprocal_match {
 		# not been found previously? 
 		# the function first from List::Util returns after the first occurence. 
 		if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
-			and not first {/$reciprocal_hit->{'hmmhit'}/} @transcript_list ) {
+			and not first {/$reciprocal_hit->{'hmmhit'}/} @$list_of_hits ) {
 
 			print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} used in $orthoid!\n" if $verbose;
 
@@ -445,4 +446,11 @@ sub overlap {
 	}
 	if ($overlap == 0) { return 0 }
 	return 1;
+}
+
+sub get_orf {
+	my $blasthit = shift;
+	my $esthit   = shift;
+	my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($blasthit);
+	my $est_sequence = Wrapper::Mysql::get_transcript_for($esthit);
 }

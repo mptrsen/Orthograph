@@ -35,7 +35,7 @@ use Data::Dumper;   # good for debugging
 use lib $FindBin::Bin;                   # $Bin is the directory of the original script
 use Seqload::Fasta qw( check_if_fasta ); # object-oriented access to fasta files
 use Orthograph::Functions;               # functions for all Orthograph tools
-use Orthograph::Config or die;                  # configuration in global hashref $config
+use Orthograph::Config;                  # configuration in global hashref $config
 use Wrapper::Mysql;                      # because SQL queries in main code look ugly
 
 #--------------------------------------------------
