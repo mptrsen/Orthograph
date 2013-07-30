@@ -50,12 +50,12 @@ assume that all required software packages are installed and work.
 
 0. These conventions are used throughout this documentation:
 
-  $ some_command
+	$ some_command
 
 This means you should enter some_command at the shell prompt. The '$' sigil is
 not part of the command.
 
-  mysql> SOME STATEMENT;
+	mysql> SOME STATEMENT;
 
 This means you should enter SOME STATEMENT at the MySQL prompt. The 'mysql>' is
 not part of the statement, but the semicolon is.
@@ -71,20 +71,20 @@ installed MySQL yourself, you have those privileges. However, you should never
 do ordinary work as root (the administrator), so let's create a working user.
 Login to MySQL as root:
 
-  $ mysql -u root -p
-  Enter password:
+	$ mysql -u root -p
+	Enter password:
 
 Enter the MySQL administrator password. You will be greeted by MySQL and then
 given a new prompt. Issue the following statement:
 
-  mysql> CREATE USER 'USERNAME'@'localhost' IDENTIFIED BY 'PASSWORD';
+	mysql> CREATE USER 'USERNAME'@'localhost' IDENTIFIED BY 'PASSWORD';
 
 Substitute USERNAME and PASSWORD with your username and password of choice. The
 single quotes are important. Next, you will create a database and grant the
 working user the necessary permissions on it:
 
-  mysql> CREATE DATABASE orthograph;
-  mysql> GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';
+	mysql> CREATE DATABASE orthograph;
+	mysql> GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';
 
 You may use a different database name, of course. Make a note of your new user
 name, the password and the database name. You will need it later.
@@ -105,8 +105,8 @@ work.
 
 3. Create the tables. Make the orthograph_manager script executable and use it:
 
-  $ chmod +x orthograph-manager
-  $ ./orthograph-manager -create
+	$ chmod +x orthograph-manager
+	$ ./orthograph-manager -create
 
 The -create switch tells the script to setup the database structure for
 Orthograph.  It will create a number of tables, all of which start with the
@@ -114,7 +114,7 @@ prefix 'orthograph_'.
 
 4. Upload your ortholog set into the database:
 
-  $ ./orthograph-manager FASTAFILE
+	$ ./orthograph-manager FASTAFILE
 
 You will be asked for information about the ortholog set you are loading. If
 you made a mistake during input of the information, you may cancel the process
@@ -137,7 +137,7 @@ name. You will need it later.
 
 5. Load proteome sequences into the database :
 
-  $ ./orthograph-manager -load-ogs-peptide FASTAFILE
+	$ ./orthograph-manager -load-ogs-peptide FASTAFILE
 
 You need to load data for every taxon separately (this may change in the
 future), and you should load data for as many taxa in the orthologs file as
@@ -155,15 +155,15 @@ process at any time using Ctrl+C.
 
 6. Optional: Load nucleotide sequence data into the database:
 
-  $ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
+	$ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
 
 The nucleotide sequences are expected to be the coding sequences for the
 peptide sequences you loaded earlier. The headers have to correspond EXACTLY,
 or they cannot be correlated and nucleotide output is not possible. For
 example, these two headers are not equal, even though they look similar:
 
-  >AAEL1307285-PA Q0C738 Bystin IPR007955
-  >AAEL1307285-RA Q0C738 Bystin IPR007955
+	>AAEL1307285-PA Q0C738 Bystin IPR007955
+	>AAEL1307285-RA Q0C738 Bystin IPR007955
 
 Make sure the nucleotide sequences can be correlated to the proteome sequences
 by giving identical names to corresponding sequences.
@@ -171,8 +171,8 @@ by giving identical names to corresponding sequences.
 7. Create the required database structure for Orthograph. Make
 orthograph-analyzer executable and run it with the -prepare option:
 
-  $ chmod +x orthograph-analyzer
-  $ ./orthograph-analyzer -prepare
+	$ chmod +x orthograph-analyzer
+	$ ./orthograph-analyzer -prepare
 
 8. Complete your config file if you didn't fill out everything before.
 
@@ -181,7 +181,7 @@ ones that will affect the searches.
 
 9. Start Orthograph! 
 
-  $ ./orthograph-analyzer
+	$ ./orthograph-analyzer
 
 10. Get some coffee, sit back and watch (or do something else).
 
@@ -209,9 +209,9 @@ by ortholog groups.
 d) log. This contains log files, such as the entire Orthograph output and the
 report after running orthograph-reporter.
 
-12. ???
+11. ???
 
-13. Profit!
+12. Profit!
 
 
 COMMON PROBLEMS
@@ -260,6 +260,9 @@ If you get an error like "Can't locate Some/Thing.pm in @INC" it means that
 Perl can't find one of the required modules. Update your Perl installation if
 this is the case and make sure it contains these modules:
 
+autodie
+strict
+warnings
 Archive::Tar
 Benchmark 
 Carp
