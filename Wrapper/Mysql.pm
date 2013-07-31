@@ -847,7 +847,29 @@ sub get_reference_sequence {
 }
 
 sub get_transcript_for {
-	my $id = shift @_ or croak "Usage: get_transcript_for(ID)\n";
+	my $digest = shift @_ or croak "Usage: get_transcript_for(ID)\n";
+	my $query  = "SELECT $mysql_col_sequence
+		FROM $mysql_table_ests
+		WHERE $mysql_col_digest = ?";
+	my $result = &mysql_get($query, $digest);
+	return $result->[0]->[0];
+}
+
+sub get_nucleotide_transcript_for {
+	my $digest = shift @_ or croak "Usage: get_transcript_for(ID)\n";
+	my $query  = "SELECT $mysql_col_header
+		FROM $mysql_table_ests
+		WHERE $mysql_col_digest = ?";
+	my $result = &mysql_get($query, $digest);
+	# remove the revcomp/translate portion
+	print "translated header: <$result->[0]->[0]>\n";
+	(my $original_header = $result->[0]->[0]) =~ s/ ?(\[revcomp]:)?\[translate\(\d\)\]$//;
+	print "original header: <$original_header>\n";
+	$query = "SELECT $mysql_col_sequence
+		FROM $mysql_table_ests
+		WHERE $mysql_col_header = ?";
+	$result = &mysql_get($query, $original_header);
+	return $result->[0]->[0];
 }
 
 =head2 get_nuc_for_pep(scalar int ID)

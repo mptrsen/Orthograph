@@ -121,6 +121,7 @@ my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $logfile                    = $config->{'logfile'};
 my $max_blast_searches         = $config->{'max-blast-searches'};
 my $makeset                    = $config->{'make-set'};
+my $ntoutdir                   = $config->{'ntoutdir'};
 
 # MySQL settings
 my $mysql_dbname               = $config->{'mysql-database'};
@@ -407,8 +408,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
-	printf($stdout "Done searching for %s (%2.1f%% complete)\n", 
+	printf($stdout "Done searching for %s (%d/%d, %2.1f%% complete)\n", 
 		basename($hmmobj->hmmfile()),
+		$hmmcount,
+		$num_hmms,
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
 	printf($stdout "  %d first-tier hits\n", $hmmobj->hitcount()) if $verbose;
 	# and do not care further with HMM files that did not return any result
@@ -485,18 +488,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		print $stdout "\n(Don't be alarmed, the sequence identifiers are SHA256-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
 			if $verbose;
 	}
-
-	# is this a valid candidate? 
-	# take the first element of the hit list, they share the same orthoid 
-	if (Wrapper::Mysql::reciprocal_match($hmmobj->hmmname, $hmmobj->hits_arrayref()->[1]->{'target'})) {
-
-		# yay
-		++$orthocount;
-		printf $stdout "!! ^-------Possible orthology detected for %s, confirmed by reciprocal hit! Added to database.\n", $hmmobj->hmmname unless $quiet;
-
-	}
-	# otherwise, just continue
-	else { next HMMFILE }
 
 	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	next HMMFILE unless defined $$orthologs[0];	# skip empty results
@@ -580,6 +571,7 @@ sub intro {#{{{
 
 	# the other dirs
 	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
+	$ntoutdir = File::Spec->catdir($outdir, $ntoutdir);
 	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearchprog));
   $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blastprog));
 
@@ -712,6 +704,22 @@ sub intro {#{{{
 		print $stdout "AA output dir $aaoutdir does not exist, creating...\n" unless $quiet;
 		&makedir($aaoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
+	# the nt output directory
+	if (-d $ntoutdir) {
+		print $stdout "NT output dir $ntoutdir exists.\n" unless $quiet;
+		if ($clear_files) {
+			&cleardir($ntoutdir);
+			print $stdout "Purged nt output dir $ntoutdir of old result files.\n" unless $quiet;
+		}
+		elsif ($backup) {
+			&schedule_for_backup($ntoutdir);
+		}
+	}
+	else {
+		print $stdout "NT output dir $ntoutdir does not exist, creating...\n" unless $quiet;
+		&makedir($ntoutdir) or print $stderr "Fatal: Failed to create directory $ntoutdir\n" and exit(1);
+	}
+
 
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;

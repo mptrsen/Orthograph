@@ -169,6 +169,7 @@ $config->{'logfile'}                    //= '';
 $config->{'make-set'}                   //= 0;
 $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
+$config->{'ntoutdir'}                   //= 'nt';
 $config->{'ortholog-set'}               //= '';
 $config->{'output-directory'}           //= '';
 $config->{'prepare'}                    //= 0;  

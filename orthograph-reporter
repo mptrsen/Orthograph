@@ -56,6 +56,7 @@ my $mysql_table_orthologs      = $config->{'orthologs'};
 # directory and output settings
 my $outdir                     = $config->{'output-directory'};
 my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir'});
+my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir'});
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $quiet                      = $config->{'quiet'};
 my $verbose                    = $config->{'verbose'};
@@ -275,8 +276,9 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $prev_end);
 	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
 	print $tfh $orthoid;
+	# each reciprocal hit
 	foreach my $hit (@$transcripts) {
-		# my $corresponding_nuc = Wrapper::Mysql::get_nuc_for_pep($hit->{'blast_hit'});
+		# exonerate the orf (correct for frameshifts etc)
 		my $orf = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
 		my $length = $hit->{'end'} - $hit->{'start'};
 		printf $tfh "\t%s[%d:%d]",
@@ -304,6 +306,14 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
+	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'start'} . '-' . $_->{'end'} . ']' } @$transcripts );
+	# print the concatenated sequence
+	printf $fafh ">%s\n%s\n", $hdr, $seq;
+	undef $fafh;
+
+	# do the same for the nucleotide sequences
+	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
+	# join headers
 	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'start'} . '-' . $_->{'end'} . ']' } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
@@ -452,5 +462,6 @@ sub get_orf {
 	my $blasthit = shift;
 	my $esthit   = shift;
 	my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($blasthit);
-	my $est_sequence = Wrapper::Mysql::get_transcript_for($esthit);
+	my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($esthit);
+	print "Got proteome sequence for $blasthit '$proteome_sequence' and est sequence for $esthit '$est_sequence'\n"; exit;
 }
