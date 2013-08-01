@@ -1,5 +1,5 @@
 ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with
-Hidden Markov models
+Profile Hidden Markov models
 
 SYSTEM REQUIREMENTS
 ===================
@@ -10,19 +10,19 @@ versions should be no problem. Downwards compatibility (i.e., older versions)
 has not been tested. Should be fine, too, but be wary with MAFFT, its developers
 change or drop features frequently across versions.
 
-Package      Version Download from
--------------------------------------------------------------------------------
-MySQL        5.1     http://www.mysql.com
-MAFFT        6.951   http://mafft.cbrc.jp/alignment/software/
-HMMer        3.0     http://hmmer.janelia.org
-NCBI BLAST+  2.2.25+ ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-Exonerate    2.2.0   http://www.ebi.ac.uk/~guy/exonerate/ 
+Package      | Version | Download from
+:------------|:--------|:-----------------------------------------------------------
+MySQL        | 5.1     | <http://www.mysql.com>
+MAFFT        | 6.951   | <http://mafft.cbrc.jp/alignment/software/>
+HMMer        | 3.0     | <http://hmmer.janelia.org>
+NCBI BLAST+  | 2.2.25+ | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
+Exonerate    | 2.2.0   | <http://www.ebi.ac.uk/~guy/exonerate/>
 
 Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
 
 Don't worry about your Perl version if you run a reasonably recent Linux or UNIX
-system, such as Mac OS X, but see [1] and [2] if you are trying to install
+system, such as Mac OS X, but see [^1] and [^2] if you are trying to install
 the required packages on a Windows system under Cygwin (or natively, for that
 matter). You might run into problems getting the MySQL driver, HMMer3 and
 Exonerate to work. Really, don't use Windows. 
@@ -286,6 +286,6 @@ Time::HiRes
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
 
-[1] http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special systems
-[2] http://forums.mysql.com/read.php?51,389833,389833
-[3] http://cegg.unige.ch/orthodb5
+[^1] http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special systems
+[^2] http://forums.mysql.com/read.php?51,389833,389833
+[^3] http://cegg.unige.ch/orthodb5
