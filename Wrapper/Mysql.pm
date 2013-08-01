@@ -80,6 +80,7 @@ my $sets_dir                   = $config->{'sets-dir'};
 my $species_name               = $config->{'species-name'};
 my $g_species_id               = undef;	# global variable
 my $verbose                    = $config->{'verbose'};
+my $debug                      = $config->{'debug'};
 #}}}
 
 
@@ -761,6 +762,9 @@ sub get_results_for_logevalue {
 	if ($max) { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue BETWEEN ? AND ?" }
 	# single e-value
 	else      { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?" }
+
+	# good for debugging
+	print $query if $debug;
 
 	my $dbh = &mysql_dbh()
 		or return undef;

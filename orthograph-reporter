@@ -275,16 +275,20 @@ my $num_n = 0;
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $prev_end);
 	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
+	# write the ortholog gene id to the table
 	print $tfh $orthoid;
 	# each reciprocal hit
 	foreach my $hit (@$transcripts) {
 		# exonerate the orf (correct for frameshifts etc)
 		my $orf = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
-		my $length = $hit->{'end'} - $hit->{'start'};
+
+		# write the transcripts to the table
 		printf $tfh "\t%s[%d:%d]",
-			$hit->{'hmmhit'},
-			$hit->{'start'},
-			$hit->{'end'};
+			$hit->{'hmmhit'}, # transcript ID (hash atm)
+			$hit->{'start'},  # start
+			$hit->{'end'};    # end
+		print $tfh "\n";
+		# before concatenating, fill gaps with 'X' if desired
 		if ($fill_with_x) {
 			if (defined $prev_end) {
 				my $xes = 'X' x ($hit->{'start'} - $prev_end);
@@ -293,11 +297,11 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 			$prev_end = $hit->{'end'};
 			$seq .= $hit->{'sequence'};
 		}
+		# otherwise, just concatenate
 		else {
 			$seq .= $hit->{'sequence'};
 		}
 	}
-	print $tfh "\n";
 
 	# get the core ortholog sequences for this group
 	my $core_sequences = Wrapper::Mysql::get_ortholog_group($set_id, $orthoid);

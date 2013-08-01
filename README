@@ -36,7 +36,7 @@ DATA REQUIREMENTS
 Orthograph is an orthology prediction pipeline that attempts to map transcript
 sequences to known orthologous groups. It is not meant to infer orthology de
 novo among genomes or transcriptomes, but relies on the orthology information in
-pre-defined sets. Because of this requirements, it is essential that your input
+pre-defined sets. Because of this requirement, it is essential that your input
 data conforms to some data standards as listed below.
 
 ### data standards should follow ###
@@ -240,8 +240,8 @@ INVOCATION
 ==========
 
 Orthograph allows parsing a config file, which by default is named
-'orthograph.conf'.  Available options can be obtained using 'perldoc
-orthograph'. Many options can be set or overridden on the command line. For
+`orthograph.conf`.  Available options can be obtained using `perldoc
+orthograph`. Many options can be set or overridden on the command line. For
 those switches, also see `perldoc orthograph`.
 
 MySQL PERFORMANCE
@@ -250,8 +250,8 @@ MySQL PERFORMANCE
 Orthograph makes extensive use of MySQL query caching. For optimal performance,
 make sure that query caching is enabled in your MySQL instance. Also, if you
 plan to run multiple orthograph instances on the same database, you should
-definitely use table files instead of database files (innodb_file_per_table)
-and increase the lock wait timeout (innodb_lock_wait_timeout) to between 200
+definitely use table files instead of database files (`innodb_file_per_table`)
+and increase the lock wait timeout (`innodb_lock_wait_timeout`) to between 200
 and 600 to make sure that long queries (which may occur) do not block other
 orthograph processes.
 
@@ -262,26 +262,26 @@ If you get an error like "Can't locate Some/Thing.pm in @INC" it means that
 Perl can't find one of the required modules. Update your Perl installation if
 this is the case and make sure it contains these modules:
 
-autodie
-strict
-warnings
-Archive::Tar
-Benchmark 
-Carp
-Config
-DBD::mysql
-DBI
-Data::Dumper
-Digest::SHA
-File::Basename
-File::Path
-File::Temp
-FindBin
-Getopt::Long
-IO::Dir
-IO::File
-List::Util 
-Time::HiRes
+-  autodie
+-  strict
+-  warnings
+-  Archive::Tar
+-  Benchmark 
+-  Carp
+-  Config
+-  DBD::mysql
+-  DBI
+-  Data::Dumper
+-  Digest::SHA
+-  File::Basename
+-  File::Path
+-  File::Temp
+-  FindBin
+-  Getopt::Long
+-  IO::Dir
+-  IO::File
+-  List::Util 
+-  Time::HiRes
 
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
