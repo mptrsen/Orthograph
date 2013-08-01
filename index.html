@@ -83,7 +83,7 @@ the required packages on a Windows system under Cygwin (or natively, for that
 matter). You might run into problems getting the MySQL driver, HMMer3 and
 Exonerate to work. Really, don't use Windows. </p>
 
-<p>If you get an error like "Can't locate Some/Module.pm in <a href="https://github.com/INC" class="user-mention">@INC</a>", you need to
+<p>If you get an error like <code>Can't locate Some/Module.pm in @INC</code>, you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.</p>
 
 <h1>
@@ -135,12 +135,12 @@ given a new prompt. Issue the following statement:</p>
 
 <pre><code>mysql&gt; CREATE USER 'USERNAME'@'localhost' IDENTIFIED BY 'PASSWORD';</code></pre>
 
-<p>Substitute <code>USERNAME</code> and PASSWORD with your username and password of choice. The
+<p>Substitute <code>USERNAME</code> and <code>PASSWORD</code> with your username and password of choice. The
 single quotes are important. Next, you will create a database and grant the
 working user the necessary permissions on it:</p>
 
 <pre><code>mysql&gt; CREATE DATABASE orthograph;
-  mysql&gt; GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';</code></pre>
+mysql&gt; GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';</code></pre>
 
 <p>You may use a different database name, of course. Make a note of your new user
 name, the password and the database name. You will need it later.</p>
@@ -162,9 +162,9 @@ work.</p>
 
 <pre><code>$ chmod +x orthograph-manager
 $ ./orthograph-manager -create</code></pre>
-<p>The -create switch tells the script to setup the database structure for
+<p>The <code>-create</code> switch tells the script to setup the database structure for
 Orthograph.  It will create a number of tables, all of which start with the
-prefix 'orthograph_'. </p>
+prefix <code>orthograph_</code>. </p>
 
 <li>Upload your ortholog set into the database:
 
@@ -208,7 +208,7 @@ groups. Repeat this step for as many taxa in your ortholog set as you have
 peptide sequences for.</p>
 
 <p>If you made a mistake during input of the information, you may cancel the
-process at any time using Ctrl+C. </p>
+process at any time using <code>Ctrl+C</code>. </p>
 
 <ol>
 <li>
@@ -319,7 +319,7 @@ orthograph processes.</p>
 <a name="required-perl-modules" class="anchor" href="#required-perl-modules"><span class="octicon octicon-link"></span></a>REQUIRED PERL MODULES</h1>
 
 <p>Orthograph uses only modules that are present in any standard Perl distribution. 
-If you get an error like "Can't locate Some/Thing.pm in <a href="https://github.com/INC" class="user-mention">@INC</a>" it means that
+If you get an error like <code>Can't locate Some/Thing.pm in @INC</code> it means that
 Perl can't find one of the required modules. Update your Perl installation if
 this is the case and make sure it contains these modules:</p>
 
