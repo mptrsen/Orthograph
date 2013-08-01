@@ -48,19 +48,19 @@ QUICKSTART
 For a fast start into analysis using Orthograph, follow these steps. They
 assume that all required software packages are installed and work. 
 
-0. These conventions are used throughout this documentation:
+## 0. These conventions are used throughout this documentation:
 
 	$ some_command
 
-This means you should enter some_command at the shell prompt. The '$' sigil is
+This means you should enter some_command at the shell prompt. The `$` sigil is
 not part of the command.
 
 	mysql> SOME STATEMENT;
 
-This means you should enter SOME STATEMENT at the MySQL prompt. The 'mysql>' is
+This means you should enter SOME STATEMENT at the MySQL prompt. The `mysql>` is
 not part of the statement, but the semicolon is.
 
-1. Set up the MySQL database. 
+## 1. Set up the MySQL database. 
 
 Skip this step if you already have a MySQL account and a database (and know
 what your credentials are).
@@ -89,7 +89,7 @@ working user the necessary permissions on it:
 You may use a different database name, of course. Make a note of your new user
 name, the password and the database name. You will need it later.
 
-2. Create a config file. 
+## 2. Create a config file. 
 
 Copy the supplied config file orthograph.conf.example to orthograph.conf and
 edit it. The file is commented to help you start off. Most options are
@@ -103,22 +103,22 @@ mandatory part of the file is important as it contains critical settings for
 the database interaction. Without these settings none of the programs will
 work.
 
-3. Create the tables. Make the orthograph_manager script executable and use it:
+## 3. Create the tables. Make the orthograph_manager script executable and use it:
 
 	$ chmod +x orthograph-manager
 	$ ./orthograph-manager -create
 
-The -create switch tells the script to setup the database structure for
+The `-create` switch tells the script to setup the database structure for
 Orthograph.  It will create a number of tables, all of which start with the
-prefix 'orthograph_'. 
+prefix `orthograph_`. 
 
-4. Upload your ortholog set into the database:
+## 4. Upload your ortholog set into the database:
 
 	$ ./orthograph-manager FASTAFILE
 
 You will be asked for information about the ortholog set you are loading. If
 you made a mistake during input of the information, you may cancel the process
-at any time using Ctrl+C. I'm sorry if you mistyped the last taxon name and have
+at any time using `Ctrl+C`. I'm sorry if you mistyped the last taxon name and have
 to start over :)
 
 The fasta file must have an OrthoDB-style header format as in the following
@@ -127,7 +127,7 @@ example:
 	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
 
 That is, there must exist five space-separated fields, the last one of which may
-contain whitespace as well. This is output by OrthoDB [3] by default, so you
+contain whitespace as well. This is output by OrthoDB [^3] by default, so you
 don't have to worry about that if you downloaded your ortholog set from OrthoDB.
 However, dependent on your OrthoDB query, you may need to filter your file so
 that it contains only the taxa you want in the ortholog set. A filter script is
@@ -135,7 +135,7 @@ provided upon request.  If you didn't get your data from OrthoDB, read `perldoc
 orthograph_manager` for further information. Make a note of your ortholog set
 name. You will need it later.
 
-5. Load proteome sequences into the database :
+## 5. Load proteome sequences into the database :
 
 	$ ./orthograph-manager -load-ogs-peptide FASTAFILE
 
@@ -151,9 +151,9 @@ groups. Repeat this step for as many taxa in your ortholog set as you have
 peptide sequences for.
 
 If you made a mistake during input of the information, you may cancel the
-process at any time using Ctrl+C. 
+process at any time using `Ctrl+C`. 
 
-6. Optional: Load nucleotide sequence data into the database:
+## 6. Optional: Load nucleotide sequence data into the database:
 
 	$ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
 
@@ -168,22 +168,23 @@ example, these two headers are not equal, even though they look similar:
 Make sure the nucleotide sequences can be correlated to the proteome sequences
 by giving identical names to corresponding sequences.
 
-7. Create the required database structure for Orthograph. Make
-orthograph-analyzer executable and run it with the -prepare option:
+## 7. Create the required database structure for Orthograph.
+
+Make orthograph-analyzer executable and run it with the -prepare option:
 
 	$ chmod +x orthograph-analyzer
 	$ ./orthograph-analyzer -prepare
 
-8. Complete your config file if you didn't fill out everything before.
+## 8. Complete your config file if you didn't fill out everything before.
 
 Supply the rest of the mandatory settings and consider changing some optional
 ones that will affect the searches.
 
-9. Start Orthograph! 
+## 9. Start Orthograph! 
 
 	$ ./orthograph-analyzer
 
-10. Get some coffee, sit back and watch (or do something else).
+## 10. Get some coffee, sit back and watch (or do something else).
 
 Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog
 set, if they don't exist. This may take a long time depending on the size of
@@ -209,13 +210,14 @@ by ortholog groups.
 d) log. This contains log files, such as the entire Orthograph output and the
 report after running orthograph-reporter.
 
-11. ???
+## 11. ???
 
-12. Profit!
+## 12. Profit!
 
 
 COMMON PROBLEMS
 ===============
+
 "No sequences found. Something went wrong. Check your input file. Exiting." 
 
 Really, check your input file. Is it empty? Is it a valid fasta file? If it
