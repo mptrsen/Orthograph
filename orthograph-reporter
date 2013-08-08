@@ -262,6 +262,8 @@ foreach my $bin (@$logevalues_bins) {
 # END RESULT
 }
 
+print "Finished fetching from the database.\n";
+print "Starting output.\n";
 
 
 # a tablefile
@@ -275,6 +277,8 @@ my $num_n = 0;
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $prev_end);
 	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
+
+	print "Evaluating $orthoid...\n";
 	# write the ortholog gene id to the table
 	print $tfh $orthoid;
 	# each reciprocal hit
@@ -399,7 +403,7 @@ sub get_reciprocal_match {
 		if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
 			and not first {/$reciprocal_hit->{'hmmhit'}/} @$list_of_hits ) {
 
-			print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} used in $orthoid!\n" if $verbose;
+			print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} for $reciprocal_hit->{'hmmhit'} used in $orthoid!\n" if $verbose;
 
 			$match = $reciprocal_hit;
 
@@ -462,10 +466,18 @@ sub overlap {
 	return 1;
 }
 
+
+# Finds the ORF for two sequences by aligning them using Exonerate. The program
+# clips sequences if it detects frameshift errors and stuff like that.
+
 sub get_orf {
 	my $blasthit = shift;
 	my $esthit   = shift;
 	my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($blasthit);
 	my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($esthit);
-	print "Got proteome sequence for $blasthit '$proteome_sequence' and est sequence for $esthit '$est_sequence'\n"; exit;
+	print "Got these sequences:\n"; 
+	printf ">%s\n%s\n>%s\n%s\n", $blasthit, $proteome_sequence, $esthit, $est_sequence;
+	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
+	$alignment->search();
+	print $alignment->cdna_sequence(), "\n";
 }

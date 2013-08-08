@@ -38,8 +38,8 @@ sub new {
 	my ($class, $query, $target) = @_;
 
 	my $self = {
-		'query'      => $query,
-		'target'     => $target,
+		'query'      => { 'header' => 'query',  'sequence' => $query  },
+		'target'     => { 'header' => 'target', 'sequence' => $target },
 		'resultfile' => undef,
 		'hitcount'   => 0,
 	};
