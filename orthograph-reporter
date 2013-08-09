@@ -318,7 +318,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
-
+ 
 	# do the same for the nucleotide sequences
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
 	# join headers
@@ -477,7 +477,8 @@ sub get_orf {
 	my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($esthit);
 	print "Got these sequences:\n"; 
 	printf ">%s\n%s\n>%s\n%s\n", $blasthit, $proteome_sequence, $esthit, $est_sequence;
+	Wrapper::Exonerate->outdir($tmpdir);
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
-	print $alignment->cdna_sequence(), "\n";
+	print "Got this ORF:\n", $alignment->cdna_sequence(), "\n";
 }
