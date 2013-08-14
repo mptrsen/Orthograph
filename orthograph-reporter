@@ -477,7 +477,7 @@ sub get_orf {
 	my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($esthit);
 	print "Got these sequences:\n"; 
 	printf ">%s\n%s\n>%s\n%s\n", $blasthit, $proteome_sequence, $esthit, $est_sequence;
-	Wrapper::Exonerate->outdir($tmpdir);
+	Wrapper::Exonerate->outdir($logdir);
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
 	print "Got this ORF:\n", $alignment->cdna_sequence(), "\n";

@@ -554,10 +554,14 @@ sub load_taxon {#{{{
 	croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n") unless scalar @_ == 2;
 	my $inf = shift(@_);
 	my $mode = shift(@_);
-	my $seqtable = $mode      ? $t{'aaseqs'} : $t{'ntseqs'};
+	# the two sequence tables are 'aaseqs' and 'ntseqs'
+	# $seqtable and $otherseqtable assume opposing values, respectively,
+	# depending on the mode in which the function is called.
+	# the same goes for the columns $seqcol and $otherseqcol.
+	my $seqtable      = $mode ? $t{'aaseqs'} : $t{'ntseqs'};
 	my $otherseqtable = $mode ? $t{'ntseqs'} : $t{'aaseqs'};
-	my $seqcol = $mode        ? 'aa_seq'     : 'nt_seq';
-	my $otherseqcol = $mode   ? 'nt_seq'     : 'aa_seq';
+	my $seqcol        = $mode ? 'aa_seq'     : 'nt_seq';
+	my $otherseqcol   = $mode ? 'nt_seq'     : 'aa_seq';
 	my $type = $mode          ? 2            : 1;  # 1 is 'nt', 2 is 'aa'
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
@@ -632,17 +636,20 @@ sub load_taxon {#{{{
 		`taxid`    CHAR(5)      NOT NULL,
 		`header`   VARCHAR(255) NOT NULL,
 		`sequence` MEDIUMBLOB)",
+
 		# load data into temp table
 		"LOAD DATA LOCAL INFILE '$tmpfh' 
 		INTO TABLE $temptable 
 		FIELDS TERMINATED BY ',' 
 		(taxid, header, sequence)",
-		# insert data into main table. IGNORE is important to avoid duplicates.
+
+		# insert data into main table. IGNORE is important to avoid duplicates without throwing errors.
 		"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
 		SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
 		FROM $temptable 
 		LEFT JOIN $t{'taxa'} 
 		ON $temptable.taxid = $t{'taxa'}.id",
+
 		# insert sequence pairs relationships
 		"INSERT INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
 		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$mysql_dbuser'
@@ -656,6 +663,7 @@ sub load_taxon {#{{{
 		WHERE $t{'taxa'}.id = '$taxon'
 		ON DUPLICATE KEY UPDATE $t{'seqpairs'}.$seqcol = $seqtable.id,
 		$t{'seqpairs'}.$otherseqcol = $otherseqtable.id",
+
 	);
 	# execute all queries
 	$dbh = Wrapper::Mysql::mysql_dbh();
