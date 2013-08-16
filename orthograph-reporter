@@ -189,7 +189,7 @@ foreach my $bin (@$logevalues_bins) {
 		$results = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
 	}
 	$t1 = scalar time;
-	printf $stdout "Fetched %d rows for log evalue range (%.2e to %.2e) in %.2f seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
+	printf $stdout "Fetched %d rows for log evalue range (%f to %f) in %d seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
 
 	# skip empty bins
 	next unless %$results;
@@ -476,7 +476,7 @@ sub get_orf {
 	my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($blasthit);
 	my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($esthit);
 	print "Got these sequences:\n"; 
-	printf ">%s\n%s\n>%s\n%s\n", $blasthit, $proteome_sequence, $esthit, $est_sequence;
+	printf ">%s (%s)\n%s\n>%s (%s)\n%s\n", $blasthit, 'query', $proteome_sequence, $esthit, 'target', $est_sequence;
 	Wrapper::Exonerate->outdir($logdir);
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
