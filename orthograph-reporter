@@ -275,7 +275,7 @@ my $num_n = 0;
 
 # walk the orthologs, concatenate in order if multiple
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
-	my ($hdr, $seq, $prev_end);
+	my ($hdr, $seq, $cdnaseq, $prev_end);
 	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
 
 	print "Evaluating $orthoid...\n";
@@ -283,8 +283,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	print $tfh $orthoid;
 	# each reciprocal hit
 	foreach my $hit (@$transcripts) {
-		# exonerate the orf (correct for frameshifts etc)
-		my $orf = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
+		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
+		($hit->{'orf_cdna_sequence'}, $hit->{'orf_aa_sequence'}) = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
 
 		# write the transcripts to the table
 		printf $tfh "\t%s[%d:%d]",
@@ -296,15 +296,15 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		if ($fill_with_x) {
 			if (defined $prev_end) {
 				my $xes = 'X' x ($hit->{'start'} - $prev_end);
-				$seq .=  $xes . $hit->{'sequence'};
+				# 'N' sequences to fill the cdna sequence are three times longer
+				my $ns  = 'N' x ($hit->{'start'} - $prev_end) * 3;
+				$seq .=  $xes;
+				$cdnaseq .= $ns;
 			}
 			$prev_end = $hit->{'end'};
-			$seq .= $hit->{'sequence'};
 		}
-		# otherwise, just concatenate
-		else {
-			$seq .= $hit->{'sequence'};
-		}
+		$seq .= $hit->{'orf_aa_sequence'};
+		$cdnaseq .= $hit->{'orf_cdna_sequence'};
 	}
 
 	# get the core ortholog sequences for this group
@@ -324,7 +324,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# join headers
 	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'start'} . '-' . $_->{'end'} . ']' } @$transcripts );
 	# print the concatenated sequence
-	printf $fafh ">%s\n%s\n", $hdr, $seq;
+	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	undef $fafh;
 }
 undef $tfh;
@@ -481,4 +481,5 @@ sub get_orf {
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
 	print "Got this ORF:\n", $alignment->cdna_sequence(), "\n";
+	return ($alignment->aa_sequence(), $alignment->cdna_sequence());
 }

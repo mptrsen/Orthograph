@@ -149,5 +149,19 @@ sub check_if_fasta {
 	return 1;
 }
 
+# loads a Fasta file into a hashref
+# arguments: scalar string path to file
+# returns: hashref (header => sequence)
+sub slurp_fasta {
+	my $infile = shift;
+	my $sequences = {};
+	my $infh = Seqload::Fasta->open($infile);
+	while (my ($h, $s) = $infh->next_seq()) {
+		$sequences->{$h} = $s;
+	}
+	undef $infh;
+	return $sequences;
+}
+
 # return true
 'This line intentionally left true';

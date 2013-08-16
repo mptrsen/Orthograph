@@ -507,8 +507,6 @@ sub insert_taxon_into_table {
 	$dbh->disconnect();
 
 	$g_species_id = &get_taxid_for_species($species_name) or croak;
-	# get the real table names
-	($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = get_real_table_names($g_species_id) or return undef;
 	return $g_species_id;
 }
 
@@ -764,7 +762,7 @@ sub get_results_for_logevalue {
 	else      { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?" }
 
 	# good for debugging
-	print $query if $debug;
+	print $query . "\n" if $debug;
 
 	my $dbh = &mysql_dbh()
 		or return undef;
