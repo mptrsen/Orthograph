@@ -134,6 +134,12 @@ blast-evalue-threshold     = 1e-05
 # Defaults to 100.
 blast-max-hits             = 100
 
+# Number of CPU threads to use. For optimum CPU efficiency, set this to the
+# number of CPU threads that your CPU(s) can run. Ask your system administrator
+# if you don't know.
+# Defaults to 1 (single-threaded: slow but safe)
+#num-threads                = 1
+
 # 
 # # Other options
 #
