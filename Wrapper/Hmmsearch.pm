@@ -21,13 +21,14 @@ use File::Basename; # basename of files
 use IO::File; # object-oriented access to files
 use Carp; # extended dying functions
 use Data::Dumper;
-my $verbose = 0;
-my $debug = 0;
-my $outdir = File::Spec->catdir('.');
-my $searchprog = 'hmmsearch';
+my $verbose          = 0;
+my $debug            = 0;
+my $outdir           = File::Spec->catdir('.');
+my $searchprog       = 'hmmsearch';
 my @searchcmd;
 my $evalue_threshold = 10;
-my $score_threshold = 10;
+my $score_threshold  = 10;
+my $num_threads      = 1;
 
 sub new {
   my ($class, $hmmfile) = @_;
@@ -134,6 +135,21 @@ sub score_threshold {#{{{
 	$evalue_threshold = 0;
 }#}}}
 
+=head2 num_threads
+
+Sets or returns the number of CPU threads to use for multithreaded searching. Defaults to 1.
+
+=cut
+
+sub num_threads {
+	my $class = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $num_threads }
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Hmmsearch->num_threads(N)\n") }
+	$num_threads = shift(@_);
+	unless ($num_threads =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $num_threads\n") }
+}
+
 =head1 Object methods
 
 =head2 search(FILE)
@@ -160,7 +176,7 @@ sub search {#{{{
   else {
 		print STDERR "HMMsearch output file does not exist in '$outfile', conducting new search\n" if $debug;
 		my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
-    my @hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option $hmmfile $protfile);
+    my @hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option --cpu $num_threads $hmmfile $protfile);
     print STDERR "\n@hmmsearchline\n\n" if $debug;
     # do the search
     my $result = [ `@hmmsearchline` ];

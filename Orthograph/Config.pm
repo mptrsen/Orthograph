@@ -93,6 +93,7 @@ GetOptions( $config,
   'mysql_table_set_details',
   'mysql_table_taxa',
   'mysql-username',
+	'num-threads',
   'ortholog-set',
   'output-directory',
   'preparedb',
@@ -186,6 +187,7 @@ $config->{'make-set'}                   //= 0;
 $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
 $config->{'ntoutdir'}                   //= 'nt';
+$config->{'num-threads'}                //= 1;
 $config->{'ortholog-set'}               //= '';
 $config->{'output-directory'}           //= '';
 $config->{'prepare'}                    //= 0;  

@@ -56,12 +56,13 @@ use Data::Dumper;
 my $verbose          = 0;
 my $debug            = 0;
 my $blastoutdir      = File::Spec->catdir('.');
-my $searchprog        = 'blastp';
+my $searchprog       = 'blastp';
 my $makeblastdbprog  = 'makeblastdb';
 my $evalue_threshold = 10;
 my $score_threshold  = 0;
 my $max_hits         = 100;
 my $blast_cmd;
+my $num_threads      = 1;
 
 sub new {
 	my ($class, $db) = @_;
@@ -174,6 +175,21 @@ sub score_threshold {#{{{
 	unless ($score_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $score_threshold\n") }
 }#}}}
 
+=head2 num_threads
+
+Sets or returns the number of CPU threads to use for multithreaded searching. Defaults to 1.
+
+=cut
+
+sub num_threads {
+	my $class = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $num_threads }
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Blastp->num_threads(N)\n") }
+	$num_threads = shift(@_);
+	unless ($num_threads =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $num_threads\n") }
+}
+
 =head3 max_hits()
 
 Sets the maximum number of hits to be returned. Defaults to 100.
@@ -225,7 +241,7 @@ sub blastp {#{{{
 	else {
 		print STDERR "BLAST output file does not exist in '$outfile', conducting new search\n" if $debug;
 		# use outfmt 7 for comment lines
-		my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore qstart qend' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -db $db -query $queryfile -out $outfile);
+		my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore qstart qend' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -num_threads $num_threads -db $db -query $queryfile -out $outfile);
 
 		# do the search or die
 		print STDERR "\n@blastcmd\n\n"

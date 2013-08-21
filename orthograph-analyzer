@@ -122,6 +122,7 @@ my $logfile                    = $config->{'logfile'};
 my $max_blast_searches         = $config->{'max-blast-searches'};
 my $makeset                    = $config->{'make-set'};
 my $ntoutdir                   = $config->{'ntoutdir'};
+my $num_threads                = $config->{'num-threads'};
 
 # MySQL settings
 my $mysql_dbname               = $config->{'mysql-database'};
@@ -358,7 +359,7 @@ if ($verbose) {
 	Wrapper::Blastp->verbose(1);
 }
 
-# debug output
+# debug output, sets verbose automatically
 if ($debug) {
 	$verbose = 1;
 	Wrapper::Hmmsearch->debug(1);
@@ -374,9 +375,14 @@ Wrapper::Hmmsearch->score_threshold($hmmsearch_score_threshold)
 	if $hmmsearch_score_threshold;
 Wrapper::Blastp->score_threshold($blast_score_threshold)
 	if $blast_score_threshold;
+
 # maximum number of hits to save for blast
 Wrapper::Blastp->max_hits($blast_max_hits)
 	if $blast_max_hits;
+
+# number of CPU threads to use
+Wrapper::Hmmsearch->num_threads($num_threads);
+Wrapper::Blastp->num_threads($num_threads);
 
 # the output directories
 Wrapper::Hmmsearch->outdir($hmmoutdir);
@@ -495,7 +501,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	# write the result to output file
 	my $outfh = IO::File->new(File::Spec->catfile($aaoutdir, $$orthologs[0][0] . '.fa'), 'w');
 	for (0..$#{$orthologs}) { 
-		printf $outfh ">%s:%s:%s\n%s\n", 
+		printf $outfh ">%s|%s|%s\n%s\n", 
 			$$orthologs[0][0],  # the ortholog id
 			$$orthologs[$_][1],	# the taxon shorthand of the ortholog sequence
 			$$orthologs[$_][3],	# the sequence id of the ortholog sequence
@@ -504,7 +510,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	}
 	# the header and sequence of the hit
 	# this is the best hit since the SQL query sorts by evalue and we take the first one
-	printf $outfh ">%s:%s:%s\n%s\n",
+	printf $outfh ">%s|%s|%s\n%s\n",
 		$$orthologs[0][0],  # the ortholog id
 		$species_name,      # the name of the analyzed species 
 		# TODO reftaxon id

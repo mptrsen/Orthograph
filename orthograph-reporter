@@ -291,13 +291,12 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 			$hit->{'hmmhit'}, # transcript ID (hash atm)
 			$hit->{'start'},  # start
 			$hit->{'end'};    # end
-		print $tfh "\n";
 		# before concatenating, fill gaps with 'X' if desired
 		if ($fill_with_x) {
 			if (defined $prev_end) {
 				my $xes = 'X' x ($hit->{'start'} - $prev_end);
 				# 'N' sequences to fill the cdna sequence are three times longer
-				my $ns  = 'N' x ($hit->{'start'} - $prev_end) * 3;
+				my $ns  = 'N' x (($hit->{'start'} - $prev_end) * 3);
 				$seq .=  $xes;
 				$cdnaseq .= $ns;
 			}
@@ -306,6 +305,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		$seq .= $hit->{'orf_aa_sequence'};
 		$cdnaseq .= $hit->{'orf_cdna_sequence'};
 	}
+
+	print $tfh "\n";
 
 	# get the core ortholog sequences for this group
 	my $core_sequences = Wrapper::Mysql::get_ortholog_group($set_id, $orthoid);
