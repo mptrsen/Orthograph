@@ -244,25 +244,26 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 	++$total_seqs;
 	# no commas in the header please, they confuse the csv parser
 	$hdr =~ s/,/_/g;
-	my @line = split(/\s+/, $hdr, 4);	# maximum of five fields, the last one may contain whitespace
-	$line[3] =~ s/[,:]/_/ if defined $line[3];
+	my @headerfields = split(/\s+/, $hdr, 4);	# maximum of five fields, the last one may contain whitespace
+	# no colons either
+	$headerfields[3] =~ s/:/_/g if defined $headerfields[3];
 
 	# if the original proteome is missing, this can't work
-	if ($line[1] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
+	if ($headerfields[1] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
 
-	$line[0] =~ s/:.*//;	# remove everything from the colon
+	$headerfields[0] =~ s/:.*//;	   # remove everything from the colon
 	printf $tmpfile "%s,%s,%s,%s,%s,%s,%s,%s\n", 
-		$line[0],     # taxon shorthand
-		undef,        # this will later be the full name
-		$setname,	    # set name
-		$line[2],     # orthodb id, e.g. EOG500001
+		$headerfields[0],              # taxon shorthand
+		undef,                         # this will later be the full name
+		$setname,	                     # set name
+		$headerfields[2],              # orthodb id, e.g. EOG500001
 		File::Spec->catdir($blastdir), # blast database directory
-		$line[1],     # ogs id
-		$seq,         # sequence
-		$description; # set description
+		$headerfields[1],              # ogs id
+		$seq,                          # sequence
+		$description;                  # set description
 }
 use warnings;	# resume yelling 
-print "used file $tmpfile\n";
+print "used file $tmpfile\n" if $verbose;
 undef($faobj);
 $tmpfile->close();
 
