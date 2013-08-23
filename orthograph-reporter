@@ -58,6 +58,7 @@ my $outdir                     = $config->{'output-directory'};
 my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir'});
 my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir'});
 my $logdir                     = File::Spec->catdir($outdir, 'log');
+my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
 my $verbose                    = $config->{'verbose'};
 
@@ -216,8 +217,8 @@ foreach my $bin (@$logevalues_bins) {
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
 					$orthoid,
 					$this_match->{'hmmhit'},
-					$this_match->{'start'},
-					$this_match->{'end'},
+					$this_match->{'hmm_start'},
+					$this_match->{'hmm_end'},
 					$orthoid,
 					unless $quiet;
 
@@ -279,7 +280,7 @@ my $num_n = 0;
 # walk the orthologs, concatenate in order if multiple
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $cdnaseq, $prev_end);
-	$transcripts = [ sort { $a->{'start'} <=> $b->{'start'} } @$transcripts ];
+	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
 	print "Evaluating $orthoid...\n";
 	# write the ortholog gene id to the table
@@ -287,26 +288,29 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# each reciprocal hit
 	foreach my $hit (@$transcripts) {
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		($hit->{'orf_cdna_sequence'}, $hit->{'orf_aa_sequence'}) = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
+		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
 
 		# write the transcripts to the table
 		printf $tfh "\t%s[%d:%d]",
-			$hit->{'hmmhit'}, # transcript ID (hash atm)
-			$hit->{'start'},  # start
-			$hit->{'end'};    # end
+			$hit->{'hmmhit'},     # transcript ID (hash atm)
+			$hit->{'env_start'},  # start
+			$hit->{'env_end'};    # end
 		# before concatenating, fill gaps with 'X' if desired
 		if ($fill_with_x) {
 			if (defined $prev_end) {
-				my $xes = 'X' x ($hit->{'start'} - $prev_end);
+				my $num_x = $hit->{'hmm_start'} - $prev_end;
+				my $xes = 'X' x $num_x;
 				# 'N' sequences to fill the cdna sequence are three times longer
-				my $ns  = 'N' x (($hit->{'start'} - $prev_end) * 3);
+				my $ns  = 'N' x ($num_x * 3);
 				$seq .=  $xes;
 				$cdnaseq .= $ns;
+				print "Added $num_x 'X' to sequence\n" if $debug;
 			}
-			$prev_end = $hit->{'end'};
+			$prev_end = $hit->{'hmm_end'};
 		}
 		$seq .= $hit->{'orf_aa_sequence'};
 		$cdnaseq .= $hit->{'orf_cdna_sequence'};
+		print "Concatenated sequences\n" if $debug;
 	}
 
 	print $tfh "\n";
@@ -318,7 +322,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'start'} . '-' . $_->{'end'} . ']' } @$transcripts );
+	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'env_start'} . '-' . $_->{'env_end'} . ']' } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
@@ -326,7 +330,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# do the same for the nucleotide sequences
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
 	# join headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'start'} . '-' . $_->{'end'} . ']' } @$transcripts );
+	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'env_start'} . '-' . $_->{'env_end'} . ']' } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	undef $fafh;
@@ -442,14 +446,14 @@ sub overlap {
 	my $overlap   = 0;
 	# the fragments do not overlap
 	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
-		if ($$candidate{'end'} <= $$already_matched[$i]{'start'} or $$candidate{'start'} >= $$already_matched[$i]{'end'}) {
+		if ($$candidate{'end'} <= $$already_matched[$i]{'hmm_start'} or $$candidate{'hmm_start'} >= $$already_matched[$i]{'end'}) {
 			printf $stdout "%s[%d:%d] and %s[%d:%d] do not overlap.\n", 
 				$$already_matched[$i]{'hmmhit'},
-				$$already_matched[$i]{'start'},
-				$$already_matched[$i]{'end'},
+				$$already_matched[$i]{'hmm_start'},
+				$$already_matched[$i]{'hmm_end'},
 				$$candidate{'hmmhit'},
-				$$candidate{'start'},
-				$$candidate{'end'}
+				$$candidate{'hmm_start'},
+				$$candidate{'hmm_end'}
 					if $verbose;
 			$overlap = 0;
 		}
@@ -457,11 +461,11 @@ sub overlap {
 		else {
 			printf $stdout "%s[%d:%d] and %s[%d:%d] overlap.\n", 
 				$$already_matched[$i]{'hmmhit'},
-				$$already_matched[$i]{'start'},
-				$$already_matched[$i]{'end'},
+				$$already_matched[$i]{'hmm_start'},
+				$$already_matched[$i]{'hmm_end'},
 				$$candidate{'hmmhit'},
-				$$candidate{'start'},
-				$$candidate{'end'}
+				$$candidate{'hmm_start'},
+				$$candidate{'hmm_end'}
 					if $verbose;
 		 	return 1;
 		}

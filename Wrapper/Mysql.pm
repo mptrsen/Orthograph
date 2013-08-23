@@ -72,7 +72,11 @@ my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
 my $mysql_col_aaseq            = 'aa_seq';
 my $mysql_col_digest           = 'digest';
 my $mysql_col_end              = 'end';
+my $mysql_col_env_end          = 'env_end';
+my $mysql_col_env_start        = 'env_start';
 my $mysql_col_evalue           = 'evalue';
+my $mysql_col_hmm_end          = 'hmm_end';
+my $mysql_col_hmm_start        = 'hmm_start';
 my $mysql_col_header           = 'header';
 my $mysql_col_id               = 'id';
 my $mysql_col_log_evalue       = 'log_evalue';
@@ -290,8 +294,8 @@ sub get_hmmresults {#{{{
 	# disable query cache for this one
 	my $query_get_sequences = "SELECT SQL_NO_CACHE $mysql_table_ests.digest,
 		  $mysql_table_ests.sequence,
-		  $mysql_table_hmmsearch.start,
-		  $mysql_table_hmmsearch.end
+		  $mysql_table_hmmsearch.env_start,
+		  $mysql_table_hmmsearch.env_end
 		FROM $mysql_table_ests 
 		INNER JOIN $mysql_table_hmmsearch
 		ON $mysql_table_hmmsearch.target = $mysql_table_ests.digest
@@ -634,8 +638,8 @@ sub get_hitlist_hashref {
 		$mysql_table_hmmsearch.target,
 		$mysql_table_ests.header,
 		$mysql_table_ests.sequence,
-		$mysql_table_hmmsearch.start,
-		$mysql_table_hmmsearch.end,
+		$mysql_table_hmmsearch.hmm_start,
+		$mysql_table_hmmsearch.hmm_end,
 		$mysql_table_blast.target,
 		$mysql_table_blast.evalue,
 		$mysql_table_taxa.name
@@ -672,8 +676,8 @@ sub get_hitlist_hashref {
 			'hmmhit'       => $$line[2],
 			'header'       => $$line[3],
 			'sequence'     => substr($$line[4], $start, $length),
-			'start'        => $$line[5],
-			'end'          => $$line[6],
+			'hmm_start'        => $$line[5],
+			'hmm_end'          => $$line[6],
 			'blast_hit'    => $$line[7],
 			'blast_evalue' => $$line[8],
 			'reftaxon'     => $$line[9],
@@ -741,8 +745,8 @@ sub get_results_for_logevalue {
 			$mysql_table_hmmsearch.$mysql_col_target,
 			$mysql_table_ests.$mysql_col_header,
 			$mysql_table_ests.$mysql_col_sequence,
-			$mysql_table_hmmsearch.$mysql_col_start,
-			$mysql_table_hmmsearch.$mysql_col_end,
+			$mysql_table_hmmsearch.$mysql_col_hmm_start,
+			$mysql_table_hmmsearch.$mysql_col_hmm_end,
 			$mysql_table_blast.$mysql_col_target,
 			$mysql_table_blast.$mysql_col_evalue,
 			$mysql_table_taxa.$mysql_col_name
@@ -804,8 +808,8 @@ sub get_results_for_logevalue {
 			'hmmhit'       => $$line[2],
 			'header'       => $$line[3],
 			'sequence'     => substr($$line[4], $start, $length),
-			'start'        => $$line[5],
-			'end'          => $$line[6],
+			'hmm_start'        => $$line[5],
+			'hmm_end'          => $$line[6],
 			'blast_hit'    => $$line[7],
 			'blast_evalue' => $$line[8],
 			'reftaxon'     => $$line[9],

@@ -173,8 +173,12 @@ my $mysql_col_aaseq         = 'aa_seq';
 my $mysql_col_blastdbpath   = 'blastdb_path';
 my $mysql_col_date          = 'date';
 my $mysql_col_digest        = 'digest';
-my $mysql_col_end           = 'end';
 my $mysql_col_evalue        = 'evalue';
+my $mysql_col_end           = 'end';
+my $mysql_col_env_end       = 'env_end';
+my $mysql_col_env_start     = 'env_start';
+my $mysql_col_hmm_end       = 'hmm_end';
+my $mysql_col_hmm_start     = 'hmm_start';
 my $mysql_col_log_evalue    = 'log_evalue';
 my $mysql_col_hdr           = 'header';
 my $mysql_col_hmm           = 'hmm';
@@ -431,10 +435,15 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
 		for (my $i = 0; $i < scalar @$hits; $i++) {
-			printf $stdout "     [%d] %s, e-value %2.1e\n",
+			printf $stdout "     [%d] %s [%d:%d] (%d:%d), e-value %2.1e\n",
 				$i + 1,
 				$hits->[$i]->{'target'},
-				$hits->[$i]->{'evalue'};
+				$hits->[$i]->{'env_start'},
+				$hits->[$i]->{'env_end'},
+				$hits->[$i]->{'hmm_start'},
+				$hits->[$i]->{'hmm_end'},
+				$hits->[$i]->{'evalue'},
+			;
 		}
 	}
 
@@ -882,8 +891,10 @@ sub preparedb {#{{{
 		`$mysql_col_score`      DOUBLE       NOT NULL,
 		`$mysql_col_evalue`     CHAR(8)      NOT NULL,
 		`$mysql_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
-		`$mysql_col_start`      INT UNSIGNED NOT NULL,
-		`$mysql_col_end`        INT UNSIGNED NOT NULL,
+		`$mysql_col_env_start`  INT UNSIGNED NOT NULL,
+		`$mysql_col_env_end`    INT UNSIGNED NOT NULL,
+		`$mysql_col_hmm_start`  INT UNSIGNED NOT NULL,
+		`$mysql_col_hmm_end`    INT UNSIGNED NOT NULL,
 		PRIMARY KEY (`$mysql_col_id`),
 		INDEX (`$mysql_col_taxid`),
 		INDEX (`$mysql_col_query`),
@@ -997,7 +1008,8 @@ sub insert_results_into_table {#{{{
 			?,
 			?,
 			?,
-			?)";
+			?
+		)";
 
 		my $dbh = Wrapper::Mysql::mysql_dbh()
 			or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
@@ -1013,8 +1025,8 @@ sub insert_results_into_table {#{{{
 				$hit->{'score'},  # score
 				$hit->{'evalue'},  # evalue
 				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,  # natural logarithm only if not 0
-				$hit->{'start'},
 				$hit->{'end'},
+				$hit->{'start'},
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			++$hitcount;
 		}
@@ -1023,7 +1035,7 @@ sub insert_results_into_table {#{{{
 		return $hitcount;
 	}
 
-	# this is a HMMsearch result, need 8 columns
+	# this is a HMMsearch result
 	else {
 		# SQL query for pushing HMMsearch results to the db
 		my $query_insert_result = "INSERT IGNORE INTO $table (
@@ -1033,9 +1045,13 @@ sub insert_results_into_table {#{{{
 			`$mysql_col_score`,
 			`$mysql_col_evalue`,
 			`$mysql_col_log_evalue`,
-			`$mysql_col_start`,
-			`$mysql_col_end`
+			`$mysql_col_hmm_start`,
+			`$mysql_col_hmm_end`,
+			`$mysql_col_env_start`,
+			`$mysql_col_env_end`
 			) VALUES (
+			?,
+			?,
 			?,
 			?,
 			?,
@@ -1057,9 +1073,11 @@ sub insert_results_into_table {#{{{
 				$hit->{'target'}, # target (header)
 				$hit->{'score'},  # score
 				$hit->{'evalue'}, # evalue
-				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,	# natural logarithm only if not 0
-				$hit->{'start'},	# start of hit domain
-				$hit->{'end'}			# end of hit domain
+				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,	# natural logarithm only if evalue not 0
+				$hit->{'hmm_start'},  # start of hit domain on the HMM
+				$hit->{'hmm_end'},    # end of hit domain on the HMM
+				$hit->{'env_start'},  # start of hit domain on the target seq
+				$hit->{'env_end'},    # end of hit domain on the target seq
 			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
 			if ($affected_rows > 0) { ++$hitcount }
 		}
@@ -1398,7 +1416,7 @@ sub write_sequence_to_tempfile {
 	my $hmmfilename = shift @_;
 	# setup a temporary file to hold the sequence to be blasted
 	my $tmpfile = File::Temp->new(
-		'UNLINK' => 0, 
+		'UNLINK' => 1, 
 		'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmfilename) . '-XXXX'));
 	# don't delete this file if debugging
 	$tmpfile->unlink_on_destroy(0) if $debug;
