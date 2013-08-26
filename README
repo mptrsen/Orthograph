@@ -22,7 +22,7 @@ Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
 
 Don't worry about your Perl version if you run a reasonably recent Linux or UNIX
-system, such as Mac OS X, but see [^1] and [^2] if you are trying to install
+system, such as Mac OS X, but see [here] [1] and [there] [2] if you are trying to install
 the required packages on a Windows system under Cygwin (or natively, for that
 matter). You might run into problems getting the MySQL driver, HMMer3 and
 Exonerate to work. Really, don't use Windows. 
@@ -127,7 +127,7 @@ example:
 	>AAEGY:m0cp83 AAEL005334 EOG5000ZK AAEL005334-PA [foo bar baz]
 
 That is, there must exist five space-separated fields, the last one of which may
-contain whitespace as well. This is output by OrthoDB [^3] by default, so you
+contain whitespace as well. This is output by [OrthoDB] [3] by default, so you
 don't have to worry about that if you downloaded your ortholog set from OrthoDB.
 However, dependent on your OrthoDB query, you may need to filter your file so
 that it contains only the taxa you want in the ortholog set. A filter script is
@@ -281,6 +281,6 @@ this is the case and make sure it contains these modules:
 Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
 (c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
 
-[^1]: <http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special systems>
-[^2]: <http://forums.mysql.com/read.php?51,389833,389833>
-[^3]: <http://cegg.unige.ch/orthodb5>
+[1]: <http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems>
+[2]: <http://forums.mysql.com/read.php?51,389833,389833>
+[3]: <http://cegg.unige.ch/orthodb5>
