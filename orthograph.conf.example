@@ -8,6 +8,8 @@
 #
 # Settings in UPPER-CASE must be changed to your local environment. Settings
 # in lower-case are sane defaults.
+#
+# Remember to save this file as 'orthograph.conf'.
 
 #--------------------------------------------------
 # # Important stuff first. These settings are mandatory.
@@ -67,8 +69,7 @@ hmmbuild-program     = hmmbuild
 makeblastdb-program  = makeblastdb
 
 # Fastatranslate is part of the Exonerate package and translates the transcript
-# sequences into all six reading frames. You are free to use different
-# programs, though.
+# sequences into all six reading frames. 
 translate-program    = fastatranslate
 
 # HMMsearch, of course. Also part of the HMMER3 package.
@@ -77,8 +78,8 @@ hmmsearch-program    = hmmsearch
 # BLAST. Should be blastp from the NCBI BLAST+ package.
 blast-program        = blastp
 
-# Exonerate. Not used yet.
-#exonerate-program    = exonerate
+# Exonerate. Used to find ORFs.
+exonerate-program    = exonerate
 
 #
 # # MySQL settings
@@ -86,7 +87,7 @@ blast-program        = blastp
 # The database server. Change this if the database does not run on the same
 # computer as the analysis. Ask your administrator if you don't know what to
 # write here.
-# Defaults to 127.0.0.1.
+# Defaults to 127.0.0.1 (localhost).
 #mysql-dbserver             = 127.0.0.1
 
 # Prefix for your Orthograph database tables. Useful if you are running
@@ -132,7 +133,7 @@ blast-evalue-threshold     = 1e-05
 
 # Maximum number of BLAST hits to consider for ortholog candidates.
 # Defaults to 100.
-blast-max-hits             = 100
+#blast-max-hits             = 100
 
 # Number of CPU threads to use. For optimum CPU efficiency, set this to the
 # number of CPU threads that your CPU(s) can run. Ask your system administrator
@@ -152,7 +153,7 @@ blast-max-hits             = 100
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
 # but doesn't hurt otherwise. 
-# This is the default, uncomment this line if you want to turn it off.
+# This behaviour is the default, uncomment this line if you want to turn it off.
 #clear-results-from-database  = 0
 
 # Delete old result files. This means the HMMsearch and BLAST report files found
@@ -160,7 +161,7 @@ blast-max-hits             = 100
 # with the same HMMsearch and BLAST settings, then don't have them deleted. This
 # will speed up the process significantly, since the search programs don't have
 # to be run again.
-# This is the default. Uncomment this line if you want the files deleted.
+# Uncomment this line if you want the files deleted.
 #clear-result-files           = 1
 
 # Selenocysteine (U) may occur in some protein sequences. However, some
@@ -176,18 +177,22 @@ blast-max-hits             = 100
 #verbose     = 1
 
 # Quiet output. Uncomment this if you don't want to be bothered during the
-# analysis. Verbose and quiet are mutually exclusive.
+# analysis. After starting, Orthograph will keep still until the analysis is
+# complete (or unexpected things happen). Verbose and quiet are mutually
+# exclusive.
 #quiet       = 1
 
 
 #
 # # More paths
 # 
-# Sets directory. Useful if you would like to keep your ortholog sets (that is,
-# the BLAST database, the HMMs and the alignment files for each ortholog gene)
-# in a separate place. Defaults to 'sets' (in the current directory).
+# Ortholog sets directory. Useful if you would like to keep your ortholog sets
+# (that is, the BLAST database, the HMMs and the alignment files for each
+# ortholog gene) in a separate place. Defaults to 'sets' (in the current
+# directory).
 #sets-dir    = /PATH/TO/SETS/DIR
 
 # Log file. If set, all messages will also be written to this file. If this is
-# not set, messages are not written to a log file, but to STDOUT and STDERR.
-#logfile = /PATH/TO/LOGFILE
+# not set, messages are written to a log file in your output directory (see the
+# setting 'output-directory' above).
+#logfile     = /PATH/TO/LOGFILE

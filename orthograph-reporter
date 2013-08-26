@@ -63,14 +63,14 @@ my $quiet                      = $config->{'quiet'};
 my $verbose                    = $config->{'verbose'};
 
 # settings for this specific analysis
-my $setname                    = $config->{'ortholog-set'};
-my $speciesname                = $config->{'species-name'};
-my $reference_taxa             = $config->{'reference-taxa'};
 my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
-my $soft_threshold             = $config->{'soft-threshold'};
+my $exonerate_program          = $config->{'exonerate-program'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
-
+my $reference_taxa             = $config->{'reference-taxa'};
+my $setname                    = $config->{'ortholog-set'};
+my $soft_threshold             = $config->{'soft-threshold'};
+my $speciesname                = $config->{'species-name'};
 
 # open log and table output files 
 my $logfile = File::Spec->catfile($logdir, 'report.log');
