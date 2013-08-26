@@ -483,6 +483,18 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# shiny new blastp object
 		my $blastobj = Wrapper::Blastp->new($blastdb);
 		
+		# TODO change the workflow:
+		# blastobj = Blastp->new(
+		#		-db => $blastdb,
+		#		-query => $query,
+		#		-output-file => $outfile,
+		#	);
+		# blastobj->search();
+		# continue...
+		# blastobj->query($new_query);
+		# blastobj->search();
+		# etc
+
 		# generate a blast output file name from the HMM name and the hit number
 		my $blastoutfile = &generate_blast_output_filename($hmmobj->hmmname, $hmmresults[$n]);
 
