@@ -482,7 +482,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		#-------------------------------------------------- 
 		# shiny new blastp object
 		my $blastobj = Wrapper::Blastp->new($blastdb);
-
+		
 		# generate a blast output file name from the HMM name and the hit number
 		my $blastoutfile = &generate_blast_output_filename($hmmobj->hmmname, $hmmresults[$n]);
 
@@ -1339,7 +1339,7 @@ sub load_data_infile {#{{{
 
 	# flush tables, then disable indexes before loading the data. 
 	# afterwards re-index the table
-	print $stdout "Disabling keys on $table_ests...\n" if $verbose;
+	print $stdout "Disabling indices on $table_ests...\n" if $verbose;
 	$dbh->do($query_disable_keys);
 	my $sth = $dbh->prepare($query);
 	print $stdout "Uploading data...\n" if $verbose;
