@@ -80,13 +80,6 @@ else {
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
 
-# report configuration
-$message .= "Using the following configuration settings:\n";
-foreach (sort keys %$config) {
-	$message .= sprintf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
-}
-$message .= "\n";
-
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
@@ -224,7 +217,21 @@ my @reftaxa                 = ( );
 my @seqobjs                 = ( );
 #}}}
 
-$tmpdir->unlink_on_destroy(0) if $debug;
+# debug is also verbose
+if ($debug) {
+	$verbose = 1; 
+	$tmpdir->unlink_on_destroy(0);
+}
+
+# report configuration
+if ($verbose) {
+	$message .= "Using the following configuration settings:\n";
+	foreach (sort keys %$config) {
+		$message .= sprintf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
+	}
+	$message .= "\n";
+}
+
 
 # get the taxon id. create a new entry in the taxa table or return existing one
 $species_id = Wrapper::Mysql::insert_taxon_into_table($species_name)
@@ -365,7 +372,6 @@ if ($verbose) {
 
 # debug output, sets verbose automatically
 if ($debug) {
-	$verbose = 1;
 	Wrapper::Hmmsearch->debug(1);
 	Wrapper::Blastp->debug(1);
 }

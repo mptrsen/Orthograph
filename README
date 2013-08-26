@@ -15,7 +15,7 @@ Package      | Version | Download from
 MySQL        | 5.1     | <http://www.mysql.com>
 MAFFT        | 6.951   | <http://mafft.cbrc.jp/alignment/software/>
 HMMer        | 3.0     | <http://hmmer.janelia.org>
-NCBI BLAST+  | 2.2.25+ | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
+NCBI BLAST+  | 2.2.28+ | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
 Exonerate    | 2.2.0   | <http://www.ebi.ac.uk/~guy/exonerate/>
 
 Make sure you get the correct versions for your operating system (most packages
