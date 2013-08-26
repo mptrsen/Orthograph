@@ -21,11 +21,11 @@ Exonerate    | 2.2.0   | <http://www.ebi.ac.uk/~guy/exonerate/>
 Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
 
-Don't worry about your Perl version if you run a reasonably recent Linux or UNIX
-system, such as Mac OS X, but see [here] [1] and [there] [2] if you are trying to install
-the required packages on a Windows system under Cygwin (or natively, for that
-matter). You might run into problems getting the MySQL driver, HMMer3 and
-Exonerate to work. Really, don't use Windows. 
+Don't worry about your Perl version if you run a reasonably recent Linux or
+UNIX system, such as Mac OS X, but see [here] [1] and [there] [2] if you are
+trying to install the required packages on a Windows system under Cygwin (or
+natively, for that matter). You might run into problems getting the MySQL
+driver, HMMer3 and Exonerate to work. Really, don't use Windows. 
 
 If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.
