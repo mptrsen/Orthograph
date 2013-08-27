@@ -747,6 +747,8 @@ sub get_results_for_logevalue {
 			$mysql_table_ests.$mysql_col_sequence,
 			$mysql_table_hmmsearch.$mysql_col_hmm_start,
 			$mysql_table_hmmsearch.$mysql_col_hmm_end,
+			$mysql_table_hmmsearch.$mysql_col_env_start,
+			$mysql_table_hmmsearch.$mysql_col_env_end,
 			$mysql_table_blast.$mysql_col_target,
 			$mysql_table_blast.$mysql_col_evalue,
 			$mysql_table_taxa.$mysql_col_name
@@ -801,18 +803,20 @@ sub get_results_for_logevalue {
 	my $result = { };
 
 	while (my $line = $sth->fetchrow_arrayref()) {
-		my $start = $$line[5] - 1;
-		my $length = $$line[6] - $start;
+		my $start = $$line[7] - 1;
+		my $length = $$line[8] - $start;
 		# first key is the hmmsearch evalue, second key is the orthoid
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
 			'hmmhit'       => $$line[2],
 			'header'       => $$line[3],
 			'sequence'     => substr($$line[4], $start, $length),
-			'hmm_start'        => $$line[5],
-			'hmm_end'          => $$line[6],
-			'blast_hit'    => $$line[7],
-			'blast_evalue' => $$line[8],
-			'reftaxon'     => $$line[9],
+			'hmm_start'    => $$line[5],
+			'hmm_end'      => $$line[6],
+			'env_start'    => $$line[7],
+			'end_end'      => $$line[8],
+			'blast_hit'    => $$line[9],
+			'blast_evalue' => $$line[10],
+			'reftaxon'     => $$line[11],
 		});
 	}
 	$sth->finish();

@@ -446,7 +446,7 @@ sub overlap {
 	my $overlap   = 0;
 	# the fragments do not overlap
 	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
-		if ($$candidate{'end'} <= $$already_matched[$i]{'hmm_start'} or $$candidate{'hmm_start'} >= $$already_matched[$i]{'end'}) {
+		if ($$candidate{'hmm_end'} <= $$already_matched[$i]{'hmm_start'} or $$candidate{'hmm_start'} >= $$already_matched[$i]{'hmm_end'}) {
 			printf $stdout "%s[%d:%d] and %s[%d:%d] do not overlap.\n", 
 				$$already_matched[$i]{'hmmhit'},
 				$$already_matched[$i]{'hmm_start'},
