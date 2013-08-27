@@ -183,6 +183,7 @@ foreach my $bin (@$logevalues_bins) {
 	#     etc.
 	#   ]
 	# }
+	print "Fetching next batch of results...\n" if $verbose;
 	$t0 = scalar time;
 	# only one evalue
 	if ($bin->{'min'} == $bin->{'max'}) {
@@ -243,7 +244,7 @@ foreach my $bin (@$logevalues_bins) {
 				}
 
 				# this has not been hit before, just assign
-				printf $stdout "Assigned %s to %s\n", $this_match->{'hmmhit'}, $orthoid;
+				printf $stdout "Assigned %s to %s.\n", $this_match->{'hmmhit'}, $orthoid;
 				push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
 
 				# this transcript can't be found again

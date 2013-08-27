@@ -813,7 +813,7 @@ sub get_results_for_logevalue {
 			'hmm_start'    => $$line[5],
 			'hmm_end'      => $$line[6],
 			'env_start'    => $$line[7],
-			'end_end'      => $$line[8],
+			'env_end'      => $$line[8],
 			'blast_hit'    => $$line[9],
 			'blast_evalue' => $$line[10],
 			'reftaxon'     => $$line[11],
