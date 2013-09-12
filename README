@@ -91,9 +91,9 @@ name, the password and the database name. You will need it later.
 
 ## 2. Create a config file. 
 
-Copy the supplied config file orthograph.conf.example to orthograph.conf and
-edit it. The file is commented to help you start off. Most options are
-self-explanatory. 
+Make a copy of the supplied config file orthograph.conf.example and rename this
+copy to orthograph.conf. Edit it. The file is commented to help you start off.
+Most options are self-explanatory. 
 
 For now, it is sufficient to supply the MySQL settings (database, username,
 password). 
@@ -135,6 +135,8 @@ provided upon request.  If you didn't get your data from OrthoDB, read `perldoc
 orthograph_manager` for further information. Make a note of your ortholog set
 name. You will need it later.
 
+To check what sets have been uploaded so far, call `orthograph-manager -ls`. 
+
 ## 5. Load proteome sequences into the database :
 
 	$ ./orthograph-manager -load-ogs-peptide FASTAFILE
@@ -151,7 +153,8 @@ as these are regarded as part of the ortholog groups. Repeat this step for as
 many taxa in your ortholog set as you have peptide sequences for.
 
 If you made a mistake during input of the information, you may cancel the
-process at any time using `Ctrl+C`. 
+process at any time using `Ctrl+C`. To check what OGS are present in the
+database, call `orthograph-manager -lo`.
 
 ## 6. Optional: Load nucleotide sequence data into the database:
 

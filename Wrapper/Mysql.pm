@@ -792,10 +792,12 @@ sub get_results_for_logevalue {
 
 	# e-value range
 	if ($max) {
+		print "min: $min\n" if $debug;
 		$sth = execute($sth, $mysql_timeout, $setid, $taxid, $min, $max);
 	}
 	# single e-value
 	else      {
+		print "min: $min max: $max\n" if $debug;
 		$sth = execute($sth, $mysql_timeout, $setid, $taxid, $min);
 	} 
 

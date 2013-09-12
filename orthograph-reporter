@@ -224,12 +224,17 @@ foreach my $bin (@$logevalues_bins) {
 					unless $quiet;
 
 				# if this orthoid has been hit before, check whether the new cancidate
-				# overlaps with previous hits
+				# overlaps on hmm (gene) level with previous hits
 				if (exists $transcripts_mapped_to->{$orthoid}) {
-					if (&overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
+					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 						# yep, it overlaps, so we can't assign this transcript because better
 						# e-values have precedence. just go to the next one
-						printf $stdout "Overlap with previous hit for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
+						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
+						next ORTHOID;
+					}
+					# or does it overlap on transcript level? if so, maybe we can concatenate
+					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
+						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
 						next ORTHOID;
 					}
 					else {
@@ -242,16 +247,18 @@ foreach my $bin (@$logevalues_bins) {
 						next ORTHOID;
 					}
 				}
+				else {
 
-				# this has not been hit before, just assign
-				printf $stdout "Assigned %s to %s.\n", $this_match->{'hmmhit'}, $orthoid;
-				push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
+					# this has not been hit before, just assign
+					printf $stdout "Assigned %s to %s.\n", $this_match->{'hmmhit'}, $orthoid;
+					push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
 
-				# this transcript can't be found again
-				push @transcript_list, $this_match->{'hmmhit'};
+					# this transcript can't be found again
+					push @transcript_list, $this_match->{'hmmhit'};
 
-				# reset 
-				undef $this_match;
+					# reset 
+					undef $this_match;
+				}
 			}
 			else {
 				# this orthoid has no match
@@ -441,38 +448,185 @@ sub get_reciprocal_match {
 	}
 }
 
+sub insert_candidate {
+	my $already_assigned = shift;
+	my $candidate = shift;
+	# insert the candidate at the appropriate position and return the arrayref of
+	# assigned transcripts
+}
+
+sub hmm_overlap {
+	my $already_assigned = shift;
+	my $candidate = shift;
+	# test whether the candidate overlaps on hmm level, return 1 or 0
+	foreach my $assigned_transcript (@$already_assigned) {
+		# the hmm coords do not overlap
+		if ($$candidate{'hmm_end'} <= $$assigned_transcript{'hmm_start'} or $$candidate{'hmm_start'} >= $$assigned_transcript{'hmm_end'}) {
+			print_no_overlap($candidate, $assigned_transcript)
+				if $verbose;
+		}
+		else {
+			print_overlap($candidate, $assigned_transcript)
+				if $verbose;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+sub transcript_overlap {
+	my $already_assigned = shift;
+	my $candidate = shift;
+	# test whether the candidate overlaps on transcript level, return 1 or 0
+	foreach my $assigned_transcript (@$already_assigned) {
+		# the hmm coords do not overlap
+		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
+			print_no_overlap($candidate, $assigned_transcript)
+				if $verbose;
+		}
+		else {
+			print_overlap($candidate, $assigned_transcript)
+				if $verbose;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+sub print_overlap {
+	my $candidate = shift;
+	my $transcript = shift;
+	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap.\n", 
+		$$transcript{'hmmhit'},
+		$$transcript{'env_start'},
+		$$transcript{'env_end'},
+		$$transcript{'hmm_start'},
+		$$transcript{'hmm_end'},
+		$$candidate{'hmmhit'},
+		$$candidate{'env_start'},
+		$$candidate{'env_end'},
+		$$candidate{'hmm_start'},
+		$$candidate{'hmm_end'}
+	;
+}
+
+sub print_no_overlap {
+	my $candidate = shift;
+	my $transcript = shift;
+	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
+		$$transcript{'hmmhit'},
+		$$transcript{'env_start'},
+		$$transcript{'env_end'},
+		$$transcript{'hmm_start'},
+		$$transcript{'hmm_end'},
+		$$candidate{'hmmhit'},
+		$$candidate{'env_start'},
+		$$candidate{'env_end'},
+		$$candidate{'hmm_start'},
+		$$candidate{'hmm_end'}
+	;
+}
+
+=head2 overlap
+
+Calculates whether or not a given transcript overlaps with already assigned other transcripts, on both HMM (=OG) coordinates and transcript coordinates (env coords).
+
+Returns 0 if nothing overlaps.
+Returns 1 if the candidate overlaps only on transcript coordinates, but not on the HMM.
+Returns 2 if the candidate overlaps on the HMM coords. This should not be accepted.
+
+Arguments: arrayref (already matched transcripts), hashref (candidate transcript)
+
+=cut
+
 sub overlap {
-	my $already_matched = shift;
+	my $already_assigned = shift;
 	my $candidate = shift;
 	my $overlap   = 0;
-	# the fragments do not overlap
-	for (my $i = 0; $i < scalar @$already_matched; ++$i) {
-		if ($$candidate{'hmm_end'} <= $$already_matched[$i]{'hmm_start'} or $$candidate{'hmm_start'} >= $$already_matched[$i]{'hmm_end'}) {
-			printf $stdout "%s[%d:%d] and %s[%d:%d] do not overlap.\n", 
-				$$already_matched[$i]{'hmmhit'},
-				$$already_matched[$i]{'hmm_start'},
-				$$already_matched[$i]{'hmm_end'},
-				$$candidate{'hmmhit'},
-				$$candidate{'hmm_start'},
-				$$candidate{'hmm_end'}
-					if $verbose;
-			$overlap = 0;
+	for (my $i = 0; $i < scalar @$already_assigned; ++$i) {
+		# the hmm coords do not overlap
+		if ($$candidate{'hmm_end'} <= $$already_assigned[$i]{'hmm_start'} or $$candidate{'hmm_start'} >= $$already_assigned[$i]{'hmm_end'}) {
+			# the transcript coords do not overlap
+			if ($$candidate{'env_end'} <= $$already_assigned[$i]{'env_start'} or $$candidate{'env_start'} >= $$already_assigned[$i]{'env_end'}) {
+				printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
+					$$already_assigned[$i]{'hmmhit'},
+					$$already_assigned[$i]{'env_start'},
+					$$already_assigned[$i]{'env_end'},
+					$$already_assigned[$i]{'hmm_start'},
+					$$already_assigned[$i]{'hmm_end'},
+					$$candidate{'hmmhit'},
+					$$candidate[$i]{'env_start'},
+					$$candidate[$i]{'env_end'},
+					$$candidate{'hmm_start'},
+					$$candidate{'hmm_end'}
+						if $verbose;
+				# this is ok, best case
+			}
+			# the transcript coords overlap
+			elsif ($$candidate{'env_end'} >= $$already_assigned[$i]{'env_start'} or $$candidate{'env_start'} <= $$already_assigned[$i]{'env_end'}) {
+				printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do overlap.\n", 
+					$$already_assigned[$i]{'hmmhit'},
+					$$already_assigned[$i]{'env_start'},
+					$$already_assigned[$i]{'env_end'},
+					$$already_assigned[$i]{'hmm_start'},
+					$$already_assigned[$i]{'hmm_end'},
+					$$candidate{'hmmhit'},
+					$$candidate[$i]{'env_start'},
+					$$candidate[$i]{'env_end'},
+					$$candidate{'hmm_start'},
+					$$candidate{'hmm_end'}
+						if $verbose;
+				return 1;  # this is not ok, the transcript coords should be unified
+			}
 		}
-		# the fragments do overlap
+		# the hmm coords overlap
 		else {
-			printf $stdout "%s[%d:%d] and %s[%d:%d] overlap.\n", 
-				$$already_matched[$i]{'hmmhit'},
-				$$already_matched[$i]{'hmm_start'},
-				$$already_matched[$i]{'hmm_end'},
+			# this is totally not ok
+			printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap.\n", 
+				$$already_assigned[$i]{'hmmhit'},
+				$$already_assigned[$i]{'env_start'},
+				$$already_assigned[$i]{'env_end'},
+				$$already_assigned[$i]{'hmm_start'},
+				$$already_assigned[$i]{'hmm_end'},
 				$$candidate{'hmmhit'},
+				$$candidate[$i]{'env_start'},
+				$$candidate[$i]{'env_end'},
 				$$candidate{'hmm_start'},
 				$$candidate{'hmm_end'}
 					if $verbose;
-		 	return 1;
+			return 2;
 		}
 	}
 	if ($overlap == 0) { return 0 }
-	return 1;
+	return 2;
+}
+
+sub transcripts_overlap {
+	my $already_matched = shift;
+	my $candidate = shift;
+	my $overlap = 0;
+	foreach my $assigned_transcript (@$already_matched) {
+		# the candidate is either before or after the already assigned transcript
+		# this is ok
+		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
+			printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
+				$$already_matched{'hmmhit'},
+				$$already_matched{'env_start'},
+				$$already_matched{'env_end'},
+				$$already_matched{'hmm_start'},
+				$$already_matched{'hmm_end'},
+				$$candidate{'hmmhit'},
+				$$candidate{'env_start'},
+				$$candidate{'env_end'},
+				$$candidate{'hmm_start'},
+				$$candidate{'hmm_end'}
+					if $verbose;
+			# this is ok, best case
+		}
+		else {
+			
+		}
+	}
 }
 
 
@@ -485,7 +639,14 @@ sub get_orf {
 	my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($blasthit);
 	my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($esthit);
 	print "Got these sequences:\n"; 
-	printf ">%s (%s)\n%s\n>%s (%s)\n%s\n", $blasthit, 'query', $proteome_sequence, $esthit, 'target', $est_sequence;
+	printf ">%s (%s)\n%s\n>%s (%s)\n%s\n",
+		$blasthit,
+		'query',
+		$proteome_sequence,
+		$esthit,
+		'target',
+		$est_sequence,
+	;
 	Wrapper::Exonerate->outdir($logdir);
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
