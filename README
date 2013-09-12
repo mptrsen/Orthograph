@@ -39,7 +39,32 @@ novo among genomes or transcriptomes, but relies on the orthology information in
 pre-defined sets. Because of this requirement, it is essential that your input
 data conforms to some data standards as listed below.
 
-### data standards should follow ###
+a) The clusters of orthologous groups (COGs). It consists of a Fasta file that
+contains at least one sequence per selected COG. If you get your COGs from
+OrthoDB [1] (recommended), this is the case. In an OrthoDB file, each sequence
+header contains a COG ID, in the case of OrthoDB version 5, it is something
+like:
+
+  >APISU:gmsk09 ACYPI007477 EOG500005 ACYPI007477-PA origin:RefSeq
+
+The 'EOG500005' field is the COG ID. The sequence header must also contain an
+unambiguous sequence ID. In the above example, it is the second field, i.e.,
+'ACYPI007477'. 
+
+b) The official gene set (OGS) for each of the taxa that are present in the
+ortholog set, i.e., contributed sequences to the COGs. The sequences for a
+single taxon must be in Fasta format, and all (!) sequences of this taxon that
+occur in the COGs must be in the OGS database as well. Their sequence identifier
+must be unambiguously identical to the sequence ID in the Fasta file from
+OrthoDB. For example, this would be the related sequence for Acyrthosiphon pisum
+from the OGS:
+
+  >ACYPI007477-PA origin:RefSeq
+
+The OGS must be present as amino acid sequences, and may be present as
+nucleotide sequences. If the latter is missing, no nucleotide sequences can be
+output. The sequence identifiers of corresponding nucleotide and amino acid
+sequences must be identical.
 
 
 QUICKSTART
