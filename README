@@ -45,7 +45,7 @@ OrthoDB [1] (recommended), this is the case. In an OrthoDB file, each sequence
 header contains a COG ID, in the case of OrthoDB version 5, it is something
 like:
 
-  >APISU:gmsk09 ACYPI007477 EOG500005 ACYPI007477-PA origin:RefSeq
+	>APISU:gmsk09 ACYPI007477 EOG500005 ACYPI007477-PA origin:RefSeq
 
 The 'EOG500005' field is the COG ID. The sequence header must also contain an
 unambiguous sequence ID. In the above example, it is the second field, i.e.,
@@ -59,7 +59,7 @@ must be unambiguously identical to the sequence ID in the Fasta file from
 OrthoDB. For example, this would be the related sequence for Acyrthosiphon pisum
 from the OGS:
 
-  >ACYPI007477-PA origin:RefSeq
+	>ACYPI007477-PA origin:RefSeq
 
 The OGS must be present as amino acid sequences, and may be present as
 nucleotide sequences. If the latter is missing, no nucleotide sequences can be
