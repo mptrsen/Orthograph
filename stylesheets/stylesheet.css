@@ -180,14 +180,14 @@ code {
 
 pre {
   padding: 20px;
-  background: #505050;
+  background: #303030;
   color: #f2f2f2;
   text-shadow: none;
   overflow: auto;
 }
 pre code {
   color: #f2f2f2;
-  background-color: #505050;
+  background-color: #303030;
   border: none;
   padding: 0;
 }
@@ -227,7 +227,7 @@ th {
 
 td {
   border: 1px solid #ebebeb;
-  text-align: left; 
+  text-align: center; 
   font-weight: 300;
 }
 
