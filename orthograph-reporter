@@ -297,8 +297,15 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	print $tfh $orthoid;
 	# each reciprocal hit
 	foreach my $hit (@$transcripts) {
+		# get the sequences from the database
+		my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($hit->{'blast_hit'});
+		my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($hit->{'hmmhit'});
+
+		# trim the transcript sequence to the domain coordinates
+		$proteome_sequence = substr($proteome_sequence, $hit->{'env_start'}-1, $hit->{'env_end'}-$hit->{'env_start'}-1);
+
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($hit->{'blast_hit'}, $hit->{'hmmhit'});
+		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
 
 		# write the transcripts to the table
 		printf $tfh "\t%s[%d:%d]",
@@ -636,16 +643,12 @@ sub transcripts_overlap {
 # clips sequences if it detects frameshift errors and stuff like that.
 
 sub get_orf {
-	my $blasthit = shift;
-	my $esthit   = shift;
-	my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($blasthit);
-	my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($esthit);
+	my $proteome_sequence = shift;
+	my $est_sequence      = shift;
 	print "Got these sequences:\n"; 
-	printf ">%s (%s)\n%s\n>%s (%s)\n%s\n",
-		$blasthit,
+	printf ">%s\n%s\n>%s\n%s\n",
 		'query',
 		$proteome_sequence,
-		$esthit,
 		'target',
 		$est_sequence,
 	;
