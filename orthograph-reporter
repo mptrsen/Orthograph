@@ -273,8 +273,9 @@ foreach my $bin (@$logevalues_bins) {
 
 	# END EVALUE
 	}
-# END RESULT
+# END BIN
 }
+
 
 print "Finished fetching from the database.\n";
 print "Starting output.\n";
@@ -306,6 +307,16 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
 		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
+
+		# exonerate didn't get an alignment
+		unless ($hit->{'orf_cdna_sequence'}) {
+			if ($verbose) {
+				printf "Could not get an ORF for %s and %s\n", $hit->{'hmmhit'}, $hit->{'blast_hit'};
+				print "Skipping this couple\n";
+			}
+			# skip this pair
+			next;
+		}
 
 		# write the transcripts to the table
 		printf $tfh "\t%s[%d:%d]",
@@ -652,9 +663,11 @@ sub get_orf {
 		'target',
 		$est_sequence,
 	;
+	unless ($proteome_sequence and $est_sequence) { return undef }
 	Wrapper::Exonerate->outdir($logdir);
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
+	unless ($alignment->cdna_sequence()) { return undef }
 	print "Got this ORF:\n", $alignment->cdna_sequence(), "\n";
 	return ($alignment->aa_sequence(), $alignment->cdna_sequence());
 }

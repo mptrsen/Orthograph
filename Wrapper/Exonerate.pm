@@ -215,6 +215,7 @@ sub result {
 sub aa_sequence {
 	my $self = shift;
 	unless ($self->{'aa_sequence'}) { $self->parse_result() }
+	unless ($self->{'aa_sequence'}) { return undef }
 	$self->{'aa_sequence'} =~ s/\s//g;
 	return $self->{'aa_sequence'};
 }
@@ -222,6 +223,7 @@ sub aa_sequence {
 sub cdna_sequence {
 	my $self = shift;
 	unless ($self->{'cdna_sequence'}) { $self->parse_result() }
+	unless ($self->{'cdna_sequence'}) { return undef }
 	$self->{'cdna_sequence'} =~ s/\s//g;
 	return $self->{'cdna_sequence'};
 }
@@ -284,7 +286,9 @@ sub fastaify {
 	$fh->unlink_on_destroy(0) if $debug;
 	printf { $fh } ">%s\n%s\n", $header, $sequence;
 	close $fh;
-	print "Wrote '$header' to Fasta file '$fh'\n" if $debug;
+	if ($debug) {
+		printf "Wrote this sequence to Fasta file '%s':\n%s\n%s\n", $fh, $header, $sequence;
+	}
 	return $fh;
 }
 
