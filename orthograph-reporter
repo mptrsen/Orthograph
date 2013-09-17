@@ -311,7 +311,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		# exonerate didn't get an alignment
 		unless ($hit->{'orf_cdna_sequence'}) {
 			if ($verbose) {
-				printf "Could not get an ORF for %s and %s\n", $hit->{'hmmhit'}, $hit->{'blast_hit'};
+				printf "Could not get an ORF for %s[%d-%d] and %s[%d-%d]\n", $hit->{'hmmhit'}, $hit->{'env_start'}, $hit->{'env_end'}, $hit->{'blast_hit'}, $hit->{'blast_start'}, $hit->{'blast_end'};
 				print "Skipping this couple\n";
 			}
 			# skip this pair
