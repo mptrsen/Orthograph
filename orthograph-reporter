@@ -110,6 +110,7 @@ my $data_by_orthoid      = { };
 my $out                  = { };
 my $data_by_transcript   = { };
 my $data_by_evalue       = { };
+my $hitcount             = 0;
 my $insert_n             = 1;
 my $table                = [ ];
 my $strict               = 0;
@@ -289,15 +290,19 @@ my $fill_with_x = 1;
 my $num_n = 0;
 
 # walk the orthologs, concatenate in order if multiple
+ORTHOID:
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $cdnaseq, $prev_end);
+	$hitcount = 0;
 	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
 	print "Evaluating $orthoid...\n";
 	# write the ortholog gene id to the table
 	print $tfh $orthoid;
 	# each reciprocal hit
+	HIT:
 	foreach my $hit (@$transcripts) {
+		++$hitcount;
 		# get the sequences from the database
 		my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($hit->{'blast_hit'});
 		my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($hit->{'hmmhit'});
@@ -311,11 +316,21 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		# exonerate didn't get an alignment
 		unless ($hit->{'orf_cdna_sequence'}) {
 			if ($verbose) {
-				printf "Could not get an ORF for %s[%d-%d] and %s[%d-%d]\n", $hit->{'hmmhit'}, $hit->{'env_start'}, $hit->{'env_end'}, $hit->{'blast_hit'}, $hit->{'blast_start'}, $hit->{'blast_end'};
-				print "Skipping this couple\n";
+				printf "Could not get an ORF for %s[%d-%d] and %s[%d-%d]\n",
+					$hit->{'hmmhit'},
+					$hit->{'env_start'},
+					$hit->{'env_end'},
+					$hit->{'blast_hit'},
+					$hit->{'blast_start'},
+					$hit->{'blast_end'}
+				;
+				print "Skipping this transcript\n";
 			}
-			# skip this pair
-			next;
+			if ($hitcount >= scalar @$transcripts) { 
+				print "Going to next COG\n" if $verbose;
+				next ORTHOID;
+			}
+			else { next HIT }
 		}
 
 		# write the transcripts to the table
