@@ -238,10 +238,7 @@ sub parse_result {
 	my @fields = split ' ', $header;
 	$self->{'cdna_start'} = $fields[1];
 	$self->{'cdna_end'}   = $fields[2];
-	($header, $self->{'aa_sequence'})   = $fh->next_seq();
-	@fields = split $header;
-	$self->{'aa_start'} = $fields[1];
-	$self->{'aa_end'}   = $fields[2];
+	(undef, $self->{'aa_sequence'})   = $fh->next_seq();
 	undef $fh;
 }
 
