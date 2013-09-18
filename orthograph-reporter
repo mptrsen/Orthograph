@@ -311,15 +311,15 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		$proteome_sequence = substr($proteome_sequence, $hit->{'env_start'}-1, $hit->{'env_end'}-$hit->{'env_start'}-1);
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
+		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}, $hit->{'orf_cdna_start'}, $hit->{'orf_cdna_end'}) = get_orf($proteome_sequence, $est_sequence);
 
 		# exonerate didn't get an alignment
 		unless ($hit->{'orf_cdna_sequence'}) {
 			if ($verbose) {
 				printf "Could not get an ORF for %s[%d-%d] and %s[%d-%d]\n",
 					$hit->{'hmmhit'},
-					$hit->{'env_start'},
-					$hit->{'env_end'},
+					$hit->{'orf_cdna_start'},
+					$hit->{'orf_cdna_end'},
 					$hit->{'blast_hit'},
 					$hit->{'blast_start'},
 					$hit->{'blast_end'}
@@ -328,6 +328,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 			}
 			if ($hitcount >= scalar @$transcripts) { 
 				print "Going to next COG\n" if $verbose;
+				print $tfh "\n";
 				next ORTHOID;
 			}
 			else { next HIT }
@@ -336,8 +337,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		# write the transcripts to the table
 		printf $tfh "\t%s[%d:%d]",
 			$hit->{'hmmhit'},     # transcript ID (hash atm)
-			$hit->{'env_start'},  # start
-			$hit->{'env_end'};    # end
+			$hit->{'orf_cdna_start'},  # start
+			$hit->{'orf_cdna_end'};    # end
 		# before concatenating, fill gaps with 'X' if desired
 		if ($fill_with_x) {
 			if (defined $prev_end) {
@@ -365,7 +366,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'env_start'} . '-' . $_->{'env_end'} . ']' } @$transcripts );
+	$hdr = join ' ', ( map { $_->{'header'} . ':[' . $_->{'orf_cdna_start'} . '-' . $_->{'orf_cdna_end'} . ']' } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
@@ -683,6 +684,6 @@ sub get_orf {
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }
-	print "Got this ORF:\n", $alignment->cdna_sequence(), "\n";
-	return ($alignment->aa_sequence(), $alignment->cdna_sequence());
+	printf "Got this ORF (from %d to %d):\n%s\n", $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end() if $debug;
+	return ($alignment->aa_sequence(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
 }

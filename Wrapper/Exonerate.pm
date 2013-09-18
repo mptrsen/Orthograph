@@ -230,11 +230,18 @@ sub cdna_sequence {
 
 sub parse_result {
 	my $self = shift;
+	my $header;
 	my $fh = Seqload::Fasta->open($self->{'resultfile'});
 	# watch here for the order of sequences, they must correspond to the order in
 	# the --ryo option in the exonerate call
-	(undef, $self->{'cdna_sequence'}) = $fh->next_seq();
-	(undef, $self->{'aa_sequence'})   = $fh->next_seq();
+	($header, $self->{'cdna_sequence'}) = $fh->next_seq();
+	my @fields = split ' ', $header;
+	$self->{'cdna_start'} = $fields[1];
+	$self->{'cdna_end'}   = $fields[2];
+	($header, $self->{'aa_sequence'})   = $fh->next_seq();
+	@fields = split $header;
+	$self->{'aa_start'} = $fields[1];
+	$self->{'aa_end'}   = $fields[2];
 	undef $fh;
 }
 
