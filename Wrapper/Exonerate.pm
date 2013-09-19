@@ -178,7 +178,7 @@ sub search {
 	# roll your own output for exonerate
 	#my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
 	# just the target coding sequence (tcs)
-	my $exonerate_ryo = '>ca\n%tcs>qa\n%qas';
+	my $exonerate_ryo = '>ca\n%tcs>qa\n%tas';
 
 	# the complete command line
 	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --querytype protein --targettype dna --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile > $outfile);
@@ -231,8 +231,12 @@ sub cdna_sequence {
 sub parse_result {
 	my $self = shift;
 	my $header;
+	# if there was no result
+	if (-z $self->{'resultfile'}) { return undef }
+
+	# otherwise, continue
 	my $fh = Seqload::Fasta->open($self->{'resultfile'});
-	# watch here for the order of sequences, they must correspond to the order in
+	# watch for the order of sequences, they must correspond to the order in
 	# the --ryo option in the exonerate call
 	($header, $self->{'cdna_sequence'}) = $fh->next_seq();
 	my @fields = split ' ', $header;
