@@ -178,7 +178,7 @@ sub search {
 	# roll your own output for exonerate
 	#my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
 	# just the target coding sequence (tcs)
-	my $exonerate_ryo = '>ca\n%tcs>qa\n%tas';
+	my $exonerate_ryo = '>ca\n%tcs>qa\n%qas';
 
 	# the complete command line
 	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --querytype protein --targettype dna --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile > $outfile);
