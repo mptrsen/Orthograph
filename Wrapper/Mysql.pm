@@ -605,6 +605,28 @@ sub get_ortholog_group {
 	return $data;
 }
 
+sub get_ortholog_group_nucleotide {
+	my $setid   = shift;
+	my $orthoid = shift;
+	my $query = "SELECT DISTINCT 
+		$mysql_table_ntseqs.$mysql_col_header, $mysql_table_ntseqs.$mysql_col_sequence
+		FROM $mysql_table_ntseqs
+		LEFT JOIN $mysql_table_seqpairs
+			ON $mysql_table_ntseqs.$mysql_col_id = $mysql_table_seqpairs.$mysql_col_ntseq
+		LEFT JOIN $mysql_table_orthologs
+			ON $mysql_table_seqpairs.$mysql_col_id = $mysql_table_orthologs.$mysql_col_seqpair
+		WHERE $mysql_table_seqpairs.$mysql_col_id IS NOT NULL
+		AND   $mysql_table_orthologs.$mysql_col_seqpair IS NOT NULL
+		AND   $mysql_table_orthologs.$mysql_col_setid = ?
+		AND   $mysql_table_orthologs.$mysql_col_orthoid = ?";
+	my $dbh = &mysql_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+	$sth = execute($sth, $mysql_timeout, $setid, $orthoid);
+	my $data = $sth->fetchall_arrayref();
+	return $data;
+}
+
 =head2 get_hitlist_hashref(SPECIESID, SETID)
 
 Get the results in the form:

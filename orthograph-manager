@@ -622,12 +622,6 @@ sub load_taxon {#{{{
 
 	print "Data looks OK, uploading...\n";
 
-	# ok; insert ogs version into database
-	my $dbh = Wrapper::Mysql::mysql_dbh();
-	my $sth = $dbh->prepare("INSERT IGNORE INTO $t{'ogs'} (type, taxid, version) VALUES (?, ?, ?)");
-	$sth->execute( $type, $taxon, $ogsversion );
-	$dbh->disconnect();
-
 	# queries:
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my @queries = (
@@ -665,6 +659,9 @@ sub load_taxon {#{{{
 		ON DUPLICATE KEY UPDATE $t{'seqpairs'}.$seqcol = $seqtable.id,
 		$t{'seqpairs'}.$otherseqcol = $otherseqtable.id",
 
+		# update OGS table
+		"INSERT IGNORE INTO $t{'ogs'} (type, taxid, version) VALUES ($type, $taxon, $ogsversion)"
+
 	);
 	# execute all queries
 	$dbh = Wrapper::Mysql::mysql_dbh();
@@ -676,7 +673,7 @@ sub load_taxon {#{{{
 	}
 	$dbh->disconnect();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $seqpairs = &Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
+	my $seqpairs = Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
 	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $mysql_dbname, $mysql_dbserver);
 	return 1;
 }#}}}

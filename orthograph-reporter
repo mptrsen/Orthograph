@@ -144,10 +144,6 @@ unless ($set_id) {
 	exit(1);
 }
 
-# create view (a virtual table) for the log-evalues
-Wrapper::Mysql::create_log_evalues_view($species_id)
-	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
-
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
 if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
@@ -156,12 +152,16 @@ else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 # get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 
+# create view (a virtual table) for the log-evalues
+Wrapper::Mysql::create_log_evalues_view($species_id)
+	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
+
 # get a log-evalue->count relationship from the database
 # classify the log-evalues into "bins" that hold a limited number of values
 # this is done in order to speed up the database queries
 my $logevalue_count = Wrapper::Mysql::get_logevalue_count($species_id);
 my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
-my $logevalues_bins = &binify($bin_size, $logevalue_count);
+my $logevalues_bins = binify($bin_size, $logevalue_count);
 
 # generate a table
 my $transcripts_mapped_to = { };
@@ -215,7 +215,7 @@ foreach my $bin (@$logevalues_bins) {
 
 			#-------------------------------------------------- 
 			# so, was this a match we can trust?
-			if (my $this_match = &get_reciprocal_match($orthoid, $list_of_hits)) {
+			if (my $this_match = get_reciprocal_match($orthoid, $list_of_hits)) {
 
 				# yeah - here should be the part where the actual sequences are output
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
@@ -360,14 +360,6 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 				;
 				print $stdout "Skipping this transcript\n";
 			}
-			#--------------------------------------------------
-			# if ($hitcount >= scalar @$transcripts) { 
-			# 	print $stdout "Going to next COG\n" if $verbose;
-			# 	print $tfh "\n";
-			# 	next ORTHOID;
-			# }
-			# else { next HIT }
-			#-------------------------------------------------- 
 			next HIT;
 		}
 	}
@@ -375,9 +367,10 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	print $tfh "\n";
 
 	# skip the rest since no sequence could be gathered
-	unless (defined $seq) { next ORTHOID }
-
-	print Dumper($transcripts);
+	unless (defined $seq) {
+		print $stdout "No ORFs found for this orthoid, skipping...\n" if $verbose;
+		next ORTHOID;
+	}
 
 	# get the core ortholog sequences for this group
 	my $core_sequences = Wrapper::Mysql::get_ortholog_group($set_id, $orthoid);
@@ -387,13 +380,16 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
 	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
-	print Dumper($hdr, $seq);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
  
 	# do the same for the nucleotide sequences
+	my $core_sequences_nt = Wrapper::Mysql::get_ortholog_group_nucleotide($set_id, $orthoid);
+	# new fasta file
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
+	# print the core orthologs
+	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences_nt);
 	# join headers
 	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
 	# print the concatenated sequence
@@ -467,9 +463,6 @@ sub get_reciprocal_match {
 	my $orthoid = shift;
 	my $list_of_hits = shift;
 	foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list_of_hits ) {
-		# find out if the aaseq_id is one of those used for this orthoid
-		#print $stdout "  checking out hit " , Dumper($reciprocal_hit) if $verbose;
-
 		# has this aaseq been used in building this hmm and has this transcript
 		# not been found previously? 
 		# the function first from List::Util returns after the first occurence. 
