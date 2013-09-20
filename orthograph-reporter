@@ -294,6 +294,7 @@ ORTHOID:
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $cdnaseq, $prev_end);
 	$hitcount = 0;
+	my $firsttime = 1;
 	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
 	print "Evaluating $orthoid...\n";
@@ -301,7 +302,6 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	HIT:
 	foreach my $hit (@$transcripts) {
 		++$hitcount;
-		my $firsttime = 1;
 
 		# get the sequences from the database
 		my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($hit->{'blast_hit'});
@@ -314,56 +314,70 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
 
 		# exonerate didn't get an alignment
-		unless ($hit->{'orf_cdna_sequence'}) {
+		if ($hit->{'orf_cdna_sequence'}) {
+			printf $stdout "Got this ORF for %s[%d-%d]:\n%s\n",
+				$hit->{'hmmhit'},
+				$hit->{'env_start'},
+				$hit->{'env_end'},
+				$hit->{'orf_cdna_sequence'}
+					if $debug;
+
+			# write the ortholog gene id to the table, but only once
+			if ($firsttime) {
+				print $tfh $orthoid;
+				$firsttime = 0;
+			}
+
+			# write the transcripts to the table
+			printf $tfh "\t%s[len %d]",
+				$hit->{'hmmhit'},                 # transcript ID
+				length $hit->{'orf_aa_sequence'}, # ORF sequence length
+			;
+			# before concatenating, fill gaps with 'X' if desired
+			if ($fill_with_x) {
+				if (defined $prev_end) {
+					my $num_x = $hit->{'hmm_start'} - $prev_end;
+					my $xes = 'X' x $num_x;
+					# 'N' sequences to fill the cdna sequence are three times longer
+					my $ns  = 'N' x ($num_x * 3);
+					$seq .=  $xes;
+					$cdnaseq .= $ns;
+					print $stdout "Added $num_x 'X' to sequence\n" if $debug;
+				}
+				$prev_end = $hit->{'hmm_end'};
+			}
+			$seq .= $hit->{'orf_aa_sequence'};
+			$cdnaseq .= $hit->{'orf_cdna_sequence'};
+			print $stdout "Concatenated sequences\n" if $debug;
+		}
+		else {
 			if ($verbose) {
-				printf $stdout "Could not get an ORF for %s[%d-%d] and %s[%d-%d]\n",
+				printf $stdout "Could not get an ORF for %s[%d-%d] and %s\n",
 					$hit->{'hmmhit'},
 					$hit->{'env_start'},
 					$hit->{'env_end'},
 					$hit->{'blast_hit'},
-					$hit->{'blast_start'},
-					$hit->{'blast_end'}
 				;
 				print $stdout "Skipping this transcript\n";
 			}
-			if ($hitcount >= scalar @$transcripts) { 
-				print $stdout "Going to next COG\n" if $verbose;
-				print $tfh "\n";
-				next ORTHOID;
-			}
-			else { next HIT }
+			#--------------------------------------------------
+			# if ($hitcount >= scalar @$transcripts) { 
+			# 	print $stdout "Going to next COG\n" if $verbose;
+			# 	print $tfh "\n";
+			# 	next ORTHOID;
+			# }
+			# else { next HIT }
+			#-------------------------------------------------- 
+			next HIT;
 		}
-
-		# write the ortholog gene id to the table, but only once
-		if ($firsttime) {
-			print $tfh $orthoid;
-			$firsttime = 0;
-		}
-
-		# write the transcripts to the table
-		printf $tfh "\t%s[len %d]",
-			$hit->{'hmmhit'},                 # transcript ID
-			length $hit->{'orf_aa_sequence'}, # ORF sequence length
-		;
-		# before concatenating, fill gaps with 'X' if desired
-		if ($fill_with_x) {
-			if (defined $prev_end) {
-				my $num_x = $hit->{'hmm_start'} - $prev_end;
-				my $xes = 'X' x $num_x;
-				# 'N' sequences to fill the cdna sequence are three times longer
-				my $ns  = 'N' x ($num_x * 3);
-				$seq .=  $xes;
-				$cdnaseq .= $ns;
-				print $stdout "Added $num_x 'X' to sequence\n" if $debug;
-			}
-			$prev_end = $hit->{'hmm_end'};
-		}
-		$seq .= $hit->{'orf_aa_sequence'};
-		$cdnaseq .= $hit->{'orf_cdna_sequence'};
-		print $stdout "Concatenated sequences\n" if $debug;
 	}
 
 	print $tfh "\n";
+
+	# skip the rest since no sequence could be gathered
+	unless (defined $seq) { next ORTHOID }
+
+	print Dumper($transcripts);
 
 	# get the core ortholog sequences for this group
 	my $core_sequences = Wrapper::Mysql::get_ortholog_group($set_id, $orthoid);
@@ -372,7 +386,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } @$transcripts );
+	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
+	print Dumper($hdr, $seq);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
@@ -380,7 +395,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# do the same for the nucleotide sequences
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
 	# join headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } @$transcripts );
+	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	undef $fafh;
@@ -678,18 +693,10 @@ sub transcripts_overlap {
 sub get_orf {
 	my $proteome_sequence = shift;
 	my $est_sequence      = shift;
-	print "Got these sequences:\n"; 
-	printf ">%s\n%s\n>%s\n%s\n",
-		'query',
-		$proteome_sequence,
-		'target',
-		$est_sequence,
-	;
 	unless ($proteome_sequence and $est_sequence) { return undef }
 	Wrapper::Exonerate->outdir($logdir);
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }
-	printf $stdout "Got this ORF (from %d to %d):\n%s\n", $alignment->cdna_start(), $alignment->cdna_end(), $alignment->cdna_sequence()  if $debug;
 	return ($alignment->aa_sequence(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
 }

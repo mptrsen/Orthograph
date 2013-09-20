@@ -295,7 +295,7 @@ sub fastaify {
 	printf { $fh } ">%s\n%s\n", $header, $sequence;
 	close $fh;
 	if ($debug) {
-		printf "Wrote this sequence to Fasta file '%s':\n%s\n%s\n", $fh, $header, $sequence;
+		printf "Wrote this sequence to Fasta file '%s':\n>%s\n%s\n", $fh, $header, $sequence;
 	}
 	return $fh;
 }
