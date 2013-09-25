@@ -244,7 +244,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 	++$total_seqs;
 	# no commas in the header please, they confuse the csv parser
 	$hdr =~ s/,/_/g;
-	my @headerfields = split(/\s+/, $hdr, 4);	# maximum of five fields, the last one may contain whitespace
+	my @headerfields = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
 	# no colons either
 	$headerfields[3] =~ s/:/_/g if defined $headerfields[3];
 
@@ -258,7 +258,7 @@ while (my ($hdr, $seq) = $faobj->next_seq()) {
 		$setname,	                     # set name
 		$headerfields[2],              # orthodb id, e.g. EOG500001
 		File::Spec->catdir($blastdir), # blast database directory
-		$headerfields[1],              # ogs id
+		$headerfields[3],              # ogs id
 		$seq,                          # sequence
 		$description;                  # set description
 }
