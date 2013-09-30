@@ -31,11 +31,7 @@
         <hr>
 
         <section id="main_content">
-          <p>ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with
-Profile Hidden Markov models</p>
-
-<h1>
-<a name="system-requirements" class="anchor" href="#system-requirements"><span class="octicon octicon-link"></span></a>SYSTEM REQUIREMENTS</h1>
+<h1><a name="system-requirements" class="anchor" href="#system-requirements"><span class="octicon octicon-link"></span></a>SYSTEM REQUIREMENTS</h1>
 
 <p>Orthograph requires the following software packages to be installed on the
 system. The whole package was tested and works with these versions, and newer
@@ -107,8 +103,8 @@ like:</p>
 </code></pre>
 
 <p>The 'EOG500005' field is the COG ID. The sequence header must also contain an
-unambiguous sequence ID. In the above example, it is the second field, i.e.,
-'ACYPI007477'. </p>
+unambiguous sequence ID. In the above example, it is the fourth field, i.e.,
+'ACYPI007477-PA'. </p>
 
 <p>b) The official gene set (OGS) for each of the taxa that are present in the
 ortholog set, i.e., contributed sequences to the COGs. The sequences for a
@@ -247,7 +243,7 @@ These sequences are used for the reciprocal BLAST databases. If you don't load
 any peptide data, your analysis will be flawed. </p>
 
 <p>Some of the protein IDs (in the first header field of the OGS file) must
-correspond to the second header field in the OrthoDB file. This is important,
+correspond to the fourth header field in the OrthoDB file. This is important,
 as these are regarded as part of the ortholog groups. Repeat this step for as
 many taxa in your ortholog set as you have peptide sequences for.</p>
 
