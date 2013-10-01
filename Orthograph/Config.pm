@@ -130,6 +130,7 @@ $config->{'mysql_table_blastdbs'}       //= 'blastdbs';
 $config->{'mysql_table_ests'}           //= 'ests';
 $config->{'mysql_table_hmmsearch'}      //= 'hmmsearch';
 $config->{'mysql_table_log_evalues'}    //= 'log_evalues';
+$config->{'mysql_table_scores'}         //= 'scores';
 $config->{'mysql_table_ntseqs'}         //= 'ntseqs';
 $config->{'mysql_table_ogs'}            //= 'ogs';
 $config->{'mysql_table_orthologs'}      //= 'orthologs';

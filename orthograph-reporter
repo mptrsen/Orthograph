@@ -153,15 +153,15 @@ else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 
 # create view (a virtual table) for the log-evalues
-Wrapper::Mysql::create_log_evalues_view($species_id)
+Wrapper::Mysql::create_scores_view($species_id)
 	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
 
 # get a log-evalue->count relationship from the database
 # classify the log-evalues into "bins" that hold a limited number of values
 # this is done in order to speed up the database queries
-my $logevalue_count = Wrapper::Mysql::get_logevalue_count($species_id);
-my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
-my $logevalues_bins = binify($bin_size, $logevalue_count);
+my $scores_count = Wrapper::Mysql::get_scores_count($species_id);
+my @scores = sort { $a <=> $b } keys %$scores_count;
+my $scores_bins = binify($bin_size, $scores_count);
 
 # generate a table
 my $transcripts_mapped_to = { };
@@ -173,7 +173,7 @@ print "The first query may take a while, please be patient...\n" unless $quiet;
 
 # okay let's do the loop come on baby let's do the loop
 BIN:
-foreach my $bin (@$logevalues_bins) {
+foreach my $bin (@$scores_bins) {
 
 	# get the results in the form:
 	# evalue => {
@@ -188,16 +188,16 @@ foreach my $bin (@$logevalues_bins) {
 	$t0 = scalar time;
 	# only one evalue
 	if ($bin->{'min'} == $bin->{'max'}) {
-		printf $stdout "log evalue: %f\n", $bin->{'min'} if $debug;
-		$results = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $bin->{'min'});
+		printf $stdout "score: %f\n", $bin->{'min'} if $debug;
+		$results = Wrapper::Mysql::get_results_for_score($set_id, $species_id, $bin->{'min'});
 	}
 	# evalue range
 	else {
-		printf $stdout "log evalue min: %f max: %f\n", $bin->{'min'}, $bin->{'max'} if $debug;
-		$results = Wrapper::Mysql::get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
+		printf $stdout "score: min: %f max: %f\n", $bin->{'min'}, $bin->{'max'} if $debug;
+		$results = Wrapper::Mysql::get_results_for_score($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
 	}
 	$t1 = scalar time;
-	printf $stdout "Fetched %d rows for log evalue range (%f to %f) in %d seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
+	printf $stdout "Fetched %d rows for score range (%f to %f) in %d seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
 
 	# skip empty bins
 	next unless %$results;

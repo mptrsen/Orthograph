@@ -63,6 +63,7 @@ my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests           = $config->{'mysql_table_ests'};
 my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
 my $mysql_table_log_evalues    = $config->{'mysql_table_log_evalues'};
+my $mysql_table_scores         = $config->{'mysql_table_scores'};
 my $mysql_table_ntseqs         = $config->{'mysql_table_ntseqs'};
 my $mysql_table_ogs            = $config->{'mysql_table_ogs'};
 my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
@@ -80,6 +81,7 @@ my $mysql_col_hmm_start        = 'hmm_start';
 my $mysql_col_header           = 'header';
 my $mysql_col_id               = 'id';
 my $mysql_col_log_evalue       = 'log_evalue';
+my $mysql_col_score            = 'score';
 my $mysql_col_name             = 'name';
 my $mysql_col_ntseq            = 'nt_seq';
 my $mysql_col_orthoid          = 'ortholog_gene_id';
@@ -548,6 +550,25 @@ sub create_log_evalues_view {
 	return 1;
 }
 	
+sub create_scores_view {
+	unless (scalar @_ == 1) { croak 'Usage: Wrapper::Mysql::create_scores_view($species_id)' }
+	my $taxid = shift;
+	my $query_create_scores_view = "CREATE OR REPLACE VIEW $mysql_table_scores AS
+	  SELECT $mysql_table_hmmsearch.$mysql_col_score AS $mysql_col_score,
+	    COUNT($mysql_table_hmmsearch.$mysql_col_score) AS `count`
+	  FROM $mysql_table_hmmsearch
+	  WHERE $mysql_table_hmmsearch.$mysql_col_taxid = ?
+	  GROUP BY $mysql_table_hmmsearch.$mysql_col_score
+	  ORDER BY $mysql_table_hmmsearch.$mysql_col_score";
+	my $dbh = &mysql_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query_create_scores_view);
+	$sth = execute($sth, $mysql_timeout, $taxid);
+	$dbh->disconnect();
+	return 1;
+}
+	
+
 
 # get a orthoid => list_of_aaseq_ids relationship from the db
 sub get_orthologs_for_set_hashref {
@@ -732,14 +753,30 @@ sub get_logevalue_count {
 	return $num_of_logevalues;
 }
 
+sub get_scores_count {
+	my $query_get_scores = "SELECT $mysql_col_score, count FROM $mysql_table_scores";
+	my $dbh = &mysql_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query_get_scores);
+	$sth = execute($sth, $mysql_timeout);
+	my $d = $sth->fetchall_arrayref();
+	$sth->finish();
+	$dbh->disconnect();
+	my $num_of_scores = { };
+	foreach my $row (@$d) {
+		$num_of_scores->{$$row[0]} = $$row[1];
+	}
+	return $num_of_scores;
+}
+
 sub execute {
 	my $sth = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
 	my $timeout = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
 	my @args = @_;
 	my $slept = 0;
 	until ($sth->execute(@args)) {
-		warn "Warning: timeout exceeded, retrying in $sleep_for seconds...\n";
-		if ($slept > $timeout) { croak "Fatal: timeout ultimately exceeded, failing this transaction\n" }
+		carp "Warning: execution failed, retrying in $sleep_for seconds...\n";
+		if ($slept > $timeout) { croak "Fatal: execution ultimately failed, failing this transaction\n" }
 		sleep $sleep_for;
 		$slept += $sleep_for;
 	}
@@ -804,6 +841,96 @@ sub get_results_for_logevalue {
 	if ($max) { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue BETWEEN ? AND ?" }
 	# single e-value
 	else      { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_log_evalue = ?" }
+
+	# good for debugging
+	print $query . "\n" if $debug;
+
+	my $dbh = &mysql_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+
+	# e-value range
+	if ($max) {
+		$sth = execute($sth, $mysql_timeout, $setid, $taxid, $min, $max);
+	}
+	# single e-value
+	else      {
+		$sth = execute($sth, $mysql_timeout, $setid, $taxid, $min);
+	} 
+
+	# will hold the result
+	my $result = { };
+
+	while (my $line = $sth->fetchrow_arrayref()) {
+		my $start = $$line[7] - 1;
+		my $length = $$line[8] - $start;
+		# first key is the hmmsearch evalue, second key is the orthoid
+		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
+			'hmmhit'       => $$line[2],
+			'header'       => $$line[3],
+			'sequence'     => substr($$line[4], $start, $length),
+			'hmm_start'    => $$line[5],
+			'hmm_end'      => $$line[6],
+			'env_start'    => $$line[7],
+			'env_end'      => $$line[8],
+			'blast_hit'    => $$line[9],
+			'blast_evalue' => $$line[10],
+			'reftaxon'     => $$line[11],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	scalar keys %$result > 0 ? return $result : return undef;
+}
+
+sub get_results_for_score {
+	my $setid   = shift;
+	my $taxid   = shift;
+	my $min     = shift;
+	my $max     = shift;
+	# generic query
+	my $query = "SELECT DISTINCT $mysql_table_hmmsearch.$mysql_col_score,
+			$mysql_table_orthologs.$mysql_col_orthoid,
+			$mysql_table_hmmsearch.$mysql_col_target,
+			$mysql_table_ests.$mysql_col_header,
+			$mysql_table_ests.$mysql_col_sequence,
+			$mysql_table_hmmsearch.$mysql_col_hmm_start,
+			$mysql_table_hmmsearch.$mysql_col_hmm_end,
+			$mysql_table_hmmsearch.$mysql_col_env_start,
+			$mysql_table_hmmsearch.$mysql_col_env_end,
+			$mysql_table_blast.$mysql_col_target,
+			$mysql_table_blast.$mysql_col_evalue,
+			$mysql_table_taxa.$mysql_col_name
+		FROM $mysql_table_scores
+		LEFT JOIN $mysql_table_hmmsearch
+			ON $mysql_table_scores.$mysql_col_score = $mysql_table_hmmsearch.$mysql_col_score
+		LEFT JOIN $mysql_table_ests
+			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest
+		LEFT JOIN $mysql_table_orthologs
+			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
+		LEFT JOIN $mysql_table_blast
+			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_blast.$mysql_col_query
+		LEFT JOIN $mysql_table_aaseqs
+			ON $mysql_table_blast.$mysql_col_target = $mysql_table_aaseqs.$mysql_col_id
+		LEFT JOIN $mysql_table_taxa
+			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.$mysql_col_id
+		LEFT JOIN $mysql_table_set_details
+			ON $mysql_table_orthologs.$mysql_col_setid = $mysql_table_set_details.$mysql_col_id
+		WHERE $mysql_table_hmmsearch.$mysql_col_score      IS NOT NULL
+			AND $mysql_table_ests.$mysql_col_digest          IS NOT NULL
+			AND $mysql_table_orthologs.$mysql_col_orthoid    IS NOT NULL
+			AND $mysql_table_blast.$mysql_col_query          IS NOT NULL
+			AND $mysql_table_aaseqs.$mysql_col_id            IS NOT NULL
+			AND $mysql_table_taxa.$mysql_col_id              IS NOT NULL
+			AND $mysql_table_set_details.$mysql_col_id       IS NOT NULL
+			AND $mysql_table_set_details.$mysql_col_id       = ?
+			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?";
+
+	# modify the generic query
+	# e-value range
+	if ($max) { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_score BETWEEN ? AND ?" }
+	# single e-value
+	else      { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_score = ?" }
 
 	# good for debugging
 	print $query . "\n" if $debug;
