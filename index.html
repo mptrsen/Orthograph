@@ -108,7 +108,7 @@ like:</p>
 
 <p>The 'EOG500005' field is the COG ID. The sequence header must also contain an
 unambiguous sequence ID. In the above example, it is the fourth field, i.e.,
-'ACYPI007477-PA'. </p>
+'ACYPI007477'. </p>
 
 <p>b) The official gene set (OGS) for each of the taxa that are present in the
 ortholog set, i.e., contributed sequences to the COGs. The sequences for a
@@ -304,14 +304,22 @@ faster by that amount of time. </p>
 
 <p>After that, your input file is searched using all pHMMs. Candidate orthologs
 are verified with a reciprocal search against the BLAST database of all
-proteomes in your ortholog set. The results are cached in the database.
-Orthograph-reporter can afterwards be used to establish ortholog relationships
-and report about the results in various ways. </p>
+proteomes in your ortholog set. The results are cached in the database.</p>
 
-<p>After orthograph-reporter is run, the output directory contains five
+<h2>
+<a name="11-start-the-reporter" class="anchor" href="#11-start-the-reporter"><span class="octicon octicon-link"></span></a>11. Start the reporter</h2>
+
+<p>Make orthograph-reporter executable and run it:</p>
+
+<p>$ chmod +x orthograph-reporter
+  $ ./orthograph-reporter</p>
+
+<p>Orthograph-reporter fetches the search results from the database and
+assigns ortholog relationships by triangulating reciprocal best hits. 
+After orthograph-reporter is run, the output directory contains five
 subdirectories:</p>
 
-<p>a) hmmsearch. This contains all the HMMsearch output tables.</p>
+<p>a) hmmsearch. This contains all the HMMsearch output tables. </p>
 
 <p>b) blastp. This contains all the BLASTP output tables.</p>
 
@@ -321,7 +329,7 @@ by ortholog groups.</p>
 
 <p>d) nt. This contains the actual results on nucleotide level.</p>
 
-<p>e) log. This contains log files, such as the entire Orthograph output and the
+<p>e) log. This contains log files, such as the entire standard output and the
 report after running orthograph-reporter.</p>
 
 <h2>
