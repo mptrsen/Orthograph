@@ -85,7 +85,7 @@ trying to install the required packages on a Windows system under Cygwin (or
 natively, for that matter). You might run into problems getting the MySQL
 driver, HMMer3 and Exonerate to work. Really, don't use Windows. </p>
 
-<p>If you get an error like "Can't locate Some/Module.pm in <a href="https://github.com/INC" class="user-mention">@INC</a>", you need to
+<p>If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.</p>
 
 <h1>
@@ -108,7 +108,7 @@ like:</p>
 
 <p>The 'EOG500005' field is the COG ID. The sequence header must also contain an
 unambiguous sequence ID. In the above example, it is the fourth field, i.e.,
-'ACYPI007477'. </p>
+'ACYPI007477-PA'. </p>
 
 <p>b) The official gene set (OGS) for each of the taxa that are present in the
 ortholog set, i.e., contributed sequences to the COGs. The sequences for a
@@ -311,10 +311,12 @@ proteomes in your ortholog set. The results are cached in the database.</p>
 
 <p>Make orthograph-reporter executable and run it:</p>
 
-<p>$ chmod +x orthograph-reporter
-  $ ./orthograph-reporter</p>
+<pre><code>
+$ chmod +x orthograph-reporter
+$ ./orthograph-reporter
+</code></pre>
 
-<p>Orthograph-reporter fetches the search results from the database and
+<p>The reporter fetches the search results from the database and
 assigns ortholog relationships by triangulating reciprocal best hits. 
 After orthograph-reporter is run, the output directory contains five
 subdirectories:</p>
@@ -374,7 +376,7 @@ orthograph processes.</p>
 <a name="required-perl-modules" class="anchor" href="#required-perl-modules"><span class="octicon octicon-link"></span></a>REQUIRED PERL MODULES</h1>
 
 <p>Orthograph uses only modules that are present in any standard Perl distribution. 
-If you get an error like "Can't locate Some/Thing.pm in <a href="https://github.com/INC" class="user-mention">@INC</a>" it means that
+If you get an error like "Can't locate Some/Thing.pm in @INC" it means that
 Perl can't find one of the required modules. Update your Perl installation if
 this is the case and make sure it contains these modules:</p>
 
