@@ -81,7 +81,7 @@ trying to install the required packages on a Windows system under Cygwin (or
 natively, for that matter). You might run into problems getting the MySQL
 driver, HMMer3 and Exonerate to work. Really, don't use Windows. </p>
 
-<p>If you get an error like "Can't locate Some/Module.pm in <a href="https://github.com/INC" class="user-mention">@INC</a>", you need to
+<p>If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.</p>
 
 <h1>
@@ -95,9 +95,9 @@ data conforms to some data standards as listed below.</p>
 
 <p>a) The clusters of orthologous groups (COGs). It consists of a Fasta file that
 contains at least one sequence per selected COG. If you get your COGs from
-OrthoDB <a href="recommended">1</a>, this is the case. In an OrthoDB file, each sequence
-header contains a COG ID, in the case of OrthoDB version 5, it is something
-like:</p>
+<a href="http://cegg.unige.ch/orthodb5">OrthoDB</a> (recommended), this is the
+case. In an OrthoDB file, each sequence header contains a COG ID, in the case
+of OrthoDB version 5, it is something like:</p>
 
 <pre><code>&gt;APISU:gmsk09 ACYPI007477 EOG500005 ACYPI007477-PA origin:RefSeq
 </code></pre>
@@ -362,7 +362,7 @@ orthograph processes.</p>
 <a name="required-perl-modules" class="anchor" href="#required-perl-modules"><span class="octicon octicon-link"></span></a>REQUIRED PERL MODULES</h1>
 
 <p>Orthograph uses only modules that are present in any standard Perl distribution. 
-If you get an error like "Can't locate Some/Thing.pm in <a href="https://github.com/INC" class="user-mention">@INC</a>" it means that
+If you get an error like "Can't locate Some/Thing.pm in @INC" it means that
 Perl can't find one of the required modules. Update your Perl installation if
 this is the case and make sure it contains these modules:</p>
 
@@ -388,7 +388,7 @@ this is the case and make sure it contains these modules:</p>
 <li> List::Util </li>
 <li> Time::HiRes</li>
 </ul><p>Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
-(c) 2011-2012 Malte Petersen <a href="mailto:mptrsen@uni-bonn.de">mptrsen@uni-bonn.de</a></p>
+(c) 2011-2013 Malte Petersen</p>
         </section>
 
         <footer>
