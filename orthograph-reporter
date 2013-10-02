@@ -160,7 +160,7 @@ Wrapper::Mysql::create_scores_view($species_id)
 # classify the log-evalues into "bins" that hold a limited number of values
 # this is done in order to speed up the database queries
 my $scores_count = Wrapper::Mysql::get_scores_count($species_id);
-my @scores = sort { $a <=> $b } keys %$scores_count;
+my @scores = keys %$scores_count;
 my $scores_bins = binify($bin_size, $scores_count);
 
 # generate a table
@@ -433,7 +433,7 @@ sub binify {
 	my $bins        = [ ];
 	my $sum         = 0;
 	my @bin         = ( );
-	foreach my $value (sort {$a <=> $b} keys %$value_count) {
+	foreach my $value (sort {$b <=> $a} keys %$value_count) {
 		# if adding this count would not exceed the bin size
 		if ($sum + $value_count->{$value} < $bin_size) {
 			push @bin, $value;

@@ -559,7 +559,7 @@ sub create_scores_view {
 	  FROM $mysql_table_hmmsearch
 	  WHERE $mysql_table_hmmsearch.$mysql_col_taxid = ?
 	  GROUP BY $mysql_table_hmmsearch.$mysql_col_score
-	  ORDER BY $mysql_table_hmmsearch.$mysql_col_score";
+	  ORDER BY $mysql_table_hmmsearch.$mysql_col_score DESC";
 	my $dbh = &mysql_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_create_scores_view);
@@ -927,9 +927,9 @@ sub get_results_for_score {
 			AND $mysql_table_hmmsearch.$mysql_col_taxid      = ?";
 
 	# modify the generic query
-	# e-value range
+	# score range
 	if ($max) { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_score BETWEEN ? AND ?" }
-	# single e-value
+	# single score
 	else      { $query .= "\n			AND $mysql_table_hmmsearch.$mysql_col_score = ?" }
 
 	# good for debugging
@@ -939,11 +939,11 @@ sub get_results_for_score {
 		or return undef;
 	my $sth = $dbh->prepare($query);
 
-	# e-value range
+	# score range
 	if ($max) {
 		$sth = execute($sth, $mysql_timeout, $setid, $taxid, $min, $max);
 	}
-	# single e-value
+	# single score
 	else      {
 		$sth = execute($sth, $mysql_timeout, $setid, $taxid, $min);
 	} 
@@ -954,7 +954,7 @@ sub get_results_for_score {
 	while (my $line = $sth->fetchrow_arrayref()) {
 		my $start = $$line[7] - 1;
 		my $length = $$line[8] - $start;
-		# first key is the hmmsearch evalue, second key is the orthoid
+		# first key is the hmmsearch score, second key is the orthoid
 		push( @{ $result->{$$line[0]}->{$$line[1]} }, {
 			'hmmhit'       => $$line[2],
 			'header'       => $$line[3],
