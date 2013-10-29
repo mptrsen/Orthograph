@@ -149,18 +149,62 @@ unless ($set_id) {
 if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
 else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
 
-# get a orthoid => list_of_aaseq_ids relationship from the db
+# get an orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
 
 # create view (a virtual table) for the log-evalues
 Wrapper::Mysql::create_scores_view($species_id)
 	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
 
+
+my @scores = Wrapper::Mysql::get_scores_list();
+
+my %seen = ();
+my $c = 0;
+my $c_orthologs = 0;
+my $c_nonorthologs = 0;
+
+my $start = int time;
+
+foreach my $score (@scores) {
+	# this is an array of arrays, there may be multiple results with the same score
+	my $hmmresults = Wrapper::Mysql::get_hmmresult_for_score($score);
+	print "Evaluating $score...\n";
+	++$c;
+	foreach my $hmmhit (@$hmmresults) {
+		my $orthoid = $hmmhit->[0];
+		my $digest  = $hmmhit->[1];
+		# skip transcripts we have already handled
+		if ($seen{$digest}) {
+			print $stdout "seen $digest before ($c rows)!\n";
+			next;
+		}
+		++$seen{$digest};
+		my $blastresults = Wrapper::Mysql::get_blastresult_for_digest($digest);
+		foreach my $blasthit (@$blastresults) {
+			if (grep /$blasthit->[1]/, @{$aaseqs_in_orthoid->{$orthoid}}) {
+				#printf "%s in %s: orthology\n", $blasthit->[1], $orthoid;
+				++$c_orthologs;
+			}
+			else {
+				#printf "%s not in %s: no joy\n", $blasthit->[1], $orthoid;
+				++$c_nonorthologs;
+			}
+		}
+	}
+}
+my $end = int time;
+printf "Took %d seconds to find %d orthologs and %d non-orthologs\n", $end-$start, $c_orthologs, $c_nonorthologs;
+
+### EXIT THE PROGRAM HERE ###
+exit;
+
+
 # get a log-evalue->count relationship from the database
 # classify the log-evalues into "bins" that hold a limited number of values
 # this is done in order to speed up the database queries
 my $scores_count = Wrapper::Mysql::get_scores_count($species_id);
-my @scores = keys %$scores_count;
+@scores = keys %$scores_count;
 my $scores_bins = binify($bin_size, $scores_count);
 
 # generate a table
@@ -174,6 +218,10 @@ print "The first query may take a while, please be patient...\n" unless $quiet;
 # okay let's do the loop come on baby let's do the loop
 BIN:
 foreach my $bin (@$scores_bins) {
+	$SIG{'INT'} = sub { 
+		print $stderr "Caught SIGINT! Exiting the database loop...\n";
+		last;
+	};
 
 	# get the results in the form:
 	# evalue => {
@@ -529,7 +577,7 @@ sub transcript_overlap {
 	my $candidate = shift;
 	# test whether the candidate overlaps on transcript level, return 1 or 0
 	foreach my $assigned_transcript (@$already_assigned) {
-		# the hmm coords do not overlap
+		# the transcript coords do not overlap
 		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
 			print_no_overlap($candidate, $assigned_transcript)
 				if $verbose;

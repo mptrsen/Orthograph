@@ -905,7 +905,8 @@ sub preparedb {#{{{
 		INDEX (`$mysql_col_taxid`),
 		INDEX (`$mysql_col_query`),
 		INDEX (`$mysql_col_target`(4)),
-		INDEX (`$mysql_col_log_evalue`)
+		INDEX (`$mysql_col_log_evalue`),
+		INDEX (`$mysql_col_score`)
 		)";
 	
 	my $query_create_blast = "CREATE TABLE $mysql_table_blast (

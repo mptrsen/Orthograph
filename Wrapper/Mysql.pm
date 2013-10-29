@@ -376,6 +376,16 @@ sub get_taxa_in_set {
 	return @reftaxa;
 }
 
+=head2 get_number_of_ests_for_specid(ID)
+
+Returns the number of EST sequences (transcripts) for a given species id.
+
+Argument: scalar int ID
+
+Returns: scalar int 
+
+=cut
+
 sub get_number_of_ests_for_specid {
 	my $specid = shift @_ or croak "Usage: get_number_of_ests_for_specid(SPECID)";
 
@@ -1082,6 +1092,74 @@ sub get_real_table_names {
 	$mysql_table_hmmsearch   = $real_table_hmmsearch;
 	$mysql_table_blast       = $real_table_blast;
 	return ($real_table_ests, $real_table_hmmsearch, $real_table_blast);
+}
+
+=head2 get_scores_list
+
+Returns list of scores as present in the scores view
+
+=cut
+
+sub get_scores_list {
+	my $q = "SELECT `score` FROM $mysql_table_scores ORDER BY `$mysql_table_scores`.`$mysql_col_score` DESC";
+	return map { $_->[0] } @{mysql_get($q)};
+}
+
+=head2 get_hmmresult_for_score(SCORE)
+
+Gets a list of hmmsearch hits for a given score
+
+Arguments: scalar float 
+
+Returns: arrayref of arrayrefs
+
+  [
+   [
+    query,
+    target,
+    log_evalue,
+    env_start,
+    env_end,
+    hmm_start,
+    hmm_end
+   ],
+   [
+    ...
+   ]
+  ]
+
+=cut
+
+sub get_hmmresult_for_score {
+	my $score = shift;
+	my $q_score_row = "SELECT 
+		$mysql_table_hmmsearch.$mysql_col_query,
+		$mysql_table_hmmsearch.$mysql_col_target,
+		$mysql_table_hmmsearch.$mysql_col_log_evalue,
+		$mysql_table_hmmsearch.$mysql_col_env_start,
+		$mysql_table_hmmsearch.$mysql_col_env_end,
+		$mysql_table_hmmsearch.$mysql_col_hmm_start,
+		$mysql_table_hmmsearch.$mysql_col_hmm_end
+		FROM $mysql_table_hmmsearch
+		WHERE $mysql_table_hmmsearch.$mysql_col_score = ?
+		ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
+	return mysql_get($q_score_row, $score);
+	
+}
+
+sub get_blastresult_for_digest {
+	my $digest = shift;
+	my $q_blastresult = "SELECT
+		$mysql_table_blast.$mysql_col_query,
+		$mysql_table_blast.$mysql_col_target,
+		$mysql_table_blast.$mysql_col_score,
+		$mysql_table_blast.$mysql_col_log_evalue,
+		$mysql_table_blast.$mysql_col_start,
+		$mysql_table_blast.$mysql_col_end
+		FROM $mysql_table_blast
+		WHERE $mysql_table_blast.$mysql_col_query = ?
+		ORDER BY $mysql_table_blast.$mysql_col_score";
+	return mysql_get($q_blastresult, $digest)
 }
 
 1;
