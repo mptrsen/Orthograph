@@ -1135,6 +1135,7 @@ sub get_hmmresult_for_score {
 	my $q_score_row = "SELECT 
 		$mysql_table_hmmsearch.$mysql_col_query,
 		$mysql_table_hmmsearch.$mysql_col_target,
+		$mysql_table_hmmsearch.$mysql_col_score,
 		$mysql_table_hmmsearch.$mysql_col_log_evalue,
 		$mysql_table_hmmsearch.$mysql_col_env_start,
 		$mysql_table_hmmsearch.$mysql_col_env_end,
@@ -1143,8 +1144,21 @@ sub get_hmmresult_for_score {
 		FROM $mysql_table_hmmsearch
 		WHERE $mysql_table_hmmsearch.$mysql_col_score = ?
 		ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
-	return mysql_get($q_score_row, $score);
-	
+	my $d = mysql_get($q_score_row, $score);
+	my $r = [];
+	foreach (@$d) {
+		push @$r, {
+			'query'      => $_->[0],
+			'target'     => $_->[1],
+			'score'      => $_->[2],
+			'log_evalue' => $_->[3],
+			'env_start'  => $_->[4],
+			'env_end'    => $_->[5],
+			'hmm_start'  => $_->[6],
+			'hmm_end'    => $_->[7],
+		}
+	}
+	return $r;
 }
 
 sub get_blastresult_for_digest {
@@ -1159,7 +1173,19 @@ sub get_blastresult_for_digest {
 		FROM $mysql_table_blast
 		WHERE $mysql_table_blast.$mysql_col_query = ?
 		ORDER BY $mysql_table_blast.$mysql_col_score";
-	return mysql_get($q_blastresult, $digest)
+	my $d = mysql_get($q_blastresult, $digest);
+	my $r = [];
+	foreach (@$d) {
+		push @$r, {
+			'query'      => $_->[0],
+			'target'     => $_->[1],
+			'score'      => $_->[2],
+			'log_evalue' => $_->[3],
+			'start'      => $_->[4],
+			'end'        => $_->[5],
+		}
+	}
+	return $r;
 }
 
 1;

@@ -163,6 +163,7 @@ my %seen = ();
 my $c = 0;
 my $c_orthologs = 0;
 my $c_nonorthologs = 0;
+my $transcripts_mapped_to = {};
 
 my $start = int time;
 
@@ -171,9 +172,10 @@ foreach my $score (@scores) {
 	my $hmmresults = Wrapper::Mysql::get_hmmresult_for_score($score);
 	print "Evaluating $score...\n";
 	++$c;
+	HMMHIT:
 	foreach my $hmmhit (@$hmmresults) {
-		my $orthoid = $hmmhit->[0];
-		my $digest  = $hmmhit->[1];
+		my $orthoid = $hmmhit->{'query'};
+		my $digest  = $hmmhit->{'target'};
 		# skip transcripts we have already handled
 		if ($seen{$digest}) {
 			print $stdout "seen $digest before ($c rows)!\n";
@@ -182,12 +184,30 @@ foreach my $score (@scores) {
 		++$seen{$digest};
 		my $blastresults = Wrapper::Mysql::get_blastresult_for_digest($digest);
 		foreach my $blasthit (@$blastresults) {
-			if (grep /$blasthit->[1]/, @{$aaseqs_in_orthoid->{$orthoid}}) {
-				#printf "%s in %s: orthology\n", $blasthit->[1], $orthoid;
-				++$c_orthologs;
+			# ok, we got a reciprocal hit
+			if (reciprocal_best_hit($blasthit, $aaseqs_in_orthoid->{$orthoid})) {
+				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
+					$orthoid,
+					$hmmhit->{'target'},
+					$hmmhit->{'hmm_start'},
+					$hmmhit->{'hmm_end'},
+					$orthoid,
+						unless $quiet;
+				# if this orthoid has been hit before, check whether the new cancidate
+				# overlaps on hmm (gene) level with previous hits
+				if (exists $transcripts_mapped_to->{$orthoid}) {
+					print Dumper $transcripts_mapped_to->{$orthoid}, $blasthit; exit;
+					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $blasthit)) {
+						print "HMM OVERLAP!\n"; exit;
+					}
+					else {
+						push @{$transcripts_mapped_to->{$orthoid}}, $blasthit;
+					}
+				}
 			}
 			else {
 				#printf "%s not in %s: no joy\n", $blasthit->[1], $orthoid;
+				push @{$transcripts_mapped_to->{$orthoid}}, $blasthit;
 				++$c_nonorthologs;
 			}
 		}
@@ -208,7 +228,7 @@ my $scores_count = Wrapper::Mysql::get_scores_count($species_id);
 my $scores_bins = binify($bin_size, $scores_count);
 
 # generate a table
-my $transcripts_mapped_to = { };
+#my $transcripts_mapped_to = { };
 
 # this will hold all transcripts that were found so we can check for redundancy
 my @transcript_list;
@@ -507,13 +527,23 @@ sub binify {
 	return $bins;
 }
 
+sub reciprocal_best_hit {
+	my $blasthit = shift;
+	my $aaseqs_in_orthoid = shift;
+	if (grep /$blasthit->{'target'}/, @$aaseqs_in_orthoid) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
 sub get_reciprocal_match {
 	my $orthoid = shift;
 	my $list_of_hits = shift;
 	foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list_of_hits ) {
 		# has this aaseq been used in building this hmm and has this transcript
 		# not been found previously? 
-		# the function first from List::Util returns after the first occurence. 
 		if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
 			and not first {/$reciprocal_hit->{'hmmhit'}/} @$list_of_hits ) {
 
