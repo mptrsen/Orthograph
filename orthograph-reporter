@@ -170,19 +170,20 @@ my $start = int time;
 foreach my $score (@scores) {
 	# this is an array of arrays, there may be multiple results with the same score
 	my $hmmresults = Wrapper::Mysql::get_hmmresult_for_score($score);
-	print "Evaluating $score...\n";
+	print "Evaluating score $score...\n";
 	++$c;
 	HMMHIT:
 	foreach my $hmmhit (@$hmmresults) {
+		print 'Evaluating HMM target ', $hmmhit->{'target'}, "...\n" if $debug;
 		my $orthoid = $hmmhit->{'query'};
 		my $digest  = $hmmhit->{'target'};
 		# skip transcripts we have already handled
-		if ($seen{$digest}) {
+		if ($seen{$digest}++) {
 			print $stdout "seen $digest before ($c rows)!\n";
 			next;
 		}
-		++$seen{$digest};
 		my $blastresults = Wrapper::Mysql::get_blastresult_for_digest($digest);
+		my $mismatches = 0;
 		foreach my $blasthit (@$blastresults) {
 			# ok, we got a reciprocal hit
 			if (reciprocal_best_hit($blasthit, $aaseqs_in_orthoid->{$orthoid})) {
@@ -192,23 +193,47 @@ foreach my $score (@scores) {
 					$hmmhit->{'hmm_start'},
 					$hmmhit->{'hmm_end'},
 					$orthoid,
-						unless $quiet;
+						if $verbose;
+
 				# if this orthoid has been hit before, check whether the new cancidate
 				# overlaps on hmm (gene) level with previous hits
 				if (exists $transcripts_mapped_to->{$orthoid}) {
-					print Dumper $transcripts_mapped_to->{$orthoid}, $blasthit; exit;
-					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $blasthit)) {
-						print "HMM OVERLAP!\n"; exit;
+					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $hmmhit)) {
+						print "HMM OVERLAP! skipping\n" unless $quiet; 
+						next HMMHIT;
 					}
 					else {
-						push @{$transcripts_mapped_to->{$orthoid}}, $blasthit;
+						push @{$transcripts_mapped_to->{$orthoid}}, $hmmhit;
+						printf $stdout "Added %s[%d:%d] to %s\n", 
+							$hmmhit->{'target'},
+							$hmmhit->{'hmm_start'},
+							$hmmhit->{'hmm_end'},
+							$orthoid,
+								if $verbose;
+						++$c_orthologs;
+						next HMMHIT;
 					}
+				}
+				else {
+					push @{$transcripts_mapped_to->{$orthoid}}, $hmmhit;
+					printf $stdout "Added %s[%d:%d] to %s\n", 
+						$hmmhit->{'target'},
+						$hmmhit->{'hmm_start'},
+						$hmmhit->{'hmm_end'},
+						$orthoid,
+							if $verbose;
+					++$c_orthologs;
+					next HMMHIT;
 				}
 			}
 			else {
-				#printf "%s not in %s: no joy\n", $blasthit->[1], $orthoid;
-				push @{$transcripts_mapped_to->{$orthoid}}, $blasthit;
-				++$c_nonorthologs;
+				++$mismatches;
+				printf "%s not in %s: no joy (%d mismatches)\n", $blasthit->{'target'}, $orthoid, $mismatches;
+				if ($mismatches >= $max_mismatches) {
+					print "Too many mismatches, we don't trust this one anymore\n";
+					++$c_nonorthologs;
+					next HMMHIT;
+				}
 			}
 		}
 	}
