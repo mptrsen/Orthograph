@@ -187,7 +187,8 @@ foreach my $score (@scores) {
 		foreach my $blasthit (@$blastresults) {
 			# ok, we got a reciprocal hit
 			if (reciprocal_best_hit($blasthit, $aaseqs_in_orthoid->{$orthoid})) {
-				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
+				printf $stdout "Orthology detected (%d in %s)! Trying to add %s[%d:%d] to %s.\n",
+					$blasthit->{'target'},
 					$orthoid,
 					$hmmhit->{'target'},
 					$hmmhit->{'hmm_start'},
@@ -199,17 +200,24 @@ foreach my $score (@scores) {
 				# overlaps on hmm (gene) level with previous hits
 				if (exists $transcripts_mapped_to->{$orthoid}) {
 					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $hmmhit)) {
-						print "HMM OVERLAP! skipping\n" unless $quiet; 
+						# yep, it overlaps, so we can't assign this transcript because better
+						# scores have precedence. just go to the next one
+						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} unless $quiet;
+						next HMMHIT;
+					}
+					# or does it overlap on transcript level?
+					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $hmmhit)) {
+						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} unless $quiet;
 						next HMMHIT;
 					}
 					else {
 						push @{$transcripts_mapped_to->{$orthoid}}, $hmmhit;
-						printf $stdout "Added %s[%d:%d] to %s\n", 
+						printf $stdout "No overlap with previous hits: added %s[%d:%d] to %s\n", 
 							$hmmhit->{'target'},
 							$hmmhit->{'hmm_start'},
 							$hmmhit->{'hmm_end'},
 							$orthoid,
-								if $verbose;
+								unless $quiet;
 						++$c_orthologs;
 						next HMMHIT;
 					}
@@ -239,137 +247,7 @@ foreach my $score (@scores) {
 	}
 }
 my $end = int time;
-printf "Took %d seconds to find %d orthologs and %d non-orthologs\n", $end-$start, $c_orthologs, $c_nonorthologs;
-
-### EXIT THE PROGRAM HERE ###
-exit;
-
-
-# get a log-evalue->count relationship from the database
-# classify the log-evalues into "bins" that hold a limited number of values
-# this is done in order to speed up the database queries
-my $scores_count = Wrapper::Mysql::get_scores_count($species_id);
-@scores = keys %$scores_count;
-my $scores_bins = binify($bin_size, $scores_count);
-
-# generate a table
-#my $transcripts_mapped_to = { };
-
-# this will hold all transcripts that were found so we can check for redundancy
-my @transcript_list;
-
-print "The first query may take a while, please be patient...\n" unless $quiet;
-
-# okay let's do the loop come on baby let's do the loop
-BIN:
-foreach my $bin (@$scores_bins) {
-	$SIG{'INT'} = sub { 
-		print $stderr "Caught SIGINT! Exiting the database loop...\n";
-		last;
-	};
-
-	# get the results in the form:
-	# evalue => {
-	#   orthoid => [
-	#     reciprocal_hit,
-	#     reciprocal_hit,
-	#     reciprocal_hit,
-	#     etc.
-	#   ]
-	# }
-	print $stdout "Fetching next batch of results...\n" if $verbose;
-	$t0 = scalar time;
-	# only one evalue
-	if ($bin->{'min'} == $bin->{'max'}) {
-		printf $stdout "score: %f\n", $bin->{'min'} if $debug;
-		$results = Wrapper::Mysql::get_results_for_score($set_id, $species_id, $bin->{'min'});
-	}
-	# evalue range
-	else {
-		printf $stdout "score: min: %f max: %f\n", $bin->{'min'}, $bin->{'max'} if $debug;
-		$results = Wrapper::Mysql::get_results_for_score($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
-	}
-	$t1 = scalar time;
-	printf $stdout "Fetched %d rows for score range (%f to %f) in %d seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
-
-	# skip empty bins
-	next unless %$results;
-
-	EVALUE:
-	while (my ($logevalue, $result) = each %$results) {
-		ORTHOID:
-		while (my ($orthoid, $list_of_hits) = each (%$result)) {
-			# reset the mismatch counter
-			$mismatches = 0;
-
-			print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
-
-			
-
-			#-------------------------------------------------- 
-			# so, was this a match we can trust?
-			if (my $this_match = get_reciprocal_match($orthoid, $list_of_hits)) {
-
-				# yeah - here should be the part where the actual sequences are output
-				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
-					$orthoid,
-					$this_match->{'hmmhit'},
-					$this_match->{'hmm_start'},
-					$this_match->{'hmm_end'},
-					$orthoid,
-					unless $quiet;
-
-				# if this orthoid has been hit before, check whether the new cancidate
-				# overlaps on hmm (gene) level with previous hits
-				if (exists $transcripts_mapped_to->{$orthoid}) {
-					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-						# yep, it overlaps, so we can't assign this transcript because better
-						# e-values have precedence. just go to the next one
-						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
-						next ORTHOID;
-					}
-					# or does it overlap on transcript level?
-					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
-						next ORTHOID;
-					}
-					else {
-						# does not overlap, add to list of transcripts for this ortholog group
-						push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-						printf $stdout "No overlap with previous hits: added %s to %s.\n", $this_match->{'hmmhit'}, $orthoid unless $quiet;
-						# this transcript can't be found again
-						push @transcript_list, $this_match->{'hmmhit'};
-						# ok, next one
-						next ORTHOID;
-					}
-				}
-				else {
-
-					# this has not been hit before, just assign
-					printf $stdout "Assigned %s to %s.\n", $this_match->{'hmmhit'}, $orthoid;
-					push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-
-					# this transcript can't be found again
-					push @transcript_list, $this_match->{'hmmhit'};
-
-					# reset 
-					undef $this_match;
-				}
-			}
-			else {
-				# this orthoid has no match
-				print $stdout "No orthology detected for $orthoid.\n"
-					unless $quiet;
-			}
-
-		# END ORTHOID
-		} 
-
-	# END EVALUE
-	}
-# END BIN
-}
-
+printf "Took %d seconds to find %d orthologs and %d non-orthologs\n", $end-$start, scalar keys %$transcripts_mapped_to, $c_nonorthologs;
 
 print "Finished fetching from the database.\n";
 print "Starting output.\n";
@@ -391,6 +269,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
 	print "Evaluating $orthoid...\n";
+	print Dumper $orthoid, $transcripts; exit;
 	# each reciprocal hit
 	HIT:
 	foreach my $hit (@$transcripts) {
@@ -650,12 +529,12 @@ sub print_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap.\n", 
-		$$transcript{'hmmhit'},
+		$$transcript{'target'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
-		$$candidate{'hmmhit'},
+		$$candidate{'target'},
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
@@ -667,12 +546,12 @@ sub print_no_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
-		$$transcript{'hmmhit'},
+		$$transcript{'target'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
-		$$candidate{'hmmhit'},
+		$$candidate{'target'},
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
