@@ -6,7 +6,6 @@ use warnings;
 sub new {
 	my ($class, $hmmhit) = @_;
 	my $self = $hmmhit;
-
 	return bless ($self, $class);
 }
 
@@ -30,5 +29,11 @@ sub blast_query {
 
 sub as_hashref {
 	my $self = shift;
-	return $self;
+	my $r = {};
+	while (my ($k, $v)) {
+		$r->{$k} = $v;
+	}
+	return $r;
 }
+
+'This line intentionally left false';

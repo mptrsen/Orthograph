@@ -36,6 +36,7 @@ use Time::HiRes;    # high-resolution timer
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
+use Orthograph::Ortholog;              # ortholog class
 use Wrapper::Mysql;
 use Wrapper::Exonerate;
 use IO::Tee;
@@ -159,7 +160,7 @@ Wrapper::Mysql::create_scores_view($species_id)
 
 my @scores = Wrapper::Mysql::get_scores_list();
 
-my %seen = ();
+my $seen = {};
 my $c = 0;
 my $c_orthologs = 0;
 my $c_nonorthologs = 0;
@@ -170,16 +171,21 @@ my $start = int time;
 foreach my $score (@scores) {
 	# this is an array of arrays, there may be multiple results with the same score
 	my $hmmresults = Wrapper::Mysql::get_hmmresult_for_score($score);
-	print "Evaluating score $score...\n";
+	print "Evaluating score $score...\n" unless $quiet;
 	++$c;
 	HMMHIT:
 	foreach my $hmmhit (@$hmmresults) {
 		print 'Evaluating HMM target ', $hmmhit->{'target'}, "...\n" if $debug;
-		my $orthoid = $hmmhit->{'query'};
-		my $digest  = $hmmhit->{'target'};
+		my $orthoid   = $hmmhit->{'query'};
+		my $digest    = $hmmhit->{'target'};
+
 		# skip transcripts we have already handled
-		if ($seen{$digest}++) {
-			print $stdout "seen $digest before ($c rows)!\n";
+		if ($seen->{$digest}->{$hmmhit->{'hmm_start'}}++) {
+			printf $stdout "Seen %s[%d] before (%d rows), skipping\n",
+				$digest,
+				$hmmhit->{'hmm_start'},
+				$c,
+					if $verbose;
 			next;
 		}
 		my $blastresults = Wrapper::Mysql::get_blastresult_for_digest($digest);
@@ -202,16 +208,21 @@ foreach my $score (@scores) {
 					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $hmmhit)) {
 						# yep, it overlaps, so we can't assign this transcript because better
 						# scores have precedence. just go to the next one
-						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} unless $quiet;
+						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} if $verbose;
 						next HMMHIT;
 					}
 					# or does it overlap on transcript level?
 					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $hmmhit)) {
-						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} unless $quiet;
+						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} if $verbose;
 						next HMMHIT;
 					}
 					else {
-						push @{$transcripts_mapped_to->{$orthoid}}, $hmmhit;
+						# this is a valid hit, make an ortholog object and add it to the list of hits
+						my $ortholog_transcript = Orthograph::Ortholog->new($hmmhit);
+						$ortholog_transcript->blast_query($digest);
+						$ortholog_transcript->blast_target($blasthit->{'target'});
+
+						push @{$transcripts_mapped_to->{$orthoid}}, $ortholog_transcript;
 						printf $stdout "No overlap with previous hits: added %s[%d:%d] to %s\n", 
 							$hmmhit->{'target'},
 							$hmmhit->{'hmm_start'},
@@ -229,16 +240,20 @@ foreach my $score (@scores) {
 						$hmmhit->{'hmm_start'},
 						$hmmhit->{'hmm_end'},
 						$orthoid,
-							if $verbose;
+							unless $quiet;
 					++$c_orthologs;
 					next HMMHIT;
 				}
 			}
 			else {
 				++$mismatches;
-				printf "%s not in %s: no joy (%d mismatches)\n", $blasthit->{'target'}, $orthoid, $mismatches;
+				printf $stdout "%s not in %s: no joy (%d mismatches)\n",
+					$blasthit->{'target'},
+					$orthoid,
+					$mismatches
+						if $verbose;
 				if ($mismatches >= $max_mismatches) {
-					print "Too many mismatches, we don't trust this one anymore\n";
+					print $stdout "Too many mismatches, we don't trust this one anymore\n" if $verbose;
 					++$c_nonorthologs;
 					next HMMHIT;
 				}
