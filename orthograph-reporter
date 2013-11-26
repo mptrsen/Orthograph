@@ -180,6 +180,7 @@ foreach my $score (@scores) {
 		my $digest    = $hmmhit->{'target'};
 
 		# skip transcripts we have already handled
+		if (seen_this_region_before($hmmhit)) {
 		if ($seen->{$digest}->{$hmmhit->{'hmm_start'}}++) {
 			printf $stdout "Seen %s[%d] before (%d rows), skipping\n",
 				$digest,
@@ -219,28 +220,41 @@ foreach my $score (@scores) {
 					else {
 						# this is a valid hit, make an ortholog object and add it to the list of hits
 						my $ortholog_transcript = Orthograph::Ortholog->new($hmmhit);
+						$ortholog_transcript->hmm_name($orthoid);
+						$ortholog_transcript->hmm_target($hmmhit->{'target'});
 						$ortholog_transcript->blast_query($digest);
 						$ortholog_transcript->blast_target($blasthit->{'target'});
 
-						push @{$transcripts_mapped_to->{$orthoid}}, $ortholog_transcript;
+						add_to_ortholog_group($orthoid, $ortholog_transcript);
+
 						printf $stdout "No overlap with previous hits: added %s[%d:%d] to %s\n", 
-							$hmmhit->{'target'},
-							$hmmhit->{'hmm_start'},
-							$hmmhit->{'hmm_end'},
+							$ortholog_transcript->hmm_target(),
+							$ortholog_transcript->hmm_start(),
+							$ortholog_transcript->hmm_end(),
 							$orthoid,
 								unless $quiet;
+
 						++$c_orthologs;
 						next HMMHIT;
 					}
 				}
 				else {
-					push @{$transcripts_mapped_to->{$orthoid}}, $hmmhit;
+					# this is a valid hit, make an ortholog object and add it to the list of hits
+					my $ortholog_transcript = Orthograph::Ortholog->new($hmmhit);
+					$ortholog_transcript->hmm_name($orthoid);
+					$ortholog_transcript->hmm_target($hmmhit->{'target'});
+					$ortholog_transcript->blast_query($digest);
+					$ortholog_transcript->blast_target($blasthit->{'target'});
+
+					add_to_ortholog_group($orthoid, $ortholog_transcript);
+
 					printf $stdout "Added %s[%d:%d] to %s\n", 
 						$hmmhit->{'target'},
 						$hmmhit->{'hmm_start'},
 						$hmmhit->{'hmm_end'},
 						$orthoid,
 							unless $quiet;
+
 					++$c_orthologs;
 					next HMMHIT;
 				}
@@ -281,21 +295,20 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my ($hdr, $seq, $cdnaseq, $prev_end);
 	$hitcount = 0;
 	my $firsttime = 1;
-	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
+	$transcripts = [ sort { $a->hmm_start() <=> $b->hmm_start() } @$transcripts ];
 
 	print "Evaluating $orthoid...\n";
-	print Dumper $orthoid, $transcripts; exit;
 	# each reciprocal hit
 	HIT:
 	foreach my $hit (@$transcripts) {
 		++$hitcount;
 
 		# get the sequences from the database
-		my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($hit->{'blast_hit'});
-		my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($hit->{'hmmhit'});
+		my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($hit->blast_target());
+		my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($hit->hmm_target());
 
 		# trim the transcript sequence to the domain coordinates
-		$proteome_sequence = substr($proteome_sequence, $hit->{'env_start'}-1, $hit->{'env_end'}-$hit->{'env_start'}-1);
+		$proteome_sequence = substr($proteome_sequence, $hit->env_start-1, $hit->env_end() - $hit->env_start()-1);
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
 		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
@@ -303,9 +316,9 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		# exonerate didn't get an alignment
 		if ($hit->{'orf_cdna_sequence'}) {
 			printf $stdout "Got this ORF for %s[%d-%d]:\n%s\n",
-				$hit->{'hmmhit'},
-				$hit->{'env_start'},
-				$hit->{'env_end'},
+				$hit->hmm_target(),
+				$hit->env_start(),
+				$hit->env_end(),
 				$hit->{'orf_cdna_sequence'}
 					if $debug;
 
@@ -317,13 +330,13 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 
 			# write the transcripts to the table
 			printf $tfh "\t%s[len %d]",
-				$hit->{'hmmhit'},                 # transcript ID
+				$hit->hmm_target(),                 # transcript ID
 				length $hit->{'orf_aa_sequence'}, # ORF sequence length
 			;
 			# before concatenating, fill gaps with 'X' if desired
 			if ($fill_with_x) {
 				if (defined $prev_end) {
-					my $num_x = $hit->{'hmm_start'} - $prev_end;
+					my $num_x = $hit->hmm_start() - $prev_end;
 					my $xes = 'X' x $num_x;
 					# 'N' sequences to fill the cdna sequence are three times longer
 					my $ns  = 'N' x ($num_x * 3);
@@ -331,7 +344,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 					$cdnaseq .= $ns;
 					print $stdout "Added $num_x 'X' to sequence\n" if $debug;
 				}
-				$prev_end = $hit->{'hmm_end'};
+				$prev_end = $hit->hmm_end();
 			}
 			$seq .= $hit->{'orf_aa_sequence'};
 			$cdnaseq .= $hit->{'orf_cdna_sequence'};
@@ -340,10 +353,10 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		else {
 			if ($verbose) {
 				printf $stdout "Could not get an ORF for %s[%d-%d] and %s\n",
-					$hit->{'hmmhit'},
-					$hit->{'env_start'},
-					$hit->{'env_end'},
-					$hit->{'blast_hit'},
+					$hit->hmm_target(),
+					$hit->env_start(),
+					$hit->env_end(),
+					$hit->blast_target(),
 				;
 				print $stdout "Skipping this transcript\n";
 			}
@@ -689,4 +702,23 @@ sub get_orf {
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }
 	return ($alignment->aa_sequence(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
+}
+
+sub add_to_ortholog_group {
+	my $orthoid = shift;
+	my $new_ortholog = shift;
+	push @{$transcripts_mapped_to->{$orthoid}}, $new_ortholog;
+}
+
+sub seen_this_region_before {
+	my $hmmhit = shift;
+	while (my ($orthoid, $list_of_orthologs) = each %$transcripts_mapped_to) {
+		if ( grep {
+			$hmmhit->{'hmm_target'} eq $_->hmm_target()
+			and ($hmmhit->{'hmm_start'} >= $_->hmm_start() or $hmmhit->{'hmm_end'} <= $_->hmm_end())
+			} @$list_of_orthologs ) {
+			return 1;
+		}
+	}
+	return 0;
 }
