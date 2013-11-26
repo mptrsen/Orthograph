@@ -67,6 +67,7 @@ GetOptions( $config,
   'debug|d',
   'estfile',
   'estfile|E=s',
+	'header-separator=s',
   'hmmsearch-evalue-threshold',
   'hmmsearch-evalue-threshold=f',
   'hmmsearch-output-dir',
@@ -175,6 +176,7 @@ $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
 $config->{'estfile'}                    //= '';
 $config->{'evalue-bin-size'}            //= 500;
+$config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
 $config->{'hmmsearch-evalue-threshold'} //= defined $config->{'hmmsearch-score-threshold'} ? undef : 10;
 $config->{'hmmsearch-program'}          //= 'hmmsearch';
@@ -209,6 +211,10 @@ if ($config->{'continue'}) {
 	$config->{'clear-database'} = 0;
 }
 
+# un-quote the header separator
+$config->{'header-separator'} =~ s/^('|")//;
+$config->{'header-separator'} =~ s/('|")$//;
+
 # if something went wrong
 die unless $config;
 
@@ -222,12 +228,12 @@ Returns a hashref that contains all config variables from both the config file a
 
 sub getconfig {
 	# in case the user tells us to use a different one with -c
-	$configfile = &get_configfile($configfile);
+	$configfile = get_configfile($configfile);
 
 	# parse if exists
 	if (-e $configfile) {
 		print "Parsing config file '$configfile'.\n";
-		$config = &parse_config($configfile);
+		$config = parse_config($configfile);
 	}#}}}
 	else {
 		die "Fatal: Config file '$configfile' not found!\n";

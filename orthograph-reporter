@@ -62,6 +62,7 @@ my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
 my $verbose                    = $config->{'verbose'};
+my $sep                        = $config->{'header-separator'};
 
 # settings for this specific analysis
 my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
@@ -171,17 +172,17 @@ my $start = int time;
 foreach my $score (@scores) {
 	# this is an array of arrays, there may be multiple results with the same score
 	my $hmmresults = Wrapper::Mysql::get_hmmresult_for_score($score);
-	print "Evaluating score $score...\n" unless $quiet;
+	printf $stdout "Evaluating score %.1f...\n", $score
+		unless $quiet;
 	++$c;
 	HMMHIT:
 	foreach my $hmmhit (@$hmmresults) {
-		print 'Evaluating HMM target ', $hmmhit->{'target'}, "...\n" if $debug;
+		print $stdout 'Evaluating HMM target ', $hmmhit->{'target'}, "...\n" if $debug;
 		my $orthoid   = $hmmhit->{'query'};
 		my $digest    = $hmmhit->{'target'};
 
 		# skip transcripts we have already handled
 		if (seen_this_region_before($hmmhit)) {
-		if ($seen->{$digest}->{$hmmhit->{'hmm_start'}}++) {
 			printf $stdout "Seen %s[%d] before (%d rows), skipping\n",
 				$digest,
 				$hmmhit->{'hmm_start'},
@@ -379,7 +380,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
+	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
@@ -391,7 +392,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences_nt);
 	# join headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
+	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	undef $fafh;
@@ -714,11 +715,15 @@ sub seen_this_region_before {
 	my $hmmhit = shift;
 	while (my ($orthoid, $list_of_orthologs) = each %$transcripts_mapped_to) {
 		if ( grep {
-			$hmmhit->{'hmm_target'} eq $_->hmm_target()
+			# same transcript that got hit?
+			$hmmhit->{'target'} eq $_->hmm_target()
+			# and in a region that was hit before?
 			and ($hmmhit->{'hmm_start'} >= $_->hmm_start() or $hmmhit->{'hmm_end'} <= $_->hmm_end())
 			} @$list_of_orthologs ) {
+			# then we don't need this
 			return 1;
 		}
+	# otherwise, this is ok
 	}
 	return 0;
 }

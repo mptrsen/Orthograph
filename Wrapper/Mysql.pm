@@ -620,12 +620,10 @@ sub get_ortholog_group {
 	my $query = "SELECT DISTINCT 
 		$mysql_table_aaseqs.$mysql_col_header, $mysql_table_aaseqs.$mysql_col_sequence
 		FROM $mysql_table_aaseqs
-		LEFT JOIN $mysql_table_seqpairs
+		INNER JOIN $mysql_table_seqpairs
 			ON $mysql_table_aaseqs.$mysql_col_id = $mysql_table_seqpairs.$mysql_col_aaseq
-		LEFT JOIN $mysql_table_orthologs
+		INNER JOIN $mysql_table_orthologs
 			ON $mysql_table_seqpairs.$mysql_col_id = $mysql_table_orthologs.$mysql_col_seqpair
-		WHERE $mysql_table_seqpairs.$mysql_col_id IS NOT NULL
-		AND   $mysql_table_orthologs.$mysql_col_seqpair IS NOT NULL
 		AND   $mysql_table_orthologs.$mysql_col_setid = ?
 		AND   $mysql_table_orthologs.$mysql_col_orthoid = ?";
 	my $dbh = &mysql_dbh()
