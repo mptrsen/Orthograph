@@ -170,6 +170,11 @@ blast-evalue-threshold     = 1e-05
 # character. The default is not to substitute.
 #substitute-u-with = X
 
+# Header separator. This will be used to separate header fields in the output files.
+# May be an arbitrary string. Defaults to '|'. To use a whitespace character,
+# enclose it in quotes (' ').
+#header-separator = |
+
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
 # you don't want to see this. If you are really interested in what Orthograph is
 # thinking during the analysis, uncomment this. Verbose and quiet are mutually

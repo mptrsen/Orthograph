@@ -60,6 +60,7 @@ my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
+my $sep                        = $config->{'header-separator'};
 my $verbose                    = $config->{'verbose'};
 
 # settings for this specific analysis
@@ -379,7 +380,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
+	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
@@ -391,7 +392,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences_nt);
 	# join headers
-	$hdr = join ' ', ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
+	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	undef $fafh;
