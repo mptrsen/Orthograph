@@ -1272,8 +1272,13 @@ sub make_blastdb {#{{{
 	
 
 	# make blast database
-	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset > /dev/null);
-	print $stdout "@makeblastdbcmd\n" if $debug;
+	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset);
+	if (!$debug) {
+		push @makeblastdbcmd, qq( > /dev/null );
+	}
+	else {
+		print $stdout "@makeblastdbcmd\n";
+	}
 	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $!\n" and exit(1);
 	return $dbfile;
 }#}}}
