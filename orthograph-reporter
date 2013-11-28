@@ -293,7 +293,7 @@ my $num_n = 0;
 # walk the orthologs, concatenate in order if multiple
 ORTHOID:
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
-	my ($hdr, $seq, $cdnaseq, $prev_end);
+	my ($hdr_aa, $hdr_nt, $seq, $cdnaseq, $prev_end);
 	$hitcount = 0;
 	my $firsttime = 1;
 	$transcripts = [ sort { $a->hmm_start() <=> $b->hmm_start() } @$transcripts ];
@@ -347,6 +347,9 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 				}
 				$prev_end = $hit->hmm_end();
 			}
+			# concatenate
+			$hdr_aa .= $hit->real_header() . ':[len ' . length($hit->{'orf_aa_sequence'}) . ']';
+			$hdr_nt .= $hit->real_header() . ':[len ' . length($hit->{'orf_cdna_sequence'}) . ']';
 			$seq .= $hit->{'orf_aa_sequence'};
 			$cdnaseq .= $hit->{'orf_cdna_sequence'};
 			print $stdout "Concatenated sequences\n" if $debug;
@@ -379,10 +382,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
-	# join the headers
-	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
 	# print the concatenated sequence
-	printf $fafh ">%s\n%s\n", $hdr, $seq;
+	printf $fafh ">%s\n%s\n", $hdr_aa, $seq;
 	undef $fafh;
  
 	# do the same for the nucleotide sequences
@@ -391,10 +392,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences_nt);
-	# join headers
-	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
 	# print the concatenated sequence
-	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
+	printf $fafh ">%s\n%s\n", $hdr_nt, $cdnaseq;
 	undef $fafh;
 }
 undef $tfh;

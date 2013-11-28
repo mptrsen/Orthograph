@@ -246,11 +246,11 @@ sub getconfig {
 
 mini argument parser to get the config file name
 
-Returns the config filename as provided on the command line.
+Returns the config filename as provided with the option B<-c> on the command line.
 
 As an optional argument, this function accepts a default config filename which
 will be returned if there was no -c on the command line. Note: unless a default
-is provided, this function will return B<undef>.
+is provided, this function will return undef.
 
 =cut
 

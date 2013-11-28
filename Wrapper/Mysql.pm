@@ -617,7 +617,7 @@ Get a specific ortholog group, i.e. aa headers and sequences.
 sub get_ortholog_group {
 	my $setid   = shift;
 	my $orthoid = shift;
-	my $query = "SELECT DISTINCT 
+	my $query = "SELECT 
 		$mysql_table_aaseqs.$mysql_col_header, $mysql_table_aaseqs.$mysql_col_sequence
 		FROM $mysql_table_aaseqs
 		INNER JOIN $mysql_table_seqpairs
@@ -637,15 +637,13 @@ sub get_ortholog_group {
 sub get_ortholog_group_nucleotide {
 	my $setid   = shift;
 	my $orthoid = shift;
-	my $query = "SELECT DISTINCT 
+	my $query = "SELECT 
 		$mysql_table_ntseqs.$mysql_col_header, $mysql_table_ntseqs.$mysql_col_sequence
 		FROM $mysql_table_ntseqs
-		LEFT JOIN $mysql_table_seqpairs
+		INNER JOIN $mysql_table_seqpairs
 			ON $mysql_table_ntseqs.$mysql_col_id = $mysql_table_seqpairs.$mysql_col_ntseq
-		LEFT JOIN $mysql_table_orthologs
+		INNER JOIN $mysql_table_orthologs
 			ON $mysql_table_seqpairs.$mysql_col_id = $mysql_table_orthologs.$mysql_col_seqpair
-		WHERE $mysql_table_seqpairs.$mysql_col_id IS NOT NULL
-		AND   $mysql_table_orthologs.$mysql_col_seqpair IS NOT NULL
 		AND   $mysql_table_orthologs.$mysql_col_setid = ?
 		AND   $mysql_table_orthologs.$mysql_col_orthoid = ?";
 	my $dbh = &mysql_dbh()
@@ -1184,6 +1182,16 @@ sub get_blastresult_for_digest {
 		}
 	}
 	return $r;
+}
+
+sub get_real_header {
+	my $digest = shift;
+	my $q = "SELECT $mysql_table_ests.$mysql_col_header
+		FROM $mysql_table_ests
+		WHERE $mysql_table_ests.$mysql_col_digest = ?
+		LIMIT 1";
+	my $d = mysql_get($q, $digest);
+	return $d->[0]->[0];
 }
 
 1;
