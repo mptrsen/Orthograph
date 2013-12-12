@@ -28,7 +28,7 @@ use Data::Dumper;
 use Seqload::Fasta;	# object-oriented access to fasta files
 
 my $verbose    = 0;
-my $debug      = 1;
+my $debug      = 0;
 my $exhaustive = 0;
 my $outdir     = File::Spec->catdir('.');
 my $searchprog = 'exonerate';
@@ -291,7 +291,6 @@ sub fastaify {
 	my $header = shift;
 	my $sequence = shift;
 	my $fh = File::Temp->new(UNLINK=>1);
-	$fh->unlink_on_destroy(0) if $debug;
 	printf { $fh } ">%s\n%s\n", $header, $sequence;
 	close $fh;
 	if ($debug) {

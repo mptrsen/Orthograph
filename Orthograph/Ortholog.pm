@@ -186,7 +186,7 @@ Sets or returns the real header of the orthologous transcript sequence. To be re
 sub real_header {
 	my $self = shift;
 	if (scalar @_ > 0) {
-		$self->{'real_header'} = Wrapper::Mysql::get_real_header($self->hmm_name());
+		$self->{'real_header'} = shift;
 		return 1;
 	}
 	return $self->{'real_header'};

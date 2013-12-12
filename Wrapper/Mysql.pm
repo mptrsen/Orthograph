@@ -1043,9 +1043,9 @@ sub get_nucleotide_transcript_for {
 		WHERE $mysql_col_digest = ?";
 	my $result = &mysql_get($query, $digest);
 	# remove the revcomp/translate portion
-	print "translated header: <$result->[0]->[0]>\n";
+	print "translated header: <$result->[0]->[0]>\n" if $debug;
 	(my $original_header = $result->[0]->[0]) =~ s/ ?(\[revcomp]:)?\[translate\(\d\)\]$//;
-	print "original header: <$original_header>\n";
+	print "original header: <$original_header>\n" if $debug;
 	$query = "SELECT $mysql_col_sequence
 		FROM $mysql_table_ests
 		WHERE $mysql_col_header = ?";
@@ -1190,6 +1190,7 @@ sub get_real_header {
 		FROM $mysql_table_ests
 		WHERE $mysql_table_ests.$mysql_col_digest = ?
 		LIMIT 1";
+	print $q, "\n" if $debug;
 	my $d = mysql_get($q, $digest);
 	return $d->[0]->[0];
 }
