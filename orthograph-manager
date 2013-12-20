@@ -660,16 +660,16 @@ sub load_taxon {#{{{
 		$t{'seqpairs'}.$otherseqcol = $otherseqtable.id",
 
 		# update OGS table
-		"INSERT IGNORE INTO $t{'ogs'} (type, taxid, version) VALUES ($type, $taxon, $ogsversion)"
+		"INSERT IGNORE INTO $t{'ogs'} (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
 
 	);
 	# execute all queries
 	$dbh = Wrapper::Mysql::mysql_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or return 0;
 	foreach (@queries) {
-		print "$_\n";
+		print "$_\n" if $verbose;
 		my $nrows = $dbh->do($_) or return 0;
-		printf("Query OK, %d rows affected.\n", $nrows);
+		printf("Query OK, %d rows affected.\n", $nrows) if $verbose;
 	}
 	$dbh->disconnect();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
@@ -677,14 +677,6 @@ sub load_taxon {#{{{
 	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $mysql_dbname, $mysql_dbserver);
 	return 1;
 }#}}}
-
-# Sub: load_peptides
-# Loads peptide data into the database and re-generates the BLAST databases
-# Arguments: scalar string filename
-# Returns: true on success, false otherwise
-sub load_peptides {
-	my $inf = shift;
-}
 
 # Sub: create_blastdb
 # Generates a BLAST database 
