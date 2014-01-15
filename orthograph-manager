@@ -51,6 +51,7 @@ my $mysql_dbname            = $config->{'mysql-database'};
 my $mysql_dbpwd             = $config->{'mysql-password'};
 my $mysql_dbserver          = $config->{'mysql-server'};
 my $mysql_dbuser            = $config->{'mysql-username'};
+my $mysql_prefix            = $config->{'mysql-prefix'};
 my $mysql_table_blastdbs    = $config->{'mysql_table_blastdbs'};
 my $mysql_table_ests        = $config->{'mysql_table_ests'};
 my $mysql_table_hmmsearch   = $config->{'mysql_table_hmmsearch'};
@@ -106,7 +107,7 @@ my $overwrite         = 0;
 my $reassignorthologs = 0;
 my $setdir            = '';
 my $setname           = '';
-my $sql               = '';
+				my $sql               = '';
 my $temptable         = $mysql_table_temp;
 my $total_seqs        = 0;
 my %names             = ( );
@@ -135,7 +136,7 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will create a new Orthograph table structure in the database '$mysql_dbname' with the table prefix '$mysql_dbname'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
+	print "This will create a new Orthograph table structure in the database '$mysql_dbname' with the table prefix '$mysql_prefix'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
 	&get_yn() or exit;
 	&drop_tables;
 	&create_tables;
@@ -447,14 +448,14 @@ sub create_tables {#{{{
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
 			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
-		
+
 		# table: ogs
 		'ogs' => "CREATE TABLE `$t{'ogs'}` (
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`type`         INT(1),
 			`taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
 			`version`      VARCHAR(255))",
-		
+
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
 			`id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -477,7 +478,7 @@ sub create_tables {#{{{
 		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
+			`header`       VARCHAR(512),             INDEX(header(10)), UNIQUE(header(10)),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -486,7 +487,7 @@ sub create_tables {#{{{
 		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
+			`header`       VARCHAR(512),             INDEX(header(10)), UNIQUE(header(10)),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -503,11 +504,12 @@ sub create_tables {#{{{
 			`name`         VARCHAR(20),  UNIQUE(name),
 			`longname`     VARCHAR(255), 
 			`core`         TINYINT UNSIGNED NOT NULL)",
-		
+
 		# table: users
 		'users' => "CREATE TABLE `$t{'users'}` (
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`name`         VARCHAR(255), UNIQUE(name))",
+
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
