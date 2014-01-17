@@ -118,21 +118,21 @@ my $ntoutdir                   = $config->{'ntoutdir'};
 my $num_threads                = $config->{'num-threads'};
 
 # MySQL settings
-my $mysql_dbname               = $config->{'mysql-database'};
-my $mysql_dbpwd                = $config->{'mysql-password'};
-my $mysql_dbserver             = $config->{'mysql-server'};
-my $mysql_dbuser               = $config->{'mysql-username'};
+my $db_dbname                  = $config->{'mysql-database'};
+my $db_dbpwd                   = $config->{'mysql-password'};
+my $db_dbserver                = $config->{'mysql-server'};
+my $db_dbuser                  = $config->{'mysql-username'};
 
-my $mysql_table_blast          = $config->{'mysql_table_blast'};
-my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
-my $mysql_table_ests           = $config->{'mysql_table_ests'};
-my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
-my $mysql_table_log_evalues    = $config->{'mysql_table_log_evalues'};
-my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
-my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
-my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
-my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
-my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
+my $db_table_blast             = $config->{'mysql_table_blast'};
+my $db_table_blastdbs          = $config->{'mysql_table_blastdbs'};
+my $db_table_ests              = $config->{'mysql_table_ests'};
+my $db_table_hmmsearch         = $config->{'mysql_table_hmmsearch'};
+my $db_table_log_evalues       = $config->{'mysql_table_log_evalues'};
+my $db_table_set_details       = $config->{'mysql_table_set_details'};
+my $db_table_aaseqs            = $config->{'mysql_table_aaseqs'};
+my $db_table_seqpairs          = $config->{'mysql_table_sequence_pairs'};
+my $db_table_taxa              = $config->{'mysql_table_taxa'};
+my $db_table_orthologs         = $config->{'mysql_table_orthologs'};
 my $outdir                     = $config->{'output-directory'};
 my $orthoset                   = $config->{'ortholog-set'};
 my $preparedb                  = $config->{'prepare'};
@@ -162,35 +162,35 @@ my $hmmhitcount_total       = 0;
 my $hmmresultfileref        = $EMPTY;
 my $listspecies             = 0;
 my $logdir                  = $EMPTY;
-my $mysql_col_aaseq         = 'aa_seq';
-my $mysql_col_blastdbpath   = 'blastdb_path';
-my $mysql_col_date          = 'date';
-my $mysql_col_digest        = 'digest';
-my $mysql_col_evalue        = 'evalue';
-my $mysql_col_end           = 'end';
-my $mysql_col_env_end       = 'env_end';
-my $mysql_col_env_start     = 'env_start';
-my $mysql_col_hmm_end       = 'hmm_end';
-my $mysql_col_hmm_start     = 'hmm_start';
-my $mysql_col_log_evalue    = 'log_evalue';
-my $mysql_col_hdr           = 'header';
-my $mysql_col_hmm           = 'hmm';
-my $mysql_col_id            = 'id';
-my $mysql_col_longname      = 'longname';
-my $mysql_col_name          = 'name';
-my $mysql_col_orthoid       = 'ortholog_gene_id';
-my $mysql_col_query         = 'query';
-my $mysql_col_score         = 'score';
-my $mysql_col_seq           = 'sequence';
-my $mysql_col_seqpair       = 'sequence_pair';
-my $mysql_col_setid         = 'setid';
-my $mysql_col_start         = 'start';
-my $mysql_col_target        = 'target';
-my $mysql_col_taxid         = 'taxid';
-my $mysql_col_type          = 'type';
-my $mysql_col_taxon         = 'taxon';
-my $mysql_col_user          = 'user';
-my $mysql_dbi               = "dbi:mysql:$mysql_dbname:$mysql_dbserver";
+my $db_col_aaseq         = 'aa_seq';
+my $db_col_blastdbpath   = 'blastdb_path';
+my $db_col_date          = 'date';
+my $db_col_digest        = 'digest';
+my $db_col_evalue        = 'evalue';
+my $db_col_end           = 'end';
+my $db_col_env_end       = 'env_end';
+my $db_col_env_start     = 'env_start';
+my $db_col_hmm_end       = 'hmm_end';
+my $db_col_hmm_start     = 'hmm_start';
+my $db_col_log_evalue    = 'log_evalue';
+my $db_col_hdr           = 'header';
+my $db_col_hmm           = 'hmm';
+my $db_col_id            = 'id';
+my $db_col_longname      = 'longname';
+my $db_col_name          = 'name';
+my $db_col_orthoid       = 'ortholog_gene_id';
+my $db_col_query         = 'query';
+my $db_col_score         = 'score';
+my $db_col_seq           = 'sequence';
+my $db_col_seqpair       = 'sequence_pair';
+my $db_col_setid         = 'setid';
+my $db_col_start         = 'start';
+my $db_col_target        = 'target';
+my $db_col_taxid         = 'taxid';
+my $db_col_type          = 'type';
+my $db_col_taxon         = 'taxon';
+my $db_col_user          = 'user';
+my $db_dbi               = "dbi:mysql:$db_dbname:$db_dbserver";
 my $num_bp                  = 0;
 my $num_ests                = 0;
 my $num_hmms                = 0;
@@ -239,7 +239,7 @@ $species_id = Wrapper::Mysql::insert_taxon_into_table($species_name)
 $message .= "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 
 # get real table names
-($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
+($db_table_ests, $db_table_hmmsearch, $db_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
 
 #--------------------------------------------------
 # # Special case: Prepare the MySQL database by dropping and recreating all
@@ -247,7 +247,7 @@ $message .= "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
 	local $| = 1;
-  print "Setting MySQL database $mysql_dbname to a clean slate... ";
+  print "Setting MySQL database $db_dbname to a clean slate... ";
 	local $| = 0;
   &preparedb;
   print "OK\nMySQL database now ready to run $program_name.\n";
@@ -322,20 +322,20 @@ if ($clear_database) {
 
 unless ($continue) {
 	# store est data into the database:
-	print $stdout "Storing nucleotide sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+	print $stdout "Storing nucleotide sequences to MySQL database '$db_dbname' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($estfile, $mysql_table_ests, 2, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	&load_data_infile($estfile, $db_table_ests, 2, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
 	# store translated est data into the database:
-	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+	print $stdout "Storing translated sequences to MySQL database '$db_dbname' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($protfile, $mysql_table_ests, 1, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	&load_data_infile($protfile, $db_table_ests, 1, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
@@ -349,8 +349,8 @@ if ($num_ests != 0) {
 	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
 		$num_ests,
 		$species_name,
-		$mysql_dbname,
-		$mysql_dbserver) unless $quiet;
+		$db_dbname,
+		$db_dbserver) unless $quiet;
 }
 else {
 	print $stderr "No sequences found for taxon id $species_id. Something went wrong. Check your input. Exiting.\n" and exit(1);
@@ -456,7 +456,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
-	my $count = &insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref());
+	my $count = &insert_results_into_table($db_table_hmmsearch, $hmmobj->hits_arrayref());
 	print $stdout "     ... pushed $count hits to database.\n" if $verbose;
 	++$hmmhitcount;
 	
@@ -501,7 +501,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		if ($blastobj->hitcount() == 0) { next HMMRESULT }
 
 		# insert the blast results into the db. 3-argument form.
-		my $count = &insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+		my $count = &insert_results_into_table($db_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
 		print $stdout "            ... pushed $count hits to database.\n" if $verbose;
 	} #}}}
 
@@ -758,7 +758,7 @@ sub intro {#{{{
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	unless ( Wrapper::Mysql::set_exists($orthoset) ) {
-		die "Fatal: Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
+		die "Fatal: Set '$orthoset' does not exist in database '$db_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
 	}
 
 	# everything is fine
@@ -875,55 +875,55 @@ sub cleardir {#{{{
 # Generate a clean database, deleting all existing tables and starting from scratch
 # Returns: True on success
 sub preparedb {#{{{
-	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
-		`$mysql_col_id`        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		`$mysql_col_digest`    CHAR(32)     NOT NULL,           
-		`$mysql_col_taxid`     INT UNSIGNED NOT NULL,       
-		`$mysql_col_type`      TINYINT(4) UNSIGNED NOT NULL,
-		`$mysql_col_date`      INT UNSIGNED,
-		`$mysql_col_hdr`       VARCHAR(255) NOT NULL,       
-		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
-		PRIMARY KEY (`$mysql_col_id`),
-		INDEX (`$mysql_col_digest`(4)),
-		INDEX (`$mysql_col_taxid`),
-		INDEX (`$mysql_col_hdr`)
+	my $query_create_ests = "CREATE TABLE $db_table_ests ( 
+		`$db_col_id`        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		`$db_col_digest`    CHAR(32)     NOT NULL,           
+		`$db_col_taxid`     INT UNSIGNED NOT NULL,       
+		`$db_col_type`      TINYINT(4) UNSIGNED NOT NULL,
+		`$db_col_date`      INT UNSIGNED,
+		`$db_col_hdr`       VARCHAR(255) NOT NULL,       
+		`$db_col_seq`       MEDIUMBLOB DEFAULT NULL,
+		PRIMARY KEY (`$db_col_id`),
+		INDEX (`$db_col_digest`(4)),
+		INDEX (`$db_col_taxid`),
+		INDEX (`$db_col_hdr`)
 		) ENGINE=MYISAM AUTO_INCREMENT=0";
 
-	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		`$mysql_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		`$mysql_col_taxid`      INT UNSIGNED NOT NULL,       
-		`$mysql_col_query`      VARCHAR(255) NOT NULL,       
-		`$mysql_col_target`     CHAR(32)     NOT NULL,       
-		`$mysql_col_score`      DOUBLE       NOT NULL,
-		`$mysql_col_evalue`     CHAR(8)      NOT NULL,
-		`$mysql_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
-		`$mysql_col_env_start`  INT UNSIGNED NOT NULL,
-		`$mysql_col_env_end`    INT UNSIGNED NOT NULL,
-		`$mysql_col_hmm_start`  INT UNSIGNED NOT NULL,
-		`$mysql_col_hmm_end`    INT UNSIGNED NOT NULL,
-		PRIMARY KEY (`$mysql_col_id`),
-		INDEX (`$mysql_col_taxid`),
-		INDEX (`$mysql_col_query`),
-		INDEX (`$mysql_col_target`(4)),
-		INDEX (`$mysql_col_log_evalue`),
-		INDEX (`$mysql_col_score`)
+	my $query_create_hmmsearch = "CREATE TABLE $db_table_hmmsearch (
+		`$db_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		`$db_col_taxid`      INT UNSIGNED NOT NULL,       
+		`$db_col_query`      VARCHAR(255) NOT NULL,       
+		`$db_col_target`     CHAR(32)     NOT NULL,       
+		`$db_col_score`      DOUBLE       NOT NULL,
+		`$db_col_evalue`     CHAR(8)      NOT NULL,
+		`$db_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
+		`$db_col_env_start`  INT UNSIGNED NOT NULL,
+		`$db_col_env_end`    INT UNSIGNED NOT NULL,
+		`$db_col_hmm_start`  INT UNSIGNED NOT NULL,
+		`$db_col_hmm_end`    INT UNSIGNED NOT NULL,
+		PRIMARY KEY (`$db_col_id`),
+		INDEX (`$db_col_taxid`),
+		INDEX (`$db_col_query`),
+		INDEX (`$db_col_target`(4)),
+		INDEX (`$db_col_log_evalue`),
+		INDEX (`$db_col_score`)
 		)";
 	
-	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		`$mysql_col_id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
-		`$mysql_col_taxid`         INT UNSIGNED NOT NULL,       
-		`$mysql_col_query`         CHAR(32)     NOT NULL,       
-		`$mysql_col_target`        INT UNSIGNED NOT NULL,       
-		`$mysql_col_score`         DOUBLE       NOT NULL,
-		`$mysql_col_evalue`        CHAR(8)      NOT NULL,
-		`$mysql_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
-		`$mysql_col_start`         INT UNSIGNED NOT NULL,
-		`$mysql_col_end`           INT UNSIGNED NOT NULL,
-		PRIMARY KEY (`$mysql_col_id`),
-		INDEX (`$mysql_col_taxid`),
-		INDEX (`$mysql_col_query`(4)),
-		INDEX (`$mysql_col_target`),
-		INDEX (`$mysql_col_log_evalue`)
+	my $query_create_blast = "CREATE TABLE $db_table_blast (
+		`$db_col_id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
+		`$db_col_taxid`         INT UNSIGNED NOT NULL,       
+		`$db_col_query`         CHAR(32)     NOT NULL,       
+		`$db_col_target`        INT UNSIGNED NOT NULL,       
+		`$db_col_score`         DOUBLE       NOT NULL,
+		`$db_col_evalue`        CHAR(8)      NOT NULL,
+		`$db_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
+		`$db_col_start`         INT UNSIGNED NOT NULL,
+		`$db_col_end`           INT UNSIGNED NOT NULL,
+		PRIMARY KEY (`$db_col_id`),
+		INDEX (`$db_col_taxid`),
+		INDEX (`$db_col_query`(4)),
+		INDEX (`$db_col_target`),
+		INDEX (`$db_col_log_evalue`)
 		)";
 
 	# open connection
@@ -931,7 +931,7 @@ sub preparedb {#{{{
 		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
 
 	# drop all tables
-	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
+	foreach ($db_table_ests, $db_table_hmmsearch, $db_table_blast) {
 		my $query_drop = "DROP TABLE IF EXISTS $_";
 		print $stdout "$query_drop;\n" if $verbose;
 		my $sql = $dbh->prepare($query_drop);
@@ -973,7 +973,7 @@ sub clear_db {#{{{
 	my $dbh = Wrapper::Mysql::mysql_dbh()
 		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
 
-	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
+	foreach my $table ($db_table_ests, $db_table_hmmsearch, $db_table_blast) {
 		my $query = "DROP TABLE $table";
 		my $sth = $dbh->prepare($query);
 		$n += $sth->execute();
@@ -999,14 +999,14 @@ sub insert_results_into_table {#{{{
 	# this is a BLASTP result, we need the column 'blastdb'
 	if ($blastdb) {
 		my $query_insert_result = "INSERT IGNORE INTO $table (
-			`$mysql_col_taxid`,
-			`$mysql_col_query`,
-			`$mysql_col_target`,
-			`$mysql_col_score`,
-			`$mysql_col_evalue`,
-			`$mysql_col_log_evalue`,
-			`$mysql_col_start`,
-			`$mysql_col_end`
+			`$db_col_taxid`,
+			`$db_col_query`,
+			`$db_col_target`,
+			`$db_col_score`,
+			`$db_col_evalue`,
+			`$db_col_log_evalue`,
+			`$db_col_start`,
+			`$db_col_end`
 			) VALUES (
 			?,
 			?,
@@ -1046,16 +1046,16 @@ sub insert_results_into_table {#{{{
 	else {
 		# SQL query for pushing HMMsearch results to the db
 		my $query_insert_result = "INSERT IGNORE INTO $table (
-			`$mysql_col_taxid`,
-			`$mysql_col_query`,
-			`$mysql_col_target`,
-			`$mysql_col_score`,
-			`$mysql_col_evalue`,
-			`$mysql_col_log_evalue`,
-			`$mysql_col_hmm_start`,
-			`$mysql_col_hmm_end`,
-			`$mysql_col_env_start`,
-			`$mysql_col_env_end`
+			`$db_col_taxid`,
+			`$db_col_query`,
+			`$db_col_target`,
+			`$db_col_score`,
+			`$db_col_evalue`,
+			`$db_col_log_evalue`,
+			`$db_col_hmm_start`,
+			`$db_col_hmm_end`,
+			`$db_col_env_start`,
+			`$db_col_env_end`
 			) VALUES (
 			?,
 			?,
@@ -1068,7 +1068,7 @@ sub insert_results_into_table {#{{{
 			?,
 			?)";
 
-		my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
+		my $dbh = DBI->connect($db_dbi, $db_dbuser, $db_dbpwd);
 		$dbh->do("START TRANSACTION");
 		my $sql = $dbh->prepare($query_insert_result);
 
@@ -1290,15 +1290,15 @@ sub make_blastdb {#{{{
 # Returns: scalar int number of loaded rows
 sub load_data_infile {#{{{
 	my $infile = shift(@_);
-	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($infile, $mysql_table_ests, $type [, $columns_reference])';
-	my $type = shift(@_) or croak 'Usage: &load_data_infile($infile, $mysql_table_ests, $type [, $columns_reference])';
+	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
+	my $type = shift(@_) or croak 'Usage: &load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
 	my $columns;
 	my $list;
 	my $bp = 0;
 	if (scalar(@_)) {
 		$columns = shift(@_);
 		unless (ref($columns)) {
-			croak 'Usage: &load_data_infile($infile, $mysql_table_ests [, $columns_reference])';
+			croak 'Usage: &load_data_infile($infile, $db_table_ests [, $columns_reference])';
 		}
 		$list = join(',', @$columns);
 	}
@@ -1388,30 +1388,30 @@ sub get_orthologs {#{{{
 	# what do we want from the database?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT
-			$mysql_table_orthologs.$mysql_col_orthoid AS orthogroup,
-			$mysql_table_taxa.$mysql_col_name	        AS name,
-			$mysql_table_ests.$mysql_col_digest       AS EST_digest,
-      $mysql_table_aaseqs.$mysql_col_hdr        AS AA_header,
-      $mysql_table_aaseqs.$mysql_col_seq        AS AA_seq,
-      $mysql_table_ests.$mysql_col_hdr          AS EST_hdr,
-      $mysql_table_ests.$mysql_col_seq          AS EST_seq
-    FROM $mysql_table_aaseqs
-		INNER JOIN $mysql_table_taxa
-			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.$mysql_col_id
-    INNER JOIN $mysql_table_blast 
-			ON $mysql_table_aaseqs.$mysql_col_id = $mysql_table_blast.$mysql_col_target 
-    INNER JOIN $mysql_table_hmmsearch 
-			ON $mysql_table_blast.$mysql_col_query = $mysql_table_hmmsearch.$mysql_col_target  
-    INNER JOIN $mysql_table_ests 
-			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest 
-    INNER JOIN $mysql_table_orthologs 
-			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
-		INNER JOIN $mysql_table_seqpairs
-			ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.$mysql_col_id 
-		WHERE $mysql_table_orthologs.$mysql_col_orthoid = ?
-			AND $mysql_table_ests.$mysql_col_digest       = ?
-			AND $mysql_table_seqpairs.$mysql_col_aaseq    = $mysql_table_aaseqs.$mysql_col_id
-		ORDER BY $mysql_table_hmmsearch.$mysql_col_evalue, $mysql_table_blast.$mysql_col_evalue";
+			$db_table_orthologs.$db_col_orthoid AS orthogroup,
+			$db_table_taxa.$db_col_name	        AS name,
+			$db_table_ests.$db_col_digest       AS EST_digest,
+      $db_table_aaseqs.$db_col_hdr        AS AA_header,
+      $db_table_aaseqs.$db_col_seq        AS AA_seq,
+      $db_table_ests.$db_col_hdr          AS EST_hdr,
+      $db_table_ests.$db_col_seq          AS EST_seq
+    FROM $db_table_aaseqs
+		INNER JOIN $db_table_taxa
+			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.$db_col_id
+    INNER JOIN $db_table_blast 
+			ON $db_table_aaseqs.$db_col_id = $db_table_blast.$db_col_target 
+    INNER JOIN $db_table_hmmsearch 
+			ON $db_table_blast.$db_col_query = $db_table_hmmsearch.$db_col_target  
+    INNER JOIN $db_table_ests 
+			ON $db_table_hmmsearch.$db_col_target = $db_table_ests.$db_col_digest 
+    INNER JOIN $db_table_orthologs 
+			ON $db_table_hmmsearch.$db_col_query = $db_table_orthologs.$db_col_orthoid
+		INNER JOIN $db_table_seqpairs
+			ON $db_table_orthologs.$db_col_seqpair = $db_table_seqpairs.$db_col_id 
+		WHERE $db_table_orthologs.$db_col_orthoid = ?
+			AND $db_table_ests.$db_col_digest       = ?
+			AND $db_table_seqpairs.$db_col_aaseq    = $db_table_aaseqs.$db_col_id
+		ORDER BY $db_table_hmmsearch.$db_col_evalue, $db_table_blast.$db_col_evalue";
 
 	# open connection and do the transaction
 	my $dbh = Wrapper::Mysql::mysql_dbh()

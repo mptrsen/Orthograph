@@ -44,15 +44,15 @@ use IO::Tee;
 my $config = $Orthograph::Config::config;	# copy config variables
 
 # MySQL settings
-my $mysql_table_blast          = $config->{'mysql_table_blast'};
-my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
-my $mysql_table_ests           = $config->{'mysql_table_ests'};
-my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
-my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
-my $mysql_table_aaseqs         = $config->{'aaseqs'};
-my $mysql_table_seqpairs       = $config->{'sequence-pairs'};
-my $mysql_table_taxa           = $config->{'taxa'};
-my $mysql_table_orthologs      = $config->{'orthologs'};
+my $db_table_blast          = $config->{'mysql_table_blast'};
+my $db_table_blastdbs       = $config->{'mysql_table_blastdbs'};
+my $db_table_ests           = $config->{'mysql_table_ests'};
+my $db_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
+my $db_table_set_details    = $config->{'mysql_table_set_details'};
+my $db_table_aaseqs         = $config->{'aaseqs'};
+my $db_table_seqpairs       = $config->{'sequence-pairs'};
+my $db_table_taxa           = $config->{'taxa'};
+my $db_table_orthologs      = $config->{'orthologs'};
 
 # directory and output settings
 my $outdir                     = $config->{'output-directory'};
@@ -137,7 +137,7 @@ unless ($species_id) {
 }
 
 # get real table names
-($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
+($db_table_ests, $db_table_hmmsearch, $db_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
 
 # get the set id from the database
 $set_id = Wrapper::Mysql::get_set_id($setname);

@@ -47,23 +47,23 @@ my $config = $Orthograph::Config::config;
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
-my $mysql_dbname            = $config->{'mysql-database'};
-my $mysql_dbpwd             = $config->{'mysql-password'};
-my $mysql_dbserver          = $config->{'mysql-server'};
-my $mysql_dbuser            = $config->{'mysql-username'};
-my $mysql_table_blastdbs    = $config->{'mysql_table_blastdbs'};
-my $mysql_table_ests        = $config->{'mysql_table_ests'};
-my $mysql_table_hmmsearch   = $config->{'mysql_table_hmmsearch'};
-my $mysql_table_set_details = $config->{'mysql_table_set_details'};
-my $mysql_table_aaseqs      = $config->{'mysql_table_aaseqs'};
-my $mysql_table_ntseqs      = $config->{'mysql_table_ntseqs'};
-my $mysql_table_ogs         = $config->{'mysql_table_ogs'};
-my $mysql_table_orthologs   = $config->{'mysql_table_orthologs'};
-my $mysql_table_seqpairs    = $config->{'mysql_table_sequence_pairs'};
-my $mysql_table_seqtypes    = $config->{'mysql_table_sequence_types'};
-my $mysql_table_taxa        = $config->{'mysql_table_taxa'};
-my $mysql_table_temp        = $config->{'mysql_table_temp'};
-my $mysql_table_users       = $config->{'mysql_table_users'};
+my $db_dbname               = $config->{'mysql-database'};
+my $db_dbpwd                = $config->{'mysql-password'};
+my $db_dbserver             = $config->{'mysql-server'};
+my $db_dbuser               = $config->{'mysql-username'};
+my $db_table_blastdbs       = $config->{'mysql_table_blastdbs'};
+my $db_table_ests           = $config->{'mysql_table_ests'};
+my $db_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
+my $db_table_set_details    = $config->{'mysql_table_set_details'};
+my $db_table_aaseqs         = $config->{'mysql_table_aaseqs'};
+my $db_table_ntseqs         = $config->{'mysql_table_ntseqs'};
+my $db_table_ogs            = $config->{'mysql_table_ogs'};
+my $db_table_orthologs      = $config->{'mysql_table_orthologs'};
+my $db_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
+my $db_table_seqtypes       = $config->{'mysql_table_sequence_types'};
+my $db_table_taxa           = $config->{'mysql_table_taxa'};
+my $db_table_temp           = $config->{'mysql_table_temp'};
+my $db_table_users          = $config->{'mysql_table_users'};
 
 # Actions
 my $create                  = $config->{'create'};
@@ -84,17 +84,17 @@ my $u_subst                 = $config->{'substitute-u-with'};
 
 # table names. too lazy to change all of them, so i'll just reuse the old hash structure
 my %t            = (
-	'aaseqs'       => $mysql_table_aaseqs,
-	'blastdbs'     => $mysql_table_blastdbs,
-	'ntseqs'       => $mysql_table_ntseqs,
-	'ogs'          => $mysql_table_ogs,
-	'orthologs'    => $mysql_table_orthologs,
-	'seqpairs'     => $mysql_table_seqpairs,
-	'seqtypes'     => $mysql_table_seqtypes,
-	'set_details'  => $mysql_table_set_details,
-	'taxa'         => $mysql_table_taxa,
-	'temp'         => $mysql_table_temp,
-	'users'        => $mysql_table_users,
+	'aaseqs'       => $db_table_aaseqs,
+	'blastdbs'     => $db_table_blastdbs,
+	'ntseqs'       => $db_table_ntseqs,
+	'ogs'          => $db_table_ogs,
+	'orthologs'    => $db_table_orthologs,
+	'seqpairs'     => $db_table_seqpairs,
+	'seqtypes'     => $db_table_seqtypes,
+	'set_details'  => $db_table_set_details,
+	'taxa'         => $db_table_taxa,
+	'temp'         => $db_table_temp,
+	'users'        => $db_table_users,
 );
 
 my $blastdir          = '';
@@ -107,18 +107,18 @@ my $reassignorthologs = 0;
 my $setdir            = '';
 my $setname           = '';
 my $sql               = '';
-my $temptable         = $mysql_table_temp;
+my $temptable         = $db_table_temp;
 my $total_seqs        = 0;
 my %names             = ( );
 
 my $infile = '';
 
-unless (defined $mysql_dbuser and defined $mysql_dbpwd ) {
+unless (defined $db_dbuser and defined $db_dbpwd ) {
 	die "Fatal: You must specify database username (--mysql-username) and password (--mysql-password).\n";
 }
 
 # name == username unless defined name
-$name = $mysql_dbuser unless defined($name);
+$name = $db_dbuser unless defined($name);
 
 #--------------------------------------------------
 # # if you really want to delete everything...
@@ -135,11 +135,11 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will create a new Orthograph table structure in the database '$mysql_dbname' with the table prefix '$mysql_dbname'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
+	print "This will create a new Orthograph table structure in the database '$db_dbname' with the table prefix '$db_dbname'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
 	&get_yn() or exit;
 	&drop_tables;
 	&create_tables;
-	print "Created Orthograph table structure in database '$mysql_dbname'.\n";
+	print "Created Orthograph table structure in database '$db_dbname'.\n";
 	exit;
 }
 
@@ -194,13 +194,13 @@ $infile = shift @ARGV;
 
 # TODO stop here if db structure is not present!
 
-print "Setting up core ortholog set in $mysql_dbname on $mysql_dbserver... (press CTRL+C to abort)\n";
+print "Setting up core ortholog set in $db_dbname on $db_dbserver... (press CTRL+C to abort)\n";
 
 if (!$setname) { $setname = &get_setname() }
 
 # TODO rewrite this part using parametrized queries to protect from SQL injections?
 if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
-	warn "Warning: An ortholog set with this name already exists in $mysql_dbname on $mysql_dbserver.\n";
+	warn "Warning: An ortholog set with this name already exists in $db_dbname on $db_dbserver.\n";
 	unless ($overwrite) {
 		die "Pick a different name or use -o for overwriting.\n";
 	}
@@ -297,7 +297,7 @@ $dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $tempta
 $dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
 $dbh->disconnect;
 
-print "Successfully loaded $total_seqs sequences from $infile into $temptable on $mysql_dbserver.\n";
+print "Successfully loaded $total_seqs sequences from $infile into $temptable on $db_dbserver.\n";
 
 # get name and longname from the temp table; they do not get updated automatically
 $dbh = Wrapper::Mysql::mysql_dbh();
@@ -335,7 +335,7 @@ $dbh->disconnect;
 
 my @queries = (
 	# user name
-	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$mysql_dbuser')",
+	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$db_dbuser')",
 	# taxa (name, longname)
 	"INSERT IGNORE INTO $t{'taxa'} (name, longname, core) 
     SELECT DISTINCT $temptable.name, $temptable.longname, 1 
@@ -357,7 +357,7 @@ my @queries = (
 		  LEFT JOIN $t{'taxa'} 
     ON $temptable.name  = $t{'taxa'}.name
       INNER JOIN $t{'users'}
-    ON $t{'users'}.name = '$mysql_dbuser'",
+    ON $t{'users'}.name = '$db_dbuser'",
 	# delete everything where header or sequence is NULL or empty
 	"DELETE FROM $t{'aaseqs'}
     WHERE $t{'aaseqs'}.header IS NULL
@@ -375,7 +375,7 @@ my @queries = (
     LEFT JOIN $t{'ntseqs'}
       ON $t{'aaseqs'}.header = $t{'ntseqs'}.header
     INNER JOIN $t{'users'}
-      ON $t{'users'}.name = '$mysql_dbuser'",
+      ON $t{'users'}.name = '$db_dbuser'",
 	# orthologous groups
 	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
     SELECT $t{'set_details'}.id, $temptable.orthoid, $t{'seqpairs'}.id 
@@ -414,6 +414,16 @@ else {	# something has changed
 # Check whether the result of a query is present or not, return appropriate
 # Arguments: Scalar string QUERY
 # Returns: 1 or 0 depending on presence of result
+
+sub get_dbh {
+	if ($use_mysql) {
+		return Wrapper::Mysql::mysql_dbh();
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::SQLite::get_dbh();
+	}
+}
+
 sub mysql_check {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_check(QUERY)\n"; }
@@ -647,7 +657,7 @@ sub load_taxon {#{{{
 
 		# insert sequence pairs relationships
 		"INSERT INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$mysql_dbuser'
+		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
 		FROM $t{'taxa'}
 		RIGHT JOIN $seqtable
 		ON $seqtable.taxid = $t{'taxa'}.id
@@ -674,7 +684,7 @@ sub load_taxon {#{{{
 	$dbh->disconnect();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $seqpairs = Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
-	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $mysql_dbname, $mysql_dbserver);
+	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $db_dbname, $db_dbserver);
 	return 1;
 }#}}}
 
@@ -850,12 +860,12 @@ sub delete_ogs {
 	my $dbh = Wrapper::Mysql::mysql_dbh();
 	my $count = 0;
 	while (my ($h, $s) = $ogsfh->next_seq()) {
-		my $sth = $dbh->prepare("DELETE FROM $mysql_table_aaseqs WHERE header = ? LIMIT 1");
+		my $sth = $dbh->prepare("DELETE FROM $db_table_aaseqs WHERE header = ? LIMIT 1");
 		$sth->execute( $h );
 		$count += $sth->rows;
 	}
 
-	my $sth = $dbh->prepare("DELETE FROM $mysql_table_ogs WHERE taxid = ?");
+	my $sth = $dbh->prepare("DELETE FROM $db_table_ogs WHERE taxid = ?");
 	$sth->execute( $taxid );
 	$dbh->disconnect();
 	return $count;
