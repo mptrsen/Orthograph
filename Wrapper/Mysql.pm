@@ -485,10 +485,11 @@ Returns: scalar int TAXID
 =cut
 sub get_taxid_for_species {
 	my $species_name = shift(@_);
+	print "getting taxid for $species_name\n";
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT id FROM $mysql_table_taxa WHERE core = 0 AND longname = '$species_name'";
-	my $result = &mysql_get($query);
+	my $result = mysql_get($query);
 	if ($result) { 
 		$g_species_id = $$result[0][0];
 		return $$result[0][0];

@@ -117,6 +117,7 @@ GetOptions( $config,
 
 
 # MySQL settings
+$config->{'database-engine'}            //= 'mysql';
 $config->{'mysql-database'}             //= 'orthograph';
 $config->{'mysql-password'}             //= 'root';
 $config->{'mysql-server'}               //= 'localhost';
@@ -212,9 +213,10 @@ if ($config->{'continue'}) {
 }
 
 # mutually exclusive options
-if ($config->{'use-mysql'} and $config->{'use-sqlite'}) {
-	die "Fatal: Cannot use both MySQL and SQLite databases!\n";
+if ($config->{'database-engine'} ne 'mysql' and $config->{'database-engine'} ne 'sqlite') {
+	die "Fatal: Database engine not set correctly! Must be 'mysql' or 'sqlite'.\n";
 }
+
 # un-quote the header separator
 $config->{'header-separator'} =~ s/^('|")//;
 $config->{'header-separator'} =~ s/('|")$//;

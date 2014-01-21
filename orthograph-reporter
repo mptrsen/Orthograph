@@ -42,7 +42,12 @@ use IO::Tee;
 
 my $config = $Orthograph::Config::config;	# copy config variables
 
-# MySQL settings
+# which database engine do we use?
+my $database_engine = $config->{'database-engine'};
+my $use_mysql               = $database_engine eq 'mysql'  ? 1 : 0;
+my $use_sqlite              = $database_engine eq 'sqlite' ? 1 : 0;
+
+# database settings
 my $db_table_blast          = $config->{'db_table_blast'};
 my $db_table_blastdbs       = $config->{'db_table_blastdbs'};
 my $db_table_ests           = $config->{'db_table_ests'};
@@ -129,7 +134,7 @@ my $endtime              = 0;
 my $totaltime            = 0;
 
 # get the species id from the database
-$species_id = Wrapper::Mysql::get_taxid_for_species($speciesname);
+$species_id = get_taxid_for_species($speciesname);
 unless ($species_id) {
 	print $stderr "Fatal: No such species in database: '$speciesname'\n";
 	exit(1);
@@ -728,4 +733,11 @@ sub seen_this_region_before {
 	# otherwise, this is ok
 	}
 	return 0;
+}
+
+sub get_taxid_for_species {
+	my $sn = shift;
+	print "getting taxid for $sn\n";
+	if ($use_mysql) { return Wrapper::Mysql::get_taxid_for_species($sn) }
+	elsif ($use_sqlite) { return Wrapper::Sqlite::get_taxid_for_species($sn) }
 }
