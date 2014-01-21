@@ -82,17 +82,17 @@ GetOptions( $config,
   'mysql-password',
   'mysql-prefix',
   'mysql-server',
-  'mysql_table_aaseqs',
-  'mysql_table_blast',
-  'mysql_table_blastdbs',
-  'mysql_table_ests',
-  'mysql_table_hmmsearch',
-  'mysql_table_log_evalues',
-  'mysql_table_orthologs',
-  'mysql_table_sequence_pairs',
-  'mysql_table_sequence_types',
-  'mysql_table_set_details',
-  'mysql_table_taxa',
+  'db_table_aaseqs',
+  'db_table_blast',
+  'db_table_blastdbs',
+  'db_table_ests',
+  'db_table_hmmsearch',
+  'db_table_log_evalues',
+  'db_table_orthologs',
+  'db_table_sequence_pairs',
+  'db_table_sequence_types',
+  'db_table_set_details',
+  'db_table_taxa',
   'mysql-username',
 	'num-threads',
   'ortholog-set',
@@ -124,29 +124,29 @@ $config->{'mysql-username'}             //= 'root';
 $config->{'mysql-prefix'}               //= 'orthograph';
 $config->{'mysql-timeout'}              //= 600;
 
-# MySQL tables
-$config->{'mysql_table_aaseqs'}         //= 'aaseqs';
-$config->{'mysql_table_blast'}          //= 'blast';
-$config->{'mysql_table_blastdbs'}       //= 'blastdbs';
-$config->{'mysql_table_ests'}           //= 'ests';
-$config->{'mysql_table_hmmsearch'}      //= 'hmmsearch';
-$config->{'mysql_table_log_evalues'}    //= 'log_evalues';
-$config->{'mysql_table_scores'}         //= 'scores';
-$config->{'mysql_table_ntseqs'}         //= 'ntseqs';
-$config->{'mysql_table_ogs'}            //= 'ogs';
-$config->{'mysql_table_orthologs'}      //= 'orthologs';
-$config->{'mysql_table_sequence_pairs'} //= 'sequence_pairs';
-$config->{'mysql_table_sequence_types'} //= 'sequence_types';
-$config->{'mysql_table_set_details'}    //= 'set_details';
-$config->{'mysql_table_temp'}           //= 'temp';
-$config->{'mysql_table_taxa'}           //= 'taxa';
-$config->{'mysql_table_users'}          //= 'users';
+# database tables
+$config->{'db_table_aaseqs'}         //= 'aaseqs';
+$config->{'db_table_blast'}          //= 'blast';
+$config->{'db_table_blastdbs'}       //= 'blastdbs';
+$config->{'db_table_ests'}           //= 'ests';
+$config->{'db_table_hmmsearch'}      //= 'hmmsearch';
+$config->{'db_table_log_evalues'}    //= 'log_evalues';
+$config->{'db_table_scores'}         //= 'scores';
+$config->{'db_table_ntseqs'}         //= 'ntseqs';
+$config->{'db_table_ogs'}            //= 'ogs';
+$config->{'db_table_orthologs'}      //= 'orthologs';
+$config->{'db_table_sequence_pairs'} //= 'sequence_pairs';
+$config->{'db_table_sequence_types'} //= 'sequence_types';
+$config->{'db_table_set_details'}    //= 'set_details';
+$config->{'db_table_temp'}           //= 'temp';
+$config->{'db_table_taxa'}           //= 'taxa';
+$config->{'db_table_users'}          //= 'users';
 
 # make sure there is exactly one underscore at the end of the prefix
-(my $mysql_prefix = $config->{'mysql-prefix'}) =~ s/_*$/_/;
+(my $db_prefix = $config->{'db-prefix'}) =~ s/_*$/_/;
 
 # temporary hash to prepend the prefix
-my %C = map { $_ => $mysql_prefix . $config->{$_} } grep { $_ =~ /^mysql_table_/ } keys %$config;
+my %C = map { $_ => $db_prefix . $config->{$_} } grep { $_ =~ /^db_table_/ } keys %$config;
 
 # merge the modified entries into the config hash
 $config->{$_} = $C{$_} foreach keys %C;
@@ -211,6 +211,10 @@ if ($config->{'continue'}) {
 	$config->{'clear-database'} = 0;
 }
 
+# mutually exclusive options
+if ($config->{'use-mysql'} and $config->{'use-sqlite'}) {
+	die "Fatal: Cannot use both MySQL and SQLite databases!\n";
+}
 # un-quote the header separator
 $config->{'header-separator'} =~ s/^('|")//;
 $config->{'header-separator'} =~ s/('|")$//;

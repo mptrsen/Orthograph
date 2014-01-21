@@ -93,7 +93,7 @@ exonerate-program    = exonerate
 # Prefix for your Orthograph database tables. Useful if you are running
 # multiple instances of Orthograph on the same database but don't want the data
 # to be mixed up. Defaults to 'orthograph'.
-#mysql-prefix = orthograph
+#db-prefix = orthograph
 
 #
 # # Settings that affect the HMM and BLAST searches.

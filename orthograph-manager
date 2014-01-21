@@ -36,17 +36,25 @@ use lib $FindBin::Bin;                   # $Bin is the directory of the original
 use Seqload::Fasta qw( check_if_fasta ); # object-oriented access to fasta files
 use Orthograph::Functions;               # functions for all Orthograph tools
 use Orthograph::Config;                  # configuration in global hashref $config
-use Wrapper::Mysql;                      # because SQL queries in main code look ugly
 
 #--------------------------------------------------
 # # Copy configuration
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
+if ($config->{'use-mysql'}) {
+	use Wrapper::Mysql;                    # MySQL functions
+}
+elsif ($config->{'use-sqlite'}) {
+	use Wrapper::Sqlite;                   # SQLite functions
+}
+
 
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
+my $use_sqlite              = $config->{'use-sqlite'};
+my $use_mysql               = $config->{'use-mysql'};
 my $db_dbname               = $config->{'mysql-database'};
 my $db_dbpwd                = $config->{'mysql-password'};
 my $db_dbserver             = $config->{'mysql-server'};
@@ -199,7 +207,7 @@ print "Setting up core ortholog set in $db_dbname on $db_dbserver... (press CTRL
 if (!$setname) { $setname = &get_setname() }
 
 # TODO rewrite this part using parametrized queries to protect from SQL injections?
-if (&mysql_check("SELECT name FROM $t{'set_details'} WHERE name = '$setname'")) {
+if (set_exists($setname)) {
 	warn "Warning: An ortholog set with this name already exists in $db_dbname on $db_dbserver.\n";
 	unless ($overwrite) {
 		die "Pick a different name or use -o for overwriting.\n";
@@ -318,7 +326,7 @@ foreach (sort(keys %names)) {
 }
 
 # update the temptable with the collected info
-$dbh = Wrapper::Mysql::mysql_dbh;
+$dbh = Wrapper::Mysql::mysql_dbh();
 foreach (keys %names) {
 	$sql = $dbh->prepare("UPDATE $temptable SET longname='$names{$_}' WHERE name='$_'");
 	$sql->execute();
@@ -388,7 +396,7 @@ my @queries = (
       ON $t{'set_details'}.name = $temptable.orthoset",
 );
 
-$dbh = Wrapper::Mysql::mysql_dbh;
+$dbh = get_dbh();
 my $nrows;
 foreach (@queries) {
 	print $_ . ";\n";
@@ -410,32 +418,28 @@ else {	# something has changed
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
-# Sub: mysql_check
-# Check whether the result of a query is present or not, return appropriate
-# Arguments: Scalar string QUERY
-# Returns: 1 or 0 depending on presence of result
 
 sub get_dbh {
 	if ($use_mysql) {
 		return Wrapper::Mysql::mysql_dbh();
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::SQLite::get_dbh();
+		return Wrapper::Sqlite::get_dbh();
 	}
 }
 
-sub mysql_check {#{{{
-	my $query = shift;
-	unless ($query) { croak "Usage: mysql_check(QUERY)\n"; }
-	my @results;
-	my $dbh = Wrapper::Mysql::mysql_dbh;
-	my $sql = $dbh->prepare($query);
-	$sql->execute();
-	if ($sql->fetchrow_array()) {
-		return 1;
+sub set_exists {
+	my $setname = shift;
+	if ($use_mysql) {
+		my $query = "SELECT name FROM $t{'set_details'} WHERE name = '$setname'";
+		return Wrapper::Mysql::check($query)
 	}
-	return 0;
-}#}}}
+	elsif ($use_sqlite) {
+		my $query = "SELECT name FROM $t{'set_details'} WHERE name = '$setname'";
+		return Wrapper::Sqlite::check($query)
+	}
+}
+
 
 # drop all tables. no really, all that start with $prefix.
 sub drop_tables {#{{{

@@ -24,7 +24,6 @@ use autodie;        # die automatically on I/O functions
 # Core modules
 use Carp;           # carp and croak: warn and die with call stack
 use Data::Dumper;   # great for debugging
-use DBD::mysql;     # MySQL database driver
 use DBI;            # database interface
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
@@ -44,11 +43,11 @@ use IO::Tee;
 my $config = $Orthograph::Config::config;	# copy config variables
 
 # MySQL settings
-my $db_table_blast          = $config->{'mysql_table_blast'};
-my $db_table_blastdbs       = $config->{'mysql_table_blastdbs'};
-my $db_table_ests           = $config->{'mysql_table_ests'};
-my $db_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
-my $db_table_set_details    = $config->{'mysql_table_set_details'};
+my $db_table_blast          = $config->{'db_table_blast'};
+my $db_table_blastdbs       = $config->{'db_table_blastdbs'};
+my $db_table_ests           = $config->{'db_table_ests'};
+my $db_table_hmmsearch      = $config->{'db_table_hmmsearch'};
+my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_aaseqs         = $config->{'aaseqs'};
 my $db_table_seqpairs       = $config->{'sequence-pairs'};
 my $db_table_taxa           = $config->{'taxa'};

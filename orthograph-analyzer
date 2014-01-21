@@ -123,16 +123,16 @@ my $db_dbpwd                   = $config->{'mysql-password'};
 my $db_dbserver                = $config->{'mysql-server'};
 my $db_dbuser                  = $config->{'mysql-username'};
 
-my $db_table_blast             = $config->{'mysql_table_blast'};
-my $db_table_blastdbs          = $config->{'mysql_table_blastdbs'};
-my $db_table_ests              = $config->{'mysql_table_ests'};
-my $db_table_hmmsearch         = $config->{'mysql_table_hmmsearch'};
-my $db_table_log_evalues       = $config->{'mysql_table_log_evalues'};
-my $db_table_set_details       = $config->{'mysql_table_set_details'};
-my $db_table_aaseqs            = $config->{'mysql_table_aaseqs'};
-my $db_table_seqpairs          = $config->{'mysql_table_sequence_pairs'};
-my $db_table_taxa              = $config->{'mysql_table_taxa'};
-my $db_table_orthologs         = $config->{'mysql_table_orthologs'};
+my $db_table_blast             = $config->{'db_table_blast'};
+my $db_table_blastdbs          = $config->{'db_table_blastdbs'};
+my $db_table_ests              = $config->{'db_table_ests'};
+my $db_table_hmmsearch         = $config->{'db_table_hmmsearch'};
+my $db_table_log_evalues       = $config->{'db_table_log_evalues'};
+my $db_table_set_details       = $config->{'db_table_set_details'};
+my $db_table_aaseqs            = $config->{'db_table_aaseqs'};
+my $db_table_seqpairs          = $config->{'db_table_sequence_pairs'};
+my $db_table_taxa              = $config->{'db_table_taxa'};
+my $db_table_orthologs         = $config->{'db_table_orthologs'};
 my $outdir                     = $config->{'output-directory'};
 my $orthoset                   = $config->{'ortholog-set'};
 my $preparedb                  = $config->{'prepare'};
@@ -242,15 +242,15 @@ $message .= "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 ($db_table_ests, $db_table_hmmsearch, $db_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
 
 #--------------------------------------------------
-# # Special case: Prepare the MySQL database by dropping and recreating all
+# # Special case: Prepare the database by dropping and recreating all
 # # tables if requested, then exit
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
 	local $| = 1;
-  print "Setting MySQL database $db_dbname to a clean slate... ";
+  print "Setting database $db_dbname to a clean slate... ";
 	local $| = 0;
   &preparedb;
-  print "OK\nMySQL database now ready to run $program_name.\n";
+  print "OK\nDatabase now ready to run $program_name.\n";
   exit;
 }#}}}
 
@@ -322,7 +322,7 @@ if ($clear_database) {
 
 unless ($continue) {
 	# store est data into the database:
-	print $stdout "Storing nucleotide sequences to MySQL database '$db_dbname' on $db_dbserver...\n" unless $quiet;
+	print $stdout "Storing nucleotide sequences to database '$db_dbname' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
@@ -331,7 +331,7 @@ unless ($continue) {
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
 	# store translated est data into the database:
-	print $stdout "Storing translated sequences to MySQL database '$db_dbname' on $db_dbserver...\n" unless $quiet;
+	print $stdout "Storing translated sequences to database '$db_dbname' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
@@ -985,7 +985,7 @@ sub clear_db {#{{{
 }#}}}
 
 # Sub: insert_results_into_table
-#	inserts the results of either hmmsearch or blastp into a mysql database
+#	inserts the results of either hmmsearch or blastp into a database
 # Expects: scalar string TABLENAME, reference to array HITS, scalar string BLASTDATABASE (optional)
 # Returns: Number of inserted results (hitcount)
 sub insert_results_into_table {#{{{
@@ -1231,7 +1231,7 @@ sub hmmbuild {#{{{
 }#}}}
 
 # Sub: make_blastdb 
-# Create a BLAST database from a file. Pulls everything from the MySQL database.
+# Create a BLAST database from a file. Pulls everything from the database.
 # Arguments: Scalar string ortholog set name
 # Returns: Scalar string path_to_blastdbfile
 sub make_blastdb {#{{{

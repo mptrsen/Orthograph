@@ -22,7 +22,7 @@ Wrapper::Mysql
 
   use Wrapper::Mysql;
 
-  my $dbh = Wrapper::Mysql::mysql_dbh();
+  my $dbh = Wrapper::Mysql::get_dbh();
   do_stuff_with_dbh();
   undef $dbh;
 
@@ -57,19 +57,19 @@ my $mysql_dbuser               = $config->{'mysql-username'};
 my $mysql_timeout              = $config->{'mysql-timeout'};
 my $sleep_for                  = 10;
 
-my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
-my $mysql_table_blast          = $config->{'mysql_table_blast'};
-my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
-my $mysql_table_ests           = $config->{'mysql_table_ests'};
-my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
-my $mysql_table_log_evalues    = $config->{'mysql_table_log_evalues'};
-my $mysql_table_scores         = $config->{'mysql_table_scores'};
-my $mysql_table_ntseqs         = $config->{'mysql_table_ntseqs'};
-my $mysql_table_ogs            = $config->{'mysql_table_ogs'};
-my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
-my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
-my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
-my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
+my $mysql_table_aaseqs         = $config->{'db_table_aaseqs'};
+my $mysql_table_blast          = $config->{'db_table_blast'};
+my $mysql_table_blastdbs       = $config->{'db_table_blastdbs'};
+my $mysql_table_ests           = $config->{'db_table_ests'};
+my $mysql_table_hmmsearch      = $config->{'db_table_hmmsearch'};
+my $mysql_table_log_evalues    = $config->{'db_table_log_evalues'};
+my $mysql_table_scores         = $config->{'db_table_scores'};
+my $mysql_table_ntseqs         = $config->{'db_table_ntseqs'};
+my $mysql_table_ogs            = $config->{'db_table_ogs'};
+my $mysql_table_orthologs      = $config->{'db_table_orthologs'};
+my $mysql_table_seqpairs       = $config->{'db_table_sequence_pairs'};
+my $mysql_table_set_details    = $config->{'db_table_set_details'};
+my $mysql_table_taxa           = $config->{'db_table_taxa'};
 my $mysql_col_aaseq            = 'aa_seq';
 my $mysql_col_digest           = 'digest';
 my $mysql_col_end              = 'end';
@@ -109,7 +109,7 @@ my $debug                      = $config->{'debug'};
 
 =head1 FUNCTIONS
 
-=head2 mysql_dbh()
+=head2 get_dbh()
 
 Get a database handle
 
@@ -119,7 +119,7 @@ Returns: Database handle
 
 =cut
 
-sub mysql_dbh {#{{{
+sub get_dbh {#{{{
 	my $dbh = undef;
 	my $slept = 0;
 
@@ -153,7 +153,7 @@ sub mysql_get {#{{{
   # prepare anonymous array
 	my $results = [ ];
   # connect and fetch stuff
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, @args);
@@ -180,13 +180,31 @@ sub mysql_do {#{{{
 	my $query = shift;
 	unless ($query) { croak "Usage: mysql_do(QUERY)\n" }
 	my @fields = @_;
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, @fields);
 	$dbh->disconnect();
 	return 1;
 }#}}}
+
+# Sub: check
+# Check whether the result of a query is present or not, return appropriate
+# Arguments: Scalar string QUERY
+# Returns: 1 or 0 depending on presence of result
+sub check {#{{{
+	my $query = shift;
+	unless ($query) { croak "Usage: check(QUERY)\n"; }
+	my @results;
+	my $dbh = get_dbh();
+	my $sql = $dbh->prepare($query);
+	$sql->execute();
+	if ($sql->fetchrow_array()) {
+		return 1;
+	}
+	return 0;
+}#}}}
+
 
 =head2 get_ortholog_sets()
 
@@ -257,7 +275,7 @@ sub get_ortholog_groups_for_set {
     ON d.id = o.setid
     WHERE d.id = ?";
 
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $setid);
@@ -277,7 +295,7 @@ sub get_transcripts {
 		FROM $mysql_table_ests
 		WHERE taxid = ?
 		AND type = ?";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $specid, $type);
@@ -305,7 +323,7 @@ sub get_hmmresults {#{{{
 		AND $mysql_table_hmmsearch.taxid = ?";
 
 	# get the sequences from the database (as array->array reference)
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_get_sequences);
 	do {
@@ -509,7 +527,7 @@ exists), 0 otherwise.
 
 sub set_exists {
 	my $set = shift;
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare("SELECT * FROM $mysql_table_set_details WHERE $mysql_col_name = ? LIMIT 1");
 	$sth = execute($sth, $mysql_timeout, $set);
@@ -532,7 +550,7 @@ sub insert_taxon_into_table {
 	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_taxon_into_table(SPECIESNAME)") }
 	if (my $taxid = &get_taxid_for_species($species_name)) { return $taxid }
 	my $query = "INSERT IGNORE INTO $mysql_table_taxa (longname, core) VALUES (?, ?)";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $species_name, 0);
@@ -552,7 +570,7 @@ sub create_log_evalues_view {
 	  WHERE $mysql_table_hmmsearch.$mysql_col_taxid = ?
 	  GROUP BY $mysql_table_hmmsearch.$mysql_col_log_evalue
 	  ORDER BY $mysql_table_hmmsearch.$mysql_col_log_evalue";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_create_log_evalues);
 	$sth = execute($sth, $mysql_timeout, $taxid);
@@ -570,7 +588,7 @@ sub create_scores_view {
 	  WHERE $mysql_table_hmmsearch.$mysql_col_taxid = ?
 	  GROUP BY $mysql_table_hmmsearch.$mysql_col_score
 	  ORDER BY $mysql_table_hmmsearch.$mysql_col_score DESC";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_create_scores_view);
 	$sth = execute($sth, $mysql_timeout, $taxid);
@@ -595,7 +613,7 @@ sub get_orthologs_for_set_hashref {
 		INNER JOIN $mysql_table_set_details 
 			ON $mysql_table_orthologs.setid = $mysql_table_set_details.id
 		WHERE $mysql_table_set_details.id = ?";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $setid);
@@ -626,7 +644,7 @@ sub get_ortholog_group {
 			ON $mysql_table_seqpairs.$mysql_col_id = $mysql_table_orthologs.$mysql_col_seqpair
 		AND   $mysql_table_orthologs.$mysql_col_setid = ?
 		AND   $mysql_table_orthologs.$mysql_col_orthoid = ?";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $setid, $orthoid);
@@ -646,7 +664,7 @@ sub get_ortholog_group_nucleotide {
 			ON $mysql_table_seqpairs.$mysql_col_id = $mysql_table_orthologs.$mysql_col_seqpair
 		AND   $mysql_table_orthologs.$mysql_col_setid = ?
 		AND   $mysql_table_orthologs.$mysql_col_orthoid = ?";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $setid, $orthoid);
@@ -712,7 +730,7 @@ sub get_hitlist_hashref {
 		OFFSET $offset
 		";
 	print "fetching:\n$query\n";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $setid, $specid);
@@ -745,7 +763,7 @@ Returns a hashref as $hash->{$log_evalue} = number_of_occurences (an int)
 
 sub get_logevalue_count {
 	my $query_get_logevalues = "SELECT $mysql_col_log_evalue, count FROM $mysql_table_log_evalues";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_get_logevalues);
 	$sth = execute($sth, $mysql_timeout);
@@ -761,7 +779,7 @@ sub get_logevalue_count {
 
 sub get_scores_count {
 	my $query_get_scores = "SELECT $mysql_col_score, count FROM $mysql_table_scores";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query_get_scores);
 	$sth = execute($sth, $mysql_timeout);
@@ -851,7 +869,7 @@ sub get_results_for_logevalue {
 	# good for debugging
 	print $query . "\n" if $debug;
 
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 
@@ -941,7 +959,7 @@ sub get_results_for_score {
 	# good for debugging
 	print $query . "\n" if $debug;
 
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 
@@ -1065,7 +1083,7 @@ sub get_nuc_for_pep {
 		FROM $mysql_table_seqpairs
 		WHERE $mysql_table_seqpairs.$mysql_col_aaseq = ?";
 	print $query, "\n", $pepid, "\n";
-	my $dbh = &mysql_dbh()
+	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $mysql_timeout, $pepid);

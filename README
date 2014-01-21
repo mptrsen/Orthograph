@@ -27,6 +27,10 @@ trying to install the required packages on a Windows system under Cygwin (or
 natively, for that matter). You might run into problems getting the MySQL
 driver, HMMer3 and Exonerate to work. Really, don't use Windows. 
 
+Make sure you have the database interface module DBI for your Perl version as
+well as the proper database driver for your database engine of choice
+(DBD::mysql or DBD::SQLite)
+
 If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.
 
