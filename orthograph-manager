@@ -40,22 +40,17 @@ use Orthograph::Config;                  # configuration in global hashref $conf
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
 
-# which database engine do we use?
-my $database_engine = $config->{'database-engine'};
-my $use_mysql       = $database_engine eq 'mysql'  ? 1 : 0;
-my $use_sqlite      = $database_engine eq 'sqlite' ? 1 : 0;
-if ($use_mysql)     { use Wrapper::Mysql  }
-elsif ($use_sqlite) { use Wrapper::Sqlite }
-
 
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
+my $database_engine         = $config->{'database-engine'};
 my $db_dbname               = $config->{'mysql-database'};
 my $db_dbpwd                = $config->{'mysql-password'};
 my $db_dbserver             = $config->{'mysql-server'};
 my $db_dbuser               = $config->{'mysql-username'};
+my $db_prefix               = $config->{'db-prefix'};
 my $db_table_blastdbs       = $config->{'db_table_blastdbs'};
 my $db_table_ests           = $config->{'db_table_ests'};
 my $db_table_hmmsearch      = $config->{'db_table_hmmsearch'};
@@ -86,6 +81,19 @@ my $verbose                 = $config->{'verbose'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute-u-with'};
+
+# which database engine do we use?
+my $use_mysql       = $database_engine eq 'mysql'  ? 1 : 0;
+my $use_sqlite      = $database_engine eq 'sqlite' ? 1 : 0;
+my $database        = undef;
+if ($use_mysql)     {
+	use Wrapper::Mysql;
+	$database = $config->{'mysql-database'};
+}
+elsif ($use_sqlite) {
+	use Wrapper::Sqlite;
+	$database = $config->{'sqlite-database'};
+}
 
 # table names. too lazy to change all of them, so i'll just reuse the old hash structure
 my %t            = (
@@ -140,7 +148,7 @@ if ($delete_all) {
 # # if you only want me to create the tables, fine. this will give you a clean slate.
 #-------------------------------------------------- 
 elsif ($create) {
-	print "This will create a new Orthograph table structure in the database '$db_dbname' with the table prefix '$db_dbname'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
+	print "This will create a new Orthograph table structure in the database '$database' with the table prefix '$db_prefix'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
 	&get_yn() or exit;
 	&drop_tables;
 	&create_tables;

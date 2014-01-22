@@ -107,9 +107,22 @@ my $verbose                    = $config->{'verbose'};
 my $debug                      = $config->{'debug'};
 #}}}
 
+# Check whether all information was provided in the configuration
+defined $mysql_dbname   or fail_and_exit('MySQL database name not specified');
+defined $mysql_dbuser   or fail_and_exit('MySQL database username not specified');
+defined $mysql_dbpwd    or fail_and_exit('MySQL database password not specified');
+defined $mysql_dbserver or fail_and_exit('MySQL database server not specified');
 
 
 =head1 FUNCTIONS
+
+=cut
+
+sub fail_and_exit {
+	my $msg = shift @_;
+	print STDERR 'Fatal: ' . $msg . "\n";
+	exit 1;
+}
 
 =head2 get_dbh()
 

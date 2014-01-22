@@ -104,8 +104,23 @@ my $verbose                 = $config->{'verbose'};
 my $debug                   = $config->{'debug'};
 #}}}
 
+# was the database specified and does it exist?
+if (not defined $database) {
+	fail_and_exit('SQLite database not specified');
+}
+elsif (!-f $database) {
+	fail_and_exit("SQLite database '$database' not found");
+}
 
 =head1 FUNCTIONS
+
+=cut
+
+sub fail_and_exit {
+	my $msg = shift @_;
+	print STDERR 'Fatal: ' . $msg . "\n";
+	exit 1;
+}
 
 =head2 db_dbh()
 
