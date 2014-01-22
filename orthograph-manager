@@ -23,8 +23,6 @@ use autodie;        # die automatically on I/O functions
 
 # Core modules
 use Carp;           # carp and croak: warn and die with call stack
-use DBD::mysql;     # MySQL database driver
-use DBI;            # database interface
 use File::Temp;     # temporary files
 use File::Path qw( remove_tree make_path );	# this also uses File::Spec
 use FindBin;        # locate the dir of this script during compile time
@@ -41,37 +39,36 @@ use Orthograph::Config;                  # configuration in global hashref $conf
 # # Copy configuration
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
-if ($config->{'use-mysql'}) {
-	use Wrapper::Mysql;                    # MySQL functions
-}
-elsif ($config->{'use-sqlite'}) {
-	use Wrapper::Sqlite;                   # SQLite functions
-}
+
+# which database engine do we use?
+my $database_engine = $config->{'database-engine'};
+my $use_mysql       = $database_engine eq 'mysql'  ? 1 : 0;
+my $use_sqlite      = $database_engine eq 'sqlite' ? 1 : 0;
+if ($use_mysql)     { use Wrapper::Mysql  }
+elsif ($use_sqlite) { use Wrapper::Sqlite }
 
 
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 #{{{
-my $use_sqlite              = $config->{'use-sqlite'};
-my $use_mysql               = $config->{'use-mysql'};
 my $db_dbname               = $config->{'mysql-database'};
 my $db_dbpwd                = $config->{'mysql-password'};
 my $db_dbserver             = $config->{'mysql-server'};
 my $db_dbuser               = $config->{'mysql-username'};
-my $db_table_blastdbs       = $config->{'mysql_table_blastdbs'};
-my $db_table_ests           = $config->{'mysql_table_ests'};
-my $db_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
-my $db_table_set_details    = $config->{'mysql_table_set_details'};
-my $db_table_aaseqs         = $config->{'mysql_table_aaseqs'};
-my $db_table_ntseqs         = $config->{'mysql_table_ntseqs'};
-my $db_table_ogs            = $config->{'mysql_table_ogs'};
-my $db_table_orthologs      = $config->{'mysql_table_orthologs'};
-my $db_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
-my $db_table_seqtypes       = $config->{'mysql_table_sequence_types'};
-my $db_table_taxa           = $config->{'mysql_table_taxa'};
-my $db_table_temp           = $config->{'mysql_table_temp'};
-my $db_table_users          = $config->{'mysql_table_users'};
+my $db_table_blastdbs       = $config->{'db_table_blastdbs'};
+my $db_table_ests           = $config->{'db_table_ests'};
+my $db_table_hmmsearch      = $config->{'db_table_hmmsearch'};
+my $db_table_set_details    = $config->{'db_table_set_details'};
+my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
+my $db_table_ntseqs         = $config->{'db_table_ntseqs'};
+my $db_table_ogs            = $config->{'db_table_ogs'};
+my $db_table_orthologs      = $config->{'db_table_orthologs'};
+my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
+my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
+my $db_table_taxa           = $config->{'db_table_taxa'};
+my $db_table_temp           = $config->{'db_table_temp'};
+my $db_table_users          = $config->{'db_table_users'};
 
 # Actions
 my $create                  = $config->{'create'};
@@ -299,7 +296,7 @@ my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile'
 		sequence,
 		description)";
 
-my $dbh = Wrapper::Mysql::mysql_dbh();
+my $dbh = get_dbh();
 $dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
 $dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
 $dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
@@ -308,7 +305,7 @@ $dbh->disconnect;
 print "Successfully loaded $total_seqs sequences from $infile into $temptable on $db_dbserver.\n";
 
 # get name and longname from the temp table; they do not get updated automatically
-$dbh = Wrapper::Mysql::mysql_dbh();
+$dbh = get_dbh();
 $sql = $dbh->prepare("SELECT DISTINCT name, longname FROM $temptable");
 $sql->execute();
 while (my @result = $sql->fetchrow) {
@@ -326,7 +323,7 @@ foreach (sort(keys %names)) {
 }
 
 # update the temptable with the collected info
-$dbh = Wrapper::Mysql::mysql_dbh();
+$dbh = get_dbh();
 foreach (keys %names) {
 	$sql = $dbh->prepare("UPDATE $temptable SET longname='$names{$_}' WHERE name='$_'");
 	$sql->execute();
@@ -421,11 +418,19 @@ else {	# something has changed
 
 sub get_dbh {
 	if ($use_mysql) {
-		return Wrapper::Mysql::mysql_dbh();
+		my $dbh = Wrapper::Mysql::mysql_dbh() or fail_and_exit("Couldn't get database connection here");
+		return $dbh;
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_dbh();
+		my $dbh = Wrapper::Sqlite::get_dbh() or fail_and_exit("Couldn't get database connection here");
+		return $dbh;
 	}
+}
+
+sub fail_and_exit {
+	my $msg = shift @_;
+	print STDERR 'Fatal: ' . $msg . "\n";
+	exit 1;
 }
 
 sub set_exists {
@@ -443,101 +448,23 @@ sub set_exists {
 
 # drop all tables. no really, all that start with $prefix.
 sub drop_tables {#{{{
-	my $dbh = Wrapper::Mysql::mysql_dbh() or exit(1);
-	print 'DROPing tables: ', join(", ", values(%t)), "\n" if $verbose;
-	foreach my $table (keys(%t)) {
-		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
+	if ($use_mysql) {
+		Wrapper::Mysql::drop_tables(%t);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::drop_tables(%t);
 	}
 }#}}}
 
 
 # create tables. makes use of the %create_table hash.
 sub create_tables {#{{{
-
-	# the queries for the individual tables
-	my %create_table = (#{{{
-		# table: blastdbs
-		'blastdbs' => "CREATE TABLE `$t{'blastdbs'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
-			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
-		
-		# table: ogs
-		'ogs' => "CREATE TABLE `$t{'ogs'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`type`         INT(1),
-			`taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
-			`version`      VARCHAR(255))",
-		
-		# table: ortholog_set
-		'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
-			`id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`setid`            INT UNSIGNED NOT NULL,
-			`ortholog_gene_id` VARCHAR(10)  NOT NULL,
-			`sequence_pair`    INT UNSIGNED NOT NULL,
-			UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair))",
-
-		# table: sequence_pairs
-		'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
-			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`taxid`        INT    UNSIGNED,
-			`ogs_id`       INT    UNSIGNED,
-			`aa_seq`       INT    UNSIGNED, UNIQUE(aa_seq),
-			`nt_seq`       INT    UNSIGNED, UNIQUE(nt_seq), 
-			`date`         INT    UNSIGNED,
-			`user`         INT    UNSIGNED)",
-
-		# table: sequences_aa
-		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
-			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
-			`sequence`     MEDIUMBLOB,
-			`user`         INT UNSIGNED,
-			`date`         INT UNSIGNED)",
-
-		# table: sequences_nt
-		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
-			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
-			`sequence`     MEDIUMBLOB,
-			`user`         INT UNSIGNED,
-			`date`         INT UNSIGNED)",
-
-		# table: set_details
-		'set_details' => "CREATE TABLE `$t{'set_details'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`name`         VARCHAR(255), UNIQUE(name),
-			`description`  BLOB)",
-
-		# table: taxa
-		'taxa' => "CREATE TABLE `$t{'taxa'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`name`         VARCHAR(20),  UNIQUE(name),
-			`longname`     VARCHAR(255), 
-			`core`         TINYINT UNSIGNED NOT NULL)",
-		
-		# table: users
-		'users' => "CREATE TABLE `$t{'users'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`name`         VARCHAR(255), UNIQUE(name))",
-		# table: seqtypes
-		'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`type`         CHAR(3),     UNIQUE(type))",
-	);#}}}
-
-	# to start off with nt and aa sequence types
-	my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
-
-	my $dbh = Wrapper::Mysql::mysql_dbh();
-	foreach (values %create_table) {
-		print $_, ";\n" if $verbose;
-		$dbh->do($_) or die "Could not exec query: $!\n";
+	if ($use_mysql) {
+		Wrapper::Mysql::create_tables(%t);
 	}
-	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
-	$dbh->disconnect;
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::create_tables(%t);
+	}
 }#}}}
 
 # sub: get_yn
@@ -678,7 +605,7 @@ sub load_taxon {#{{{
 
 	);
 	# execute all queries
-	$dbh = Wrapper::Mysql::mysql_dbh();
+	$dbh = get_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or return 0;
 	foreach (@queries) {
 		print "$_\n" if $verbose;
@@ -820,7 +747,7 @@ sub delete_set {#{{{
 		"DELETE FROM $t{'blastdbs'}    WHERE $t{'blastdbs'}.`setid`  = '$setid'",
 	);
 	
-	my $dbh = Wrapper::Mysql::mysql_dbh();
+	my $dbh = get_dbh();
 	foreach (@queries) {
 		print $_, "\n";
 		$dbh->do($_) or die();
@@ -861,7 +788,7 @@ sub delete_ogs {
 
 	# open the file and delete each sequence (slow, I know...)
 	my $ogsfh = Seqload::Fasta->open($ogsfile);
-	my $dbh = Wrapper::Mysql::mysql_dbh();
+	my $dbh = get_dbh();
 	my $count = 0;
 	while (my ($h, $s) = $ogsfh->next_seq()) {
 		my $sth = $dbh->prepare("DELETE FROM $db_table_aaseqs WHERE header = ? LIMIT 1");

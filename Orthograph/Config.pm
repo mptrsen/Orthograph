@@ -63,7 +63,7 @@ GetOptions( $config,
   'clear-database!',
   'clear-files!',
   'configfile|c=s',
-  'debug',
+  'database-engine=s',
   'debug|d',
   'estfile',
   'estfile|E=s',
@@ -82,6 +82,7 @@ GetOptions( $config,
   'mysql-password',
   'mysql-prefix',
   'mysql-server',
+  'mysql-username',
   'db_table_aaseqs',
   'db_table_blast',
   'db_table_blastdbs',
@@ -93,7 +94,6 @@ GetOptions( $config,
   'db_table_sequence_types',
   'db_table_set_details',
   'db_table_taxa',
-  'mysql-username',
 	'num-threads',
   'ortholog-set',
   'output-directory',
@@ -105,6 +105,7 @@ GetOptions( $config,
   'sets-dir=s',
   'soft-threshold=i',
   'species-name=s',
+	'sqlite-database=s',
   'substitute-u-with=s',
   'verbose|v',
 ) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);#}}}
@@ -214,15 +215,22 @@ if ($config->{'continue'}) {
 
 # mutually exclusive options
 if ($config->{'database-engine'} ne 'mysql' and $config->{'database-engine'} ne 'sqlite') {
-	die "Fatal: Database engine not set correctly! Must be 'mysql' or 'sqlite'.\n";
+	print STDERR "Fatal: Database engine not set correctly! Must be 'mysql' or 'sqlite'.\n";
+	exit 1;
 }
+
+if ($config->{'database-engine'} eq 'sqlite' and not defined $config->{'sqlite-database'}) {
+	print STDERR "Fatal: SQLite database not specified\n";
+	exit 1;
+}
+
 
 # un-quote the header separator
 $config->{'header-separator'} =~ s/^('|")//;
 $config->{'header-separator'} =~ s/('|")$//;
 
 # if something went wrong
-die unless $config;
+die "Fatal: Error parsing config" unless $config;
 
 =head2 getconfig 
 
@@ -242,7 +250,8 @@ sub getconfig {
 		$config = parse_config($configfile);
 	}#}}}
 	else {
-		die "Fatal: Config file '$configfile' not found!\n";
+		print STDERR "Fatal: Config file '$configfile' not found!\n";
+		exit 1;
 	}
 
 	return $config;

@@ -16,19 +16,19 @@
 #-------------------------------------------------- 
 =head1 NAME 
 
-Wrapper::db
+Wrapper::Sqlite
 
 =head1 SYNOPSIS
 
-  use Wrapper::db;
+  use Wrapper::Sqlite;
 
-  my $dbh = Wrapper::db::db_dbh();
+  my $dbh = Wrapper::Sqlite::db_dbh();
   do_stuff_with_dbh();
   undef $dbh;
 
-  Wrapper::db::do($query);
+  Wrapper::Sqlite::do($query);
 
-  my $result = Wrapper::db::get($query);
+  my $result = Wrapper::Sqlite::get($query);
 
 =head1 DESCRIPTION
 
@@ -37,7 +37,7 @@ handle the complex database structure in the Orthograph pipeline.
 
 =cut
 
-package Wrapper::db;
+package Wrapper::Sqlite;
 use strict;
 use warnings;
 use Carp;
@@ -46,16 +46,15 @@ use FindBin;        # locate the dir of this script during compile time
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config;                # configuration parser getconfig()
 use Data::Dumper;
+use DBI;
+use DBD::SQLite;
 
 my $config = $Orthograph::Config::config;  # copy config
 
 # db settings
-my $db_dbname               = $config->{'db-database'};
-my $db_dbpwd                = $config->{'db-password'};
-my $db_dbserver             = $config->{'db-server'};
-my $db_dbuser               = $config->{'db-username'};
-my $db_timeout              = $config->{'db-timeout'};
-my $sleep_for                  = 10;
+my $database                = $config->{'sqlite-database'};
+my $db_timeout              = $config->{'sqlite-timeout'};
+my $sleep_for               = 10;
 
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
 my $db_table_blast          = $config->{'db_table_blast'};
@@ -106,7 +105,6 @@ my $debug                   = $config->{'debug'};
 #}}}
 
 
-
 =head1 FUNCTIONS
 
 =head2 db_dbh()
@@ -119,11 +117,11 @@ Returns: Database handle
 
 =cut
 
-sub db_dbh {#{{{
+sub get_dbh {#{{{
 	my $dbh = undef;
 	my $slept = 0;
 
-	until ($dbh = DBI->connect("DBI:db:$db_dbname:$db_dbserver;db_local_infile=1", $db_dbuser, $db_dbpwd)) {
+	until ($dbh = DBI->connect("DBI:SQLite:$database")) {
 		if ($slept >= $db_timeout) { 
 			carp "Warning: Connection retry timeout exceeded\n" and return undef;
 		}
@@ -187,6 +185,118 @@ sub db_do {#{{{
 	$dbh->disconnect();
 	return 1;
 }#}}}
+
+
+sub drop_tables {
+	my %t = @_;
+	print 'DROPing tables: ', join(", ", values(%t)), "\n" if $verbose;
+	my $dbh = get_dbh() or fail_and_exit("Couldn't get database connection");
+	foreach my $table (keys(%t)) {
+		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
+	}
+	$dbh->disconnect();
+}
+
+sub create_tables {
+	my %t = @_;
+	# the queries for the individual tables
+	my %create_table = (#{{{
+		# table: blastdbs
+		'blastdbs' => "CREATE TABLE `$t{'blastdbs'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`setid`        INT UNSIGNED DEFAULT NULL UNIQUE,
+			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
+		
+		# table: ogs
+		'ogs' => "CREATE TABLE `$t{'ogs'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`type`         INT(1),
+			`taxid`        INT UNSIGNED NOT NULL UNIQUE,
+			`version`      VARCHAR(255))",
+		
+		# table: ortholog_set
+		'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
+			`id`               INTEGER PRIMARY KEY,
+			`setid`            INT UNSIGNED NOT NULL,
+			`ortholog_gene_id` VARCHAR(10)  NOT NULL,
+			`sequence_pair`    INT UNSIGNED NOT NULL,
+			UNIQUE (setid, ortholog_gene_id, sequence_pair))",
+
+		# table: sequence_pairs
+		'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`taxid`        INT    UNSIGNED,
+			`ogs_id`       INT    UNSIGNED,
+			`aa_seq`       INT    UNSIGNED UNIQUE,
+			`nt_seq`       INT    UNSIGNED UNIQUE, 
+			`date`         INT    UNSIGNED,
+			`user`         INT    UNSIGNED)",
+
+		# table: sequences_aa
+		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`taxid`        INT             NOT NULL, 
+			`header`       VARCHAR(512)    UNIQUE,
+			`sequence`     MEDIUMBLOB,
+			`user`         INT UNSIGNED,
+			`date`         INT UNSIGNED)",
+
+		# table: sequences_nt
+		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`taxid`        INT             NOT NULL, 
+			`header`       VARCHAR(512)    UNIQUE,
+			`sequence`     MEDIUMBLOB,
+			`user`         INT UNSIGNED,
+			`date`         INT UNSIGNED)",
+
+		# table: set_details
+		'set_details' => "CREATE TABLE `$t{'set_details'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`name`         VARCHAR(255) UNIQUE,
+			`description`  BLOB)",
+
+		# table: taxa
+		'taxa' => "CREATE TABLE `$t{'taxa'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`name`         VARCHAR(20)  UNIQUE,
+			`longname`     VARCHAR(255), 
+			`core`         TINYINT UNSIGNED NOT NULL)",
+		
+		# table: users
+		'users' => "CREATE TABLE `$t{'users'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`name`         VARCHAR(255) UNIQUE)",
+		# table: seqtypes
+		'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
+			`id`           INTEGER PRIMARY KEY,
+			`type`         CHAR(3)     UNIQUE)",
+	);#}}}
+
+	my @indices = (
+		# indices for sequences_aa
+		"CREATE INDEX IF NOT EXISTS $t{'aaseqs'}_taxid  ON $t{'aaseqs'} (taxid)",
+		"CREATE INDEX IF NOT EXISTS $t{'ntseqs'}_taxid  ON $t{'ntseqs'} (taxid)",
+		"CREATE INDEX IF NOT EXISTS $t{'aaseqs'}_header  ON $t{'aaseqs'} (header)",
+		"CREATE INDEX IF NOT EXISTS $t{'ntseqs'}_header  ON $t{'ntseqs'} (header)",
+	);
+
+	# to start off with nt and aa sequence types
+	my $insert_seqtypes = "INSERT OR IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
+
+	my $dbh = get_dbh();
+	foreach (values %create_table) {
+		print $_, ";\n" if $verbose;
+		$dbh->do($_) or die "Could not exec query: $!\n";
+	}
+	foreach (@indices) {
+		print $_, ";\n" if $verbose;
+		$dbh->do($_) or die "Could not exec query: $!\n";
+	}
+	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
+	$dbh->disconnect;
+}
+
 
 =head2 get_ortholog_sets()
 

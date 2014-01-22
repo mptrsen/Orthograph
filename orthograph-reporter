@@ -36,7 +36,6 @@ use lib $FindBin::Bin;                 # $Bin is the directory of the original s
 use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
 use Orthograph::Ortholog;              # ortholog class
-use Wrapper::Mysql;
 use Wrapper::Exonerate;
 use IO::Tee;
 
@@ -46,6 +45,8 @@ my $config = $Orthograph::Config::config;	# copy config variables
 my $database_engine = $config->{'database-engine'};
 my $use_mysql               = $database_engine eq 'mysql'  ? 1 : 0;
 my $use_sqlite              = $database_engine eq 'sqlite' ? 1 : 0;
+if ($use_mysql)     { use Wrapper::Mysql  }
+elsif ($use_sqlite) { use Wrapper::Sqlite }
 
 # database settings
 my $db_table_blast          = $config->{'db_table_blast'};

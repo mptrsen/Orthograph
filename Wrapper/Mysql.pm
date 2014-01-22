@@ -46,6 +46,8 @@ use FindBin;        # locate the dir of this script during compile time
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config;                # configuration parser getconfig()
 use Data::Dumper;
+use DBI;            # database interface
+use DBD::mysql;     # MySQL database driver
 
 my $config = $Orthograph::Config::config;  # copy config
 
@@ -205,6 +207,103 @@ sub check {#{{{
 	return 0;
 }#}}}
 
+sub drop_tables {
+	my %t = @_;
+	print 'DROPing tables: ', join(", ", values(%t)), "\n" if $verbose;
+	my $dbh = get_dbh() or fail_and_exit("Couldn't get database connection");
+	foreach my $table (keys(%t)) {
+		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
+	}
+	$dbh->disconnect();
+}
+
+sub create_tables {
+	my %t = shift;
+	# the queries for the individual tables
+	my %create_table = (#{{{
+		# table: blastdbs
+		'blastdbs' => "CREATE TABLE `$t{'blastdbs'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
+			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
+		
+		# table: ogs
+		'ogs' => "CREATE TABLE `$t{'ogs'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`type`         INT(1),
+			`taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
+			`version`      VARCHAR(255))",
+		
+		# table: ortholog_set
+		'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
+			`id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`setid`            INT UNSIGNED NOT NULL,
+			`ortholog_gene_id` VARCHAR(10)  NOT NULL,
+			`sequence_pair`    INT UNSIGNED NOT NULL,
+			UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair))",
+
+		# table: sequence_pairs
+		'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
+			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`taxid`        INT    UNSIGNED,
+			`ogs_id`       INT    UNSIGNED,
+			`aa_seq`       INT    UNSIGNED, UNIQUE(aa_seq),
+			`nt_seq`       INT    UNSIGNED, UNIQUE(nt_seq), 
+			`date`         INT    UNSIGNED,
+			`user`         INT    UNSIGNED)",
+
+		# table: sequences_aa
+		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
+			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`taxid`        INT             NOT NULL, INDEX(taxid),
+			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
+			`sequence`     MEDIUMBLOB,
+			`user`         INT UNSIGNED,
+			`date`         INT UNSIGNED)",
+
+		# table: sequences_nt
+		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
+			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`taxid`        INT             NOT NULL, INDEX(taxid),
+			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
+			`sequence`     MEDIUMBLOB,
+			`user`         INT UNSIGNED,
+			`date`         INT UNSIGNED)",
+
+		# table: set_details
+		'set_details' => "CREATE TABLE `$t{'set_details'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`name`         VARCHAR(255), UNIQUE(name),
+			`description`  BLOB)",
+
+		# table: taxa
+		'taxa' => "CREATE TABLE `$t{'taxa'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`name`         VARCHAR(20),  UNIQUE(name),
+			`longname`     VARCHAR(255), 
+			`core`         TINYINT UNSIGNED NOT NULL)",
+		
+		# table: users
+		'users' => "CREATE TABLE `$t{'users'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`name`         VARCHAR(255), UNIQUE(name))",
+		# table: seqtypes
+		'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
+			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`type`         CHAR(3),     UNIQUE(type))",
+	);#}}}
+
+	# to start off with nt and aa sequence types
+	my $insert_seqtypes = "INSERT IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
+
+	my $dbh = get_dbh();
+	foreach (values %create_table) {
+		print $_, ";\n" if $verbose;
+		$dbh->do($_) or die "Could not exec query: $!\n";
+	}
+	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
+	$dbh->disconnect;
+}
 
 =head2 get_ortholog_sets()
 
