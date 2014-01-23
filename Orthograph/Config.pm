@@ -200,6 +200,7 @@ $config->{'reference-taxa'}             //= '';
 $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 5;
 $config->{'species-name'}               //= '';
+$config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= 'X';
 $config->{'translate-program'}          //= 'fastatranslate';

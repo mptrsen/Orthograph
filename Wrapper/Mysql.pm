@@ -318,6 +318,110 @@ sub create_tables {
 	$dbh->disconnect;
 }
 
+sub create_temp_table {
+	my $temptable = shift @_;
+	my $dbh = get_dbh();
+	my $create_temp_table_query = "CREATE TABLE $temptable (
+			`name`     VARCHAR(255), INDEX(name),
+			`longname` VARCHAR(255),
+			`orthoset` VARCHAR(255), INDEX(orthoset),
+			`orthoid`  VARCHAR(255), INDEX(orthoid),
+			`blastdb`  VARCHAR(255),
+			`header`   VARCHAR(512), INDEX(header),
+			`sequence` MEDIUMBLOB,
+			`description` VARCHAR(255))";
+	$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
+	$dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
+}
+
+sub load_csv_into_temptable {
+	my $csvfile   = shift @_;
+	my $temptable = shift @_;
+	my $loadquery = "LOAD DATA LOCAL INFILE '$csvfile' 
+		INTO TABLE $temptable FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' (
+			name,
+			longname,
+			orthoset,
+			orthoid,
+			blastdb,
+			header,
+			sequence,
+			description)";
+	my $dbh = get_dbh();
+	$dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
+	$dbh->disconnect;
+}
+
+sub fill_tables_from_temp_table {
+	my $t = shift @_;
+	my $temptable = shift @_;
+	my @queries = (
+		# user name
+		"INSERT IGNORE INTO $t->{'users'} (name) VALUES ('$mysql_dbuser')",
+		# taxa (name, longname)
+		"INSERT IGNORE INTO $t->{'taxa'} (name, longname, core) 
+			SELECT DISTINCT $temptable.name, $temptable.longname, 1 
+			FROM $temptable",
+		# set name + description
+		"INSERT IGNORE INTO $t->{'set_details'} (name, description)
+			SELECT DISTINCT $temptable.orthoset, $temptable.description 
+			FROM $temptable LIMIT 1",
+		# blast databases
+		"INSERT IGNORE INTO $t->{'blastdbs'} (setid, blastdb_path) 
+			SELECT DISTINCT $t->{'set_details'}.id, $temptable.blastdb 
+			FROM $temptable
+			LEFT JOIN $t->{'set_details'} 
+				ON $t->{'set_details'}.name = $temptable.orthoset",
+		# pep sequences
+		"INSERT IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, user, date) 
+			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, $t->{'users'}.id, UNIX_TIMESTAMP()
+			FROM $temptable
+				LEFT JOIN $t->{'taxa'} 
+			ON $temptable.name  = $t->{'taxa'}.name
+				INNER JOIN $t->{'users'}
+			ON $t->{'users'}.name = '$mysql_dbuser'",
+		# delete everything where header or sequence is NULL or empty
+		"DELETE FROM $t->{'aaseqs'}
+			WHERE $t->{'aaseqs'}.header IS NULL
+			OR $t->{'aaseqs'}.sequence IS NULL
+			OR $t->{'aaseqs'}.header = ''
+			OR $t->{'aaseqs'}.sequence = ''",
+		# sequence pairs (pep-nuc)
+		"INSERT IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user)
+			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, UNIX_TIMESTAMP(), $t->{'users'}.id
+			FROM $t->{'taxa'}
+			INNER JOIN $t->{'aaseqs'}
+				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.id
+			LEFT JOIN $t->{'ogs'}
+				ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
+			LEFT JOIN $t->{'ntseqs'}
+				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header
+			INNER JOIN $t->{'users'}
+				ON $t->{'users'}.name = '$mysql_dbuser'",
+		# orthologous groups
+		"INSERT IGNORE INTO $t->{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
+			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
+			FROM $t->{'aaseqs'} 
+			INNER JOIN $temptable 
+				ON $t->{'aaseqs'}.header = $temptable.header 
+			INNER JOIN $t->{'seqpairs'} 
+				ON $t->{'seqpairs'}.aa_seq = $t->{'aaseqs'}.id 
+			INNER JOIN $t->{'set_details'} 
+				ON $t->{'set_details'}.name = $temptable.orthoset",
+	);
+
+	my $dbh = get_dbh();
+	my $nrows;
+	foreach (@queries) {
+		print $_ . ";\n";
+		$nrows = $dbh->do($_) or die();
+		($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
+	}
+	$dbh->disconnect;
+	return $nrows;
+}
+
+
 =head2 get_ortholog_sets()
 
 Get list of ortholog sets from the database

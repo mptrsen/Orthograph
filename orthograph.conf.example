@@ -16,7 +16,25 @@
 #-------------------------------------------------- 
 
 #
-# # MySQL connection settings.
+# # Database engine selection
+#
+# Database engine. Defaults to 'sqlite', which means to use the file-based
+# SQLite database
+database-engine    = sqlite
+
+#
+# # SQLite settings
+#
+# Database file for SQLite. Required.
+sqlite-database    = /PATH/TO/DATABASE
+
+# Path to the sqlite executable. Normally this is located at /usr/bin/sqlite3
+# (the default). Change this if your setup differs.
+sqlite-program     = /usr/bin/sqlite3
+
+#
+# # MySQL connection settings. Only required if you use MySQL and have
+# 'database-engine' set to 'mysql'.
 #
 mysql-username     = USERNAME
 mysql-password     = PASSWORD

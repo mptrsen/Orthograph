@@ -54,7 +54,9 @@ my $config = $Orthograph::Config::config;  # copy config
 # db settings
 my $database                = $config->{'sqlite-database'};
 my $db_timeout              = $config->{'sqlite-timeout'};
+my $sqlite                  = $config->{'sqlite-program'};
 my $sleep_for               = 10;
+my $db_dbuser               = $config->{'username'} || $ENV{"LOGNAME"} || $ENV{"USER"} || getpwuid $<;
 
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
 my $db_table_blast          = $config->{'db_table_blast'};
@@ -69,6 +71,7 @@ my $db_table_orthologs      = $config->{'db_table_orthologs'};
 my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
+my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_digest           = 'digest';
 my $db_col_end              = 'end';
@@ -104,12 +107,14 @@ my $verbose                 = $config->{'verbose'};
 my $debug                   = $config->{'debug'};
 #}}}
 
+
+
 # was the database specified and does it exist?
 if (not defined $database) {
-	fail_and_exit('SQLite database not specified');
+	fail_and_exit('SQLite database file not specified');
 }
 elsif (!-f $database) {
-	fail_and_exit("SQLite database '$database' not found");
+	fail_and_exit("SQLite database file '$database' not found");
 }
 
 =head1 FUNCTIONS
@@ -201,36 +206,53 @@ sub db_do {#{{{
 	return 1;
 }#}}}
 
+# Sub: check
+# Check whether the result of a query is present or not, return appropriate
+# Arguments: Scalar string QUERY
+# Returns: 1 or 0 depending on presence of result
+sub check {#{{{
+	my $query = shift;
+	unless ($query) { croak "Usage: check(QUERY)\n"; }
+	my @results;
+	my $dbh = get_dbh();
+	my $sql = $dbh->prepare($query);
+	$sql->execute();
+	if ($sql->fetchrow_array()) {
+		return 1;
+	}
+	return 0;
+}#}}}
+
 
 sub drop_tables {
-	my %t = @_;
-	print 'DROPing tables: ', join(", ", values(%t)), "\n" if $verbose;
+	my $t = shift @_;
+	print 'DROPing tables: ', join(", ", values(%$t)), "\n" if $verbose;
 	my $dbh = get_dbh() or fail_and_exit("Couldn't get database connection");
-	foreach my $table (keys(%t)) {
-		$dbh->do("DROP TABLE IF EXISTS $t{$table}") or die "Could not execute drop query: $!\n";
+	foreach my $table (keys(%$t)) {
+		$dbh->do("DROP TABLE IF EXISTS $t->{$table}") or die "Could not execute drop query: $!\n";
 	}
 	$dbh->disconnect();
 }
 
 sub create_tables {
-	my %t = @_;
+	my $t = shift @_;
 	# the queries for the individual tables
 	my %create_table = (#{{{
 		# table: blastdbs
-		'blastdbs' => "CREATE TABLE `$t{'blastdbs'}` (
+		'blastdbs' => "CREATE TABLE `$t->{'blastdbs'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`setid`        INT UNSIGNED DEFAULT NULL UNIQUE,
 			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
 		
 		# table: ogs
-		'ogs' => "CREATE TABLE `$t{'ogs'}` (
+		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`type`         INT(1),
 			`taxid`        INT UNSIGNED NOT NULL UNIQUE,
 			`version`      VARCHAR(255))",
 		
 		# table: ortholog_set
-		'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
+		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
 			`id`               INTEGER PRIMARY KEY,
 			`setid`            INT UNSIGNED NOT NULL,
 			`ortholog_gene_id` VARCHAR(10)  NOT NULL,
@@ -238,66 +260,66 @@ sub create_tables {
 			UNIQUE (setid, ortholog_gene_id, sequence_pair))",
 
 		# table: sequence_pairs
-		'sequence_pairs' => "CREATE TABLE `$t{'seqpairs'}` (
+		'sequence_pairs' => "CREATE TABLE `$t->{'seqpairs'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`taxid`        INT    UNSIGNED,
 			`ogs_id`       INT    UNSIGNED,
 			`aa_seq`       INT    UNSIGNED UNIQUE,
 			`nt_seq`       INT    UNSIGNED UNIQUE, 
-			`date`         INT    UNSIGNED,
+			`date`         INT    UNSIGNED DEFAULT CURRENT_TIMESTAMP,
 			`user`         INT    UNSIGNED)",
 
 		# table: sequences_aa
-		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
+		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`taxid`        INT             NOT NULL, 
 			`header`       VARCHAR(512)    UNIQUE,
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
-			`date`         INT UNSIGNED)",
+			`date`         INT UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_nt
-		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
+		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`taxid`        INT             NOT NULL, 
 			`header`       VARCHAR(512)    UNIQUE,
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
-			`date`         INT UNSIGNED)",
+			`date`         INT UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: set_details
-		'set_details' => "CREATE TABLE `$t{'set_details'}` (
+		'set_details' => "CREATE TABLE `$t->{'set_details'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`name`         VARCHAR(255) UNIQUE,
 			`description`  BLOB)",
 
 		# table: taxa
-		'taxa' => "CREATE TABLE `$t{'taxa'}` (
+		'taxa' => "CREATE TABLE `$t->{'taxa'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`name`         VARCHAR(20)  UNIQUE,
 			`longname`     VARCHAR(255), 
 			`core`         TINYINT UNSIGNED NOT NULL)",
 		
 		# table: users
-		'users' => "CREATE TABLE `$t{'users'}` (
+		'users' => "CREATE TABLE `$t->{'users'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`name`         VARCHAR(255) UNIQUE)",
 		# table: seqtypes
-		'seqtypes' => "CREATE TABLE `$t{'seqtypes'}` (
+		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`type`         CHAR(3)     UNIQUE)",
 	);#}}}
 
 	my @indices = (
 		# indices for sequences_aa
-		"CREATE INDEX IF NOT EXISTS $t{'aaseqs'}_taxid  ON $t{'aaseqs'} (taxid)",
-		"CREATE INDEX IF NOT EXISTS $t{'ntseqs'}_taxid  ON $t{'ntseqs'} (taxid)",
-		"CREATE INDEX IF NOT EXISTS $t{'aaseqs'}_header  ON $t{'aaseqs'} (header)",
-		"CREATE INDEX IF NOT EXISTS $t{'ntseqs'}_header  ON $t{'ntseqs'} (header)",
+		"CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_taxid  ON $t->{'aaseqs'} (taxid)",
+		"CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_taxid  ON $t->{'ntseqs'} (taxid)",
+		"CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_header  ON $t->{'aaseqs'} (header)",
+		"CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_header  ON $t->{'ntseqs'} (header)",
 	);
 
 	# to start off with nt and aa sequence types
-	my $insert_seqtypes = "INSERT OR IGNORE INTO $t{'seqtypes'} (type) VALUES ('nt'),('aa')";
+	my $insert_seqtypes = "INSERT OR IGNORE INTO $t->{'seqtypes'} (type) VALUES ('nt'),('aa')";
 
 	my $dbh = get_dbh();
 	foreach (values %create_table) {
@@ -312,6 +334,116 @@ sub create_tables {
 	$dbh->disconnect;
 }
 
+
+sub create_temp_table {
+	my $temptable = shift @_;
+	my $create_temp_table_query = "CREATE TABLE $temptable (
+			`name`        VARCHAR(255),
+			`longname`    VARCHAR(255),
+			`orthoset`    VARCHAR(255),
+			`orthoid`     VARCHAR(255),
+			`blastdb`     VARCHAR(255),
+			`header`      VARCHAR(512),
+			`sequence`    MEDIUMBLOB,
+			`description` VARCHAR(255))";
+	my $create_temp_indices_query = "BEGIN;
+			CREATE INDEX IF NOT EXISTS ${temptable}_name ON $temptable (name);
+			CREATE INDEX IF NOT EXISTS ${temptable}_orthoset ON $temptable (orthoset);
+			CREATE INDEX IF NOT EXISTS ${temptable}_orthoid ON $temptable (orthoid);
+			CREATE INDEX IF NOT EXISTS ${temptable}_header ON $temptable (header);
+			COMMIT;";
+	my $dbh = get_dbh();
+	$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
+	$dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
+	$dbh->do($create_temp_indices_query) or die "Fatal: Could not create indices on temporary table\n";
+	$dbh->disconnect;
+}
+
+sub load_csv_into_temptable {
+	my $csvfile   = shift @_;
+	my $temptable = shift @_;
+	my @loadqueries = (
+		".separator ,",
+		".mode csv",
+		".import $csvfile $temptable",
+		".mode list",
+	);
+	foreach (@loadqueries) {
+		print $_, "\n" if $verbose;
+		system qq{$sqlite -separator "," $database "$_"} and die "Fatal: Could not import CSV file into temporary table $temptable\n";
+	}
+}
+
+sub fill_tables_from_temp_table {
+	my $t = shift @_;
+	my $temptable = shift @_;
+	my @queries = (
+		# user name
+		"INSERT OR IGNORE INTO $t->{'users'} (name) VALUES ('$db_dbuser')",
+		# taxa (name, longname)
+		"INSERT OR IGNORE INTO $t->{'taxa'} (name, longname, core) 
+			SELECT DISTINCT $temptable.name, $temptable.longname, 1 
+			FROM $temptable",
+		# set name + description
+		"INSERT OR IGNORE INTO $t->{'set_details'} (name, description)
+			SELECT DISTINCT $temptable.orthoset, $temptable.description 
+			FROM $temptable LIMIT 1",
+		# blast databases
+		"INSERT OR IGNORE INTO $t->{'blastdbs'} (setid, blastdb_path) 
+			SELECT DISTINCT $t->{'set_details'}.id, $temptable.blastdb 
+			FROM $temptable
+			LEFT JOIN $t->{'set_details'} 
+				ON $t->{'set_details'}.name = $temptable.orthoset",
+		# pep sequences
+		"INSERT OR IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, user, date) 
+			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, $t->{'users'}.id, CURRENT_TIMESTAMP
+			FROM $temptable
+				LEFT JOIN $t->{'taxa'} 
+			ON $temptable.name  = $t->{'taxa'}.name
+				INNER JOIN $t->{'users'}
+			ON $t->{'users'}.name = '$db_dbuser'",
+		# delete everything where header or sequence is NULL or empty
+		"DELETE FROM $t->{'aaseqs'}
+			WHERE $t->{'aaseqs'}.header IS NULL
+			OR $t->{'aaseqs'}.sequence IS NULL
+			OR $t->{'aaseqs'}.header = ''
+			OR $t->{'aaseqs'}.sequence = ''",
+		# sequence pairs (pep-nuc)
+		"INSERT OR IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user)
+			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, CURRENT_TIMESTAMP, $t->{'users'}.id
+			FROM $t->{'taxa'}
+			INNER JOIN $t->{'aaseqs'}
+				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.id
+			LEFT JOIN $t->{'ogs'}
+				ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
+			LEFT JOIN $t->{'ntseqs'}
+				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header
+			INNER JOIN $t->{'users'}
+				ON $t->{'users'}.name = '$db_dbuser'",
+		# orthologous groups
+		"INSERT OR IGNORE INTO $t->{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
+			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
+			FROM $t->{'aaseqs'} 
+			INNER JOIN $temptable 
+				ON $t->{'aaseqs'}.header = $temptable.header 
+			INNER JOIN $t->{'seqpairs'} 
+				ON $t->{'seqpairs'}.aa_seq = $t->{'aaseqs'}.id 
+			INNER JOIN $t->{'set_details'} 
+				ON $t->{'set_details'}.name = $temptable.orthoset",
+	);
+
+	my $dbh = get_dbh();
+	my $nrows;
+	foreach (@queries) {
+		print $_ . ";\n" if $verbose;
+		$nrows = $dbh->do($_) or fail_and_exit("Query failed: $_");
+		if ($verbose) {
+			($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
+		}
+	}
+	$dbh->disconnect;
+	return $nrows;
+}
 
 =head2 get_ortholog_sets()
 

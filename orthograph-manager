@@ -96,7 +96,7 @@ elsif ($use_sqlite) {
 }
 
 # table names. too lazy to change all of them, so i'll just reuse the old hash structure
-my %t            = (
+my $t            = {
 	'aaseqs'       => $db_table_aaseqs,
 	'blastdbs'     => $db_table_blastdbs,
 	'ntseqs'       => $db_table_ntseqs,
@@ -108,7 +108,7 @@ my %t            = (
 	'taxa'         => $db_table_taxa,
 	'temp'         => $db_table_temp,
 	'users'        => $db_table_users,
-);
+};
 
 my $blastdir          = '';
 my $description       = '';
@@ -174,27 +174,27 @@ elsif ($delete_ogs) {
 # TODO make this less redundant!
 #-------------------------------------------------- 
 if ($listsets) {
-	&list_sets and exit;
+	list_sets() and exit;
 }
 
 elsif ($listogs) {
-	&list_ogs and exit;
+	list_ogs() and exit;
 }
 
 elsif ($listtaxa) {
-	&list_set_details and exit;
+	list_set_details() and exit;
 }
 
 elsif ($isnucleotide) {
 	$infile = $isnucleotide;
 	# 0 for nucleotide
-	&load_taxon($infile, 0) or die("Fatal: Nucleotide loading failed\n");
+	load_taxon($infile, 0) or die("Fatal: Nucleotide loading failed\n");
 	exit;
 }
 elsif ($ispeptide) {
 	$infile = $ispeptide;
 	# 1 for amino-acid
-	&load_taxon($infile, 1) or die("Fatal: Peptide loading failed\n");
+	load_taxon($infile, 1) or die("Fatal: Peptide loading failed\n");
 	exit;
 }
 
@@ -207,208 +207,47 @@ $infile = shift @ARGV;
 
 # TODO stop here if db structure is not present!
 
-print "Setting up core ortholog set in $db_dbname on $db_dbserver... (press CTRL+C to abort)\n";
+print "Setting up core ortholog set from '$infile' in database '$database' on host '$db_dbserver'... (press CTRL+C to abort)\n";
 
-if (!$setname) { $setname = &get_setname() }
+if (!$setname) { $setname = get_setname() }
 
 # TODO rewrite this part using parametrized queries to protect from SQL injections?
 if (set_exists($setname)) {
 	warn "Warning: An ortholog set with this name already exists in $db_dbname on $db_dbserver.\n";
 	unless ($overwrite) {
-		die "Pick a different name or use -o for overwriting.\n";
-	}
-	$| = 1;
-	print "Overwriting existing entries (may cause data disintegration). ";
-	print "Are you sure (y/n)? ";
-	$| = 0;
-	my $yn = readline(STDIN);
-	chomp $yn;
-	unless ($yn =~ /^[yn]$/i) {
-		print "OK, exiting.\n";
+		print "Pick a different name or use -o for overwriting.\n";
 		exit;
 	}
+	print "Overwriting existing entries (may cause data disintegration). Are you sure (y/n)? ";
+	get_yn() or print "OK, exiting\n" and exit;
 }
 
 print "Enter a description for the set (optional but recommended): "; 
 $description = <STDIN>;
+unless ($description) { print "Caught EOF. Exiting.\n" and exit }
 chomp $description;
 
-unless (defined $setname) { croak "Fatal: You must specify the core-ortholog set name (-s).\n" }
+unless (defined $setname) {
+	print "Fatal: You must specify the core-ortholog set name (-s).\n";
+	exit;
+}
 
 #--------------------------------------------------
 # # read the input file and create a CSV file with everything we know 
 #-------------------------------------------------- 
+my $tmpfile = make_csv($infile);
 
-my $tmpfile = File::Temp->new(UNLINK=>1);
+load_temp_table_with_data($tmpfile);
 
-my $faobj = Seqload::Fasta->open($infile);
-no warnings;	# disable warnings for printing of the NULL column
-while (my ($hdr, $seq) = $faobj->next_seq()) {
-	$seq =~ s/-//g;	# remove all gaps from the sequence
-	if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
-		# change all Us to X if requested
-		if ($u_subst and $seq =~ s/U/$u_subst/gi) {
-			warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence '$hdr'.\n");
-		}
-		else {
-			warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
-		}
-	}
-	++$total_seqs;
-	# no commas in the header please, they confuse the csv parser
-	$hdr =~ s/,/_/g;
-	my @headerfields = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
-	# no colons either
-	$headerfields[3] =~ s/:/_/g if defined $headerfields[3];
+my $nrows = fill_tables_from_temp_table($t);
 
-	# if the original proteome is missing, this can't work
-	if ($headerfields[1] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
-
-	$headerfields[0] =~ s/:.*//;	   # remove everything from the colon
-	printf $tmpfile "%s,%s,%s,%s,%s,%s,%s,%s\n", 
-		$headerfields[0],              # taxon shorthand
-		undef,                         # this will later be the full name
-		$setname,	                     # set name
-		$headerfields[2],              # orthodb id, e.g. EOG500001
-		File::Spec->catdir($blastdir), # blast database directory
-		$headerfields[3],              # ogs id
-		$seq,                          # sequence
-		$description;                  # set description
-}
-use warnings;	# resume yelling 
-print "used file $tmpfile\n" if $verbose;
-undef($faobj);
-$tmpfile->close();
-
-#--------------------------------------------------
-# # create a temporary table for high-speed loading of the data. we can sort it out later.
-#-------------------------------------------------- 
-
-my $create_temp_table_query = "CREATE TABLE $temptable (
-    `name`     VARCHAR(255), INDEX(name),
-    `longname` VARCHAR(255),
-		`orthoset` VARCHAR(255), INDEX(orthoset),
-		`orthoid`  VARCHAR(255), INDEX(orthoid),
-		`blastdb`  VARCHAR(255),
-		`header`   VARCHAR(512), INDEX(header),
-		`sequence` MEDIUMBLOB,
-		`description` VARCHAR(255))";
-my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' 
-  INTO TABLE $temptable FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' (
-		name,
-		longname,
-		orthoset,
-		orthoid,
-		blastdb,
-		header,
-		sequence,
-		description)";
-
-my $dbh = get_dbh();
-$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
-$dbh->do($create_temp_table_query) or die "Fatal: Could not CREATE TABLE $temptable\n";
-$dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
-$dbh->disconnect;
-
-print "Successfully loaded $total_seqs sequences from $infile into $temptable on $db_dbserver.\n";
-
-# get name and longname from the temp table; they do not get updated automatically
-$dbh = get_dbh();
-$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM $temptable");
-$sql->execute();
-while (my @result = $sql->fetchrow) {
-	$names{$result[0]} = '';
-}
-$dbh->disconnect;
-
-# ask the user for the taxon names that aren't complete
-foreach (sort(keys %names)) {
-	unless ($names{$_}) {
-		print "Enter complete name for the shorthand '$_': ";
-		$names{$_} = <STDIN>;
-		chomp $names{$_};
-	}
-}
-
-# update the temptable with the collected info
-$dbh = get_dbh();
-foreach (keys %names) {
-	$sql = $dbh->prepare("UPDATE $temptable SET longname='$names{$_}' WHERE name='$_'");
-	$sql->execute();
-}
-$dbh->disconnect;
 
 #--------------------------------------------------
 # # temptable is now complete. going to insert the data into the main table 
 #-------------------------------------------------- 
-
 # TODO check whether the proteome header format is right (protein id only)!
 # TODO import the proteome data via a second temptable
 # TODO rewrite this part using parametrized queries to protect from SQL injections?
-
-my @queries = (
-	# user name
-	"INSERT IGNORE INTO $t{'users'} (name) VALUES ('$db_dbuser')",
-	# taxa (name, longname)
-	"INSERT IGNORE INTO $t{'taxa'} (name, longname, core) 
-    SELECT DISTINCT $temptable.name, $temptable.longname, 1 
-    FROM $temptable",
-	# set name + description
-	"INSERT IGNORE INTO $t{'set_details'} (name, description)
-    SELECT DISTINCT $temptable.orthoset, $temptable.description 
-    FROM $temptable LIMIT 1",
-	# blast databases
-	"INSERT IGNORE INTO $t{'blastdbs'} (setid, blastdb_path) 
-    SELECT DISTINCT $t{'set_details'}.id, $temptable.blastdb 
-    FROM $temptable
-		LEFT JOIN $t{'set_details'} 
-      ON $t{'set_details'}.name = $temptable.orthoset",
-	# pep sequences
-	"INSERT IGNORE INTO $t{'aaseqs'} (taxid, header, sequence, user, date) 
-    SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence, $t{'users'}.id, UNIX_TIMESTAMP()
-    FROM $temptable
-		  LEFT JOIN $t{'taxa'} 
-    ON $temptable.name  = $t{'taxa'}.name
-      INNER JOIN $t{'users'}
-    ON $t{'users'}.name = '$db_dbuser'",
-	# delete everything where header or sequence is NULL or empty
-	"DELETE FROM $t{'aaseqs'}
-    WHERE $t{'aaseqs'}.header IS NULL
-    OR $t{'aaseqs'}.sequence IS NULL
-    OR $t{'aaseqs'}.header = ''
-    OR $t{'aaseqs'}.sequence = ''",
-	# sequence pairs (pep-nuc)
-	"INSERT IGNORE INTO $t{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user)
-    SELECT $t{'taxa'}.id, $t{'ogs'}.id, $t{'aaseqs'}.id, $t{'ntseqs'}.id, UNIX_TIMESTAMP(), $t{'users'}.id
-    FROM $t{'taxa'}
-    INNER JOIN $t{'aaseqs'}
-      ON $t{'aaseqs'}.taxid = $t{'taxa'}.id
-    LEFT JOIN $t{'ogs'}
-      ON $t{'taxa'}.id = $t{'ogs'}.taxid
-    LEFT JOIN $t{'ntseqs'}
-      ON $t{'aaseqs'}.header = $t{'ntseqs'}.header
-    INNER JOIN $t{'users'}
-      ON $t{'users'}.name = '$db_dbuser'",
-	# orthologous groups
-	"INSERT IGNORE INTO $t{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
-    SELECT $t{'set_details'}.id, $temptable.orthoid, $t{'seqpairs'}.id 
-    FROM $t{'aaseqs'} 
-    INNER JOIN $temptable 
-      ON $t{'aaseqs'}.header = $temptable.header 
-    INNER JOIN $t{'seqpairs'} 
-      ON $t{'seqpairs'}.aa_seq = $t{'aaseqs'}.id 
-    INNER JOIN $t{'set_details'} 
-      ON $t{'set_details'}.name = $temptable.orthoset",
-);
-
-$dbh = get_dbh();
-my $nrows;
-foreach (@queries) {
-	print $_ . ";\n";
-	$nrows = $dbh->do($_) or die();
-	($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
-}
-$dbh->disconnect;
 
 if ($nrows == 0) {	# the last one 
 	print "No orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for.\n";
@@ -416,13 +255,66 @@ if ($nrows == 0) {	# the last one
 	exit; 
 }
 else {	# something has changed
-	printf("Successfully loaded ortholog set %s into database.\n", $setname);
+	printf("Successfully loaded ortholog set %s ($nrows orthologous groups) into database.\n", $setname);
 	exit;
 }
 
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
+
+sub fill_tables_from_temp_table {
+	if ($use_mysql) {
+		Wrapper::Mysql::fill_tables_from_temp_table($t, $temptable);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::fill_tables_from_temp_table($t, $temptable);
+	}
+}
+#--------------------------------------------------
+# # create a temporary table for high-speed loading of the data. we can sort it out later.
+#-------------------------------------------------- 
+
+sub load_temp_table_with_data {
+	my $csvfile = shift @_;
+
+	if ($use_mysql) {
+		Wrapper::Mysql::create_temptable($temptable);
+		Wrapper::Mysql::load_csv_into_temptable($csvfile, $temptable);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::create_temp_table($temptable);
+		Wrapper::Sqlite::load_csv_into_temptable($csvfile, $temptable);
+	}
+
+	print "Successfully loaded $total_seqs sequences from $infile into $temptable on $db_dbserver.\n";
+
+	# get name and longname from the temp table; they do not get updated automatically
+	my $dbh = get_dbh();
+	$sql = $dbh->prepare("SELECT DISTINCT name, longname FROM $temptable");
+	$sql->execute();
+	while (my @result = $sql->fetchrow) {
+		$names{$result[0]} = '';
+	}
+	$dbh->disconnect;
+
+	# ask the user for the taxon names that aren't complete
+	foreach (sort(keys %names)) {
+		unless ($names{$_}) {
+			print "Enter complete name for the shorthand '$_': ";
+			$names{$_} = <STDIN>;
+			chomp $names{$_};
+		}
+	}
+
+	# update the temptable with the collected info
+	$dbh = get_dbh();
+	foreach (keys %names) {
+		$sql = $dbh->prepare("UPDATE $temptable SET longname='$names{$_}' WHERE name='$_'");
+		$sql->execute();
+	}
+	$dbh->disconnect;
+}
 
 sub get_dbh {
 	if ($use_mysql) {
@@ -444,11 +336,11 @@ sub fail_and_exit {
 sub set_exists {
 	my $setname = shift;
 	if ($use_mysql) {
-		my $query = "SELECT name FROM $t{'set_details'} WHERE name = '$setname'";
+		my $query = "SELECT name FROM $t->{'set_details'} WHERE name = '$setname'";
 		return Wrapper::Mysql::check($query)
 	}
 	elsif ($use_sqlite) {
-		my $query = "SELECT name FROM $t{'set_details'} WHERE name = '$setname'";
+		my $query = "SELECT name FROM $t->{'set_details'} WHERE name = '$setname'";
 		return Wrapper::Sqlite::check($query)
 	}
 }
@@ -457,10 +349,10 @@ sub set_exists {
 # drop all tables. no really, all that start with $prefix.
 sub drop_tables {#{{{
 	if ($use_mysql) {
-		Wrapper::Mysql::drop_tables(%t);
+		Wrapper::Mysql::drop_tables($t);
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::drop_tables(%t);
+		Wrapper::Sqlite::drop_tables($t);
 	}
 }#}}}
 
@@ -468,12 +360,59 @@ sub drop_tables {#{{{
 # create tables. makes use of the %create_table hash.
 sub create_tables {#{{{
 	if ($use_mysql) {
-		Wrapper::Mysql::create_tables(%t);
+		Wrapper::Mysql::create_tables($t);
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::create_tables(%t);
+		Wrapper::Sqlite::create_tables($t);
 	}
 }#}}}
+
+# sub: make_csv
+# generate a csv file from the ortholog set fasta file
+sub make_csv {
+	my $inf = shift @_;
+	my $fh = File::Temp->new(UNLINK=>0);
+
+	my $faobj = Seqload::Fasta->open($inf);
+	no warnings;	# disable warnings for printing of the NULL column
+	while (my ($hdr, $seq) = $faobj->next_seq()) {
+		$seq =~ s/-//g;	# remove all gaps from the sequence
+		if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
+			# change all Us to X if requested
+			if ($u_subst and $seq =~ s/U/$u_subst/gi) {
+				warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence '$hdr'.\n");
+			}
+			else {
+				warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+			}
+		}
+		++$total_seqs;
+		# no commas in the header please, they confuse the csv parser
+		$hdr =~ s/,/_/g;
+		my @headerfields = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
+		# no colons either
+		$headerfields[3] =~ s/:/_/g if defined $headerfields[3];
+
+		# if the original proteome is missing, this can't work
+		if ($headerfields[1] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
+
+		$headerfields[0] =~ s/:.*//;	   # remove everything from the colon
+		printf $fh "%s,%s,%s,%s,%s,%s,%s,%s\n", 
+			$headerfields[0],              # taxon shorthand
+			'',                         # this will later be the full name
+			$setname,	                     # set name
+			$headerfields[2],              # orthodb id, e.g. EOG500001
+			File::Spec->catdir($blastdir), # blast database directory
+			$headerfields[3],              # ogs id
+			$seq,                          # sequence
+			$description;                  # set description
+	}
+	use warnings;	# resume yelling 
+	print "used file '$fh'\n" if $verbose;
+	undef($faobj);
+	$fh->close();
+	return $fh;
+}
 
 # sub: get_yn
 # Get a response of the type 'y' or 'n'. Prompts the user until she complies :D
@@ -508,15 +447,15 @@ sub load_taxon {#{{{
 	# $seqtable and $otherseqtable assume opposing values, respectively,
 	# depending on the mode in which the function is called.
 	# the same goes for the columns $seqcol and $otherseqcol.
-	my $seqtable      = $mode ? $t{'aaseqs'} : $t{'ntseqs'};
-	my $otherseqtable = $mode ? $t{'ntseqs'} : $t{'aaseqs'};
+	my $seqtable      = $mode ? $t->{'aaseqs'} : $t->{'ntseqs'};
+	my $otherseqtable = $mode ? $t->{'ntseqs'} : $t->{'aaseqs'};
 	my $seqcol        = $mode ? 'aa_seq'     : 'nt_seq';
 	my $otherseqcol   = $mode ? 'nt_seq'     : 'aa_seq';
 	my $type = $mode          ? 2            : 1;  # 1 is 'nt', 2 is 'aa'
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
 	# get taxon shorthand
-	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'taxa'} WHERE `core` = '1'");
+	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'taxa'} WHERE `core` = '1'");
 	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
@@ -589,31 +528,31 @@ sub load_taxon {#{{{
 
 		# insert data into main table. IGNORE is important to avoid duplicates without throwing errors.
 		"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
-		SELECT $t{'taxa'}.id, $temptable.header, $temptable.sequence 
+		SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence 
 		FROM $temptable 
-		LEFT JOIN $t{'taxa'} 
-		ON $temptable.taxid = $t{'taxa'}.id",
+		LEFT JOIN $t->{'taxa'} 
+		ON $temptable.taxid = $t->{'taxa'}.id",
 
 		# insert sequence pairs relationships
-		"INSERT INTO $t{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $t{'taxa'}.id, $t{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
-		FROM $t{'taxa'}
+		"INSERT INTO $t->{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
+		SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
+		FROM $t->{'taxa'}
 		RIGHT JOIN $seqtable
-		ON $seqtable.taxid = $t{'taxa'}.id
-		LEFT JOIN $t{'ogs'}
-		ON $t{'taxa'}.id = $t{'ogs'}.taxid
+		ON $seqtable.taxid = $t->{'taxa'}.id
+		LEFT JOIN $t->{'ogs'}
+		ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
 		LEFT JOIN $otherseqtable
 		ON $otherseqtable.header = $seqtable.header
-		WHERE $t{'taxa'}.id = '$taxon'
-		ON DUPLICATE KEY UPDATE $t{'seqpairs'}.$seqcol = $seqtable.id,
-		$t{'seqpairs'}.$otherseqcol = $otherseqtable.id",
+		WHERE $t->{'taxa'}.id = '$taxon'
+		ON DUPLICATE KEY UPDATE $t->{'seqpairs'}.$seqcol = $seqtable.id,
+		$t->{'seqpairs'}.$otherseqcol = $otherseqtable.id",
 
 		# update OGS table
-		"INSERT IGNORE INTO $t{'ogs'} (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
+		"INSERT IGNORE INTO $t->{'ogs'} (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
 
 	);
 	# execute all queries
-	$dbh = get_dbh();
+	my $dbh = get_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or return 0;
 	foreach (@queries) {
 		print "$_\n" if $verbose;
@@ -622,7 +561,7 @@ sub load_taxon {#{{{
 	}
 	$dbh->disconnect();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $seqpairs = Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t{'aaseqs'} WHERE $t{'aaseqs'}.taxid = '$taxon'");
+	my $seqpairs = Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t->{'aaseqs'} WHERE $t->{'aaseqs'}.taxid = '$taxon'");
 	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $db_dbname, $db_dbserver);
 	return 1;
 }#}}}
@@ -645,7 +584,7 @@ sub create_blastdb {#{{{
 	}
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	# TODO make this work
-	my $blastdir = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} WHERE  = ");
+	my $blastdir = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} WHERE  = ");
 	my $outfile = File::Spec->catfile($taxsh);
 	my @makeblastdbcmd = qq(makeblastdb -in $infile -out $outfile -input_type fasta -title $taxsh);
 }#}}}
@@ -657,6 +596,7 @@ sub create_blastdb {#{{{
 sub get_setname {#{{{
 	print "Enter the set name (required; ASCII only): ";
 	$setname = <STDIN>;
+	unless ($setname) { print "Caught EOF. Exiting.\n" and exit }
 	chomp $setname;
 	if ($setname =~ /[^a-zA-Z0-9_]/) {
 		die "Error: Must be alphanumeric (a-z, 0-9, and underscore).\n";
@@ -666,7 +606,7 @@ sub get_setname {#{{{
 
 sub getblastdir {#{{{
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $bd = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t{'blastdbs'} LIMIT 1");
+	my $bd = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} LIMIT 1");
 	if (!$bd) {
 		print "Enter the location where the BLAST database directories are located (required): ";
 		$blastdir = <STDIN>;
@@ -745,14 +685,14 @@ sub delete_set {#{{{
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
 	my $this_set_dir = File::Spec->catdir($setdir, $setname);
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $data = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'set_details'} WHERE name = '$setname'");
+	my $data = &Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'set_details'} WHERE name = '$setname'");
 	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
 	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
 	my $setid = $$data[0][0];
 	my @queries = (
-		"DELETE FROM $t{'set_details'} WHERE $t{'set_details'}.`id`  = '$setid'",
-		"DELETE FROM $t{'orthologs'}   WHERE $t{'orthologs'}.`setid` = '$setid'",
-		"DELETE FROM $t{'blastdbs'}    WHERE $t{'blastdbs'}.`setid`  = '$setid'",
+		"DELETE FROM $t->{'set_details'} WHERE $t->{'set_details'}.`id`  = '$setid'",
+		"DELETE FROM $t->{'orthologs'}   WHERE $t->{'orthologs'}.`setid` = '$setid'",
+		"DELETE FROM $t->{'blastdbs'}    WHERE $t->{'blastdbs'}.`setid`  = '$setid'",
 	);
 	
 	my $dbh = get_dbh();
@@ -774,7 +714,7 @@ sub delete_ogs {
 
 	# get taxon shorthand
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t{'taxa'} WHERE `core` = '1'");
+	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'taxa'} WHERE `core` = '1'");
 	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
