@@ -142,10 +142,10 @@ unless ($species_id) {
 }
 
 # get real table names
-($db_table_ests, $db_table_hmmsearch, $db_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
+($db_table_ests, $db_table_hmmsearch, $db_table_blast) = get_real_table_names($species_id);
 
 # get the set id from the database
-$set_id = Wrapper::Mysql::get_set_id($setname);
+$set_id = get_set_id($setname);
 unless ($set_id) {
 	print $stderr "Fatal: No such set in database: '$setname'\n";
 	exit(1);
@@ -154,17 +154,17 @@ unless ($set_id) {
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
 if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
-else { @reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id) }
+else { @reftaxa = get_taxa_in_set($set_id) }
 
 # get an orthoid => list_of_aaseq_ids relationship from the db
-my $aaseqs_in_orthoid = Wrapper::Mysql::get_orthologs_for_set_hashref($set_id);
+my $aaseqs_in_orthoid = get_orthologs_for_set_hashref($set_id);
 
 # create view (a virtual table) for the log-evalues
-Wrapper::Mysql::create_scores_view($species_id)
+create_scores_view($species_id)
 	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
 
 
-my @scores = Wrapper::Mysql::get_scores_list();
+my @scores = get_scores_list();
 
 my $seen = {};
 my $c = 0;
@@ -176,7 +176,7 @@ my $start = int time;
 
 foreach my $score (@scores) {
 	# this is an array of arrays, there may be multiple results with the same score
-	my $hmmresults = Wrapper::Mysql::get_hmmresult_for_score($score);
+	my $hmmresults = get_hmmresult_for_score($score);
 	printf $stdout "Evaluating score %.1f...\n", $score
 		unless $quiet;
 	++$c;
@@ -195,7 +195,7 @@ foreach my $score (@scores) {
 					if $verbose;
 			next;
 		}
-		my $blastresults = Wrapper::Mysql::get_blastresult_for_digest($digest);
+		my $blastresults = get_blastresult_for_digest($digest);
 		my $mismatches = 0;
 		foreach my $blasthit (@$blastresults) {
 			# ok, we got a reciprocal hit
@@ -312,8 +312,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		++$hitcount;
 
 		# get the sequences from the database
-		my $proteome_sequence = Wrapper::Mysql::get_reference_sequence($hit->blast_target());
-		my $est_sequence = Wrapper::Mysql::get_nucleotide_transcript_for($hit->hmm_target());
+		my $proteome_sequence = get_reference_sequence($hit->blast_target());
+		my $est_sequence = get_nucleotide_transcript_for($hit->hmm_target());
 
 		# trim the transcript sequence to the domain coordinates
 		$proteome_sequence = substr($proteome_sequence, $hit->env_start-1, $hit->env_end() - $hit->env_start()-1);
@@ -356,7 +356,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 				$prev_end = $hit->hmm_end();
 			}
 			# concatenate
-			$hit->real_header( Wrapper::Mysql::get_real_header($hit->hmm_target()) );
+			$hit->real_header( get_real_header($hit->hmm_target()) );
 			$hdr_aa .= $hit->real_header() . ':[len ' . length($hit->{'orf_aa_sequence'}) . ']';
 			$hdr_nt .= $hit->real_header() . ':[len ' . length($hit->{'orf_cdna_sequence'}) . ']';
 			$seq .= $hit->{'orf_aa_sequence'};
@@ -386,7 +386,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	}
 
 	# get the core ortholog sequences for this group
-	my $core_sequences = Wrapper::Mysql::get_ortholog_group($set_id, $orthoid);
+	my $core_sequences = get_ortholog_group($set_id, $orthoid);
 	# new fasta file
 	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
@@ -396,7 +396,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	undef $fafh;
  
 	# do the same for the nucleotide sequences
-	my $core_sequences_nt = Wrapper::Mysql::get_ortholog_group_nucleotide($set_id, $orthoid);
+	my $core_sequences_nt = get_ortholog_group_nucleotide($set_id, $orthoid);
 	# new fasta file
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
@@ -741,4 +741,134 @@ sub get_taxid_for_species {
 	print "getting taxid for $sn\n";
 	if ($use_mysql) { return Wrapper::Mysql::get_taxid_for_species($sn) }
 	elsif ($use_sqlite) { return Wrapper::Sqlite::get_taxid_for_species($sn) }
+}
+
+sub get_real_table_names {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_real_table_names($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_real_table_names($specid);
+	}
+}
+
+sub get_set_id {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_set_id($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_set_id($specid);
+	}
+}
+
+sub get_taxa_in_set {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_taxa_in_set($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_taxa_in_set($specid);
+	}
+}
+
+sub get_orthologs_for_set_hashref {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_orthologs_for_set_hashref($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_orthologs_for_set_hashref($specid);
+	}
+}
+
+sub create_scores_view {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::create_scores_view($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::create_scores_view($specid);
+	}
+}
+
+sub get_scores_list {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_scores_list($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_scores_list($specid);
+	}
+}
+
+sub get_hmmresult_for_score {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_hmmresult_for_score($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_hmmresult_for_score($specid);
+	}
+}
+
+sub get_blastresult_for_digest {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_blastresult_for_digest($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_blastresult_for_digest($specid);
+	}
+}
+
+sub get_reference_sequence {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_reference_sequence($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_reference_sequence($specid);
+	}
+}
+
+sub get_nucleotide_transcript_for {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_nucleotide_transcript_for($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_nucleotide_transcript_for($specid);
+	}
+}
+
+sub get_real_header {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_real_header($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_real_header($specid);
+	}
+}
+
+sub get_ortholog_group {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_ortholog_group($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_ortholog_group($specid);
+	}
+}
+
+sub get_ortholog_group_nucleotide {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_ortholog_group_nucleotide($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_ortholog_group_nucleotide($specid);
+	}
 }

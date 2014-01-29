@@ -96,6 +96,7 @@ GetOptions( $config,
 	'num-threads=i',
   'ortholog-set=s',
   'output-directory=s',
+	'overwrite|o',
   'preparedb',
   'quiet',
   'quiet|q',
@@ -194,6 +195,7 @@ $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
 $config->{'ortholog-set'}               //= '';
 $config->{'output-directory'}           //= '';
+$config->{'overwrite'}                  //= 0;
 $config->{'prepare'}                    //= 0;  
 $config->{'quiet'}                      //= 0;  # I like my quiet
 $config->{'reference-taxa'}             //= '';

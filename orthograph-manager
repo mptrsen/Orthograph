@@ -75,6 +75,7 @@ my $listsets                = $config->{'list-sets'};
 my $listogs                 = $config->{'list-ogs'};
 my $isnucleotide            = $config->{'load-ogs-nucleotide'};
 my $ispeptide               = $config->{'load-ogs-peptide'};
+my $overwrite               = $config->{'overwrite'};
 
 # other variables
 my $verbose                 = $config->{'verbose'};
@@ -115,7 +116,6 @@ my $description       = '';
 my $listests          = 0;
 my $name              = '';
 my $ogs_name          = '';
-my $overwrite         = 0;
 my $reassignorthologs = 0;
 my $setdir            = '';
 my $setname           = '';
@@ -158,7 +158,7 @@ elsif ($create) {
 
 elsif ($delete_set) { 
 	&delete_set($delete_set);
-	print "OK, removed set '$delete_set' completely.\n";
+	print "OK, removed orthology relationships for set '$delete_set' completely. No sequences were deleted from database.\n";
 	exit;
 }
 elsif ($delete_ogs) {
@@ -250,18 +250,29 @@ my $nrows = fill_tables_from_temp_table($t);
 # TODO rewrite this part using parametrized queries to protect from SQL injections?
 
 if ($nrows == 0) {	# the last one 
-	print "No orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for.\n";
+	print "No new orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for or you overwrote existing data.\n";
 	print "Done.\n";
 	exit; 
 }
 else {	# something has changed
-	printf("Successfully loaded ortholog set %s ($nrows orthologous groups) into database.\n", $setname);
+	my $n_cogs = get_number_of_cogs_for_set($setname);
+	printf("Successfully loaded ortholog set %s (%d orthologous groups, %d new sequences) into database.\n", $setname, $n_cogs, $nrows);
 	exit;
 }
 
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
+
+sub get_number_of_cogs_for_set {
+	my $setn = shift @_;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_number_of_cogs_for_set($setn);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_number_of_cogs_for_set($setn);
+	}
+}
 
 sub fill_tables_from_temp_table {
 	if ($use_mysql) {
@@ -620,7 +631,13 @@ sub getblastdir {#{{{
 
 
 sub list_sets {
-	my $sets = Wrapper::Mysql::get_ortholog_sets();
+	my $sets;
+	if ($use_mysql) {
+		$sets = Wrapper::Mysql::get_ortholog_sets();
+	}
+	elsif ($use_sqlite) {
+		$sets = Wrapper::Sqlite::get_ortholog_sets();
+	}
 	my $maxlen_set  = 0;
 	my $maxlen_desc = 0;
 	# determine maximum length of set names for the table
