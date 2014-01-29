@@ -617,7 +617,7 @@ sub preparedb {
 }
 
 
-sub get_transcripts {
+sub get_transcripts_for_species {
 	my $specid = shift or croak "Usage: Wrapper::Mysql::get_transcripts(SPECIESID, TYPE)";
 	my $type = shift or croak "Usage: Wrapper::Mysql::get_transcripts(SPECIESID, TYPE)";
 	my $query = "SELECT digest, sequence

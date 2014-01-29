@@ -637,7 +637,7 @@ CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue $db_table_ests ($db_col_log_
 	$dbh->disconnect();
 }
 
-sub get_transcripts {
+sub get_transcripts_for_species {
 	my $specid = shift or croak "Usage: Wrapper::Sqlite::get_transcripts(SPECIESID, TYPE)";
 	my $type = shift or croak "Usage: Wrapper::Sqlite::get_transcripts(SPECIESID, TYPE)";
 	my $query = "SELECT digest, sequence
