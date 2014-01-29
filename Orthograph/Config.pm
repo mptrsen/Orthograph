@@ -215,6 +215,8 @@ if ($config->{'continue'}) {
 	$config->{'clear-database'} = 0;
 }
 
+if ($config->{'debug'}) { $config->{'verbose'} = 1 }
+
 # mutually exclusive options
 if ($config->{'database-engine'} ne 'mysql' and $config->{'database-engine'} ne 'sqlite') {
 	print STDERR "Fatal: Database engine not set correctly! Must be 'mysql' or 'sqlite'.\n";

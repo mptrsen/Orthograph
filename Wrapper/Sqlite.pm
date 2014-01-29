@@ -343,6 +343,13 @@ sub create_tables {
 "CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_header  ON $t->{'ntseqs'} (header)",
 	);
 
+	# useful pragmas for performance?
+	my @pragmas = (
+		"PRAGMA main.page_size=4096",
+		"PRAGMA main.cache_size=10000",
+		"PRAGMA main.synchronous=NORMAL",
+		"PRAGMA main.journal_mode=WAL",
+	);
 	# to start off with nt and aa sequence types
 	my $insert_seqtypes = "INSERT OR IGNORE INTO $t->{'seqtypes'} (type) VALUES ('nt'),('aa')";
 
@@ -596,21 +603,21 @@ sub preparedb {
 		`$db_col_end`           UNSIGNED INT NOT NULL
 		)";
 
-	my $query_create_indices = "
-CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $db_table_ests (header);
-CREATE INDEX IF NOT EXISTS ${db_table_ests}_digest ON $db_table_ests ($db_col_digest),
-CREATE INDEX IF NOT EXISTS ${db_table_ests}_taxid ON $db_table_ests ($db_col_taxid),
-CREATE INDEX IF NOT EXISTS ${db_table_ests}_header $db_table_ests ($db_col_header)
-CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_taxid $db_table_ests ($db_col_taxid),
-CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_query $db_table_ests ($db_col_query),
-CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_target $db_table_ests ($db_col_target),
-CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_evalue $db_table_ests ($db_col_log_evalue),
-CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_score $db_table_ests ($db_col_score)
-CREATE INDEX IF NOT EXISTS ${db_table_blast}_taxid $db_table_ests ($db_col_taxid),
-CREATE INDEX IF NOT EXISTS ${db_table_blast}_query $db_table_ests ($db_col_query),
-CREATE INDEX IF NOT EXISTS ${db_table_blast}_target $db_table_ests ($db_col_target),
-CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue $db_table_ests ($db_col_log_evalue)
-	";
+	my @query_create_indices = (
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $db_table_ests (header)",
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_digest ON $db_table_ests ($db_col_digest)",
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_taxid ON $db_table_ests ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $db_table_ests ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_taxid ON $db_table_hmmsearch ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_query ON $db_table_hmmsearch ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_target ON $db_table_hmmsearch ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_evalue ON $db_table_hmmsearch ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_score ON $db_table_hmmsearch ($db_col_score)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_taxid ON $db_table_blast ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_query ON $db_table_blast ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_target ON $db_table_blast ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue ON $db_table_blast ($db_col_log_evalue)"
+	);
 
 	# open connection
 	my $dbh = get_dbh()
@@ -626,7 +633,7 @@ CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue $db_table_ests ($db_col_log_
 	}
 
 	# create all tables
-	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, $query_create_indices) {
+	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, @query_create_indices) {
 		print "$query;\n" if $verbose;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()

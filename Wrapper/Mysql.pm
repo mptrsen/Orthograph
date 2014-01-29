@@ -1553,7 +1553,7 @@ sub load_ests_from_file {
 	my $query = "LOAD DATA LOCAL INFILE '$f' INTO TABLE $db_table_ests FIELDS TERMINATED BY ',' ($list)";
 
 	# open connection and do the transaction
-	my $dbh = Wrapper::Mysql::db_dbh()
+	my $dbh = Wrapper::Mysql::get_dbh()
 		or print "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
 
 	# flush tables, then disable indexes before loading the data. 

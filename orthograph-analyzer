@@ -263,9 +263,9 @@ get_real_table_names($species_id);
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
 	local $| = 1;
-  print "Setting database $db_dbname to a clean slate... ";
+  print "Setting database $database to a clean slate... ";
 	local $| = 0;
-  &preparedb;
+  preparedb();
   print "OK\nDatabase now ready to run $program_name.\n";
   exit;
 }#}}}
@@ -285,7 +285,7 @@ if ($listspecies) {
 &intro;
 
 # get the set id
-$set_id = Wrapper::Mysql::get_set_id($orthoset)
+$set_id = get_set_id($orthoset)
 	or print $stderr "Warning: Could not get set id from database: $DBI::errstr\n";
 
 # prepare the HMMs
@@ -301,7 +301,7 @@ exit if $makeset;
 #-------------------------------------------------- 
 if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
 else {
-	@reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id)
+	@reftaxa = get_taxa_in_set($set_id)
 		or print $stderr "Warning: Could not get reference taxa from database: $DBI::errstr\n"
 }
 @hmmfiles = &hmmlist($hmmdir);
@@ -331,7 +331,7 @@ if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = scalar time;
 	#my $n_deleted = &clear_db($species_name);
-	&preparedb or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
+	preparedb() or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
 	$t1 = scalar time;
 	#printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
@@ -342,7 +342,7 @@ unless ($continue) {
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($estfile, $db_table_ests, 2, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
+	load_data_infile($estfile, $db_table_ests, 2, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
@@ -351,7 +351,7 @@ unless ($continue) {
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($protfile, $db_table_ests, 1, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
+	load_data_infile($protfile, $db_table_ests, 1, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
@@ -360,7 +360,7 @@ unless ($continue) {
 
 
 # get number of sequences for this species, report or die
-$num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
+$num_ests = get_number_of_ests_for_specid($species_id);
 if ($num_ests != 0) {
 	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
 		$num_ests,
@@ -373,7 +373,7 @@ else {
 }
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
-$protfile = &get_transcripts($species_id, 1);
+$protfile = get_transcripts($species_id, 1);
 #}}}
 
 #--------------------------------------------------
@@ -1004,7 +1004,7 @@ sub file_is_empty {
 # Returns: True if successful
 sub make_hmms {#{{{
 	my $set = shift;
-	my $set_id = Wrapper::Mysql::get_set_id($set)
+	my $set_id = get_set_id($set)
 		or print $stderr "Warning: Could not get set ID for set '$set' from database: $DBI::errstr\n";
 	my $hmmsuffix = '.hmm';
 	# does the alignment dir exist?
@@ -1231,11 +1231,12 @@ sub load_data_infile {#{{{
 
 sub load_ests_from_file {
 	my $f = shift;
+	my $list = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::load_ests_from_file($f);
+		return Wrapper::Mysql::load_ests_from_file($f, $list);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::load_ests_from_file($f);
+		return Wrapper::Sqlite::load_ests_from_file($f, $list);
 	}
 }
 
@@ -1345,6 +1346,37 @@ sub pass_stdout {
 	}
 	elsif ($use_sqlite) {
 		Wrapper::Sqlite::pass_stdout($fh);
+	}
+}
+
+sub get_number_of_ests_for_specid {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_number_of_ests_for_specid($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_number_of_ests_for_specid($specid);
+	}
+}
+
+
+sub get_set_id {
+	my $setn = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_set_id($setn);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_set_id($setn);
+	}
+}
+
+sub get_taxa_in_set {
+	my $setid = shift;
+	if ($use_mysql) {
+		Wrapper::Mysql::get_taxa_in_set($setid);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::get_taxa_in_set($setid);
 	}
 }
 
