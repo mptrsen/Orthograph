@@ -31,8 +31,6 @@
         <hr>
 
         <section id="main_content">
-          <p>ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with
-Profile Hidden Markov models</p>
 
 <h1>
 <a name="system-requirements" class="anchor" href="#system-requirements"><span class="octicon octicon-link"></span></a>SYSTEM REQUIREMENTS</h1>
@@ -50,11 +48,6 @@ change or drop features frequently across versions.</p>
 <th align="left">Download from</th>
 </tr></thead>
 <tbody>
-<tr>
-<td align="left">MySQL</td>
-<td align="left">5.1</td>
-<td align="left"><a href="http://www.mysql.com">http://www.mysql.com</a></td>
-</tr>
 <tr>
 <td align="left">MAFFT</td>
 <td align="left">6.951</td>
@@ -76,8 +69,39 @@ change or drop features frequently across versions.</p>
 <td align="left"><a href="http://www.ebi.ac.uk/%7Eguy/exonerate/">http://www.ebi.ac.uk/~guy/exonerate/</a></td>
 </tr>
 </tbody>
-</table><p>Make sure you get the correct versions for your operating system (most packages
+</table>
+
+<p></p>
+
+<p>Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).</p>
+
+<p>You have the choice between two different database systems: MySQL and SQLite. The former is a full-blown server-client database management system with superior performance and many features, the latter is a small, file-based database library that is intended to be simple and requires zero configuration. Depending on your choice, you need one of these packages:</p>
+
+
+<table>
+<thead><tr>
+<th align="left">Package</th>
+<th align="left">Version</th>
+<th align="left">Download from</th>
+</tr></thead>
+<tbody>
+<tr>
+<td align="left">MySQL</td>
+<td align="left">5.1</td>
+<td align="left"><a href="http://www.mysql.com">http://www.mysql.com</a></td>
+</tr>
+<tr>
+<td align="left">SQLite</td>
+<td align="left">3</td>
+<td align="left"><a href="http://www.mysql.com">http://www.sqlite.org/download.html</a></td>
+</tr>
+</tbody>
+</table>
+
+<p></p>
+
+<p>If you use some flavor of Linux, these packages are most likely present in your software repositories. It is recommended to install them using <code>apt-get</code>, <code>yum</code>, or whatever package manager your system uses. Additionally, you need the Perl modules <b>DBI</b> and <b>DBD::mysql</b> or <b>DBD::SQLite</b>, depending on your database choice.</p>
 
 <p>Don't worry about your Perl version if you run a reasonably recent Linux or
 UNIX system, such as Mac OS X, but see <a href="http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems">here</a> and <a href="http://forums.mysql.com/read.php?51,389833,389833">there</a> if you are
@@ -86,7 +110,7 @@ natively, for that matter). You might run into problems getting the MySQL
 driver, HMMer3 and Exonerate to work. Really, don't use Windows. </p>
 
 <p>If you get an error like "Can't locate Some/Module.pm in @INC", you need to
-update your Perl installation; see REQUIRED PERL MODULES for more information.</p>
+update your Perl installation; see <a href="#required-perl-modules">REQUIRED PERL MODULES</a> for more information.</p>
 
 <h1>
 <a name="data-requirements" class="anchor" href="#data-requirements"><span class="octicon octicon-link"></span></a>DATA REQUIREMENTS</h1>
@@ -348,18 +372,6 @@ report after running orthograph-reporter.</p>
 looks ok, try deleting the translated version so Orthograph is forced to
 recreate it. </p>
 
-<p>++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+++ The rest of this document is outdated! So is <code>perldoc orthograph</code>. +++
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++</p>
-
-<h1>
-<a name="invocation" class="anchor" href="#invocation"><span class="octicon octicon-link"></span></a>INVOCATION</h1>
-
-<p>Orthograph allows parsing a config file, which by default is named
-<code>orthograph.conf</code>.  Available options can be obtained using <code>perldoc
-orthograph</code>. Many options can be set or overridden on the command line. For
-those switches, also see <code>perldoc orthograph</code>.</p>
-
 <h1>
 <a name="mysql-performance" class="anchor" href="#mysql-performance"><span class="octicon octicon-link"></span></a>MySQL PERFORMANCE</h1>
 
@@ -380,28 +392,35 @@ Perl can't find one of the required modules. Update your Perl installation if
 this is the case and make sure it contains these modules:</p>
 
 <ul>
-<li> autodie</li>
-<li> strict</li>
-<li> warnings</li>
-<li> Archive::Tar</li>
-<li> Benchmark </li>
-<li> Carp</li>
-<li> Config</li>
-<li> DBD::mysql</li>
-<li> DBI</li>
-<li> Data::Dumper</li>
-<li> Digest::SHA</li>
-<li> File::Basename</li>
-<li> File::Path</li>
-<li> File::Temp</li>
-<li> FindBin</li>
-<li> Getopt::Long</li>
-<li> IO::Dir</li>
-<li> IO::File</li>
-<li> List::Util </li>
-<li> Time::HiRes</li>
-</ul><p>Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
-(c) 2011-2012 Malte Petersen <a href="mailto:mptrsen@uni-bonn.de">mptrsen@uni-bonn.de</a></p>
+	<li> autodie</li>
+	<li> strict</li>
+	<li> warnings</li>
+	<li> Archive::Tar</li>
+	<li> Benchmark </li>
+	<li> Carp</li>
+	<li> Config</li>
+	<li> Data::Dumper</li>
+	<li> Digest::SHA</li>
+	<li> File::Basename</li>
+	<li> File::Path</li>
+	<li> File::Temp</li>
+	<li> FindBin</li>
+	<li> Getopt::Long</li>
+	<li> IO::Dir</li>
+	<li> IO::File</li>
+	<li> List::Util </li>
+	<li> Time::HiRes</li>
+</ul>
+
+In addition, you need the database interaction modules for your database system of choice:
+
+<ul>
+	<li> DBD::mysql or DBD::SQLite</li>
+	<li> DBI</li>
+</ul>
+
+<p>Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
+(c) 2011-2013 Malte Petersen <a href="mailto:mptrsen@uni-bonn.de">mptrsen@uni-bonn.de</a></p>
         </section>
 
         <footer>
