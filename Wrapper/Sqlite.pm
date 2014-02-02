@@ -144,7 +144,6 @@ sub pass_stdout {
 	$stdout = shift;
 }
 
-=cut
 
 sub fail_and_exit {
 	my $msg = shift @_;
@@ -1768,6 +1767,30 @@ sub get_orthologs {
 	my $result = $sql->fetchall_arrayref();
 	$dbh->disconnect();
 	return $result;
+}
+
+sub get_taxon_shorthands {
+	my $q = "SELECT * FROM $db_table_taxa WHERE `core` = '1'";
+	my $dbh = get_dbh();
+	my $sth = $dbh->prepare($q);
+	$sth->execute();
+	my $res = $sth->fetchall_arrayref();
+	$dbh->disconnect;
+	return $res;
+}
+
+sub create_temptable_for_ogs_data {
+	# create the temporary table
+	my $q = "CREATE TABLE $db_table_temp (
+	`id`       INT          NOT NULL PRIMARY KEY,
+	`taxid`    CHAR(5)      NOT NULL,
+	`header`   VARCHAR(255) NOT NULL,
+	`sequence` VARCHAR)";
+	my $dbh = get_dbh();
+	print $stdout $q if $verbose;
+	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
+	$dbh->do($q);
+	$dbh->disconnect();
 }
 
 1;

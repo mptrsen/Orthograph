@@ -1714,4 +1714,66 @@ sub get_orthologs {
 	return $result;
 }
 
+sub get_taxon_shorthands {
+	my $q = "SELECT * FROM $db_table_taxa WHERE `core` = '1'";
+	my $dbh = get_dbh();
+	my $sth = $dbh->prepare($q);
+	$sth->execute();
+	my $res = $sth->sql->fetchall_arrayref();
+	$dbh->disconnect;
+	return $res;
+}
+
+
+sub create_temptable_for_ogs_data {
+	# create the temporary table
+	my $q = "CREATE TABLE $db_table_temp (
+	`id`       INT          NOT NULL PRIMARY KEY AUTO_INCREMENT,
+	`taxid`    CHAR(5)      NOT NULL,
+	`header`   VARCHAR(255) NOT NULL,
+	`sequence` MEDIUMBLOB)";
+	my $dbh = get_dbh();
+	print $stdout $q if $debug;
+	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
+	$dbh->do($q);
+	$dbh->disconnect();
+	return 1;
+}
+
+sub import_ogs_into_database {
+	my $f = shift;
+	my @q = (
+		# load data into temp table
+		"LOAD DATA LOCAL INFILE '$tmpfh' 
+		INTO TABLE $temptable 
+		FIELDS TERMINATED BY ',' 
+		(taxid, header, sequence)",
+
+		# insert data into main table. IGNORE is important to avoid duplicates without throwing errors.
+		"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
+		SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence 
+		FROM $temptable 
+		LEFT JOIN $t->{'taxa'} 
+		ON $temptable.taxid = $t->{'taxa'}.id",
+
+		# insert sequence pairs relationships
+		"INSERT INTO $t->{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
+		SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
+		FROM $t->{'taxa'}
+		RIGHT JOIN $seqtable
+		ON $seqtable.taxid = $t->{'taxa'}.id
+		LEFT JOIN $t->{'ogs'}
+		ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
+		LEFT JOIN $otherseqtable
+		ON $otherseqtable.header = $seqtable.header
+		WHERE $t->{'taxa'}.id = '$taxon'
+		ON DUPLICATE KEY UPDATE $t->{'seqpairs'}.$seqcol = $seqtable.id,
+		$t->{'seqpairs'}.$otherseqcol = $otherseqtable.id",
+
+		# update OGS table
+		"INSERT IGNORE INTO $t->{'ogs'} (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
+	);
+
+
+}
 1;

@@ -298,7 +298,7 @@ sub load_temp_table_with_data {
 		Wrapper::Sqlite::load_csv_into_temptable($csvfile, $temptable);
 	}
 
-	print "Successfully loaded $total_seqs sequences from $infile into $temptable on $db_dbserver.\n";
+	print "Successfully loaded $total_seqs sequences from $infile into database.\n";
 
 	# get name and longname from the temp table; they do not get updated automatically
 	my $dbh = get_dbh();
@@ -466,7 +466,7 @@ sub load_taxon {#{{{
 	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
 	# get taxon shorthand
-	my $list = &Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'taxa'} WHERE `core` = '1'");
+	my $list = get_taxon_shorthands();
 	print "This is a list of present taxa in the database:\n";
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
@@ -523,44 +523,11 @@ sub load_taxon {#{{{
 
 	# queries:
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
+	create_temptable_for_ogs_data();
+	import_ogs_into_database($tmpfh);
+	my $n_seqpairs = get_sequence_count_for_taxon($taxon);
+
 	my @queries = (
-		# create the temporary table
-		"CREATE TABLE $temptable (
-		`id`       INT      NOT NULL PRIMARY KEY AUTO_INCREMENT,
-		`taxid`    CHAR(5)      NOT NULL,
-		`header`   VARCHAR(255) NOT NULL,
-		`sequence` MEDIUMBLOB)",
-
-		# load data into temp table
-		"LOAD DATA LOCAL INFILE '$tmpfh' 
-		INTO TABLE $temptable 
-		FIELDS TERMINATED BY ',' 
-		(taxid, header, sequence)",
-
-		# insert data into main table. IGNORE is important to avoid duplicates without throwing errors.
-		"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
-		SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence 
-		FROM $temptable 
-		LEFT JOIN $t->{'taxa'} 
-		ON $temptable.taxid = $t->{'taxa'}.id",
-
-		# insert sequence pairs relationships
-		"INSERT INTO $t->{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
-		FROM $t->{'taxa'}
-		RIGHT JOIN $seqtable
-		ON $seqtable.taxid = $t->{'taxa'}.id
-		LEFT JOIN $t->{'ogs'}
-		ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
-		LEFT JOIN $otherseqtable
-		ON $otherseqtable.header = $seqtable.header
-		WHERE $t->{'taxa'}.id = '$taxon'
-		ON DUPLICATE KEY UPDATE $t->{'seqpairs'}.$seqcol = $seqtable.id,
-		$t->{'seqpairs'}.$otherseqcol = $otherseqtable.id",
-
-		# update OGS table
-		"INSERT IGNORE INTO $t->{'ogs'} (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
-
 	);
 	# execute all queries
 	my $dbh = get_dbh();
@@ -576,6 +543,42 @@ sub load_taxon {#{{{
 	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $db_dbname, $db_dbserver);
 	return 1;
 }#}}}
+
+sub get_taxon_shorthands {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_taxon_shorthands();
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_taxon_shorthands();
+	}
+}
+
+sub create_temptable_for_ogs_data {
+	if ($use_mysql) {
+		return Wrapper::Mysql::create_temptable_for_ogs_data();
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::create_temptable_for_ogs_data();
+	}
+}
+
+sub import_ogs_into_database {
+	if ($use_mysql) {
+		return Wrapper::Mysql::import_ogs_into_database(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::import_ogs_into_database(@_);
+	}
+}
+
+sub get_sequence_count_for_taxon {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_sequence_count_for_taxon(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_sequence_count_for_taxon(@_);
+	}
+}
 
 # Sub: create_blastdb
 # Generates a BLAST database 
