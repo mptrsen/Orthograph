@@ -89,7 +89,7 @@ sub next_seq {
   chomp $item;
   
   if ($. == 1 and $item !~ /^>/) {  # first line is not a header
-    croak "Fatal: " . $self->{'filename'} . "is not a FASTA file: Missing descriptor line\n";
+    croak "Fatal: " . $self->{'filename'} . " is not a FASTA file: Missing descriptor line\n";
   }
 
 	# remove the '>'

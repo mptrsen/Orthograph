@@ -72,6 +72,7 @@ my $db_table_orthologs      = $config->{'db_table_orthologs'};
 my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
+my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_date             = 'date';
 my $db_col_digest           = 'digest';
@@ -1733,7 +1734,7 @@ sub create_temptable_for_ogs_data {
 	`header`   VARCHAR(255) NOT NULL,
 	`sequence` MEDIUMBLOB)";
 	my $dbh = get_dbh();
-	print $stdout $q if $debug;
+	print $stdout $q, "\n" if $debug;
 	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
 	$dbh->do($q);
 	$dbh->disconnect();
@@ -1741,37 +1742,37 @@ sub create_temptable_for_ogs_data {
 }
 
 sub import_ogs_into_database {
-	my $f = shift;
+	my ($tmpfh, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
 	my @q = (
 		# load data into temp table
 		"LOAD DATA LOCAL INFILE '$tmpfh' 
-		INTO TABLE $temptable 
+		INTO TABLE $db_table_temp 
 		FIELDS TERMINATED BY ',' 
 		(taxid, header, sequence)",
 
 		# insert data into main table. IGNORE is important to avoid duplicates without throwing errors.
 		"INSERT IGNORE INTO $seqtable (taxid, header, sequence)
-		SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence 
-		FROM $temptable 
-		LEFT JOIN $t->{'taxa'} 
-		ON $temptable.taxid = $t->{'taxa'}.id",
+		SELECT $db_table_taxa.id, $db_table_temp.header, $db_table_temp.sequence 
+		FROM $db_table_temp 
+		LEFT JOIN $db_table_taxa 
+		ON $db_table_temp.taxid = $db_table_taxa.id",
 
 		# insert sequence pairs relationships
-		"INSERT INTO $t->{'seqpairs'} (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
-		FROM $t->{'taxa'}
+		"INSERT INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
+		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
+		FROM $db_table_taxa
 		RIGHT JOIN $seqtable
-		ON $seqtable.taxid = $t->{'taxa'}.id
-		LEFT JOIN $t->{'ogs'}
-		ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
+		ON $seqtable.taxid = $db_table_taxa.id
+		LEFT JOIN $db_table_ogs
+		ON $db_table_taxa.id = $db_table_ogs.taxid
 		LEFT JOIN $otherseqtable
 		ON $otherseqtable.header = $seqtable.header
-		WHERE $t->{'taxa'}.id = '$taxon'
-		ON DUPLICATE KEY UPDATE $t->{'seqpairs'}.$seqcol = $seqtable.id,
-		$t->{'seqpairs'}.$otherseqcol = $otherseqtable.id",
+		WHERE $db_table_taxa.id = '$taxon'
+		ON DUPLICATE KEY UPDATE $db_table_seqpairs.$seqcol = $seqtable.id,
+		$db_table_seqpairs.$otherseqcol = $otherseqtable.id",
 
 		# update OGS table
-		"INSERT IGNORE INTO $t->{'ogs'} (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
+		"INSERT IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
 	);
 
 
