@@ -44,7 +44,7 @@ my $config = $Orthograph::Config::config;
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
-#{{{
+
 my $database_engine         = $config->{'database-engine'};
 my $db_dbname               = $config->{'mysql-database'};
 my $db_dbpwd                = $config->{'mysql-password'};
@@ -463,7 +463,6 @@ sub load_taxon {#{{{
 	my $seqcol        = $mode ? 'aa_seq'     : 'nt_seq';
 	my $otherseqcol   = $mode ? 'nt_seq'     : 'aa_seq';
 	my $type = $mode          ? 2            : 1;  # 1 is 'nt', 2 is 'aa'
-	my $diemsg = "Fatal: Sequence header format wrong in line %d. Expected format must be '>TAXSH Identifier foobar'. See documentation for more information\n";
 
 	# get taxon shorthand
 	my $list = get_taxon_shorthands();
@@ -524,23 +523,10 @@ sub load_taxon {#{{{
 	# queries:
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	create_temptable_for_ogs_data();
-	import_ogs_into_database($tmpfh);
+	import_ogs_into_database($tmpfh, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion);
 	my $n_seqpairs = get_sequence_count_for_taxon($taxon);
 
-	my @queries = (
-	);
-	# execute all queries
-	my $dbh = get_dbh();
-	$dbh->do("DROP TABLE IF EXISTS $temptable") or return 0;
-	foreach (@queries) {
-		print "$_\n" if $verbose;
-		my $nrows = $dbh->do($_) or return 0;
-		printf("Query OK, %d rows affected.\n", $nrows) if $verbose;
-	}
-	$dbh->disconnect();
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $seqpairs = Wrapper::Mysql::mysql_get("SELECT COUNT(*) FROM $t->{'aaseqs'} WHERE $t->{'aaseqs'}.taxid = '$taxon'");
-	printf("Loaded %d sequences into database %s on %s.\n", $$seqpairs[0][0], $db_dbname, $db_dbserver);
+	printf("%d sequences for %s in database %s on %s.\n", $n_seqpairs, $$list[$taxon-1][1], $database, $db_dbserver);
 	return 1;
 }#}}}
 
@@ -910,4 +896,4 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 # TODO include complete MySQL dump for the database
 =cut
 
-#}}}
+

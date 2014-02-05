@@ -1782,15 +1782,59 @@ sub get_taxon_shorthands {
 sub create_temptable_for_ogs_data {
 	# create the temporary table
 	my $q = "CREATE TABLE $db_table_temp (
-	`id`       INT          NOT NULL PRIMARY KEY,
 	`taxid`    CHAR(5)      NOT NULL,
 	`header`   VARCHAR(255) NOT NULL,
 	`sequence` VARCHAR)";
 	my $dbh = get_dbh();
-	print $stdout $q if $verbose;
+	print $stdout $q, "\n" if $debug;
 	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
 	$dbh->do($q);
 	$dbh->disconnect();
 }
 
+sub import_ogs_into_database {
+	my ($f, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
+	
+	load_csv_into_temptable($f, $db_table_temp);
+
+	my @q = (
+		# insert data into main table. IGNORE is important to avoid duplicates without throwing errors.
+		"INSERT OR IGNORE INTO $seqtable (taxid, header, sequence)
+		SELECT $db_table_taxa.id, $db_table_temp.header, $db_table_temp.sequence 
+		FROM $db_table_temp 
+		LEFT JOIN $db_table_taxa 
+		ON $db_table_temp.taxid = $db_table_taxa.id",
+
+		# insert sequence pairs relationships
+		"INSERT OR REPLACE INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
+		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, CURRENT_TIMESTAMP, '$db_dbuser'
+		FROM $db_table_taxa
+		LEFT JOIN $seqtable
+		ON $db_table_taxa.id = $seqtable.taxid 
+		LEFT JOIN $db_table_ogs
+		ON $db_table_taxa.id = $db_table_ogs.taxid
+		LEFT JOIN $otherseqtable
+		ON $otherseqtable.header = $seqtable.header
+		WHERE $db_table_taxa.id = '$taxon'",
+
+		# update OGS table
+		"INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
+	);
+	
+	my $dbh = get_dbh();
+	foreach (@q) {
+		print $stdout $_, "\n" if $debug;
+		my $sth = $dbh->prepare($_);
+		$sth->execute();
+	}
+
+
+}
+
+sub get_sequence_count_for_taxon {
+	my $taxon = shift;
+	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.taxid = '$taxon'";
+	my $r = db_get($q);
+	return $$r[0][0];
+}
 1;
