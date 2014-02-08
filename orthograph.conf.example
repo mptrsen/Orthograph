@@ -25,7 +25,7 @@ database-engine    = sqlite
 #
 # # SQLite settings
 #
-# Database file for SQLite. Required.
+# Database file for SQLite. Required if you use SQLite.
 sqlite-database    = /PATH/TO/DATABASE
 
 # Path to the sqlite executable. Normally this is located at /usr/bin/sqlite3

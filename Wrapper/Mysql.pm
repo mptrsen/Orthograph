@@ -500,12 +500,18 @@ sub get_list_of_ogs {#{{{
 		INNER JOIN $db_table_ogs
 			ON $db_table_taxa.id = $db_table_ogs.taxid"
 	;
-	my $data = &Wrapper::Mysql::db_get($query);
+	my $data = db_get($query);
 	foreach my $item (@$data) {
 		$ogslist{$$item[0]} = $$item[1];
 	}
 	return(\%ogslist);
 }#}}}
+
+sub get_list_of_taxa {
+	my $q = "SELECT `name`, `longname` FROM $db_table_taxa WHERE `core` = '1'";
+	my $r = db_get($q);
+	return $r;
+}
 
 
 =head2 get_ortholog_groups_for_set($setid)
@@ -1777,4 +1783,26 @@ sub import_ogs_into_database {
 
 
 }
+
+sub delete_sequences_with_headers {
+	my $headers = shift;
+	my $count = 0;
+	my $q = "DELETE FROM $db_table_aaseqs WHERE header IN (SELECT HEADER from $db_table_aaseqs WHERE header = ? LIMIT 1)";
+	my $dbh = get_dbh();
+	my $sth = $dbh->prepare($q);
+	while (shift @$headers) {
+		$sth->execute($q, $_);
+		$count += $sth->rows();
+	}
+	$dbh->disconnect();
+	return $count;
+}
+
+sub delete_taxon {
+	my $ti = shift;
+	my $q = "DELETE FROM $db_table_taxa WHERE id = ?";
+	db_do($q) or return 0;
+	return 1;
+}
+
 1;

@@ -525,7 +525,7 @@ sub get_list_of_ogs {#{{{
 		INNER JOIN $db_table_ogs
 			ON $db_table_taxa.id = $db_table_ogs.taxid"
 	;
-	my $data = &Wrapper::Sqlite::db_get($query);
+	my $data = db_get($query);
 	foreach my $item (@$data) {
 		$ogslist{$$item[0]} = $$item[1];
 	}
@@ -1837,4 +1837,32 @@ sub get_sequence_count_for_taxon {
 	my $r = db_get($q);
 	return $$r[0][0];
 }
+
+sub get_list_of_taxa {
+	my $q = "SELECT name, longname FROM $db_table_taxa WHERE core = '1'";
+	my $r = db_get($q);
+	return $r;
+}
+
+sub delete_sequences_with_headers {
+	my $headers = shift;
+	my $count = 0;
+	my $q = "DELETE FROM $db_table_aaseqs WHERE header IN (SELECT HEADER from $db_table_aaseqs WHERE header = ? LIMIT 1)";
+	my $dbh = get_dbh();
+	my $sth = $dbh->prepare($q);
+	while (shift @$headers) {
+		$sth->execute($_);
+		$count += $sth->rows();
+	}
+	$dbh->disconnect();
+	return $count;
+}
+
+sub delete_taxon {
+	my $ti = shift;
+	my $q = "DELETE FROM $db_table_taxa WHERE id = ?";
+	db_do($q) or return 0;
+	return 1;
+}
+
 1;
