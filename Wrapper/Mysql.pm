@@ -1805,4 +1805,17 @@ sub delete_taxon {
 	return 1;
 }
 
+sub clear_db {
+	my $n = 0;
+	my $dbh = get_dbh()
+		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
+	foreach my $table ($db_table_ests, $db_table_hmmsearch, $db_table_blast) {
+		my $query = "DROP TABLE $table";
+		my $sth = $dbh->prepare($query);
+		$n += $sth->execute();
+	}
+	# disconnect ASAP
+	$dbh->disconnect();
+	return $n;
+}
 1;

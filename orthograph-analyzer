@@ -794,7 +794,7 @@ sub intro {#{{{
 
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	unless ( Wrapper::Mysql::set_exists($orthoset) ) {
+	unless ( set_exists($orthoset) ) {
 		die "Fatal: Set '$orthoset' does not exist in database '$db_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
 	}
 
@@ -930,26 +930,12 @@ sub clear_db {#{{{
 	return unless $species_name;
 
 	# get the species id from the database
-	my $specid = Wrapper::Mysql::get_taxid_for_species($species_name)
+	my $specid = get_taxid_for_species($species_name)
 		or print $stderr "Warning: Could  not get species ID from database: $DBI::errstr\n";
 	return unless $specid;
 
-	# count number of records 
-	my $n = 0;
-
 	# clear previous results from the same species
-	my $dbh = Wrapper::Mysql::mysql_dbh()
-		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-
-	foreach my $table ($db_table_ests, $db_table_hmmsearch, $db_table_blast) {
-		my $query = "DROP TABLE $table";
-		my $sth = $dbh->prepare($query);
-		$n += $sth->execute();
-	}
-	# disconnect ASAP
-	$dbh->disconnect();
-
-	return $n;
+	return clear_db($specid);
 }#}}}
 
 # Sub: insert_results_into_table
@@ -1009,32 +995,32 @@ sub make_hmms {#{{{
 	my $hmmsuffix = '.hmm';
 	# does the alignment dir exist?
 	if (!-e $alndir) {
-		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
+		makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
 	}
 	# does the HMM dir exist?
 	if (!-e $hmmdir) {
-		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
+		makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 	print $stdout "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
 	# get the ortholog set from the database
-	my $data = Wrapper::Mysql::get_ortholog_groups_for_set($set_id)
+	my $data = get_ortholog_groups_for_set($set_id)
 		or print $stderr "Warning: Could not get ortholog groups for set '$set' from database: $DBI::errstr\n";
 
 	my $num_orthoids = scalar(keys(%$data));
 	my $o = 0;
 	foreach my $orthoid (keys(%$data)) {
-		&progress_bar($o, $num_orthoids, 25, '-');
+		progress_bar($o, $num_orthoids, 25, '-');
 		++$o;
 		my $hmmfile = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
 
 		# does this HMM already exist?
 		# if so, skip to the next
-		if (-e $hmmfile and not &file_is_empty($hmmfile)) { next }
+		if (-e $hmmfile and not file_is_empty($hmmfile)) { next }
 
 		# if it exists, but the file is empty (this happens if you cancel the build
 		# process), rebuild this HMM
-		elsif (-e $hmmfile and &file_is_empty($hmmfile)) { print $stderr "Warning: Rebuilding HMM for $orthoid due to empty HMM file\n" }
+		elsif (-e $hmmfile and file_is_empty($hmmfile)) { print $stderr "Warning: Rebuilding HMM for $orthoid due to empty HMM file\n" }
 
 		# no, create new fasta file and so on
 		my $fafile = File::Spec->catfile($alndir, $orthoid . '.fa');
@@ -1046,15 +1032,15 @@ sub make_hmms {#{{{
 		$fafh->close();
 
 		# align
-		my $alnfile = &align($fafile, $orthoid)
+		my $alnfile = align($fafile, $orthoid)
 			or die("Fatal: Alignment failed for '$fafh': $!\n");
 
 		# convert to stockholm
-		my $stockhfile = &fasta2stockholm($alnfile, $orthoid)
+		my $stockhfile = fasta2stockholm($alnfile, $orthoid)
 			or die("Fatal: Conversion to Stockholm format failed for '$alnfile': $!\n");
 
 		# build HMM
-		&hmmbuild($stockhfile, $hmmfile)
+		hmmbuild($stockhfile, $hmmfile)
 			or die("Fatal: HMM generation failed for '$alnfile': $!\n");
 	}
 	undef($data);	# free memory... well, it's bound to go out of scope anyway
@@ -1146,7 +1132,7 @@ sub make_blastdb {#{{{
 	$infh->unlink_on_destroy(0) if $debug;
 
 	# get the sequences from the database
-	my $sequences = Wrapper::Mysql::get_aaseqs_for_set($setid)
+	my $sequences = get_aaseqs_for_set($setid)
 		or print $stderr "Warning: Could not get sequences for set '$orthoset' from database: $DBI::errstr\n";
 
 	# write to output file
@@ -1377,6 +1363,46 @@ sub get_taxa_in_set {
 	}
 	elsif ($use_sqlite) {
 		Wrapper::Sqlite::get_taxa_in_set($setid);
+	}
+}
+
+sub set_exists {
+	my $set = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::set_exists($set);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::set_exists($set);
+	}
+}
+
+sub get_aaseqs_for_set {
+	my $sid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_aaseqs_for_set($sid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_aaseqs_for_set($sid);
+	}
+}
+
+sub get_taxid_for_species {
+	my $sn = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_taxid_for_species($sn);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_taxid_for_species($sn);
+	}
+}
+
+sub get_ortholog_groups_for_set {
+	my $sid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_ortholog_groups_for_set($sid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_ortholog_groups_for_set($sid);
 	}
 }
 

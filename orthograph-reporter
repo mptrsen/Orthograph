@@ -739,8 +739,10 @@ sub seen_this_region_before {
 sub get_taxid_for_species {
 	my $sn = shift;
 	print "getting taxid for $sn\n";
-	if ($use_mysql) { return Wrapper::Mysql::get_taxid_for_species($sn) }
-	elsif ($use_sqlite) { return Wrapper::Sqlite::get_taxid_for_species($sn) }
+	if ($use_mysql)
+		{ return Wrapper::Mysql::get_taxid_for_species($sn) }
+	elsif ($use_sqlite)
+		{ return Wrapper::Sqlite::get_taxid_for_species($sn) }
 }
 
 sub get_real_table_names {
