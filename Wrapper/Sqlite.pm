@@ -452,7 +452,7 @@ sub fill_tables_from_temp_table {
 			INNER JOIN $t->{'users'}
 				ON $t->{'users'}.name = '$db_dbuser'",
 		# orthologous groups
-		"INSERT OR REPLACE INTO $t->{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
+		"INSERT OR IGNORE INTO $t->{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
 			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
 			FROM $t->{'aaseqs'} 
 			INNER JOIN $temptable 
