@@ -79,6 +79,7 @@ my $ispeptide               = $config->{'load-ogs-peptide'};
 
 # other variables
 my $verbose                 = $config->{'verbose'};
+my $debug                   = $config->{'debug'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute-u-with'};
@@ -392,7 +393,7 @@ my @queries = (
 $dbh = Wrapper::Mysql::mysql_dbh;
 my $nrows;
 foreach (@queries) {
-	print $_ . ";\n" if $debug;
+	print $_ . ";\n" if $verbose;
 	$nrows = $dbh->do($_) or die();
 	($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
 }
@@ -622,6 +623,9 @@ sub load_taxon {#{{{
 		print $tmpfh "$taxon,$hdr,$seq\n";
 	}
 
+	my $mysql_userid = Wrapper::Mysql::mysql_get("SELECT id FROM $mysql_table_users WHERE name = '$mysql_dbuser'");
+	$mysql_userid = $$mysql_userid[0][0];
+
 	print "Data looks OK, uploading...\n";
 
 	# queries:
@@ -669,7 +673,7 @@ sub load_taxon {#{{{
 	$dbh = Wrapper::Mysql::mysql_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or return 0;
 	foreach (@queries) {
-		print "$_\n";
+		print "$_\n" if $debug;
 		my $nrows = $dbh->do($_) or return 0;
 		printf("Query OK, %d rows affected.\n", $nrows);
 	}
