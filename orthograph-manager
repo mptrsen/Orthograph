@@ -273,12 +273,12 @@ $tmpfile->close();
 #-------------------------------------------------- 
 
 my $create_temp_table_query = "CREATE TABLE $temptable (
-    `name`     VARCHAR(255), INDEX(name),
+    `name`     VARCHAR(255), INDEX(name(10)),
     `longname` VARCHAR(255),
-		`orthoset` VARCHAR(255), INDEX(orthoset),
-		`orthoid`  VARCHAR(255), INDEX(orthoid),
+		`orthoset` VARCHAR(255), INDEX(orthoset(10)),
+		`orthoid`  VARCHAR(255), INDEX(orthoid(10)),
 		`blastdb`  VARCHAR(255),
-		`header`   VARCHAR(512), INDEX(header),
+		`header`   VARCHAR(512), INDEX(header(10)),
 		`sequence` MEDIUMBLOB,
 		`description` VARCHAR(255))";
 my $loadquery = "LOAD DATA LOCAL INFILE '$tmpfile' 
@@ -392,7 +392,7 @@ my @queries = (
 $dbh = Wrapper::Mysql::mysql_dbh;
 my $nrows;
 foreach (@queries) {
-	print $_ . ";\n";
+	print $_ . ";\n" if $debug;
 	$nrows = $dbh->do($_) or die();
 	($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
 }
