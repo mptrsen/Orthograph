@@ -88,7 +88,7 @@ exonerate-program    = exonerate
 # computer as the analysis. Ask your administrator if you don't know what to
 # write here.
 # Defaults to 127.0.0.1 (localhost).
-#mysql-dbserver             = 127.0.0.1
+#mysql-server             = 127.0.0.1
 
 # Prefix for your Orthograph database tables. Useful if you are running
 # multiple instances of Orthograph on the same database but don't want the data
