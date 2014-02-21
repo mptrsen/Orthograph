@@ -572,7 +572,7 @@ sub preparedb {
 		`$db_col_taxid`     UNSIGNED INT NOT NULL,       
 		`$db_col_type`      UNSIGNED TINYINT(4) NOT NULL,
 		`$db_col_date`      UNSIGNED INT,
-		`$db_col_header`    VARCHAR(255) NOT NULL,       
+		`$db_col_header`    VARCHAR      NOT NULL,       
 		`$db_col_sequence`  MEDIUMBLOB DEFAULT NULL
 		)";
 

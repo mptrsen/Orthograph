@@ -553,12 +553,12 @@ sub preparedb {
 		`$db_col_taxid`     INT UNSIGNED NOT NULL,       
 		`$db_col_type`      TINYINT(4) UNSIGNED NOT NULL,
 		`$db_col_date`      INT UNSIGNED,
-		`$db_col_header`    VARCHAR(255) NOT NULL,       
+		`$db_col_header`    VARCHAR      NOT NULL,       
 		`$db_col_sequence`  MEDIUMBLOB DEFAULT NULL,
 		PRIMARY KEY (`$db_col_id`),
 		INDEX (`$db_col_digest`(4)),
 		INDEX (`$db_col_taxid`),
-		INDEX (`$db_col_header`)
+		INDEX (`$db_col_header`(10))
 		) ENGINE=MYISAM AUTO_INCREMENT=0";
 
 	my $query_create_hmmsearch = "CREATE TABLE $db_table_hmmsearch (
