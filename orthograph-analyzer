@@ -994,7 +994,7 @@ sub insert_results_into_table {#{{{
 	my $blastdb = (scalar @_ == 1) ? shift : undef;
 	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
 	my $hitcount;
-	
+
 	# this is a BLASTP result, we need the column 'blastdb'
 	if ($blastdb) {
 		my $query_insert_result = "INSERT IGNORE INTO $table (
