@@ -134,6 +134,9 @@ my $starttime            = scalar time;
 my $endtime              = 0;
 my $totaltime            = 0;
 
+# set exonerate path from config file
+Wrapper::Exonerate->searchprog($exonerate_program);
+
 # get the species id from the database
 $species_id = get_taxid_for_species($speciesname);
 unless ($species_id) {
