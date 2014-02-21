@@ -881,12 +881,12 @@ sub preparedb {#{{{
 		`$mysql_col_taxid`     INT UNSIGNED NOT NULL,       
 		`$mysql_col_type`      TINYINT(4) UNSIGNED NOT NULL,
 		`$mysql_col_date`      INT UNSIGNED,
-		`$mysql_col_hdr`       VARCHAR(255) NOT NULL,       
+		`$mysql_col_hdr`       VARCHAR      NOT NULL,       
 		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
 		PRIMARY KEY (`$mysql_col_id`),
 		INDEX (`$mysql_col_digest`(4)),
 		INDEX (`$mysql_col_taxid`),
-		INDEX (`$mysql_col_hdr`)
+		INDEX (`$mysql_col_hdr`(10))
 		) ENGINE=MYISAM AUTO_INCREMENT=0";
 
 	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
