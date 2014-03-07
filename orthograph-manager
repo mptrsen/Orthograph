@@ -45,7 +45,7 @@ my $config = $Orthograph::Config::config;
 # # These variables can be set in the config file
 #-------------------------------------------------- 
 
-my $database_engine         = $config->{'database-engine'};
+my $database_backend        = $config->{'database-backend'};
 my $db_dbname               = $config->{'mysql-database'};
 my $db_dbpwd                = $config->{'mysql-password'};
 my $db_dbserver             = $config->{'mysql-server'};
@@ -83,9 +83,9 @@ my $verbose                 = $config->{'verbose'};
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute-u-with'};
 
-# which database engine do we use?
-my $use_mysql       = $database_engine eq 'mysql'  ? 1 : 0;
-my $use_sqlite      = $database_engine eq 'sqlite' ? 1 : 0;
+# which database backend do we use?
+my $use_mysql       = $database_backend eq 'mysql'  ? 1 : 0;
+my $use_sqlite      = $database_backend eq 'sqlite' ? 1 : 0;
 my $database        = undef;
 if ($use_mysql)     {
 	use Wrapper::Mysql;

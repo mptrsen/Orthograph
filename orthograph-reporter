@@ -41,10 +41,10 @@ use IO::Tee;
 
 my $config = $Orthograph::Config::config;	# copy config variables
 
-# which database engine do we use?
-my $database_engine         = $config->{'database-engine'};
-my $use_mysql               = $database_engine eq 'mysql'  ? 1 : 0;
-my $use_sqlite              = $database_engine eq 'sqlite' ? 1 : 0;
+# which database backend do we use?
+my $database_backend        = $config->{'database-backend'};
+my $use_mysql               = $database_backend eq 'mysql'  ? 1 : 0;
+my $use_sqlite              = $database_backend eq 'sqlite' ? 1 : 0;
 if ($use_mysql)     { use Wrapper::Mysql  }
 elsif ($use_sqlite) { use Wrapper::Sqlite }
 

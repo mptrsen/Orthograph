@@ -113,11 +113,7 @@ my $stderr = *STDERR;
 
 
 
-# was the database specified and does it exist?
-if (not defined $database) {
-	fail_and_exit('SQLite database file not specified');
-}
-elsif (!-f $database) {
+if ($config->{'database-backend'} eq 'sqlite' and not -f $database) {
 	fail_and_exit("SQLite database file '$database' not found");
 }
 

@@ -63,7 +63,7 @@ GetOptions( $config,
   'clear-database!',
   'clear-files!',
   'configfile|c=s',
-  'database-engine=s',
+  'database-backend=s',
   'db-prefix=s',
   'debug|d',
   'estfile',
@@ -118,7 +118,7 @@ GetOptions( $config,
 
 
 # MySQL settings
-$config->{'database-engine'}            //= 'mysql';
+$config->{'database-backend'}            //= 'mysql';
 $config->{'mysql-database'}             //= 'orthograph';
 $config->{'mysql-password'}             //= 'root';
 $config->{'mysql-server'}               //= 'localhost';
@@ -218,13 +218,13 @@ if ($config->{'continue'}) {
 if ($config->{'debug'}) { $config->{'verbose'} = 1 }
 
 # mutually exclusive options
-if ($config->{'database-engine'} ne 'mysql' and $config->{'database-engine'} ne 'sqlite') {
-	print STDERR "Fatal: Database engine not set correctly! Must be 'mysql' or 'sqlite'.\n";
+if ($config->{'database-backend'} ne 'mysql' and $config->{'database-backend'} ne 'sqlite') {
+	print STDERR "Fatal: Database backend not set correctly! Must be 'mysql' or 'sqlite'.\n";
 	exit 1;
 }
 
-if ($config->{'database-engine'} eq 'sqlite' and not defined $config->{'sqlite-database'}) {
-	print STDERR "Fatal: SQLite database not specified\n";
+if ($config->{'database-backend'} eq 'sqlite' and not defined $config->{'sqlite-database'}) {
+	print STDERR "Fatal: SQLite database backend selected, but database file not specified\n";
 	exit 1;
 }
 

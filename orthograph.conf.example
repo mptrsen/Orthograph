@@ -18,9 +18,9 @@
 #
 # # Database engine selection
 #
-# Database engine. Defaults to 'sqlite', which means to use the file-based
-# SQLite database
-database-engine    = sqlite
+# Database backend. Defaults to 'sqlite', which means to use the file-based
+# SQLite database system
+database-backend   = sqlite
 
 #
 # # SQLite settings
