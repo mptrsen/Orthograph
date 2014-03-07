@@ -164,7 +164,6 @@ my $verbose                    = $config->{'verbose'};
 #--------------------------------------------------
 # # More variables
 #-------------------------------------------------- 
-#{{{
 my $EMPTY                   = q{};
 my $alndir                  = $EMPTY;
 my $blastcount              = 0;
@@ -207,36 +206,31 @@ my $db_col_type          = 'type';
 my $db_col_taxon         = 'taxon';
 my $db_col_user          = 'user';
 my $db_dbi               = "dbi:mysql:$db_dbname:$db_dbserver";
-my $num_bp                  = 0;
-my $num_ests                = 0;
-my $num_hmms                = 0;
-my $orthocount              = 0;
-my $protfile                = $EMPTY;
-my $set_id                  = 0;
-my $species_id              = 0;
-my $stderr                  = undef;
-my $stdout                  = undef;
+my $num_bp               = 0;
+my $num_ests             = 0;
+my $num_hmms             = 0;
+my $orthocount           = 0;
+my $protfile             = $EMPTY;
+my $set_id               = 0;
+my $species_id           = 0;
+my $stderr               = undef;
+my $stdout               = undef;
 my $t0;  # these are used for timing 
 my $t1;  # these are used for timing 
-my $timestamp_diff          = 0;
-my $timestamp_end           = 0; # will hold the time at the end
-my $timestamp_start         = scalar time;
-my @lt                      = localtime time;
-my $timestring              = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
-# create new temporary directory and set it to not be deleted 
-my $tmpdir                  = File::Temp->newdir(
-                               'UNLINK' => 0,
-                               'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
-my @backup                  = ( );
-my @hmmfiles                = ( );
-my @reftaxa                 = ( );
-my @seqobjs                 = ( );
-#}}}
+my $timestamp_diff       = 0;
+my $timestamp_end        = 0; # will hold the time at the end
+my $timestamp_start      = scalar time;
+my @lt                   = localtime time;
+my $timestring           = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
+my @backup               = ( );
+my @hmmfiles             = ( );
+my @reftaxa              = ( );
+my @seqobjs              = ( );
+my $tmpdir               = '';
 
 # debug is also verbose
 if ($debug) {
 	$verbose = 1; 
-	$tmpdir->unlink_on_destroy(0);
 }
 
 # report configuration
@@ -609,10 +603,9 @@ sub progress_bar {#{{{
 sub intro {#{{{
 	# first things first: 
 	# construct output directory paths
+	# the output directory. create if it does not exist.
 	# outdir may be defined in the config file
 	$outdir = defined($outdir) ? $outdir : File::Spec->catdir('.', $species_name);
-
-	# the output directory. create if it does not exist.
 	if (-d $outdir) {
 		# no IO::Tee because the log dir has not been created yet 
 		$message .= "Using output dir $outdir.\n" unless $quiet;
@@ -622,6 +615,11 @@ sub intro {#{{{
 		$message .= "Output dir $outdir does not exist, creating...\n" unless $quiet;
 		&makedir($outdir) or die "Fatal: Failed to create output directory '$outdir'\n";
 	}
+	# create new temporary directory and set it to not be deleted 
+	$tmpdir = File::Temp->newdir(
+					 	'UNLINK' => 0,
+					 	'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
+	$tmpdir->unlink_on_destroy(0) if $debug;
 
 	# the other dirs
 	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
@@ -835,7 +833,7 @@ sub translate_est {#{{{
     return($outfile);
   }
   my @translateline = qq($translateprog $infile > $outfile);
-  system(@translateline) and die();
+  system(@translateline) and print "Fatal: could not translate input file. Is this nucleotide data?\n" and exit 1;
   return($outfile);
 }#}}}
 

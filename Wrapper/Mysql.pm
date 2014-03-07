@@ -264,14 +264,14 @@ sub create_tables {
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
 			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
-		
+
 		# table: ogs
 		'ogs' => "CREATE TABLE `$t{'ogs'}` (
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`type`         INT(1),
 			`taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
 			`version`      VARCHAR(255))",
-		
+
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t{'orthologs'}` (
 			`id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -294,7 +294,7 @@ sub create_tables {
 		'aa_sequences' => "CREATE TABLE `$t{'aaseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
+			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -303,7 +303,7 @@ sub create_tables {
 		'nt_sequences' => "CREATE TABLE `$t{'ntseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(512),             INDEX(header), UNIQUE(header),
+			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
