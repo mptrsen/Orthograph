@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #--------------------------------------------------
 # This file is part of Orthograph.
-# Copyright 2013 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2014 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Orthograph is free software: you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
@@ -122,7 +122,7 @@ my $clear_files                = $config->{'clear-files'};
 my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
-my $estfile                    = $config->{'estfile'};
+my $estfile                    = $config->{'input-file'};
 my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
@@ -1405,181 +1405,3 @@ sub get_ortholog_groups_for_set {
 }
 
 __END__
-
-# Documentation#{{{
-=head1 NAME
-
-Orthograph
-
-=head1 DESCRIPTION
-
-F<Ortho>logy prediction using a F<G>raph-based, F<R>eciprocal F<A>pproach with
-F<P>rofile F<H>idden F<M>odels
-
-=head1 SYNOPSIS
-
-orthograph [OPTIONS]
-
-=head1 WARNING
-
-B<This documentation is outdated!> It will catch up with recent development on
-another day. However, careful work has been put into the README file, which
-also contains a quickstart guide. Please refer to that. 
-
-=head1 DESCRIPTION
-
-Orthograph expects a certain table structure for the core-ortholog set. You may
-run the provided script orthograph_manager with the B<-c> switch once, which
-does exactly that.
-
-=head1 OPTIONS
-
-=head2 -c CONFIGFILE
-
-Use CONFIGFILE instead of orthograph.conf. Any options on the command line override
-options set in the config file.
-
-=head2 -v
-
-Verbose output. More information about the HMMsearch and BLAST hits. Normally
-you don't want to see this. If you are really interested in what Orthograph is
-thinking during the analysis, uncomment this. Verbose and quiet are mutually
-exclusive.
-
-=head2 -q
-
-Quiet output. Uncomment this if you don't want to be bothered during the
-analysis. Verbose and quiet are mutually exclusive.
-
-No other options documented yet. Use the config file, please.
-
-=head1 CONFIG FILE
-
-The configuration file allows to set all options available on the command line
-so that the user is spared having to use a very long command every time.
-
-The config file has to be in ini-style: 
-
-	# this is a comment
-	translateprog  = fastatranslate
-	hmmdir         = /home/malty/thesis/orthograph/hmms
-	estfile        = /home/malty/data/cleaned/Andrena_vaga.fa
-	mysql_dbname   = orthograph
-	mysql_dbserver = localhost
-
-etc. Empty lines and comments are ignored, keys and values have to be separated
-by an equal sign. 
-
-For your convenience, there is an example config file provided in this package.
-You may customize it to your local environment.
-
-=head2 AVAILABLE OPTIONS:
-
-=head2 estfile
-
-The fasta file containing the EST sequence database.
-
-=head2 hmmsearch_evalue_threshold
-
-e-Value threshold for the HMM search. Must be a number in scientific notation
-like 1e-05 or something.
-
-=head2 hmmdir
-
-The directory containing the HMM files that are used to search the EST
-database. See also F<hmmfile>.
-
-=head2 hmmfile
-
-The HMM file to use if you want to run Orthograph on a single HMM.
-
-=head2 hmmsearch_output_dir
-
-The directory name where the hmmsearch output files will be placed.
-
-=head2 hmmsearchprog
-
-The hmmsearch program. On most systems, this is 'hmmsearch', which is the
-default. Change this if your binary has a different name.
-
-=head2 mysql_dbname
-
-MySQL: Database name. Ask your administrator if you don't know.
-
-=head2 mysql_dbpassword
-
-MySQL: Database password. Ask your administrator if you don't know.
-
-=head2 mysql_dbserver
-
-MySQL: Database server. Normally 'localhost'. Ask your administrator if you
-don't know.
-
-=head2 mysql_dbuser
-
-MySQL: Database user name. Ask your administrator if you don't know.
-
-=head2 mysql_table_ests
-
-MySQL: Table name for the EST sequences. Ask your administrator if you don't
-know.
-
-=head2 mysql_table_hmmsearch
-
-MySQL: Table name for the HMMsearch results. Ask your administrator if you
-don't know.
-
-=head2 mysql_table_blast
-
-MySQL: Table name for the BLAST results. Ask your administrator if you don't
-know.
-
-=head2 output_directory
-
-Output directory to use by Orthograph. It will be created if it does not exist.
-
-=head2 quiet
-
-Quiet operation: Orthograph will retain most of the status messages.
-
-=head2 species_name
-
-Name of the analyzed species. Will occur in the database as well as in all
-output files in appropriate places.
-
-=head2 hmmsearch_score_threshold
-
-Score threshold for the HMM search. Must be a number.
-
-=head2 translate_program
-
-The tool to use for translation of the EST sequence file. The program must
-accept a fasta file name as input and provide its output on STDOUT, which is
-then being redirected into a file that Orthograph uses.
-
-=head2 verbose
-
-Be verbose (output more information about what is going on). 
-
-=head1 AUTHOR
-
-Written by Malte Petersen <mptrsen@uni-bonn.de>
-
-=head1 COPYRIGHT
-
-Copyright (C) 2012 Malte Petersen 
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details. You
-should have received a copy of the GNU General Public License along with this
-program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-
-=cut
-#}}}}

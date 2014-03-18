@@ -1,6 +1,6 @@
 #--------------------------------------------------
 # This file is part of Orthograph.
-# Copyright 2013 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2014 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Orthograph is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -66,8 +66,8 @@ GetOptions( $config,
   'database-backend=s',
   'db-prefix=s',
   'debug|d',
-  'estfile',
-  'estfile|E=s',
+  'input-file',
+  'input-file|i=s',
 	'header-separator=s',
   'hmmsearch-evalue-threshold',
   'hmmsearch-evalue-threshold=f',
@@ -176,8 +176,9 @@ $config->{'debug'}                      //= 0;
 $config->{'delete-ogs'}                 //= '';
 $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
-$config->{'estfile'}                    //= '';
+$config->{'input-file'}                 //= '';
 $config->{'evalue-bin-size'}            //= 500;
+$config->{'exonerate-program'}          //= 'exonerate';
 $config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
 $config->{'hmmsearch-evalue-threshold'} //= defined $config->{'hmmsearch-score-threshold'} ? undef : 10;

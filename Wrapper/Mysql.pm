@@ -1,6 +1,6 @@
 #--------------------------------------------------
 # This file is part of Orthograph.
-# Copyright 2013 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2014 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Orthograph is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -57,7 +57,7 @@ my $db_dbpwd                = $config->{'mysql-password'};
 my $db_dbserver             = $config->{'mysql-server'};
 my $db_dbuser               = $config->{'mysql-username'};
 my $db_timeout              = $config->{'mysql-timeout'};
-my $sleep_for                  = 10;
+my $sleep_for               = 10;
 
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
 my $db_table_blast          = $config->{'db_table_blast'};
@@ -70,6 +70,7 @@ my $db_table_ntseqs         = $config->{'db_table_ntseqs'};
 my $db_table_ogs            = $config->{'db_table_ogs'};
 my $db_table_orthologs      = $config->{'db_table_orthologs'};
 my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
+my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
@@ -1818,4 +1819,12 @@ sub clear_db {
 	$dbh->disconnect();
 	return $n;
 }
+
+sub db_structure_present {
+	my $q = "SELECT * FROM $db_table_seqtypes";
+	my $r = db_get($q);
+	if ($r) { return 1 }
+	else    { return 0 }
+}
+
 1;

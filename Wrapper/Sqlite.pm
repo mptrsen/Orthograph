@@ -1,6 +1,6 @@
 #--------------------------------------------------
 # This file is part of Orthograph.
-# Copyright 2013 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2014 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Orthograph is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -69,6 +69,7 @@ my $db_table_ntseqs         = $config->{'db_table_ntseqs'};
 my $db_table_ogs            = $config->{'db_table_ogs'};
 my $db_table_orthologs      = $config->{'db_table_orthologs'};
 my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
+my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
@@ -112,10 +113,6 @@ my $stderr = *STDERR;
 #}}}
 
 
-
-if ($config->{'database-backend'} eq 'sqlite' and not -f $database) {
-	fail_and_exit("SQLite database file '$database' not found");
-}
 
 =head1 FUNCTIONS
 
@@ -1801,7 +1798,11 @@ sub import_ogs_into_database {
 		LEFT JOIN $db_table_taxa 
 		ON $db_table_temp.taxid = $db_table_taxa.id",
 
-		# insert sequence pairs relationships
+		# insert sequence pairs relationships. 
+		# this is an ugly but required hack because sqlite does not support INSERT OR UPDATE.
+		# we need the original ids for the orthologous groups, though, so REPLACE isn't an option.
+		# I offer a bottle of champagne to anyone who can find a cleaner solution.
+		# contact me if you have one!
 		"INSERT OR REPLACE INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
 		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, CURRENT_TIMESTAMP, '$db_dbuser'
 		FROM $db_table_taxa
@@ -1874,4 +1875,21 @@ sub clear_db {
 	$dbh->disconnect();
 	return $n;
 }
+
+sub db_structure_present {
+	if (!-e $database) { return 0 }
+	my $r = get_list_of_tables();
+	if ($r) { return 1 }
+	else    { return 0 }
+}
+
+sub get_list_of_tables {
+	my $q = '.tables';
+	my $cmd = "$sqlite $database '$q'";
+	my $r = [ `$cmd` ];
+	if ($!) { die "Fatal: Could not get list of tables: $!\n" }
+	unless (grep /$db_table_orthologs/, @$r) { return 0 }
+	return 1;
+}
+
 1;
