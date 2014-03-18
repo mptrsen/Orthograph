@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #--------------------------------------------------
 # This file is part of Orthograph.
-# Copyright 2013 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2014 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Orthograph is free software: you can redistribute it and/or modify it under the
 # terms of the GNU General Public License as published by the Free Software
@@ -106,7 +106,7 @@ my $clear_files                = $config->{'clear-files'};
 my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
-my $estfile                    = $config->{'estfile'};
+my $estfile                    = $config->{'input-file'};
 my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
