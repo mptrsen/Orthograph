@@ -65,8 +65,8 @@ GetOptions( $config,
   'configfile|c=s',
   'debug',
   'debug|d',
-  'estfile',
-  'estfile|E=s',
+  'input-file',
+  'input-file|i=s',
 	'header-separator=s',
   'hmmsearch-evalue-threshold',
   'hmmsearch-evalue-threshold=f',
@@ -173,7 +173,7 @@ $config->{'debug'}                      //= 0;
 $config->{'delete-ogs'}                 //= '';
 $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
-$config->{'estfile'}                    //= '';
+$config->{'input-file'}                 //= '';
 $config->{'evalue-bin-size'}            //= 500;
 $config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
