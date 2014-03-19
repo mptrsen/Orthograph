@@ -26,10 +26,13 @@ database-backend   = sqlite
 # # SQLite settings
 #
 # Database file for SQLite. Required if you use SQLite.
+# This is a plain file that can be located anywhere. Just give it a name, and
+# Orthograph will create it automatically.
 sqlite-database    = /PATH/TO/DATABASE
 
 # Path to the sqlite executable. Normally this is located at /usr/bin/sqlite3
-# (the default). Change this if your setup differs.
+# (the default). Change this if your setup differs. Only required if you use
+# SQLite and have 'database-backend' set to 'sqlite'.
 sqlite-program     = /usr/bin/sqlite3
 
 #

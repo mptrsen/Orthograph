@@ -966,17 +966,19 @@ sub load_ests_from_file {
 sub create_log_evalues_view {
 	unless (scalar @_ == 1) { croak 'Usage: Wrapper::Sqlite::create_log_evalues_view($species_id)' }
 	my $taxid = shift;
-	my $query_create_log_evalues = "CREATE OR REPLACE VIEW $db_table_log_evalues AS
+	my $query_drop_log_evalues = "DROP VIEW IF EXISTS $db_table_log_evalues";
+	my $query_create_log_evalues = "CREATE VIEW $db_table_log_evalues AS
 	  SELECT $db_table_hmmsearch.$db_col_log_evalue AS $db_col_log_evalue,
 	    COUNT($db_table_hmmsearch.$db_col_log_evalue) AS `count`
 	  FROM $db_table_hmmsearch
-	  WHERE $db_table_hmmsearch.$db_col_taxid = ?
+	  WHERE $db_table_hmmsearch.$db_col_taxid = $taxid
 	  GROUP BY $db_table_hmmsearch.$db_col_log_evalue
 	  ORDER BY $db_table_hmmsearch.$db_col_log_evalue";
 	my $dbh = get_dbh()
 		or return undef;
+	$dbh->do($query_drop_log_evalues);
 	my $sth = $dbh->prepare($query_create_log_evalues);
-	$sth = execute($sth, $db_timeout, $taxid);
+	$sth = execute($sth, $db_timeout);
 	$dbh->disconnect();
 	return 1;
 }

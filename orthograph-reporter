@@ -24,7 +24,6 @@ use autodie;        # die automatically on I/O functions
 # Core modules
 use Carp;           # carp and croak: warn and die with call stack
 use Data::Dumper;   # great for debugging
-use DBI;            # database interface
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
@@ -35,29 +34,37 @@ use Time::HiRes;    # high-resolution timer
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
-use Orthograph::Ortholog;              # ortholog class
 use Wrapper::Exonerate;
 use IO::Tee;
 
 my $config = $Orthograph::Config::config;	# copy config variables
 
+#--------------------------------------------------
+# # Database settings
+#-------------------------------------------------- 
 # which database backend do we use?
-my $database_backend        = $config->{'database-backend'};
-my $use_mysql               = $database_backend eq 'mysql'  ? 1 : 0;
-my $use_sqlite              = $database_backend eq 'sqlite' ? 1 : 0;
-if ($use_mysql)     { use Wrapper::Mysql  }
-elsif ($use_sqlite) { use Wrapper::Sqlite }
-
-# database settings
-my $db_table_blast          = $config->{'db_table_blast'};
-my $db_table_blastdbs       = $config->{'db_table_blastdbs'};
-my $db_table_ests           = $config->{'db_table_ests'};
-my $db_table_hmmsearch      = $config->{'db_table_hmmsearch'};
-my $db_table_set_details    = $config->{'db_table_set_details'};
-my $db_table_aaseqs         = $config->{'aaseqs'};
-my $db_table_seqpairs       = $config->{'sequence-pairs'};
-my $db_table_taxa           = $config->{'taxa'};
-my $db_table_orthologs      = $config->{'orthologs'};
+my $database_backend = $config->{'database-backend'};
+my $use_mysql        = $database_backend eq 'mysql'  ? 1 : 0;
+my $use_sqlite       = $database_backend eq 'sqlite' ? 1 : 0;
+my $database         = undef;
+if ($use_mysql)      {
+	use Wrapper::Mysql;
+	$database = $config->{'mysql-database'};
+}
+elsif ($use_sqlite) {
+	use Wrapper::Sqlite;
+	$database = $config->{'sqlite-database'};
+}
+# MySQL settings
+my $mysql_table_blast          = $config->{'mysql_table_blast'};
+my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
+my $mysql_table_ests           = $config->{'mysql_table_ests'};
+my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
+my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
+my $mysql_table_aaseqs         = $config->{'aaseqs'};
+my $mysql_table_seqpairs       = $config->{'sequence-pairs'};
+my $mysql_table_taxa           = $config->{'taxa'};
+my $mysql_table_orthologs      = $config->{'orthologs'};
 
 # directory and output settings
 my $outdir                     = $config->{'output-directory'};
@@ -66,8 +73,8 @@ my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
-my $verbose                    = $config->{'verbose'};
 my $sep                        = $config->{'header-separator'};
+my $verbose                    = $config->{'verbose'};
 
 # settings for this specific analysis
 my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
@@ -145,7 +152,7 @@ unless ($species_id) {
 }
 
 # get real table names
-($db_table_ests, $db_table_hmmsearch, $db_table_blast) = get_real_table_names($species_id);
+($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = get_real_table_names($species_id);
 
 # get the set id from the database
 $set_id = get_set_id($setname);
@@ -159,138 +166,140 @@ unless ($set_id) {
 if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
 else { @reftaxa = get_taxa_in_set($set_id) }
 
-# get an orthoid => list_of_aaseq_ids relationship from the db
+# get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = get_orthologs_for_set_hashref($set_id);
 
 # create view (a virtual table) for the log-evalues
-create_scores_view($species_id)
+create_log_evalues_view($species_id)
 	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
 
+# get a log-evalue->count relationship from the database
+# classify the log-evalues into "bins" that hold a limited number of values
+# this is done in order to speed up the database queries
+my $logevalue_count = get_logevalue_count($species_id);
+my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
+my $logevalues_bins = binify($bin_size, $logevalue_count);
 
-my @scores = get_scores_list();
+# generate a table
+my $transcripts_mapped_to = { };
 
-my $seen = {};
-my $c = 0;
-my $c_orthologs = 0;
-my $c_nonorthologs = 0;
-my $transcripts_mapped_to = {};
+# this will hold all transcripts that were found so we can check for redundancy
+my @transcript_list;
 
-my $start = int time;
+print "The first query may take a while, please be patient...\n" unless $quiet;
 
-foreach my $score (@scores) {
-	# this is an array of arrays, there may be multiple results with the same score
-	my $hmmresults = get_hmmresult_for_score($score);
-	printf $stdout "Evaluating score %.1f...\n", $score
-		unless $quiet;
-	++$c;
-	HMMHIT:
-	foreach my $hmmhit (@$hmmresults) {
-		printf $stdout "Evaluating HMM target %s[%d-%d]...\n", $hmmhit->{'target'}, $hmmhit->{'hmm_start'}, $hmmhit->{'hmm_end'} if $debug;
-		my $orthoid   = $hmmhit->{'query'};
-		my $digest    = $hmmhit->{'target'};
+# okay let's do the loop come on baby let's do the loop
+LOGEVALUE:
+foreach my $logevalue (@logevalues) {
 
-		# skip transcripts we have already handled
-		if (seen_this_region_before($hmmhit)) {
-			printf $stdout "Seen %s[%d] before (%d rows), skipping\n",
-				$digest,
-				$hmmhit->{'hmm_start'},
-				$c,
-					if $verbose;
-			next;
-		}
-		my $blastresults = get_blastresult_for_digest($digest);
-		my $mismatches = 0;
-		foreach my $blasthit (@$blastresults) {
-			# ok, we got a reciprocal hit
-			if (reciprocal_best_hit($blasthit, $aaseqs_in_orthoid->{$orthoid})) {
-				printf $stdout "Orthology detected (%d in %s)! Trying to add %s[%d:%d] to %s.\n",
-					$blasthit->{'target'},
+BIN:
+foreach my $bin (@$logevalues_bins) {
+
+	# get the results in the form:
+	# evalue => {
+	#   orthoid => [
+	#     reciprocal_hit,
+	#     reciprocal_hit,
+	#     reciprocal_hit,
+	#     etc.
+	#   ]
+	# }
+	print $stdout "Fetching next batch of results...\n" if $verbose;
+	$t0 = scalar time;
+	# only one evalue
+	if ($bin->{'min'} == $bin->{'max'}) {
+		printf $stdout "log evalue: %f\n", $bin->{'min'} if $debug;
+		$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'});
+	}
+	# evalue range
+	else {
+		printf $stdout "log evalue min: %f max: %f\n", $bin->{'min'}, $bin->{'max'} if $debug;
+		$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
+	}
+	$t1 = scalar time;
+	printf $stdout "Fetched %d rows for log evalue range (%f to %f) in %d seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
+
+	# skip empty bins
+	next unless %$results;
+
+	EVALUE:
+	while (my ($logevalue, $result) = each %$results) {
+		ORTHOID:
+		while (my ($orthoid, $list_of_hits) = each (%$result)) {
+			# reset the mismatch counter
+			$mismatches = 0;
+
+			print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
+
+			
+
+			#-------------------------------------------------- 
+			# so, was this a match we can trust?
+			if (my $this_match = get_reciprocal_match($orthoid, $list_of_hits)) {
+
+				# yeah - here should be the part where the actual sequences are output
+				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
 					$orthoid,
-					$hmmhit->{'target'},
-					$hmmhit->{'hmm_start'},
-					$hmmhit->{'hmm_end'},
+					$this_match->{'hmmhit'},
+					$this_match->{'hmm_start'},
+					$this_match->{'hmm_end'},
 					$orthoid,
-						if $verbose;
+					unless $quiet;
 
 				# if this orthoid has been hit before, check whether the new cancidate
 				# overlaps on hmm (gene) level with previous hits
 				if (exists $transcripts_mapped_to->{$orthoid}) {
-					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $hmmhit)) {
+					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 						# yep, it overlaps, so we can't assign this transcript because better
-						# scores have precedence. just go to the next one
-						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} if $verbose;
-						next HMMHIT;
+						# e-values have precedence. just go to the next one
+						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
+						next ORTHOID;
 					}
 					# or does it overlap on transcript level?
-					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $hmmhit)) {
-						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $hmmhit->{'target'} if $verbose;
-						next HMMHIT;
+					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
+						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
+						next ORTHOID;
 					}
 					else {
-						# this is a valid hit, make an ortholog object and add it to the list of hits
-						my $ortholog_transcript = Orthograph::Ortholog->new($hmmhit);
-						$ortholog_transcript->hmm_name($orthoid);
-						$ortholog_transcript->hmm_target($hmmhit->{'target'});
-						$ortholog_transcript->blast_query($digest);
-						$ortholog_transcript->blast_target($blasthit->{'target'});
-
-						add_to_ortholog_group($orthoid, $ortholog_transcript);
-
-						printf $stdout "No overlap with previous hits: added %s[%d:%d] to %s\n", 
-							$ortholog_transcript->hmm_target(),
-							$ortholog_transcript->hmm_start(),
-							$ortholog_transcript->hmm_end(),
-							$orthoid,
-								unless $quiet;
-
-						++$c_orthologs;
-						next HMMHIT;
+						# does not overlap, add to list of transcripts for this ortholog group
+						push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
+						printf $stdout "No overlap with previous hits: added %s to %s.\n", $this_match->{'hmmhit'}, $orthoid unless $quiet;
+						# this transcript can't be found again
+						push @transcript_list, $this_match->{'hmmhit'};
+						# ok, next one
+						next ORTHOID;
 					}
 				}
 				else {
-					# this is a valid hit, make an ortholog object and add it to the list of hits
-					my $ortholog_transcript = Orthograph::Ortholog->new($hmmhit);
-					$ortholog_transcript->hmm_name($orthoid);
-					$ortholog_transcript->hmm_target($hmmhit->{'target'});
-					$ortholog_transcript->blast_query($digest);
-					$ortholog_transcript->blast_target($blasthit->{'target'});
 
-					add_to_ortholog_group($orthoid, $ortholog_transcript);
+					# this has not been hit before, just assign
+					printf $stdout "Assigned %s to %s.\n", $this_match->{'hmmhit'}, $orthoid;
+					push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
 
-					printf $stdout "Added %s[%d:%d] to %s\n", 
-						$hmmhit->{'target'},
-						$hmmhit->{'hmm_start'},
-						$hmmhit->{'hmm_end'},
-						$orthoid,
-							unless $quiet;
+					# this transcript can't be found again
+					push @transcript_list, $this_match->{'hmmhit'};
 
-					++$c_orthologs;
-					next HMMHIT;
+					# reset 
+					undef $this_match;
 				}
 			}
 			else {
-				++$mismatches;
-				printf $stdout "%s not in %s: no joy (%d mismatches)\n",
-					$blasthit->{'target'},
-					$orthoid,
-					$mismatches
-						if $verbose;
-				if ($mismatches >= $max_mismatches) {
-					print $stdout "Too many mismatches, we don't trust this one anymore\n" if $verbose;
-					++$c_nonorthologs;
-					next HMMHIT;
-				}
+				# this orthoid has no match
+				print $stdout "No orthology detected for $orthoid.\n"
+					unless $quiet;
 			}
-		}
+
+		# END ORTHOID
+		} 
+
+	# END EVALUE
 	}
+# END BIN
 }
-my $end = int time;
-printf "Took %d seconds to find %d orthologs and %d non-orthologs\n", $end-$start, scalar keys %$transcripts_mapped_to, $c_nonorthologs;
+
 
 print "Finished fetching from the database.\n";
 print "Starting output.\n";
-
-#print Dumper $transcripts_mapped_to; exit;
 
 
 # a tablefile
@@ -303,10 +312,10 @@ my $num_n = 0;
 # walk the orthologs, concatenate in order if multiple
 ORTHOID:
 while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
-	my ($hdr_aa, $hdr_nt, $seq, $cdnaseq, $prev_end);
+	my ($hdr, $seq, $cdnaseq, $prev_end);
 	$hitcount = 0;
 	my $firsttime = 1;
-	$transcripts = [ sort { $a->hmm_start() <=> $b->hmm_start() } @$transcripts ];
+	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
 	print "Evaluating $orthoid...\n";
 	# each reciprocal hit
@@ -315,22 +324,21 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		++$hitcount;
 
 		# get the sequences from the database
-		my $proteome_sequence = get_reference_sequence($hit->blast_target());
-		my $est_sequence = get_nucleotide_transcript_for($hit->hmm_target());
+		my $proteome_sequence = get_reference_sequence($hit->{'blast_hit'});
+		my $est_sequence = get_nucleotide_transcript_for($hit->{'hmmhit'});
 
 		# trim the transcript sequence to the domain coordinates
-		$proteome_sequence = substr($proteome_sequence, $hit->env_start-1, $hit->env_end() - $hit->env_start()-1);
+		$proteome_sequence = substr($proteome_sequence, $hit->{'env_start'}-1, $hit->{'env_end'}-$hit->{'env_start'}-1);
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		my ($orf_aa_sequence, $orf_cdna_sequence) = get_orf($proteome_sequence, $est_sequence);
 		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
 
 		# exonerate didn't get an alignment
 		if ($hit->{'orf_cdna_sequence'}) {
 			printf $stdout "Got this ORF for %s[%d-%d]:\n%s\n",
-				$hit->hmm_target(),
-				$hit->env_start(),
-				$hit->env_end(),
+				$hit->{'hmmhit'},
+				$hit->{'env_start'},
+				$hit->{'env_end'},
 				$hit->{'orf_cdna_sequence'}
 					if $debug;
 
@@ -342,13 +350,13 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 
 			# write the transcripts to the table
 			printf $tfh "\t%s[len %d]",
-				$hit->hmm_target(),                 # transcript ID
+				$hit->{'hmmhit'},                 # transcript ID
 				length $hit->{'orf_aa_sequence'}, # ORF sequence length
 			;
 			# before concatenating, fill gaps with 'X' if desired
 			if ($fill_with_x) {
 				if (defined $prev_end) {
-					my $num_x = $hit->hmm_start() - $prev_end;
+					my $num_x = $hit->{'hmm_start'} - $prev_end;
 					my $xes = 'X' x $num_x;
 					# 'N' sequences to fill the cdna sequence are three times longer
 					my $ns  = 'N' x ($num_x * 3);
@@ -356,12 +364,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 					$cdnaseq .= $ns;
 					print $stdout "Added $num_x 'X' to sequence\n" if $debug;
 				}
-				$prev_end = $hit->hmm_end();
+				$prev_end = $hit->{'hmm_end'};
 			}
-			# concatenate
-			$hit->real_header( get_real_header($hit->hmm_target()) );
-			$hdr_aa .= $hit->real_header() . ':[len ' . length($hit->{'orf_aa_sequence'}) . ']';
-			$hdr_nt .= $hit->real_header() . ':[len ' . length($hit->{'orf_cdna_sequence'}) . ']';
 			$seq .= $hit->{'orf_aa_sequence'};
 			$cdnaseq .= $hit->{'orf_cdna_sequence'};
 			print $stdout "Concatenated sequences\n" if $debug;
@@ -369,10 +373,10 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		else {
 			if ($verbose) {
 				printf $stdout "Could not get an ORF for %s[%d-%d] and %s\n",
-					$hit->hmm_target(),
-					$hit->env_start(),
-					$hit->env_end(),
-					$hit->blast_target(),
+					$hit->{'hmmhit'},
+					$hit->{'env_start'},
+					$hit->{'env_end'},
+					$hit->{'blast_hit'},
 				;
 				print $stdout "Skipping this transcript\n";
 			}
@@ -394,8 +398,10 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
+	# join the headers
+	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
 	# print the concatenated sequence
-	printf $fafh ">%s\n%s\n", $hdr_aa, $seq;
+	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
  
 	# do the same for the nucleotide sequences
@@ -404,8 +410,10 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences_nt);
+	# join headers
+	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
 	# print the concatenated sequence
-	printf $fafh ">%s\n%s\n", $hdr_nt, $cdnaseq;
+	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	undef $fafh;
 }
 undef $tfh;
@@ -445,7 +453,7 @@ sub binify {
 	my $bins        = [ ];
 	my $sum         = 0;
 	my @bin         = ( );
-	foreach my $value (sort {$b <=> $a} keys %$value_count) {
+	foreach my $value (sort {$a <=> $b} keys %$value_count) {
 		# if adding this count would not exceed the bin size
 		if ($sum + $value_count->{$value} < $bin_size) {
 			push @bin, $value;
@@ -471,23 +479,13 @@ sub binify {
 	return $bins;
 }
 
-sub reciprocal_best_hit {
-	my $blasthit = shift;
-	my $aaseqs_in_orthoid = shift;
-	if (grep /$blasthit->{'target'}/, @$aaseqs_in_orthoid) {
-		return 1;
-	}
-	else {
-		return 0;
-	}
-}
-
 sub get_reciprocal_match {
 	my $orthoid = shift;
 	my $list_of_hits = shift;
 	foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list_of_hits ) {
 		# has this aaseq been used in building this hmm and has this transcript
 		# not been found previously? 
+		# the function first from List::Util returns after the first occurence. 
 		if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
 			and not first {/$reciprocal_hit->{'hmmhit'}/} @$list_of_hits ) {
 
@@ -551,7 +549,7 @@ sub transcript_overlap {
 	my $candidate = shift;
 	# test whether the candidate overlaps on transcript level, return 1 or 0
 	foreach my $assigned_transcript (@$already_assigned) {
-		# the transcript coords do not overlap
+		# the hmm coords do not overlap
 		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
 			print_no_overlap($candidate, $assigned_transcript)
 				if $verbose;
@@ -569,12 +567,12 @@ sub print_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap.\n", 
-		$$transcript{'target'},
+		$$transcript{'hmmhit'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
-		$$candidate{'target'},
+		$$candidate{'hmmhit'},
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
@@ -586,12 +584,12 @@ sub print_no_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
-		$$transcript{'target'},
+		$$transcript{'hmmhit'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
-		$$candidate{'target'},
+		$$candidate{'hmmhit'},
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
@@ -716,36 +714,36 @@ sub get_orf {
 	return ($alignment->aa_sequence(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
 }
 
-sub add_to_ortholog_group {
+sub get_ortholog_group {
+	my $setid = shift;
 	my $orthoid = shift;
-	my $new_ortholog = shift;
-	push @{$transcripts_mapped_to->{$orthoid}}, $new_ortholog;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_ortholog_group($setid, $orthoid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_ortholog_group($setid, $orthoid);
+	}
 }
 
-sub seen_this_region_before {
-	my $hmmhit = shift;
-	while (my ($orthoid, $list_of_orthologs) = each %$transcripts_mapped_to) {
-		if ( grep {
-			# same transcript that got hit?
-			$hmmhit->{'target'} eq $_->hmm_target()
-			# and in a region that was hit before?
-			and ($hmmhit->{'hmm_start'} >= $_->hmm_start() or $hmmhit->{'hmm_end'} <= $_->hmm_end())
-			} @$list_of_orthologs ) {
-			# then we don't need this
-			return 1;
-		}
-	# otherwise, this is ok
+sub get_ortholog_group_nucleotide {
+	my $specid = shift;
+	my $orthoid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_ortholog_group_nucleotide($set_id, $orthoid);
 	}
-	return 0;
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_ortholog_group_nucleotide($set_id, $orthoid);
+	}
 }
 
 sub get_taxid_for_species {
-	my $sn = shift;
-	print "getting taxid for $sn\n";
-	if ($use_mysql)
-		{ return Wrapper::Mysql::get_taxid_for_species($sn) }
-	elsif ($use_sqlite)
-		{ return Wrapper::Sqlite::get_taxid_for_species($sn) }
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_taxid_for_species($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_taxid_for_species($specid);
+	}
 }
 
 sub get_real_table_names {
@@ -759,121 +757,84 @@ sub get_real_table_names {
 }
 
 sub get_set_id {
-	my $specid = shift;
+	my $setn = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_set_id($specid);
+		return Wrapper::Mysql::get_set_id($setn);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_set_id($specid);
+		return Wrapper::Sqlite::get_set_id($setn);
 	}
 }
 
 sub get_taxa_in_set {
-	my $specid = shift;
+	my $setid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_taxa_in_set($specid);
+		return Wrapper::Mysql::get_taxa_in_set($setid);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_taxa_in_set($specid);
+		return Wrapper::Sqlite::get_taxa_in_set($setid);
 	}
 }
 
 sub get_orthologs_for_set_hashref {
-	my $specid = shift;
+	my $setid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_orthologs_for_set_hashref($specid);
+		return Wrapper::Mysql::get_orthologs_for_set_hashref($setid);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_orthologs_for_set_hashref($specid);
+		return Wrapper::Sqlite::get_orthologs_for_set_hashref($setid);
 	}
 }
 
-sub create_scores_view {
+sub create_log_evalues_view {
 	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::create_scores_view($specid);
+		return Wrapper::Mysql::create_log_evalues_view($specid);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::create_scores_view($specid);
+		return Wrapper::Sqlite::create_log_evalues_view($specid);
 	}
 }
 
-sub get_scores_list {
+sub get_logevalue_count {
 	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_scores_list($specid);
+		return Wrapper::Mysql::get_logevalue_count($specid);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_scores_list($specid);
+		return Wrapper::Sqlite::get_logevalue_count($specid);
 	}
 }
 
-sub get_hmmresult_for_score {
+sub get_results_for_logevalue {
+	my $setid = shift;
 	my $specid = shift;
+	my $min = shift;
+	my $max = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_hmmresult_for_score($specid);
+		return Wrapper::Mysql::get_results_for_logevalue($setid, $specid, $min, $max);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_hmmresult_for_score($specid);
-	}
-}
-
-sub get_blastresult_for_digest {
-	my $specid = shift;
-	if ($use_mysql) {
-		return Wrapper::Mysql::get_blastresult_for_digest($specid);
-	}
-	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_blastresult_for_digest($specid);
+		return Wrapper::Sqlite::get_results_for_logevalue($setid, $specid, $min, $max);
 	}
 }
 
 sub get_reference_sequence {
-	my $specid = shift;
+	my $hit = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_reference_sequence($specid);
+		return Wrapper::Mysql::get_reference_sequence($hit);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_reference_sequence($specid);
+		return Wrapper::Sqlite::get_reference_sequence($hit);
 	}
 }
 
 sub get_nucleotide_transcript_for {
-	my $specid = shift;
+	my $hmmhit = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_nucleotide_transcript_for($specid);
+		return Wrapper::Mysql::get_nucleotide_transcript_for($hmmhit);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_nucleotide_transcript_for($specid);
-	}
-}
-
-sub get_real_header {
-	my $specid = shift;
-	if ($use_mysql) {
-		return Wrapper::Mysql::get_real_header($specid);
-	}
-	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_real_header($specid);
-	}
-}
-
-sub get_ortholog_group {
-	my $specid = shift;
-	if ($use_mysql) {
-		return Wrapper::Mysql::get_ortholog_group($specid);
-	}
-	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_ortholog_group($specid);
-	}
-}
-
-sub get_ortholog_group_nucleotide {
-	my $specid = shift;
-	if ($use_mysql) {
-		return Wrapper::Mysql::get_ortholog_group_nucleotide($specid);
-	}
-	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_ortholog_group_nucleotide($specid);
+		return Wrapper::Sqlite::get_nucleotide_transcript_for($hmmhit);
 	}
 }
