@@ -835,8 +835,8 @@ sub get_taxid_for_species {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT id FROM $db_table_taxa WHERE core = 0 AND longname = '$species_name'";
-	my $result = &db_get($query);
+	my $query = "SELECT $db_table_taxa.id FROM $db_table_taxa WHERE core = 0 AND longname = '$species_name'";
+	my $result = db_get($query);
 	if ($result) { 
 		$g_species_id = $$result[0][0];
 		return $$result[0][0];
@@ -982,7 +982,7 @@ sub create_log_evalues_view {
 	$dbh->disconnect();
 	return 1;
 }
-	
+
 sub create_scores_view {
 	unless (scalar @_ == 1) { croak 'Usage: Wrapper::Sqlite::create_scores_view($species_id)' }
 	my $taxid = shift;
@@ -1313,6 +1313,84 @@ sub get_results_for_logevalue {
 	scalar keys %$result > 0 ? return $result : return undef;
 }
 
+sub get_results_for_single_score {
+	my $setid   = shift;
+	my $score   = shift;
+	# generic query
+	my $query = "SELECT DISTINCT
+			$db_table_orthologs.$db_col_orthoid,
+			$db_table_hmmsearch.$db_col_target,
+			$db_table_hmmsearch.$db_col_evalue,
+			$db_table_hmmsearch.$db_col_hmm_start,
+			$db_table_hmmsearch.$db_col_hmm_end,
+			$db_table_hmmsearch.$db_col_env_start,
+			$db_table_hmmsearch.$db_col_env_end,
+			$db_table_blast.$db_col_target,
+			$db_table_blast.$db_col_score,
+			$db_table_blast.$db_col_evalue,
+			$db_table_blast.$db_col_start,
+			$db_table_blast.$db_col_end,
+			$db_table_ests.$db_col_header
+		FROM $db_table_hmmsearch
+		LEFT JOIN $db_table_ests
+			ON $db_table_hmmsearch.$db_col_target = $db_table_ests.$db_col_digest
+		LEFT JOIN $db_table_orthologs
+			ON $db_table_hmmsearch.$db_col_query = $db_table_orthologs.$db_col_orthoid
+		LEFT JOIN $db_table_blast
+			ON $db_table_hmmsearch.$db_col_target = $db_table_blast.$db_col_query
+		LEFT JOIN $db_table_aaseqs
+			ON $db_table_blast.$db_col_target = $db_table_aaseqs.$db_col_id
+		LEFT JOIN $db_table_taxa
+			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.$db_col_id
+		LEFT JOIN $db_table_set_details
+			ON $db_table_orthologs.$db_col_setid = $db_table_set_details.$db_col_id
+		WHERE $db_table_ests.$db_col_digest          IS NOT NULL
+			AND $db_table_orthologs.$db_col_orthoid    IS NOT NULL
+			AND $db_table_blast.$db_col_query          IS NOT NULL
+			AND $db_table_aaseqs.$db_col_id            IS NOT NULL
+			AND $db_table_taxa.$db_col_id              IS NOT NULL
+			AND $db_table_set_details.$db_col_id       IS NOT NULL
+			AND $db_table_set_details.$db_col_id       = ?
+			AND $db_table_hmmsearch.$db_col_score      = ?
+		ORDER BY $db_table_blast.$db_col_score DESC
+	";
+
+	# good for debugging
+	print $query . "\n" if $debug;
+
+	my $dbh = get_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+
+	# single score
+	$sth = execute($sth, $db_timeout, $setid, $score);
+
+	# will hold the result
+	my $result = [ ];
+
+	while (my $line = $sth->fetchrow_arrayref()) {
+		# first key is the hmmsearch score, second key is the orthoid
+		push( @$result, {
+			'orthoid'      => $$line[0],
+			'hmmhit'       => $$line[1],
+			'hmm_evalue'   => $$line[2],
+			'hmm_start'    => $$line[3],
+			'hmm_end'      => $$line[4],
+			'env_start'    => $$line[5],
+			'env_end'      => $$line[6],
+			'blast_hit'    => $$line[7],
+			'blast_score'  => $$line[8],
+			'blast_evalue' => $$line[9],
+			'blast_start'  => $$line[10],
+			'blast_end'    => $$line[11],
+			'header'       => $$line[12],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	return $result;
+}
+
 sub get_results_for_score {
 	my $setid   = shift;
 	my $taxid   = shift;
@@ -1522,8 +1600,14 @@ Returns list of scores as present in the scores view
 =cut
 
 sub get_scores_list {
-	my $q = "SELECT `score` FROM $db_table_scores ORDER BY `$db_table_scores`.`$db_col_score` DESC";
-	return map { $_->[0] } @{db_get($q)};
+	my $specid = shift;
+	my $setid = shift;
+	my $r = db_get("SELECT score FROM $db_table_hmmsearch
+		GROUP BY score
+		ORDER BY score DESC");
+	# flatten multidimensional array
+	$r = [ map { @$_ } @$r ];
+	return $r;
 }
 
 =head2 get_hmmresult_for_score(SCORE)

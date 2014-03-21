@@ -28,7 +28,7 @@ use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
 use List::Util qw( first min max sum );  # list functions
-use Time::HiRes;    # high-resolution timer
+use Time::HiRes qw(time);    # high-resolution timer
 
 # Custom modules
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
@@ -102,20 +102,8 @@ my $stderr = IO::Tee->new(
 	$logfh,
 );
 
-# mutually exclusive options
-if ($verbose and $quiet) {
-	print $stderr "Fatal: Can't operate in both verbose and quiet mode\n";
-	exit(1);
-}
-
 # also be verbose if debugging
 if ($debug) { $verbose = 1 }
-
-# mutually exclusive options
-if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold) {
-	print $stderr "Fatal: Can't use both e-value and score thresholds\n";
-	exit(1);
-}
 
 # More variables
 my $bin_size             = 500;
@@ -180,20 +168,22 @@ my $logevalue_count = get_logevalue_count($species_id);
 my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
 my $logevalues_bins = binify($bin_size, $logevalue_count);
 
+my $scores = get_scores_list($species_id, $set_id);
+
 # generate a table
 my $transcripts_mapped_to = { };
 
 # this will hold all transcripts that were found so we can check for redundancy
 my @transcript_list;
 
-print "The first query may take a while, please be patient...\n" unless $quiet;
-
 # okay let's do the loop come on baby let's do the loop
-LOGEVALUE:
-foreach my $logevalue (@logevalues) {
+SCORE:
+foreach my $score (@$scores) {
 
-BIN:
-foreach my $bin (@$logevalues_bins) {
+#--------------------------------------------------
+# BIN:
+# foreach my $bin (@$logevalues_bins) {
+#-------------------------------------------------- 
 
 	# get the results in the form:
 	# evalue => {
@@ -204,38 +194,42 @@ foreach my $bin (@$logevalues_bins) {
 	#     etc.
 	#   ]
 	# }
-	print $stdout "Fetching next batch of results...\n" if $verbose;
+	print $stdout "Fetching next batch of results for HMM alignment score $score...\n" if $verbose;
 	$t0 = scalar time;
-	# only one evalue
-	if ($bin->{'min'} == $bin->{'max'}) {
-		printf $stdout "log evalue: %f\n", $bin->{'min'} if $debug;
-		$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'});
-	}
-	# evalue range
-	else {
-		printf $stdout "log evalue min: %f max: %f\n", $bin->{'min'}, $bin->{'max'} if $debug;
-		$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
-	}
+	#--------------------------------------------------
+	# # only one evalue
+	# if ($bin->{'min'} == $bin->{'max'}) {
+	# 	printf $stdout "log evalue: %f\n", $bin->{'min'} if $debug;
+	# 	$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'});
+	# }
+	# # evalue range
+	# else {
+	# 	printf $stdout "log evalue min: %f max: %f\n", $bin->{'min'}, $bin->{'max'} if $debug;
+	# 	$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
+	# }
+	#-------------------------------------------------- 
+	$results = get_results_for_single_score($set_id, $score);
 	$t1 = scalar time;
-	printf $stdout "Fetched %d rows for log evalue range (%f to %f) in %d seconds\n", scalar keys %$results, $bin->{'min'}, $bin->{'max'}, $t1 - $t0 if $verbose;
+	# skip empty results
+	unless (@$results) { next SCORE }
 
-	# skip empty bins
-	next unless %$results;
+	printf $stdout "Fetched %d rows for HMM alignment score %.2f in %.1f seconds\n",
+		scalar @$results,
+		$score,
+		$t1 - $t0
+			unless $quiet;
 
-	EVALUE:
-	while (my ($logevalue, $result) = each %$results) {
-		ORTHOID:
-		while (my ($orthoid, $list_of_hits) = each (%$result)) {
+	RESULT:
+	foreach my $result (@$results) {
+		my $orthoid = $result->{'orthoid'};
 			# reset the mismatch counter
 			$mismatches = 0;
 
 			print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
 
-			
-
 			#-------------------------------------------------- 
 			# so, was this a match we can trust?
-			if (my $this_match = get_reciprocal_match($orthoid, $list_of_hits)) {
+			if (my $this_match = is_reciprocal_match($orthoid, $result)) {
 
 				# yeah - here should be the part where the actual sequences are output
 				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
@@ -244,36 +238,51 @@ foreach my $bin (@$logevalues_bins) {
 					$this_match->{'hmm_start'},
 					$this_match->{'hmm_end'},
 					$orthoid,
-					unless $quiet;
+					if $debug;
 
 				# if this orthoid has been hit before, check whether the new cancidate
 				# overlaps on hmm (gene) level with previous hits
 				if (exists $transcripts_mapped_to->{$orthoid}) {
+
 					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 						# yep, it overlaps, so we can't assign this transcript because better
 						# e-values have precedence. just go to the next one
-						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
-						next ORTHOID;
+						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
+						next RESULT;
 					}
+
 					# or does it overlap on transcript level?
 					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} unless $quiet;
-						next ORTHOID;
+						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
+						next RESULT;
 					}
+
 					else {
 						# does not overlap, add to list of transcripts for this ortholog group
 						push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-						printf $stdout "No overlap with previous hits: added %s to %s.\n", $this_match->{'hmmhit'}, $orthoid unless $quiet;
+						printf $stdout ">> No overlap with previous hits: added '%s' [%d:%d] to %s.\n",
+							$this_match->{'header'},
+							$this_match->{'env_start'},
+							$this_match->{'env_end'},
+							$orthoid
+								unless $quiet;
 						# this transcript can't be found again
 						push @transcript_list, $this_match->{'hmmhit'};
 						# ok, next one
-						next ORTHOID;
+						next RESULT;
 					}
+
 				}
+
 				else {
 
 					# this has not been hit before, just assign
-					printf $stdout "Assigned %s to %s.\n", $this_match->{'hmmhit'}, $orthoid;
+					printf $stdout ">> Assigned '%s' [%d:%d] to %s.\n",
+						$this_match->{'header'},
+						$this_match->{'env_start'},
+						$this_match->{'env_end'},
+						$orthoid
+							unless $quiet;
 					push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
 
 					# this transcript can't be found again
@@ -282,24 +291,26 @@ foreach my $bin (@$logevalues_bins) {
 					# reset 
 					undef $this_match;
 				}
+
 			}
+
 			else {
 				# this orthoid has no match
 				print $stdout "No orthology detected for $orthoid.\n"
-					unless $quiet;
+					if $debug;
 			}
 
-		# END ORTHOID
+		# END RESULT
 		} 
 
-	# END EVALUE
-	}
-# END BIN
+# END SCORE
 }
 
-
+print "\n";
+print "####################################\n";
 print "Finished fetching from the database.\n";
 print "Starting output.\n";
+print "####################################\n";
 
 
 # a tablefile
@@ -317,7 +328,7 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my $firsttime = 1;
 	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
-	print "Evaluating $orthoid...\n";
+	print "Finalizing $orthoid...\n";
 	# each reciprocal hit
 	HIT:
 	foreach my $hit (@$transcripts) {
@@ -348,11 +359,6 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 				$firsttime = 0;
 			}
 
-			# write the transcripts to the table
-			printf $tfh "\t%s[len %d]",
-				$hit->{'hmmhit'},                 # transcript ID
-				length $hit->{'orf_aa_sequence'}, # ORF sequence length
-			;
 			# before concatenating, fill gaps with 'X' if desired
 			if ($fill_with_x) {
 				if (defined $prev_end) {
@@ -363,9 +369,18 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 					$seq .=  $xes;
 					$cdnaseq .= $ns;
 					print $stdout "Added $num_x 'X' to sequence\n" if $debug;
+					printf $tfh "\t[%d ambigs]", $num_x;
 				}
 				$prev_end = $hit->{'hmm_end'};
 			}
+
+			# write the transcripts to the table
+			printf $tfh "\t%s[len %d]",
+				$hit->{'header'},                 # transcript ID
+				length $hit->{'orf_aa_sequence'}, # ORF sequence length
+			;
+
+			# concatenate sequences
 			$seq .= $hit->{'orf_aa_sequence'};
 			$cdnaseq .= $hit->{'orf_cdna_sequence'};
 			print $stdout "Concatenated sequences\n" if $debug;
@@ -479,19 +494,14 @@ sub binify {
 	return $bins;
 }
 
-sub get_reciprocal_match {
+sub is_reciprocal_match {
 	my $orthoid = shift;
-	my $list_of_hits = shift;
-	foreach my $reciprocal_hit ( sort { $a->{'blast_evalue'} <=> $b->{'blast_evalue'} } @$list_of_hits ) {
-		# has this aaseq been used in building this hmm and has this transcript
-		# not been found previously? 
-		# the function first from List::Util returns after the first occurence. 
-		if ( first { /$reciprocal_hit->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}}
-			and not first {/$reciprocal_hit->{'hmmhit'}/} @$list_of_hits ) {
+	my $result = shift;
+		if ( first { /$result->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} ) {
 
-			print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} for $reciprocal_hit->{'hmmhit'} used in $orthoid!\n" if $verbose;
+			print $stdout "    reciprocal hit $result->{'blast_hit'} for $result->{'hmmhit'} used in $orthoid!\n" if $verbose;
 
-			$match = $reciprocal_hit;
+			$match = $result;
 
 			# one hit is enough if not in strict mode
 			return $match unless $strict;
@@ -499,7 +509,7 @@ sub get_reciprocal_match {
 		else {  # not found
 			# cry
 			++$mismatches;
-			print $stdout "    reciprocal hit $reciprocal_hit->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
+			print $stdout "    reciprocal hit $result->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
 
 			# in a strict search, that's it for this orthoid
 			return undef if $strict;
@@ -514,8 +524,6 @@ sub get_reciprocal_match {
 			}
 		}
 
-	# END RH
-	}
 }
 
 sub insert_candidate {
@@ -836,5 +844,27 @@ sub get_nucleotide_transcript_for {
 	}
 	elsif ($use_sqlite) {
 		return Wrapper::Sqlite::get_nucleotide_transcript_for($hmmhit);
+	}
+}
+
+sub get_scores_list {
+	my $specid = shift;
+	my $setid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_scores_list($specid, $setid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_scores_list($specid, $setid);
+	}
+}
+
+sub get_results_for_single_score {
+	my $setid = shift;
+	my $score = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_results_for_single_score($setid, $score);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_results_for_single_score($setid, $score);
 	}
 }

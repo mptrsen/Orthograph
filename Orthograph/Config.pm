@@ -210,7 +210,9 @@ $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
 #}}}
 
-# compound options
+#--------------------------------------------------
+# # compound options
+#-------------------------------------------------- 
 if ($config->{'continue'}) {
 	$config->{'clear-files'}    = 0;
 	$config->{'clear-database'} = 0;
@@ -218,7 +220,9 @@ if ($config->{'continue'}) {
 
 if ($config->{'debug'}) { $config->{'verbose'} = 1 }
 
-# mutually exclusive options
+#--------------------------------------------------
+# # mutually exclusive options
+#-------------------------------------------------- 
 if ($config->{'database-backend'} ne 'mysql' and $config->{'database-backend'} ne 'sqlite') {
 	print STDERR "Fatal: Database backend not set correctly! Must be 'mysql' or 'sqlite'.\n";
 	exit 1;
@@ -227,6 +231,16 @@ if ($config->{'database-backend'} ne 'mysql' and $config->{'database-backend'} n
 if ($config->{'database-backend'} eq 'sqlite' and not defined $config->{'sqlite-database'}) {
 	print STDERR "Fatal: SQLite database backend selected, but database file not specified\n";
 	exit 1;
+}
+
+if ($config->{'verbose'} and $config->{'quiet'}) {
+	print STDERR "Fatal: Can't operate in both verbose and quiet mode\n";
+	exit(1);
+}
+
+if ($config->{'hmmsearch-evalue-threshold'} and $config->{'hmmsearch-score-threshold'}) {
+	print STDERR "Fatal: Can't use both e-value and score thresholds\n";
+	exit(1);
 }
 
 
