@@ -53,9 +53,9 @@ my $config = $Orthograph::Config::config;  # copy config
 
 # db settings
 my $database                = $config->{'sqlite-database'};
-my $db_timeout              = 10;
+my $db_timeout              = 600;
 my $sqlite                  = $config->{'sqlite-program'};
-my $sleep_for               = 10;
+my $sleep_for               = 1;
 my $db_dbuser               = $config->{'username'} || $ENV{"LOGNAME"} || $ENV{"USER"} || getpwuid $<;
 
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
@@ -144,7 +144,7 @@ sub fail_and_exit {
 	exit 1;
 }
 
-=head2 db_dbh()
+=head2 get_dbh()
 
 Get a database handle
 
@@ -167,7 +167,10 @@ sub get_dbh {#{{{
 		$slept += $sleep_for;
 	}
 
-	if ($dbh) { return $dbh }
+	if ($dbh) {
+		$dbh->sqlite_busy_timeout($db_timeout * 1000);
+		return $dbh;
+	}
 	return undef;
 }#}}}
 
@@ -1885,10 +1888,11 @@ sub import_ogs_into_database {
 		ON $db_table_temp.taxid = $db_table_taxa.id",
 
 		# insert sequence pairs relationships. 
-		# this is an ugly but required hack because sqlite does not support INSERT OR UPDATE.
-		# we need the original ids for the orthologous groups, though, so REPLACE isn't an option.
-		# I offer a bottle of champagne to anyone who can find a cleaner solution.
-		# contact me if you have one!
+		# this is an ugly but required hack because sqlite does not support INSERT
+		# OR UPDATE.  we need the original ids for the orthologous groups, though,
+		# so REPLACE isn't an option. 
+		# I offer a bottle of champagne as well as my eternal gratitude to anyone
+		# who can find a cleaner solution.  contact me if you have one!
 		"INSERT OR REPLACE INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
 		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, CURRENT_TIMESTAMP, '$db_dbuser'
 		FROM $db_table_taxa

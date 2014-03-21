@@ -113,12 +113,9 @@ GetOptions( $config,
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
-#{{{
-
-
 
 # MySQL settings
-$config->{'database-backend'}            //= 'mysql';
+$config->{'database-backend'}           //= 'mysql';
 $config->{'mysql-database'}             //= 'orthograph';
 $config->{'mysql-password'}             //= 'root';
 $config->{'mysql-server'}               //= 'localhost';
@@ -208,7 +205,6 @@ $config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
 $config->{'substitute-u-with'}          //= 'X';
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
-#}}}
 
 #--------------------------------------------------
 # # compound options
