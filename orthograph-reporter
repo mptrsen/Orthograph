@@ -213,7 +213,7 @@ foreach my $score (@$scores) {
 	# skip empty results
 	unless (@$results) { next SCORE }
 
-	printf $stdout "Fetched %d rows for HMM alignment score %.2f in %.1f seconds\n",
+	printf $stdout "Fetched %5d rows for HMM alignment score %7.2f in %.1f seconds\n",
 		scalar @$results,
 		$score,
 		$t1 - $t0
@@ -319,6 +319,9 @@ my $tfh = IO::File->new($tablefile, 'w')
 
 my $fill_with_x = 1;
 my $num_n = 0;
+my $num_orthologs = scalar keys %$transcripts_mapped_to;
+my $l_counter = length $num_orthologs;
+my $counter = 0;
 
 # walk the orthologs, concatenate in order if multiple
 ORTHOID:
@@ -328,7 +331,8 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 	my $firsttime = 1;
 	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
-	print "Finalizing $orthoid...\n";
+	++$counter;
+	printf "Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
 	# each reciprocal hit
 	HIT:
 	foreach my $hit (@$transcripts) {

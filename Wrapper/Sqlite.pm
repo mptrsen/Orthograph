@@ -88,6 +88,8 @@ my $db_col_log_evalue       = 'log_evalue';
 my $db_col_score            = 'score';
 my $db_col_name             = 'name';
 my $db_col_ntseq            = 'nt_seq';
+my $db_col_ogsid            = 'ogs_id';
+my $db_col_ogsversion       = 'ogs_version';
 my $db_col_orthoid          = 'ortholog_gene_id';
 my $db_col_query            = 'query';
 my $db_col_setid            = 'setid';
@@ -261,73 +263,73 @@ sub create_tables {
 		# table: blastdbs
 		'blastdbs' => "CREATE TABLE `$t->{'blastdbs'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`setid`        INT UNSIGNED DEFAULT NULL UNIQUE,
-			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
+			`setid`        INTEGER UNSIGNED DEFAULT NULL UNIQUE,
+			`blastdb_path` TEXT(255) DEFAULT NULL)",
 		
 		# table: ogs
 		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
 			`id`           INTEGER PRIMARY KEY,
 			`type`         INT(1),
-			`taxid`        INT UNSIGNED NOT NULL UNIQUE,
-			`version`      VARCHAR(255))",
+			`taxid`        INTEGER UNSIGNED NOT NULL UNIQUE,
+			`version`      TEXT(255))",
 		
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
 			`id`               INTEGER PRIMARY KEY,
-			`setid`            INT UNSIGNED NOT NULL,
-			`ortholog_gene_id` VARCHAR(10)  NOT NULL,
-			`sequence_pair`    INT UNSIGNED NOT NULL,
+			`setid`            INTEGER UNSIGNED NOT NULL,
+			`ortholog_gene_id` TEXT(10)  NOT NULL,
+			`sequence_pair`    INTEGER UNSIGNED NOT NULL,
 			UNIQUE (setid, ortholog_gene_id, sequence_pair))",
 
 		# table: sequence_pairs
 		'sequence_pairs' => "CREATE TABLE `$t->{'seqpairs'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`taxid`        INT    UNSIGNED,
-			`ogs_id`       INT    UNSIGNED,
-			`aa_seq`       INT    UNSIGNED UNIQUE,
-			`nt_seq`       INT    UNSIGNED UNIQUE, 
-			`date`         INT    UNSIGNED DEFAULT CURRENT_TIMESTAMP,
-			`user`         INT    UNSIGNED)",
+			`taxid`        INTEGER    UNSIGNED,
+			`ogs_id`       INTEGER    UNSIGNED,
+			`aa_seq`       INTEGER    UNSIGNED UNIQUE,
+			`nt_seq`       INTEGER    UNSIGNED UNIQUE, 
+			`date`         INTEGER    UNSIGNED DEFAULT CURRENT_TIMESTAMP,
+			`user`         INTEGER    UNSIGNED)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`taxid`        INT             NOT NULL, 
-			`header`       VARCHAR(512)    UNIQUE,
+			`taxid`        INTEGER             NOT NULL, 
+			`header`       TEXT(512)    UNIQUE,
 			`sequence`     MEDIUMBLOB,
-			`user`         INT UNSIGNED,
-			`date`         INT UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
+			`user`         INTEGER UNSIGNED,
+			`date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_nt
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`taxid`        INT             NOT NULL, 
-			`header`       VARCHAR(512)    UNIQUE,
+			`taxid`        INTEGER             NOT NULL, 
+			`header`       TEXT(512)    UNIQUE,
 			`sequence`     MEDIUMBLOB,
-			`user`         INT UNSIGNED,
-			`date`         INT UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
+			`user`         INTEGER UNSIGNED,
+			`date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: set_details
 		'set_details' => "CREATE TABLE `$t->{'set_details'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`name`         VARCHAR(255) UNIQUE,
+			`name`         TEXT(255) UNIQUE,
 			`description`  BLOB)",
 
 		# table: taxa
 		'taxa' => "CREATE TABLE `$t->{'taxa'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`name`         VARCHAR(20)  UNIQUE,
-			`longname`     VARCHAR(255), 
-			`core`         TINYINT UNSIGNED NOT NULL)",
+			`name`         TEXT(20)  UNIQUE,
+			`longname`     TEXT(255), 
+			`core`         TINYINTEGER UNSIGNED NOT NULL)",
 		
 		# table: users
 		'users' => "CREATE TABLE `$t->{'users'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`name`         VARCHAR(255) UNIQUE)",
+			`name`         TEXT(255) UNIQUE)",
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
 			`id`           INTEGER PRIMARY KEY,
-			`type`         CHAR(3)     UNIQUE)",
+			`type`         TEXT(3)     UNIQUE)",
 	);#}}}
 
 	my @indices = (
@@ -365,14 +367,14 @@ sub create_tables {
 sub create_temp_table {
 	my $temptable = shift @_;
 	my $create_temp_table_query = "CREATE TABLE $temptable (
-			`name`        VARCHAR(255),
-			`longname`    VARCHAR(255),
-			`orthoset`    VARCHAR(255),
-			`orthoid`     VARCHAR(255),
-			`blastdb`     VARCHAR(255),
-			`header`      VARCHAR(512),
+			`name`        TEXT(255),
+			`longname`    TEXT(255),
+			`orthoset`    TEXT(255),
+			`orthoid`     TEXT(255),
+			`blastdb`     TEXT(255),
+			`header`      TEXT(512),
 			`sequence`    MEDIUMBLOB,
-			`description` VARCHAR(255))";
+			`description` TEXT(255))";
 	my $create_temp_indices_query = "BEGIN;
 CREATE INDEX IF NOT EXISTS ${temptable}_name ON $temptable (name);
 CREATE INDEX IF NOT EXISTS ${temptable}_orthoset ON $temptable (orthoset);
@@ -564,38 +566,38 @@ sub get_ortholog_groups_for_set {
 sub preparedb {
 	my $query_create_ests = "CREATE TABLE $db_table_ests ( 
 		`$db_col_id`        INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_digest`    CHAR(32)     NOT NULL,           
-		`$db_col_taxid`     UNSIGNED INT NOT NULL,       
+		`$db_col_digest`    TEXT(32)     NOT NULL,           
+		`$db_col_taxid`     UNSIGNED INTEGER NOT NULL,       
 		`$db_col_type`      UNSIGNED TINYINT(4) NOT NULL,
 		`$db_col_date`      UNSIGNED INT,
-		`$db_col_header`    VARCHAR      NOT NULL,       
+		`$db_col_header`    TEXT      NOT NULL,       
 		`$db_col_sequence`  MEDIUMBLOB DEFAULT NULL
 		)";
 
 	my $query_create_hmmsearch = "CREATE TABLE $db_table_hmmsearch (
 		`$db_col_id`         INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_taxid`      UNSIGNED INT NOT NULL,       
-		`$db_col_query`      VARCHAR(255) NOT NULL,       
-		`$db_col_target`     CHAR(32)     NOT NULL,       
+		`$db_col_taxid`      UNSIGNED INTEGER NOT NULL,       
+		`$db_col_query`      TEXT(255) NOT NULL,       
+		`$db_col_target`     TEXT(32)     NOT NULL,       
 		`$db_col_score`      DOUBLE       NOT NULL,
-		`$db_col_evalue`     CHAR(8)      NOT NULL,
+		`$db_col_evalue`     TEXT(8)      NOT NULL,
 		`$db_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
-		`$db_col_env_start`  UNSIGNED INT NOT NULL,
-		`$db_col_env_end`    UNSIGNED INT NOT NULL,
-		`$db_col_hmm_start`  UNSIGNED INT NOT NULL,
-		`$db_col_hmm_end`    UNSIGNED INT NOT NULL
+		`$db_col_env_start`  UNSIGNED INTEGER NOT NULL,
+		`$db_col_env_end`    UNSIGNED INTEGER NOT NULL,
+		`$db_col_hmm_start`  UNSIGNED INTEGER NOT NULL,
+		`$db_col_hmm_end`    UNSIGNED INTEGER NOT NULL
 		)";
 
 	my $query_create_blast = "CREATE TABLE $db_table_blast (
 		`$db_col_id`            INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_taxid`         UNSIGNED INT NOT NULL,       
-		`$db_col_query`         CHAR(32)     NOT NULL,       
-		`$db_col_target`        UNSIGNED INT NOT NULL,       
+		`$db_col_taxid`         UNSIGNED INTEGER NOT NULL,       
+		`$db_col_query`         TEXT(32)     NOT NULL,       
+		`$db_col_target`        UNSIGNED INTEGER NOT NULL,       
 		`$db_col_score`         DOUBLE       NOT NULL,
-		`$db_col_evalue`        CHAR(8)      NOT NULL,
+		`$db_col_evalue`        TEXT(8)      NOT NULL,
 		`$db_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
-		`$db_col_start`         UNSIGNED INT NOT NULL,
-		`$db_col_end`           UNSIGNED INT NOT NULL
+		`$db_col_start`         UNSIGNED INTEGER NOT NULL,
+		`$db_col_end`           UNSIGNED INTEGER NOT NULL
 		)";
 
 	my @query_create_indices = (
@@ -920,12 +922,12 @@ sub load_ests_from_file {
 	# create temporary table first
 	my $q_drop_temp   = "DROP TABLE IF EXISTS $db_table_temp";
 	my $q_create_temp = "CREATE TABLE $db_table_temp (
-	  '$db_col_digest' VARCHAR,
+	  '$db_col_digest' TEXT,
 		'$db_col_taxid'  INT,
 		'$db_col_type'   INT,
 		'$db_col_date'   INT,
-		'$db_col_header' VARCHAR,
-		'$db_col_sequence' VARCHAR)
+		'$db_col_header' TEXT,
+		'$db_col_sequence' TEXT)
 	";
 
 	# load data into temptable
@@ -1864,9 +1866,9 @@ sub get_taxon_shorthands {
 sub create_temptable_for_ogs_data {
 	# create the temporary table
 	my $q = "CREATE TABLE $db_table_temp (
-	`taxid`    CHAR(5)      NOT NULL,
-	`header`   VARCHAR(255) NOT NULL,
-	`sequence` VARCHAR)";
+	`taxid`    TEXT(5)      NOT NULL,
+	`header`   TEXT(255) NOT NULL,
+	`sequence` TEXT)";
 	my $dbh = get_dbh();
 	print $stdout $q, "\n" if $debug;
 	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
@@ -1875,17 +1877,18 @@ sub create_temptable_for_ogs_data {
 }
 
 sub import_ogs_into_database {
-	my ($f, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
-	
+	my ($f, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
+
 	load_csv_into_temptable($f, $db_table_temp);
 
-	my @q = (
 		# insert data into main table. IGNORE is important to avoid duplicates without throwing errors.
-		"INSERT OR IGNORE INTO $seqtable (taxid, header, sequence)
+	my $query_insert_sequences = "
+		INSERT OR IGNORE INTO $seqtable (taxid, header, sequence)
 		SELECT $db_table_taxa.id, $db_table_temp.header, $db_table_temp.sequence 
 		FROM $db_table_temp 
 		LEFT JOIN $db_table_taxa 
-		ON $db_table_temp.taxid = $db_table_taxa.id",
+			ON $db_table_temp.taxid = $db_table_taxa.id
+	";
 
 		# insert sequence pairs relationships. 
 		# this is an ugly but required hack because sqlite does not support INSERT
@@ -1893,28 +1896,124 @@ sub import_ogs_into_database {
 		# so REPLACE isn't an option. 
 		# I offer a bottle of champagne as well as my eternal gratitude to anyone
 		# who can find a cleaner solution.  contact me if you have one!
-		"INSERT OR REPLACE INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, CURRENT_TIMESTAMP, '$db_dbuser'
-		FROM $db_table_taxa
-		LEFT JOIN $seqtable
-		ON $db_table_taxa.id = $seqtable.taxid 
-		LEFT JOIN $db_table_ogs
-		ON $db_table_taxa.id = $db_table_ogs.taxid
+	my $query_insert_pair =	"
+		INSERT OR IGNORE INTO $db_table_seqpairs (
+			$db_col_taxid,
+			$seqcol,
+			$otherseqcol,
+			$db_col_date
+		)
+		SELECT 
+			$db_table_taxa.$db_col_id,
+			$db_table_aaseqs.$db_col_id,
+			$db_table_ntseqs.$db_col_id,
+			CURRENT_TIMESTAMP
+		FROM $seqtable
 		LEFT JOIN $otherseqtable
-		ON $otherseqtable.header = $seqtable.header
-		WHERE $db_table_taxa.id = '$taxon'",
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		LEFT JOIN $db_table_taxa
+			ON $seqtable.$db_col_taxid = $db_table_taxa.$db_col_id
+		WHERE $db_table_taxa.$db_col_id = ?
+		AND $seqtable.$db_col_header = ?
+		UNION 
+		SELECT 
+			$db_table_taxa.$db_col_id,
+			$seqtable.$db_col_id,
+			$otherseqtable.$db_col_id,
+			CURRENT_TIMESTAMP
+		FROM $seqtable
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		LEFT JOIN $db_table_taxa
+			ON $seqtable.$db_col_taxid = $db_table_taxa.$db_col_id
+		WHERE $db_table_taxa.$db_col_id = ?
+		AND $otherseqtable.$db_col_header = ?
+	";
 
-		# update OGS table
-		"INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
-	);
-	
+	my $query_select_pair = "
+		SELECT 
+			$db_table_seqpairs.$db_col_id,
+			$seqtable.$db_col_id,
+			$otherseqtable.$db_col_id
+		FROM $db_table_seqpairs
+		LEFT JOIN $seqtable
+			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		LEFT JOIN $db_table_taxa
+			ON $db_table_seqpairs.$db_col_taxid = $db_table_taxa.$db_col_id
+		WHERE $db_table_taxa.$db_col_id = ?
+		AND $seqtable.$db_col_header = ?
+		UNION 
+		SELECT 
+			$db_table_seqpairs.$db_col_id,
+			$seqtable.$db_col_id,
+			$otherseqtable.$db_col_id
+		FROM $db_table_seqpairs
+		LEFT JOIN $seqtable
+			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		LEFT JOIN $db_table_taxa
+			ON $db_table_seqpairs.$db_col_taxid = $db_table_taxa.$db_col_id
+		WHERE $db_table_taxa.$db_col_id = ?
+		AND $otherseqtable.$db_col_header = ?
+	";
+
+	my $query_update_pair = "
+		UPDATE $db_table_seqpairs 
+		SET 
+			$db_col_taxid = ?,
+			$db_col_ogsid = ?,
+			$seqcol = ?,
+			$otherseqcol = ?,
+			$db_col_date = CURRENT_TIMESTAMP
+		WHERE
+			$db_col_id = ?
+	";
+
 	my $dbh = get_dbh();
-	foreach (@q) {
-		print $stdout $_, "\n" if $debug;
-		my $sth = $dbh->prepare($_);
-		$sth->execute();
+	my $sth_ins = $dbh->prepare($query_insert_pair);
+	my $sth_sel = $dbh->prepare($query_select_pair);
+	my $sth_upd = $dbh->prepare($query_update_pair);
+	
+
+	foreach my $hdr (@$hdrs) {
+	# for each header
+	#		get the corresponding id from the other seq table, if there is one
+	#		try to insert both ids 
+	#		test if a row was updated
+	#		if not:
+	#		update the id
+	
+		print $sth_ins->{Statement} if $debug;
+		printf "Execute this with %s, %s, %s and %s?\n", $taxon, $hdr, $taxon, $hdr;
+		<STDIN>;
+		$sth_ins->execute($taxon, $hdr, $taxon, $hdr);
+		# no rows affected, nothing has been inserted
+		if ($sth_ins->rows() == 0) {
+			# determine the seqpairs id
+			print $sth_sel->{Statement} if $debug;
+			$sth_sel->execute($taxon, $hdr, $taxon, $hdr);
+			if ($sth_sel->rows() > 1) { croak "Fatal: SELECT statement returned more than one row!\n" }
+			elsif ($sth_sel->rows() == 0) { croak "Fatal: SELECT statement returned zero rows!\n" }
+			my $ids = $sth_sel->fetchall_arrayref();
+			if ($debug) {
+				print "got these ids: \n";
+				print Dumper $ids;
+				print $sth_upd->{Statement};
+				printf "Execute this with %s, %s, %s, %s and %s?\n", $taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0];
+				<STDIN>;
+			}
+			$sth_upd->execute($taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0]);
+			if ($sth_upd->rows() == 0) { croak "Fatal: UPDATE didn't affect anything (no rows updated)!\n" }
+		}
+		
 	}
 
+
+		# update OGS table
+		"INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
 
 }
 
