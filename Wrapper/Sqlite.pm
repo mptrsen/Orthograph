@@ -1978,31 +1978,43 @@ sub import_ogs_into_database {
 	my $sth_upd = $dbh->prepare($query_update_pair);
 	
 
-	foreach my $hdr (@$hdrs) {
 	# for each header
 	#		get the corresponding id from the other seq table, if there is one
 	#		try to insert both ids 
 	#		test if a row was updated
 	#		if not:
 	#		update the id
+	my $c = 0;
+	my $n = scalar @$hdrs;
+	foreach my $hdr (@$hdrs) {
+		$c++;
+		progress_bar($c, $n, 25, '-');
 	
-		print $sth_ins->{Statement} if $debug;
-		printf "Execute this with %s, %s, %s and %s?\n", $taxon, $hdr, $taxon, $hdr;
-		<STDIN>;
+		if ($debug) {
+			print $sth_ins->{Statement};
+			printf "Execute this with %s, %s, %s and %s? ", $taxon, $hdr, $taxon, $hdr;
+			<STDIN>;
+		}
 		$sth_ins->execute($taxon, $hdr, $taxon, $hdr);
 		# no rows affected, nothing has been inserted
 		if ($sth_ins->rows() == 0) {
+			if ($debug) {
+				print "no rows affected, sequence pair already exists. attempting update...\n";
+				print $sth_sel->{Statement};
+				printf "Execute this with %s, %s, %s and %s? ", $taxon, $hdr, $taxon, $hdr;
+				<STDIN>;
+			}
 			# determine the seqpairs id
-			print $sth_sel->{Statement} if $debug;
 			$sth_sel->execute($taxon, $hdr, $taxon, $hdr);
-			if ($sth_sel->rows() > 1) { croak "Fatal: SELECT statement returned more than one row!\n" }
-			elsif ($sth_sel->rows() == 0) { croak "Fatal: SELECT statement returned zero rows!\n" }
 			my $ids = $sth_sel->fetchall_arrayref();
+			if (scalar @$ids > 1) { croak "Fatal: SELECT statement returned more than one row!\n" }
+			elsif (scalar @$ids == 0) { croak "Fatal: SELECT statement returned zero rows!\n" }
 			if ($debug) {
 				print "got these ids: \n";
-				print Dumper $ids;
+				printf "%s, ", defined $_ ? $_ : 'NULL' foreach (@{$$ids[0]});
+				print "\n";
 				print $sth_upd->{Statement};
-				printf "Execute this with %s, %s, %s, %s and %s?\n", $taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0];
+				printf "Execute this with %s, %s, %s, %s and %s? ", $taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0];
 				<STDIN>;
 			}
 			$sth_upd->execute($taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0]);
@@ -2016,6 +2028,27 @@ sub import_ogs_into_database {
 		"INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
 
 }
+
+# progress_bar
+# Prints a self-overwriting, wget-style progress bar.
+# This is not written to the log file so it doesn't get cluttered.
+# Arguments: scalar int so-far, scalar int total, scalar int width, scalar char "what-to-use-as-char"
+sub progress_bar {#{{{
+	my ($got, $total, $width, $char) = @_;
+	$width ||= 25;
+	$char ||= '=';
+	my $num_width = length($total);
+	local $| = 1;
+	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r",	
+		$char x (($width-1)*$got/$total) . '>',
+		$got,
+		$total,
+		100 * $got / $total
+	);
+	local $| = 0;
+	return 1;
+}#}}}
+
 
 sub get_sequence_count_for_taxon {
 	my $taxon = shift;
