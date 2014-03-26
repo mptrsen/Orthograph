@@ -130,14 +130,6 @@ unless (defined $db_dbuser and defined $db_dbpwd ) {
 	die "Fatal: You must specify database username (--mysql-username) and password (--mysql-password).\n";
 }
 
-#--------------------------------------------------
-# # ok quit if there are no arguments
-#-------------------------------------------------- 
-if (scalar @ARGV == 0 and not $create and not $ispeptide and not $isnucleotide) { 
-	print "No arguments provided, exiting\n";
-	exit 0;
-}
-
 # name == username unless defined name
 $name = $db_dbuser unless defined($name);
 
