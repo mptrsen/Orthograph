@@ -120,7 +120,6 @@ $config->{'mysql-database'}             //= 'orthograph';
 $config->{'mysql-password'}             //= 'root';
 $config->{'mysql-server'}               //= 'localhost';
 $config->{'mysql-username'}             //= 'root';
-$config->{'mysql-prefix'}               //= 'orthograph';
 $config->{'mysql-timeout'}              //= 600;
 
 # database tables
@@ -140,6 +139,9 @@ $config->{'db_table_set_details'}    //= 'set_details';
 $config->{'db_table_temp'}           //= 'temp';
 $config->{'db_table_taxa'}           //= 'taxa';
 $config->{'db_table_users'}          //= 'users';
+
+# database prefix
+$config->{'db-prefix'}               //= 'orthograph';
 
 # make sure there is exactly one underscore at the end of the prefix
 (my $db_prefix = $config->{'db-prefix'}) =~ s/_*$/_/;
