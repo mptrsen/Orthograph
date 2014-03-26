@@ -1971,6 +1971,7 @@ sub import_ogs_into_database {
 	";
 
 	my $dbh = get_dbh();
+	$dbh->do($query_insert_sequences) or die "Fatal: OGS loading failed: $DBI::errstr\n";
 	my $sth_ins = $dbh->prepare($query_insert_pair);
 	my $sth_sel = $dbh->prepare($query_select_pair);
 	my $sth_upd = $dbh->prepare($query_update_pair);
