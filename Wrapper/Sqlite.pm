@@ -338,6 +338,8 @@ sub create_tables {
 "CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_taxid  ON $t->{'ntseqs'} (taxid)",
 "CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_header  ON $t->{'aaseqs'} (header)",
 "CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_header  ON $t->{'ntseqs'} (header)",
+"CREATE INDEX IF NOT EXISTS $t->{'sequence_pairs'}_aa_seq  ON $t->{'sequence_pairs'} (aa_seq)",
+"CREATE INDEX IF NOT EXISTS $t->{'sequence_pairs'}_nt_seq  ON $t->{'sequence_pairs'} (nt_seq)",
 	);
 
 	# useful pragmas for performance?
@@ -351,11 +353,7 @@ sub create_tables {
 	my $insert_seqtypes = "INSERT OR IGNORE INTO $t->{'seqtypes'} (type) VALUES ('nt'),('aa')";
 
 	my $dbh = get_dbh();
-	foreach (values %create_table) {
-		print $_, ";\n" if $verbose;
-		$dbh->do($_) or die "Could not exec query: $!\n";
-	}
-	foreach (@indices) {
+	foreach (values %create_table, @indices) {
 		print $_, ";\n" if $verbose;
 		$dbh->do($_) or die "Could not exec query: $!\n";
 	}
