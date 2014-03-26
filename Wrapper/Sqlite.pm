@@ -338,8 +338,8 @@ sub create_tables {
 "CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_taxid  ON $t->{'ntseqs'} (taxid)",
 "CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_header  ON $t->{'aaseqs'} (header)",
 "CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_header  ON $t->{'ntseqs'} (header)",
-"CREATE INDEX IF NOT EXISTS $t->{'sequence_pairs'}_aa_seq  ON $t->{'sequence_pairs'} (aa_seq)",
-"CREATE INDEX IF NOT EXISTS $t->{'sequence_pairs'}_nt_seq  ON $t->{'sequence_pairs'} (nt_seq)",
+"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_aa_seq  ON $t->{'seqpairs'} (aa_seq)",
+"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_nt_seq  ON $t->{'seqpairs'} (nt_seq)",
 	);
 
 	# useful pragmas for performance?
