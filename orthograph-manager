@@ -160,7 +160,7 @@ elsif ($create) {
 	&get_yn() or exit;
 	&drop_tables;
 	&create_tables;
-	print "Created Orthograph table structure in database '$db_dbname'.\n";
+	print "Created Orthograph table structure in database '$database'.\n";
 	exit;
 }
 
