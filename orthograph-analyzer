@@ -122,7 +122,7 @@ my $clear_files                = $config->{'clear-files'};
 my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
-my $estfile                    = $config->{'input-file'};
+my $input_file                 = $config->{'input-file'};
 my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
@@ -168,6 +168,7 @@ my $EMPTY                   = q{};
 my $alndir                  = $EMPTY;
 my $blastcount              = 0;
 my $blastdb                 = $EMPTY;
+my $blastdir                = $EMPTY;
 my $blasthitcount_total     = 0;
 my $count                   = 0;
 my $hmmcount                = 0;
@@ -318,7 +319,7 @@ unless ($quiet) {#{{{
 #--------------------------------------------------
 # # translate the ESTs to protein, feed that stuff to the database
 #-------------------------------------------------- 
-$protfile = &translate_est(File::Spec->catfile($estfile));#{{{
+$protfile = &translate_est(File::Spec->catfile($input_file));#{{{
 
 # clear database of data from the same species
 if ($clear_database) {
@@ -336,7 +337,7 @@ unless ($continue) {
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	load_data_infile($estfile, $db_table_ests, 2, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
+	load_data_infile($input_file, $db_table_ests, 2, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
@@ -717,11 +718,11 @@ sub intro {#{{{
 	}
 
 	# the EST file
-	if (-e $estfile) {
-		print $stdout "EST file $estfile exists.\n" unless $quiet;
+	if (-e $input_file) {
+		print $stdout "EST file $input_file exists.\n" unless $quiet;
 	}
 	else {
-		print $stderr "Fatal: EST file $estfile does not exist!\n" and exit(1);
+		print $stderr "Fatal: EST file $input_file does not exist!\n" and exit(1);
 	}
 
 	# the HMMsearch output directory
@@ -837,7 +838,7 @@ sub hmmlist {#{{{
 sub translate_est {#{{{
   my ($infile) = shift;
   (my $outfile = $infile) =~ s/(\.[^.]*$)/_prot$1/;
-  print $stdout "Translating $estfile in all six reading frames...\n" unless $quiet;
+  print $stdout "Translating $input_file in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
     print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
@@ -1150,7 +1151,7 @@ sub make_blastdb {#{{{
 		}
 		# but write out anyway
 		printf($infh ">%s\n%s\n", $h, $s)
-			or print $stderr "Fatal: Could not write to makeblastdb input file $infile: $!\n" and exit(1);
+			or print $stderr "Fatal: Could not write to makeblastdb input file $infh $!\n" and exit(1);
 	}
 	undef $sequences;
 	close($infh);
