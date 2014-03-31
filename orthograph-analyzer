@@ -1042,15 +1042,15 @@ sub make_hmms {#{{{
 
 		# align
 		my $alnfile = align($fafile, $orthoid)
-			or die("Fatal: Alignment failed for '$fafh': $!\n");
+			or die("Fatal: Alignment failed for '$fafh': $! (errcode $?)\n");
 
 		# convert to stockholm
 		my $stockhfile = fasta2stockholm($alnfile, $orthoid)
-			or die("Fatal: Conversion to Stockholm format failed for '$alnfile': $!\n");
+			or die("Fatal: Conversion to Stockholm format failed for '$alnfile': $! (errcode $?)\n");
 
 		# build HMM
 		hmmbuild($stockhfile, $hmmfile)
-			or die("Fatal: HMM generation failed for '$alnfile': $!\n");
+			or die("Fatal: HMM generation failed for '$alnfile': $! (errcode $?)\n");
 	}
 	undef($data);	# free memory... well, it's bound to go out of scope anyway
 	return($hmmdir);
@@ -1165,7 +1165,7 @@ sub make_blastdb {#{{{
 	else {
 		push @makeblastdbcmd, qq( > /dev/null );
 	}
-	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $!\n" and exit(1);
+	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $! (errcode $?)\n" and exit(1);
 	return $dbfile;
 }#}}}
 
