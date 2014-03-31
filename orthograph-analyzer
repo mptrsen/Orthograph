@@ -706,6 +706,16 @@ sub intro {#{{{
 		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 
+	# the BLAST directory
+	unless ($blastdir) { $blastdir = File::Spec->catdir($sets_dir, $orthoset, 'blast') }
+	if (-d $blastdir) {
+		print $stdout "BLAST dir $blastdir exists.\n" unless $quiet;
+	}
+	else {
+		print $stdout "BLAST dir $blastdir does not exist, creating...\n" unless $quiet;
+		&makedir($blastdir) or print $stderr "Fatal: Failed to create directory $blastdir\n" and exit(1);
+	}
+
 	# the EST file
 	if (-e $estfile) {
 		print $stdout "EST file $estfile exists.\n" unless $quiet;
@@ -1113,8 +1123,7 @@ sub make_blastdb {#{{{
 	my $setid = shift or croak('Usage: make_blastdb(SETID)');
 
 	# build the paths for input and output
-	my $dbfile = File::Spec->catfile($sets_dir, $orthoset, 'blast', $orthoset);
-	my $infile = File::Spec->catfile($dbfile . ".fa");
+	my $dbfile = File::Spec->catfile($blastdir, $orthoset);
 
 	# check whether a database already exists
 	if (-e File::Spec->catfile($dbfile . '.psq')) {
