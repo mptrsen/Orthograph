@@ -213,7 +213,7 @@ foreach my $score (@$scores) {
 	# skip empty results
 	unless (@$results) { next SCORE }
 
-	printf $stdout "Fetched %5d rows for HMM alignment score %7.2f in %.1f seconds\n",
+	printf $stdout "Fetched %6d rows for HMM alignment score %7.2f in %.1f seconds\n",
 		scalar @$results,
 		$score,
 		$t1 - $t0
