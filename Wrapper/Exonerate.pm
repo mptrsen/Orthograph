@@ -181,7 +181,7 @@ sub search {
 	my $exonerate_ryo = '>ca\n%tcs>qa\n%qas';
 
 	# the complete command line
-	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --querytype protein --targettype dna --verbose 0 --showalignment no --showvulgar no $exhaustive $queryfile $targetfile > $outfile);
+	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --querytype protein --targettype dna --verbose 0 --showalignment no --showvulgar no $exhaustive --query $queryfile --target $targetfile > $outfile);
 	print "$exonerate_cmd\n" if $debug;
 
 	# run the beast now

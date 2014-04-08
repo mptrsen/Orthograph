@@ -707,7 +707,7 @@ sub get_taxa_in_all_sets {
 		INNER JOIN $db_table_set_details
 			ON $db_table_orthologs.setid = $db_table_set_details.id"
 	;
-	my $data = &db_get($query) or croak();
+	my $data = db_get($query) or croak();
 	foreach my $row (@$data) {
 		$setlist{$$row[0]} .= ' ' . $$row[1];
 	}
@@ -759,7 +759,7 @@ sub get_number_of_ests_for_specid {
 	my $specid = shift @_ or croak "Usage: get_number_of_ests_for_specid(SPECID)";
 
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $result = &db_get("SELECT COUNT(*) FROM $db_table_ests");
+	my $result = db_get("SELECT COUNT(*) FROM $db_table_ests");
 
 	return $$result[0][0];
 }
@@ -775,7 +775,7 @@ sub get_taxids_in_set {
 
 	# get the taxids for them
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $taxids = &db_get("SELECT id FROM $db_table_taxa WHERE name IN ($taxa_string)");
+	my $taxids = db_get("SELECT id FROM $db_table_taxa WHERE name IN ($taxa_string)");
 
 	return $taxids;
 }
@@ -791,7 +791,7 @@ sub get_number_of_ests_for_set {
 
 	# get the number of aaseqs for those taxids
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $aaseqs = &db_get("SELECT COUNT(*) FROM  $db_table_aaseqs WHERE $db_table_aaseqs.taxid IN ($taxids_string)");
+	my $aaseqs = db_get("SELECT COUNT(*) FROM  $db_table_aaseqs WHERE $db_table_aaseqs.taxid IN ($taxids_string)");
 
 	return $$aaseqs[0][0];
 }
@@ -818,7 +818,7 @@ sub get_aaseqs_for_set {
 	# get the aaseqs for those taxids
 	# this is a potentially very large collection, i hope that's fine with you
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $aaseqs = &db_get("SELECT $db_table_aaseqs.id, $db_table_aaseqs.sequence FROM  $db_table_aaseqs WHERE $db_table_aaseqs.taxid IN ($taxids_string)");
+	my $aaseqs = db_get("SELECT $db_table_aaseqs.id, $db_table_aaseqs.sequence FROM  $db_table_aaseqs WHERE $db_table_aaseqs.taxid IN ($taxids_string)");
 
 	$aaseqs = { map { $$_[0] => $$_[1] } @$aaseqs };
 	return $aaseqs;
@@ -861,7 +861,7 @@ sub get_set_id {
 	unless ($setname) { croak("Usage: get_set_id(SETNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT id FROM $db_table_set_details WHERE name = '$setname'";
-	my $result = &db_get($query);
+	my $result = db_get($query);
 	if ( scalar(@$result) > 1 ) { 
 		warn("Warning: Multiple sets of the same name!\n");
 		return $$result[0][0];
@@ -1511,7 +1511,7 @@ sub get_hit_transcripts {
 		WHERE $db_table_set_details.id = $setid
 		AND $db_table_hmmsearch.taxid  = $specid
 	";
-	my $data = &db_get($query);
+	my $data = db_get($query);
 	my @result;
 	push(@result, ${shift(@$data)}[0]) while @$data;
 	return @result;
@@ -1528,7 +1528,7 @@ sub get_reference_sequence {
 	my $query = "SELECT $db_col_sequence 
 		FROM $db_table_aaseqs
 		WHERE $db_col_id = '$id'";
-	my $result = &db_get($query);
+	my $result = db_get($query);
 	return $result->[0]->[0];
 }
 
@@ -1537,7 +1537,7 @@ sub get_transcript_for {
 	my $query  = "SELECT $db_col_sequence
 		FROM $db_table_ests
 		WHERE $db_col_digest = ?";
-	my $result = &db_get($query, $digest);
+	my $result = db_get($query, $digest);
 	return $result->[0]->[0];
 }
 
@@ -1546,7 +1546,7 @@ sub get_nucleotide_transcript_for {
 	my $query  = "SELECT $db_col_header
 		FROM $db_table_ests
 		WHERE $db_col_digest = ?";
-	my $result = &db_get($query, $digest);
+	my $result = db_get($query, $digest);
 	# remove the revcomp/translate portion
 	print "translated header: <$result->[0]->[0]>\n" if $debug;
 	(my $original_header = $result->[0]->[0]) =~ s/ ?(\[revcomp]:)?\[translate\(\d\)\]$//;
@@ -1554,7 +1554,7 @@ sub get_nucleotide_transcript_for {
 	$query = "SELECT $db_col_sequence
 		FROM $db_table_ests
 		WHERE $db_col_header = ?";
-	$result = &db_get($query, $original_header);
+	$result = db_get($query, $original_header);
 	return $result->[0]->[0];
 }
 

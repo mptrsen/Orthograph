@@ -103,7 +103,7 @@ my $stderr = IO::Tee->new(
 );
 
 # also be verbose if debugging
-if ($debug) { $verbose = 1 }
+if ($debug) { $verbose = 1; Wrapper::Exonerate->debug(1) }
 
 # More variables
 my $bin_size             = 500;
@@ -325,7 +325,8 @@ my $counter = 0;
 
 # walk the orthologs, concatenate in order if multiple
 ORTHOID:
-while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
+foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
+	my $transcripts = $transcripts_mapped_to->{$orthoid};
 	my ($hdr, $seq, $cdnaseq, $prev_end);
 	$hitcount = 0;
 	my $firsttime = 1;
@@ -343,7 +344,14 @@ while (my ($orthoid, $transcripts) = each %$transcripts_mapped_to) {
 		my $est_sequence = get_nucleotide_transcript_for($hit->{'hmmhit'});
 
 		# trim the transcript sequence to the domain coordinates
-		$proteome_sequence = substr($proteome_sequence, $hit->{'env_start'}-1, $hit->{'env_end'}-$hit->{'env_start'}-1);
+		my $start  = ($hit->{'env_start'} - 1) * 3;
+		my $length = ($hit->{'env_end'} - $hit->{'env_start'} - 1) * 3;
+		$est_sequence = substr($est_sequence, $start, $length);
+
+		# if the sequence is on the reverse strand, we need to reverse it 
+		#if ($hit->{'blast_start'} > $hit->{'blast_end'}) {
+			#$est_sequence = reverse $est_sequence;
+		#}
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
 		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
