@@ -16,6 +16,7 @@
 # Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
 
+# #useless comment
 # Pragmas
 use strict;         # make me write clean code
 use warnings;       # cry if something seems odd
