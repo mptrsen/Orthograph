@@ -143,7 +143,7 @@ exonerate-program    = exonerate
 # normally don't want to do. Unless you have an idea of how many reciprocal
 # searches are required to effectively verify or reject a candidate ortholog,
 # don't change this setting. 
-# Defaults to 1000.
+# Defaults to 100.
 #max-blast-searches         = 100
 
 # The soft threshold is a special concept of Orthograph: While checking in
