@@ -333,7 +333,7 @@ if ($clear_database) {
 
 unless ($continue) {
 	# store est data into the database:
-	print $stdout "Storing nucleotide sequences to database '$db_dbname' on $db_dbserver...\n" unless $quiet;
+	print $stdout "Storing nucleotide sequences to database '$database' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
@@ -342,7 +342,7 @@ unless ($continue) {
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
 	# store translated est data into the database:
-	print $stdout "Storing translated sequences to database '$db_dbname' on $db_dbserver...\n" unless $quiet;
+	print $stdout "Storing translated sequences to database '$database' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
@@ -463,7 +463,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			;
 		}
 	}
-
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
@@ -485,6 +484,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	for (my $n = 0; $n < $max; ++$n) { #{{{
  		++$count;
 
+		# the hmmsearch table id for this result
+		my $hmmsearch_id = $hmmresults[$n]->[4];
+
+		# create a new fasta file for the blast search
 		my $tmpfile = write_sequence_to_tempfile($hmmresults[$n], $hmmobj->hmmfile);
 
 		#--------------------------------------------------
@@ -510,8 +513,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# skip to next if BLAST finds nothing
 		if ($blastobj->hitcount() == 0) { next HMMRESULT }
 
-		# insert the blast results into the db. 3-argument form.
-		my $count = insert_results_into_table($db_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+		# insert the blast results into the db. 4-argument form.
+		my $count = insert_results_into_table($db_table_blast, $blastobj->blasthits_arrayref, basename($blastdb), $hmmsearch_id);
 		print $stdout "            ... pushed $count hits to database.\n" if $verbose;
 	} #}}}
 
@@ -954,28 +957,33 @@ sub clear_db {#{{{
 sub insert_results_into_table {#{{{
 	my $table = shift;
 	my $hits  = shift;
-	# called with 3 args, we are dealing with a blast result
-	my $blastdb = (scalar @_ == 1) ? shift : undef;
+	# called with 4 args, we are dealing with a blast result
+	my $hmmsearch_id = undef;
+	my $blastdb      = undef;
+	if (scalar @_ == 2) {
+		$blastdb      = shift;
+		$hmmsearch_id = shift;
+	}
 	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
 	my $hitcount;
 	
 	# this is a BLASTP result, we need the column 'blastdb'
 	if ($blastdb) {
 		if ($use_mysql) {
-			Wrapper::Mysql::insert_results_into_blast_table($hits, $species_id);
+			return Wrapper::Mysql::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
 		}
 		elsif ($use_sqlite) {
-			Wrapper::Sqlite::insert_results_into_blast_table($hits, $species_id);
+			return Wrapper::Sqlite::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
 		}
 	}
 
 	# this is a HMMsearch result
 	else {
 		if ($use_mysql) {
-			Wrapper::Mysql::insert_results_into_hmmsearch_table($hits, $species_id);
+			return Wrapper::Mysql::insert_results_into_hmmsearch_table($hits, $species_id);
 		}
 		elsif ($use_sqlite) {
-			Wrapper::Sqlite::insert_results_into_hmmsearch_table($hits, $species_id);
+			return Wrapper::Sqlite::insert_results_into_hmmsearch_table($hits, $species_id);
 		}
 	}
 }#}}}
@@ -1311,13 +1319,12 @@ sub generate_blast_output_filename {
 sub get_hmmresults {
 	my $hit = shift;
 	my $species_id = shift;
+	print "Getting list of HMMsearch results...\n" if $debug;
 	if ($use_mysql) {
-		print "Getting list of HMMsearch results...\n" if $debug;
 		return @{ Wrapper::Mysql::get_hmmresults($hit, $species_id) }
 			or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
 	}
 	elsif ($use_sqlite) {
-		print "Getting list of HMMsearch results...\n" if $debug;
 		return @{ Wrapper::Sqlite::get_hmmresults($hit, $species_id) }
 			or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
 	}

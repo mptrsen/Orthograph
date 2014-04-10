@@ -82,6 +82,7 @@ my $db_col_env_start        = 'env_start';
 my $db_col_evalue           = 'evalue';
 my $db_col_hmm_end          = 'hmm_end';
 my $db_col_hmm_start        = 'hmm_start';
+my $db_col_hmmsearch_id     = 'hmmsearch_id';
 my $db_col_header           = 'header';
 my $db_col_id               = 'id';
 my $db_col_log_evalue       = 'log_evalue';
@@ -595,7 +596,8 @@ sub preparedb {
 		`$db_col_evalue`        TEXT(8)      NOT NULL,
 		`$db_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
 		`$db_col_start`         UNSIGNED INTEGER NOT NULL,
-		`$db_col_end`           UNSIGNED INTEGER NOT NULL
+		`$db_col_end`           UNSIGNED INTEGER NOT NULL,
+		`$db_col_hmmsearch_id`  UNSIGNED INTEGER NOT NULL
 		)";
 
 	my @query_create_indices = (
@@ -611,7 +613,8 @@ sub preparedb {
 "CREATE INDEX IF NOT EXISTS ${db_table_blast}_taxid ON $db_table_blast ($db_col_taxid)",
 "CREATE INDEX IF NOT EXISTS ${db_table_blast}_query ON $db_table_blast ($db_col_query)",
 "CREATE INDEX IF NOT EXISTS ${db_table_blast}_target ON $db_table_blast ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue ON $db_table_blast ($db_col_log_evalue)"
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue ON $db_table_blast ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_hmmsearch_id ON $db_table_blast ($db_col_hmmsearch_id)",
 	);
 
 	# open connection
@@ -666,7 +669,8 @@ sub get_hmmresults {#{{{
 	my $query_get_sequences = "SELECT $db_table_ests.digest,
 		  $db_table_ests.sequence,
 		  $db_table_hmmsearch.env_start,
-		  $db_table_hmmsearch.env_end
+		  $db_table_hmmsearch.env_end,
+			$db_table_hmmsearch.id
 		FROM $db_table_ests 
 		INNER JOIN $db_table_hmmsearch
 		ON $db_table_hmmsearch.target = $db_table_ests.digest
@@ -939,19 +943,19 @@ sub load_ests_from_file {
 
 	# transfer data from temptable into main table
 	my $q_transfer = "INSERT INTO $db_table_ests (
-	  '$db_col_digest',
-		'$db_col_taxid',
-		'$db_col_type',
-		'$db_col_date',
-		'$db_col_header',
-		'$db_col_sequence')
-		SELECT 
-	  $db_table_temp.'$db_col_digest',
-		$db_table_temp.'$db_col_taxid',
-		$db_table_temp.'$db_col_type',
-		$db_table_temp.'$db_col_date',
-		$db_table_temp.'$db_col_header',
-		$db_table_temp.'$db_col_sequence'
+    '$db_col_digest',
+  	'$db_col_taxid',
+  	'$db_col_type',
+  	'$db_col_date',
+  	'$db_col_header',
+  	'$db_col_sequence')
+  	SELECT 
+    $db_table_temp.'$db_col_digest',
+  	$db_table_temp.'$db_col_taxid',
+  	$db_table_temp.'$db_col_type',
+  	$db_table_temp.'$db_col_date',
+  	$db_table_temp.'$db_col_header',
+  	$db_table_temp.'$db_col_sequence'
 		FROM $db_table_temp
 	";
 	$dbh = get_dbh();
@@ -1710,6 +1714,7 @@ sub get_real_header {
 sub insert_results_into_blast_table {
 	my $hits = shift;
 	my $species_id = shift;
+	my $hmmsearch_id = shift;
 	my $hitcount = 0;
 
 	my $query_insert_result = "INSERT OR IGNORE INTO $db_table_blast (
@@ -1720,8 +1725,10 @@ sub insert_results_into_blast_table {
 		`$db_col_evalue`,
 		`$db_col_log_evalue`,
 		`$db_col_start`,
-		`$db_col_end`
+		`$db_col_end`,
+		`$db_col_hmmsearch_id`
 		) VALUES (
+		?,
 		?,
 		?,
 		?,
@@ -1748,6 +1755,7 @@ sub insert_results_into_blast_table {
 			$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,  # natural logarithm only if not 0
 			$hit->{'end'},
 			$hit->{'start'},
+			$hmmsearch_id,
 		) or print "Fatal: Could not push to database!\n" and exit(1);
 		++$hitcount;
 	}

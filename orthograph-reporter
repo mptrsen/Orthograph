@@ -222,86 +222,86 @@ foreach my $score (@$scores) {
 	RESULT:
 	foreach my $result (@$results) {
 		my $orthoid = $result->{'orthoid'};
-			# reset the mismatch counter
-			$mismatches = 0;
+		# reset the mismatch counter
+		$mismatches = 0;
 
-			print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
+		print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
 
-			#-------------------------------------------------- 
-			# so, was this a match we can trust?
-			if (my $this_match = is_reciprocal_match($orthoid, $result)) {
+		#-------------------------------------------------- 
+		# so, was this a match we can trust?
+		if (my $this_match = is_reciprocal_match($orthoid, $result)) {
 
-				# yeah - here should be the part where the actual sequences are output
-				printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
-					$orthoid,
-					$this_match->{'hmmhit'},
-					$this_match->{'hmm_start'},
-					$this_match->{'hmm_end'},
-					$orthoid,
-					if $debug;
+			# yeah - here should be the part where the actual sequences are output
+			printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
+				$orthoid,
+				$this_match->{'hmmhit'},
+				$this_match->{'hmm_start'},
+				$this_match->{'hmm_end'},
+				$orthoid,
+				if $debug;
 
-				# if this orthoid has been hit before, check whether the new cancidate
-				# overlaps on hmm (gene) level with previous hits
-				if (exists $transcripts_mapped_to->{$orthoid}) {
+			# if this orthoid has been hit before, check whether the new cancidate
+			# overlaps on hmm (gene) level with previous hits
+			if (exists $transcripts_mapped_to->{$orthoid}) {
 
-					if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-						# yep, it overlaps, so we can't assign this transcript because better
-						# e-values have precedence. just go to the next one
-						printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
-						next RESULT;
-					}
+				if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
+					# yep, it overlaps, so we can't assign this transcript because better
+					# e-values have precedence. just go to the next one
+					printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
+					next RESULT;
+				}
 
-					# or does it overlap on transcript level?
-					elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-						printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
-						next RESULT;
-					}
-
-					else {
-						# does not overlap, add to list of transcripts for this ortholog group
-						push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-						printf $stdout ">> No overlap with previous hits: added '%s' [%d:%d] to %s.\n",
-							$this_match->{'header'},
-							$this_match->{'env_start'},
-							$this_match->{'env_end'},
-							$orthoid
-								unless $quiet;
-						# this transcript can't be found again
-						push @transcript_list, $this_match->{'hmmhit'};
-						# ok, next one
-						next RESULT;
-					}
-
+				# or does it overlap on transcript level?
+				elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
+					printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
+					next RESULT;
 				}
 
 				else {
-
-					# this has not been hit before, just assign
-					printf $stdout ">> Assigned '%s' [%d:%d] to %s.\n",
+					# does not overlap, add to list of transcripts for this ortholog group
+					push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
+					printf $stdout ">> No overlap with previous hits: added '%s' [%d:%d] to %s.\n",
 						$this_match->{'header'},
 						$this_match->{'env_start'},
 						$this_match->{'env_end'},
 						$orthoid
 							unless $quiet;
-					push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-
 					# this transcript can't be found again
 					push @transcript_list, $this_match->{'hmmhit'};
-
-					# reset 
-					undef $this_match;
+					# ok, next one
+					next RESULT;
 				}
 
 			}
 
 			else {
-				# this orthoid has no match
-				print $stdout "No orthology detected for $orthoid.\n"
-					if $debug;
+
+				# this has not been hit before, just assign
+				printf $stdout ">> Assigned '%s' [%d:%d] to %s.\n",
+					$this_match->{'header'},
+					$this_match->{'env_start'},
+					$this_match->{'env_end'},
+					$orthoid
+						unless $quiet;
+				push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
+
+				# this transcript can't be found again
+				push @transcript_list, $this_match->{'hmmhit'};
+
+				# reset 
+				undef $this_match;
 			}
 
-		# END RESULT
-		} 
+		}
+
+		else {
+			# this orthoid has no match
+			print $stdout "No orthology detected for $orthoid.\n"
+				if $debug;
+		}
+
+	# END RESULT
+	} 
 
 # END SCORE
 }
@@ -509,32 +509,39 @@ sub binify {
 sub is_reciprocal_match {
 	my $orthoid = shift;
 	my $result = shift;
-		if ( first { /$result->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} ) {
+	if ( first { /$result->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} ) {
 
-			print $stdout "    reciprocal hit $result->{'blast_hit'} for $result->{'hmmhit'} used in $orthoid!\n" if $verbose;
+		printf $stdout "    reciprocal hit %s for %s used in %s!\n",
+			$result->{'blast_hit'},
+			$result->{'hmmhit'},
+			$orthoid
+				if $verbose;
 
-			$match = $result;
+		$match = $result;
 
-			# one hit is enough if not in strict mode
-			return $match unless $strict;
+		# one hit is enough if not in strict mode
+		return $match unless $strict;
+	}
+	else {  # not found
+		# cry
+		++$mismatches;
+		printf $stdout "    reciprocal hit %s not used in this HMM (mismatch #%d) :(\n",
+			$result->{'blast_hit'},
+			$mismatches
+				if $verbose;
+
+		# in a strict search, that's it for this orthoid
+		return undef if $strict;
+
+		# no match
+		undef $match;
+
+		# too many mismatches, we don't trust this one anymore
+		if ($mismatches >= $max_mismatches) {
+			print $stdout "    Too many mismatches, we don't trust this one anymore.\n" if $verbose;
+			return undef;
 		}
-		else {  # not found
-			# cry
-			++$mismatches;
-			print $stdout "    reciprocal hit $result->{'blast_hit'} not used in this HMM (mismatch #", $mismatches, ") :(\n" if $verbose;
-
-			# in a strict search, that's it for this orthoid
-			return undef if $strict;
-
-			# no match
-			undef $match;
-
-			# too many mismatches, we don't trust this one anymore
-			if ($mismatches >= $max_mismatches) {
-				print $stdout "    Too many mismatches, we don't trust this one anymore.\n" if $verbose;
-				return undef;
-			}
-		}
+	}
 
 }
 
