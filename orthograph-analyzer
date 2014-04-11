@@ -418,7 +418,7 @@ Wrapper::Blastp->searchprog($blastprog);
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-printf($stdout "HMMsearching the protein file using all %d HMMs in %s:\n", scalar(@hmmfiles), $hmmdir)
+printf($stdout "HMMsearching the translated sequences using all %d HMMs in %s...\n", scalar(@hmmfiles), $hmmdir)
 	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
@@ -1258,7 +1258,7 @@ sub get_transcripts {#{{{
 			or print $stderr "Fatal: Could not write to file $tmpfh: $!\n" and exit(1);
 		++$nseqs;
 	}
-	print $stdout "Wrote $nseqs sequences to $tmpfh\n" unless $quiet;
+	print $stdout "Wrote $nseqs translated sequences to $tmpfh\n" unless $quiet;
 	return $tmpfh;
 }#}}}
 

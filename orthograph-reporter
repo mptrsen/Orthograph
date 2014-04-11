@@ -228,13 +228,19 @@ foreach my $score (@$scores) {
 				if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 					# yep, it overlaps, so we can't assign this transcript because better
 					# e-values have precedence. just go to the next one
-					printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
+					printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n",
+						$orthoid,
+						$this_match->{'hmmhit'}
+							if $debug;
 					next RESULT;
 				}
 
 				# or does it overlap on transcript level?
 				elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-					printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n", $orthoid, $this_match->{'hmmhit'} if $debug;
+					printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n",
+						$orthoid,
+						$this_match->{'hmmhit'}
+							if $debug;
 					next RESULT;
 				}
 
