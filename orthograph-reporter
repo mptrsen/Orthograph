@@ -107,12 +107,14 @@ if ($debug) { $verbose = 1; Wrapper::Exonerate->debug(1) }
 
 # More variables
 my $bin_size             = 500;
+my $blastresults         = undef;
 my $count                = 0;
 my $data_by_orthoid      = { };
 my $out                  = { };
 my $data_by_transcript   = { };
 my $data_by_evalue       = { };
 my $hitcount             = 0;
+my $hmmresults           = undef;
 my $insert_n             = 1;
 my $table                = [ ];
 my $strict               = 0;
@@ -180,56 +182,35 @@ my @transcript_list;
 SCORE:
 foreach my $score (@$scores) {
 
-#--------------------------------------------------
-# BIN:
-# foreach my $bin (@$logevalues_bins) {
-#-------------------------------------------------- 
-
-	# get the results in the form:
-	# evalue => {
-	#   orthoid => [
-	#     reciprocal_hit,
-	#     reciprocal_hit,
-	#     reciprocal_hit,
-	#     etc.
-	#   ]
-	# }
 	print $stdout "Fetching next batch of results for HMM alignment score $score...\n" if $verbose;
 	$t0 = scalar time;
-	#--------------------------------------------------
-	# # only one evalue
-	# if ($bin->{'min'} == $bin->{'max'}) {
-	# 	printf $stdout "log evalue: %f\n", $bin->{'min'} if $debug;
-	# 	$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'});
-	# }
-	# # evalue range
-	# else {
-	# 	printf $stdout "log evalue min: %f max: %f\n", $bin->{'min'}, $bin->{'max'} if $debug;
-	# 	$results = get_results_for_logevalue($set_id, $species_id, $bin->{'min'}, $bin->{'max'});
-	# }
-	#-------------------------------------------------- 
-	$results = get_results_for_single_score($set_id, $score);
+	$hmmresults = get_hmmresults_for_single_score($set_id, $score);
 	$t1 = scalar time;
 	# skip empty results
-	unless (@$results) { next SCORE }
+	unless (@$hmmresults) { next SCORE }
 
-	printf $stdout "Fetched %6d rows for HMM alignment score %7.2f in %.1f seconds\n",
-		scalar @$results,
+	printf $stdout "Fetched %6d rows for HMM alignment score %7.1f in %.1f seconds\n",
+		scalar @$hmmresults,
 		$score,
 		$t1 - $t0
 			unless $quiet;
 
 	RESULT:
-	foreach my $result (@$results) {
+	foreach my $result (@$hmmresults) {
 		my $orthoid = $result->{'orthoid'};
-		# reset the mismatch counter
-		$mismatches = 0;
 
 		print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
 
-		#-------------------------------------------------- 
-		# so, was this a match we can trust?
-		if (my $this_match = is_reciprocal_match($orthoid, $result)) {
+		printf $stdout "Fetching BLAST results for %s (HMMsearch id %d, alignment score %7.1f)...\n",
+			$result->{'header'},
+			$result->{'hmmsearch_id'},
+			$score,
+				if $verbose;
+		$blastresults = get_blastresults_for_hmmsearch_id($set_id, $result->{'hmmsearch_id'});
+
+
+		# so, was this a reciprocal match?
+		if (my $this_match = is_reciprocal_match($orthoid, $blastresults)) {
 
 			# yeah - here should be the part where the actual sequences are output
 			printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
@@ -297,7 +278,7 @@ foreach my $score (@$scores) {
 		else {
 			# this orthoid has no match
 			print $stdout "No orthology detected for $orthoid.\n"
-				if $debug;
+				if $verbose;
 		}
 
 	# END RESULT
@@ -508,41 +489,48 @@ sub binify {
 
 sub is_reciprocal_match {
 	my $orthoid = shift;
-	my $result = shift;
-	if ( first { /$result->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} ) {
+	my $blastresults = shift;
 
-		printf $stdout "    reciprocal hit %s for %s used in %s!\n",
-			$result->{'blast_hit'},
-			$result->{'hmmhit'},
-			$orthoid
-				if $verbose;
+	# set the mismatch counter
+	$mismatches = 0;
 
-		$match = $result;
+	foreach my $result (@$blastresults) {
+		if ( first { /$result->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} ) {
 
-		# one hit is enough if not in strict mode
-		return $match unless $strict;
-	}
-	else {  # not found
-		# cry
-		++$mismatches;
-		printf $stdout "    reciprocal hit %s not used in this HMM (mismatch #%d) :(\n",
-			$result->{'blast_hit'},
-			$mismatches
-				if $verbose;
+			printf $stdout "    reciprocal hit %s for %s used in %s!\n",
+				$result->{'blast_hit'},
+				$result->{'hmmhit'},
+				$orthoid
+					if $verbose;
 
-		# in a strict search, that's it for this orthoid
-		return undef if $strict;
+			$match = $result;
 
-		# no match
-		undef $match;
+			# one hit is enough if not in strict mode
+			return $match unless $strict;
+		}
+		else {  # not found
+			# cry
+			++$mismatches;
+			printf $stdout "    reciprocal hit %s not used in this HMM (mismatch #%d) :(\n",
+				$result->{'blast_hit'},
+				$mismatches
+					if $verbose;
 
-		# too many mismatches, we don't trust this one anymore
-		if ($mismatches >= $max_mismatches) {
-			print $stdout "    Too many mismatches, we don't trust this one anymore.\n" if $verbose;
-			return undef;
+			# in a strict search, that's it for this orthoid
+			return undef if $strict;
+
+			# no match
+			undef $match;
+
+			# too many mismatches, we don't trust this one anymore
+			if ($mismatches >= $max_mismatches) {
+				print $stdout "    Too many mismatches, we don't trust this one anymore.\n" if $verbose;
+				return undef;
+			}
 		}
 	}
 
+	return undef;
 }
 
 sub insert_candidate {
@@ -874,6 +862,28 @@ sub get_scores_list {
 	}
 	elsif ($use_sqlite) {
 		return Wrapper::Sqlite::get_scores_list($specid, $setid);
+	}
+}
+
+sub get_hmmresults_for_single_score {
+	my $setid = shift;
+	my $score = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_hmmresults_for_single_score($setid, $score);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_hmmresults_for_single_score($setid, $score);
+	}
+}
+
+sub get_blastresults_for_hmmsearch_id {
+	my $setid = shift;
+	my $id = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_blastresults_for_hmmsearch_id($setid, $id);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_blastresults_for_hmmsearch_id($setid, $id);
 	}
 }
 

@@ -1320,6 +1320,135 @@ sub get_results_for_logevalue {
 	scalar keys %$result > 0 ? return $result : return undef;
 }
 
+sub get_hmmresults_for_single_score {
+	my $setid   = shift;
+	my $score   = shift;
+	# generic query
+	my $query = "SELECT DISTINCT
+			$db_table_orthologs.$db_col_orthoid,
+			$db_table_hmmsearch.$db_col_id,
+			$db_table_hmmsearch.$db_col_target,
+			$db_table_hmmsearch.$db_col_evalue,
+			$db_table_hmmsearch.$db_col_hmm_start,
+			$db_table_hmmsearch.$db_col_hmm_end,
+			$db_table_hmmsearch.$db_col_env_start,
+			$db_table_hmmsearch.$db_col_env_end,
+			$db_table_ests.$db_col_header
+		FROM $db_table_hmmsearch
+		LEFT JOIN $db_table_ests
+			ON $db_table_hmmsearch.$db_col_target = $db_table_ests.$db_col_digest
+		LEFT JOIN $db_table_orthologs
+			ON $db_table_hmmsearch.$db_col_query = $db_table_orthologs.$db_col_orthoid
+		LEFT JOIN $db_table_taxa
+			ON $db_table_hmmsearch.$db_col_taxid = $db_table_taxa.$db_col_id
+		LEFT JOIN $db_table_set_details
+			ON $db_table_orthologs.$db_col_setid = $db_table_set_details.$db_col_id
+		WHERE $db_table_ests.$db_col_digest          IS NOT NULL
+			AND $db_table_orthologs.$db_col_orthoid    IS NOT NULL
+			AND $db_table_taxa.$db_col_id              IS NOT NULL
+			AND $db_table_set_details.$db_col_id       IS NOT NULL
+			AND $db_table_set_details.$db_col_id       = ?
+			AND $db_table_hmmsearch.$db_col_score      = ?
+	";
+
+	# good for debugging
+	print $query . "\n" if $debug;
+
+	my $dbh = get_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+
+	# single score
+	$sth = execute($sth, $db_timeout, $setid, $score);
+
+	# will hold the result
+	my $result = [ ];
+
+	while (my $line = $sth->fetchrow_arrayref()) {
+		# first key is the hmmsearch score, second key is the orthoid
+		push( @$result, {
+			'orthoid'      => $$line[0],
+			'hmmsearch_id' => $$line[1],
+			'hmmhit'       => $$line[2],
+			'hmm_evalue'   => $$line[3],
+			'hmm_start'    => $$line[4],
+			'hmm_end'      => $$line[5],
+			'env_start'    => $$line[6],
+			'env_end'      => $$line[7],
+			'header'       => $$line[8],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	return $result;
+}
+
+sub get_blastresults_for_hmmsearch_id {
+	my $setid          = shift;
+	my $hmmsearch_id   = shift;
+	# generic query
+	my $query = "SELECT DISTINCT
+			$db_table_blast.$db_col_target,
+			$db_table_blast.$db_col_score,
+			$db_table_blast.$db_col_evalue,
+			$db_table_blast.$db_col_start,
+			$db_table_blast.$db_col_end,
+			$db_table_hmmsearch.$db_col_target,
+			$db_table_hmmsearch.$db_col_env_start,
+			$db_table_hmmsearch.$db_col_env_end,
+			$db_table_hmmsearch.$db_col_hmm_start,
+			$db_table_hmmsearch.$db_col_hmm_end,
+			$db_table_ests.$db_col_header
+		FROM $db_table_hmmsearch
+		LEFT JOIN $db_table_blast
+			ON $db_table_hmmsearch.$db_col_id = $db_table_blast.$db_col_hmmsearch_id
+		LEFT JOIN $db_table_ests
+			ON $db_table_ests.$db_col_digest = $db_table_hmmsearch.$db_col_target
+		WHERE $db_table_hmmsearch.$db_col_id         IS NOT NULL
+			AND $db_table_blast.$db_col_hmmsearch_id   IS NOT NULL
+			AND $db_table_hmmsearch.$db_col_target     IS NOT NULL
+			AND $db_table_hmmsearch.$db_col_id         = ?
+		ORDER BY $db_table_blast.$db_col_score DESC
+	";
+
+	# good for debugging
+	if ($debug) {
+		print $query . "\n";
+		print "Executing this query with $hmmsearch_id\n";
+	}
+
+	my $dbh = get_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+
+	# single score
+	$sth = execute($sth, $db_timeout, $hmmsearch_id);
+
+	# will hold the result
+	my $result = [ ];
+
+	while (my $line = $sth->fetchrow_arrayref()) {
+		# first key is the hmmsearch score, second key is the orthoid
+		push( @$result, {
+			'blast_hit'    => $$line[0],
+			'blast_score'  => $$line[1],
+			'blast_evalue' => $$line[2],
+			'blast_start'  => $$line[3],
+			'blast_end'    => $$line[4],
+			'hmmhit'       => $$line[5],
+			'env_start'    => $$line[6],
+			'env_end'      => $$line[7],
+			'hmm_start'    => $$line[8],
+			'hmm_end'      => $$line[9],
+			'header'       => $$line[10],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	return $result;
+}
+
+
 sub get_results_for_single_score {
 	my $setid   = shift;
 	my $score   = shift;
