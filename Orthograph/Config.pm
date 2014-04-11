@@ -30,12 +30,11 @@ our @EXPORT_OK = qw( $config );
 
 my $program_name = 'Orthograph';
 my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');
-our $config = &getconfig; 
+our $config = getconfig(); 
 
 #--------------------------------------------------
 # # Get command line options. These may override variables set in the config file.
 #-------------------------------------------------- 
-#{{{
 GetOptions( $config,
 	'continue',
 	'create',
@@ -108,7 +107,10 @@ GetOptions( $config,
 	'sqlite-database=s',
   'substitute-u-with=s',
   'verbose|v',
-) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);#}}}
+) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);
+
+# if something went wrong
+die "Fatal: Error parsing config" unless $config;
 
 #--------------------------------------------------
 # # These variables can be set in the config file
@@ -246,8 +248,9 @@ if ($config->{'hmmsearch-evalue-threshold'} and $config->{'hmmsearch-score-thres
 $config->{'header-separator'} =~ s/^('|")//;
 $config->{'header-separator'} =~ s/('|")$//;
 
-# if something went wrong
-die "Fatal: Error parsing config" unless $config;
+###################################################
+# Functions
+################################################### 
 
 =head2 getconfig 
 
@@ -320,7 +323,7 @@ Config file example:
 
 =cut 
 
-sub parse_config {#{{{
+sub parse_config {
 	my $file = shift;
 	my $conf = { };
 	my $fh = IO::File->new($file) or print "Fatal: Could not open config file '$file'\: $!\n" and exit(1);
@@ -346,7 +349,7 @@ sub parse_config {#{{{
 	}
 	close($fh);
 	return $conf;
-}#}}}
+}
 
 
 1;
