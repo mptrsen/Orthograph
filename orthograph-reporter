@@ -159,17 +159,7 @@ else { @reftaxa = get_taxa_in_set($set_id) }
 # get a orthoid => list_of_aaseq_ids relationship from the db
 my $aaseqs_in_orthoid = get_orthologs_for_set_hashref($set_id);
 
-# create view (a virtual table) for the log-evalues
-create_log_evalues_view($species_id)
-	or print $stderr "Fatal: Could not create view: $!\n" and exit(1);
-
-# get a log-evalue->count relationship from the database
-# classify the log-evalues into "bins" that hold a limited number of values
-# this is done in order to speed up the database queries
-my $logevalue_count = get_logevalue_count($species_id);
-my @logevalues = sort { $a <=> $b } keys %$logevalue_count;
-my $logevalues_bins = binify($bin_size, $logevalue_count);
-
+# get list of hmmsearch alignment scores
 my $scores = get_scores_list($species_id, $set_id);
 
 # generate a table

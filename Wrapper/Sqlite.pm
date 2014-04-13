@@ -58,6 +58,8 @@ my $sqlite                  = $config->{'sqlite-program'};
 my $sleep_for               = 1;
 my $db_dbuser               = $config->{'username'} || $ENV{"LOGNAME"} || $ENV{"USER"} || getpwuid $<;
 
+my $attached_db_file             = File::Spec->catfile($config->{'output-directory'}, $config->{'species-name'} . '.sqlite');
+my $db_attached             = 'species_database';
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
 my $db_table_blast          = $config->{'db_table_blast'};
 my $db_table_blastdbs       = $config->{'db_table_blastdbs'};
@@ -172,6 +174,7 @@ sub get_dbh {#{{{
 
 	if ($dbh) {
 		$dbh->sqlite_busy_timeout($db_timeout * 1000);
+		$dbh->do("ATTACH DATABASE '$attached_db_file' as '$db_attached'");
 		return $dbh;
 	}
 	return undef;
@@ -246,6 +249,9 @@ sub check {#{{{
 	return 0;
 }#}}}
 
+sub attached_db_file {
+	return $attached_db_file;
+}
 
 sub drop_tables {
 	my $t = shift @_;
@@ -600,21 +606,26 @@ sub preparedb {
 		`$db_col_hmmsearch_id`  UNSIGNED INTEGER NOT NULL
 		)";
 
+	# the CREATE INDEX statement does not like the attached db prefix 
+	# generate table names without it
+	(my $simple_table_ests = $db_table_ests)           =~ s/$db_attached\.//;
+	(my $simple_table_hmmsearch = $db_table_hmmsearch) =~ s/$db_attached\.//;
+	(my $simple_table_blast = $db_table_blast)         =~ s/$db_attached\.//;
 	my @query_create_indices = (
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $db_table_ests (header)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_digest ON $db_table_ests ($db_col_digest)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_taxid ON $db_table_ests ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $db_table_ests ($db_col_header)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_taxid ON $db_table_hmmsearch ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_query ON $db_table_hmmsearch ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_target ON $db_table_hmmsearch ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_evalue ON $db_table_hmmsearch ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_score ON $db_table_hmmsearch ($db_col_score)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_taxid ON $db_table_blast ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_query ON $db_table_blast ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_target ON $db_table_blast ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue ON $db_table_blast ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_hmmsearch_id ON $db_table_blast ($db_col_hmmsearch_id)",
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $simple_table_ests (header)",
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_digest ON $simple_table_ests ($db_col_digest)",
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_taxid ON $simple_table_ests ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_taxid ON $simple_table_hmmsearch ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_query ON $simple_table_hmmsearch ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_target ON $simple_table_hmmsearch ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_evalue ON $simple_table_hmmsearch ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_score ON $simple_table_hmmsearch ($db_col_score)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_taxid ON $simple_table_blast ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_query ON $simple_table_blast ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_target ON $simple_table_blast ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue ON $simple_table_blast ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS ${db_table_blast}_hmmsearch_id ON $simple_table_blast ($db_col_hmmsearch_id)",
 	);
 
 	# open connection
@@ -1682,7 +1693,7 @@ sub get_nucleotide_transcript_for {
 	my $result = db_get($query, $digest);
 	# remove the revcomp/translate portion
 	print "translated header: <$result->[0]->[0]>\n" if $debug;
-	(my $original_header = $result->[0]->[0]) =~ s/ ?(\[revcomp]:)?\[translate\(\d\)\]$//;
+	(my $original_header = $result->[0]->[0]) =~ s/( |_)?(\[revcomp]:)?\[translate\(\d\)\]$//;
 	print "original header: <$original_header>\n" if $debug;
 	$query = "SELECT $db_col_sequence
 		FROM $db_table_ests
@@ -1719,9 +1730,9 @@ Renames the table names according to ID. Returns a list of the three table names
 
 sub get_real_table_names {
 	my $specid = shift @_;
-	my $real_table_ests      = $db_table_ests      . '_' . $specid;
-	my $real_table_hmmsearch = $db_table_hmmsearch . '_' . $specid;
-	my $real_table_blast     = $db_table_blast     . '_' . $specid;
+	my $real_table_ests      = $db_attached . '.' . $db_table_ests      . '_' . $specid;
+	my $real_table_hmmsearch = $db_attached . '.' . $db_table_hmmsearch . '_' . $specid;
+	my $real_table_blast     = $db_attached . '.' . $db_table_blast     . '_' . $specid;
 	$db_table_ests        = $real_table_ests;
 	$db_table_hmmsearch   = $real_table_hmmsearch;
 	$db_table_blast       = $real_table_blast;

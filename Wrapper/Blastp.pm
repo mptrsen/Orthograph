@@ -1,6 +1,6 @@
 #--------------------------------------------------
 # This file is part of Orthograph.
-# Copyright 2014 Malte Petersen <mptrsen@uni-bonn.de>
+# Copyright 2013 Malte Petersen <mptrsen@uni-bonn.de>
 # 
 # Orthograph is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -247,7 +247,7 @@ sub blastp {#{{{
 		print STDERR "\n@blastcmd\n\n"
 			if $debug;
 		croak "Fatal: BLAST search failed: $!\n"
-			if system(@blastcmd);
+			if system("@blastcmd");
 
 		# store the resultfile path
 		$self->{'resultfile'} = $outfile;
