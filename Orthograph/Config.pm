@@ -30,12 +30,11 @@ our @EXPORT_OK = qw( $config );
 
 my $program_name = 'Orthograph';
 my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');
-our $config = &getconfig; 
+our $config = getconfig(); 
 
 #--------------------------------------------------
 # # Get command line options. These may override variables set in the config file.
 #-------------------------------------------------- 
-#{{{
 GetOptions( $config,
 	'continue',
 	'create',
@@ -50,20 +49,21 @@ GetOptions( $config,
 	'load-ogs-nucleotide=s',
 	'load-ogs-peptide=s',
 	'prepare',
-  'aaoutdir',
-  'alignment-program',
+  'aaoutdir=s',
+  'alignment-program=s',
 	'backup',
   'backup-extension',
   'blast-evalue-threshold',
   'blast-evalue-threshold=f',
   'blast-max-hits=i',
-  'blast-score-threshold',
-  'blastoutdir',
-  'blastp-output-dir',
+  'blast-score-threshold=i',
+  'blastoutdir=s',
+  'blastp-output-dir=s',
   'clear-database!',
   'clear-files!',
   'configfile|c=s',
-  'debug',
+  'database-backend=s',
+  'db-prefix=s',
   'debug|d',
   'input-file',
   'input-file|i=s',
@@ -74,29 +74,28 @@ GetOptions( $config,
   'hmmsearch-score=i',
   'hmmsearch-score-threshold',
   'hmmsearchprog=s',
-  'logfile',
   'logfile|log=s',
 	'make-set',
-  'max-blast-searches',
-  'mysql-database',
-  'mysql-password',
-  'mysql-prefix',
-  'mysql-server',
-  'mysql_table_aaseqs',
-  'mysql_table_blast',
-  'mysql_table_blastdbs',
-  'mysql_table_ests',
-  'mysql_table_hmmsearch',
-  'mysql_table_log_evalues',
-  'mysql_table_orthologs',
-  'mysql_table_sequence_pairs',
-  'mysql_table_sequence_types',
-  'mysql_table_set_details',
-  'mysql_table_taxa',
-  'mysql-username',
-	'num-threads',
-  'ortholog-set',
-  'output-directory',
+  'max-blast-searches=i',
+  'mysql-database=s',
+  'mysql-password=s',
+  'mysql-server=s',
+  'mysql-username=s',
+  'db_table_aaseqs',
+  'db_table_blast',
+  'db_table_blastdbs',
+  'db_table_ests',
+  'db_table_hmmsearch',
+  'db_table_log_evalues',
+  'db_table_orthologs',
+  'db_table_sequence_pairs',
+  'db_table_sequence_types',
+  'db_table_set_details',
+  'db_table_taxa',
+	'num-threads=i',
+  'ortholog-set=s',
+  'output-directory=s',
+	'overwrite|o',
   'preparedb',
   'quiet',
   'quiet|q',
@@ -105,47 +104,52 @@ GetOptions( $config,
   'sets-dir=s',
   'soft-threshold=i',
   'species-name=s',
+	'sqlite-database=s',
   'substitute-u-with=s',
   'verbose|v',
-) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);#}}}
+) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);
+
+# if something went wrong
+die "Fatal: Error parsing config" unless $config;
 
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
-#{{{
-
-
 
 # MySQL settings
+$config->{'database-backend'}           //= 'mysql';
 $config->{'mysql-database'}             //= 'orthograph';
 $config->{'mysql-password'}             //= 'root';
 $config->{'mysql-server'}               //= 'localhost';
 $config->{'mysql-username'}             //= 'root';
-$config->{'mysql-prefix'}               //= 'orthograph';
 $config->{'mysql-timeout'}              //= 600;
 
-# MySQL tables
-$config->{'mysql_table_aaseqs'}         //= 'aaseqs';
-$config->{'mysql_table_blast'}          //= 'blast';
-$config->{'mysql_table_blastdbs'}       //= 'blastdbs';
-$config->{'mysql_table_ests'}           //= 'ests';
-$config->{'mysql_table_hmmsearch'}      //= 'hmmsearch';
-$config->{'mysql_table_log_evalues'}    //= 'log_evalues';
-$config->{'mysql_table_ntseqs'}         //= 'ntseqs';
-$config->{'mysql_table_ogs'}            //= 'ogs';
-$config->{'mysql_table_orthologs'}      //= 'orthologs';
-$config->{'mysql_table_sequence_pairs'} //= 'sequence_pairs';
-$config->{'mysql_table_sequence_types'} //= 'sequence_types';
-$config->{'mysql_table_set_details'}    //= 'set_details';
-$config->{'mysql_table_temp'}           //= 'temp';
-$config->{'mysql_table_taxa'}           //= 'taxa';
-$config->{'mysql_table_users'}          //= 'users';
+# database tables
+$config->{'db_table_aaseqs'}         //= 'aaseqs';
+$config->{'db_table_blast'}          //= 'blast';
+$config->{'db_table_blastdbs'}       //= 'blastdbs';
+$config->{'db_table_ests'}           //= 'ests';
+$config->{'db_table_hmmsearch'}      //= 'hmmsearch';
+$config->{'db_table_log_evalues'}    //= 'log_evalues';
+$config->{'db_table_scores'}         //= 'scores';
+$config->{'db_table_ntseqs'}         //= 'ntseqs';
+$config->{'db_table_ogs'}            //= 'ogs';
+$config->{'db_table_orthologs'}      //= 'orthologs';
+$config->{'db_table_sequence_pairs'} //= 'sequence_pairs';
+$config->{'db_table_sequence_types'} //= 'sequence_types';
+$config->{'db_table_set_details'}    //= 'set_details';
+$config->{'db_table_temp'}           //= 'temp';
+$config->{'db_table_taxa'}           //= 'taxa';
+$config->{'db_table_users'}          //= 'users';
+
+# database prefix
+$config->{'db-prefix'}               //= 'orthograph';
 
 # make sure there is exactly one underscore at the end of the prefix
-(my $mysql_prefix = $config->{'mysql-prefix'}) =~ s/_*$/_/;
+(my $db_prefix = $config->{'db-prefix'}) =~ s/_*$/_/;
 
 # temporary hash to prepend the prefix
-my %C = map { $_ => $mysql_prefix . $config->{$_} } grep { $_ =~ /^mysql_table_/ } keys %$config;
+my %C = map { $_ => $db_prefix . $config->{$_} } grep { $_ =~ /^db_table_/ } keys %$config;
 
 # merge the modified entries into the config hash
 $config->{$_} = $C{$_} foreach keys %C;
@@ -175,6 +179,7 @@ $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
 $config->{'input-file'}                 //= '';
 $config->{'evalue-bin-size'}            //= 500;
+$config->{'exonerate-program'}          //= 'exonerate';
 $config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
 $config->{'hmmsearch-evalue-threshold'} //= defined $config->{'hmmsearch-score-threshold'} ? undef : 10;
@@ -192,31 +197,60 @@ $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
 $config->{'ortholog-set'}               //= '';
 $config->{'output-directory'}           //= '';
+$config->{'overwrite'}                  //= 0;
 $config->{'prepare'}                    //= 0;  
 $config->{'quiet'}                      //= 0;  # I like my quiet
 $config->{'reference-taxa'}             //= '';
 $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 5;
 $config->{'species-name'}               //= '';
+$config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= 'X';
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
-#}}}
 
-# compound options
+#--------------------------------------------------
+# # compound options
+#-------------------------------------------------- 
 if ($config->{'continue'}) {
 	$config->{'clear-files'}    = 0;
 	$config->{'clear-database'} = 0;
 }
 
-# remove quotes from header separator
+if ($config->{'debug'}) { $config->{'verbose'} = 1 }
+
+#--------------------------------------------------
+# # mutually exclusive options
+#-------------------------------------------------- 
+if ($config->{'database-backend'} ne 'mysql' and $config->{'database-backend'} ne 'sqlite') {
+	print STDERR "Fatal: Database backend not set correctly! Must be 'mysql' or 'sqlite'.\n";
+	exit 1;
+}
+
+if ($config->{'database-backend'} eq 'sqlite' and not defined $config->{'sqlite-database'}) {
+	print STDERR "Fatal: SQLite database backend selected, but database file not specified\n";
+	exit 1;
+}
+
+if ($config->{'verbose'} and $config->{'quiet'}) {
+	print STDERR "Fatal: Can't operate in both verbose and quiet mode\n";
+	exit(1);
+}
+
+if ($config->{'hmmsearch-evalue-threshold'} and $config->{'hmmsearch-score-threshold'}) {
+	print STDERR "Fatal: Can't use both e-value and score thresholds\n";
+	exit(1);
+}
+
+
+# un-quote the header separator
 $config->{'header-separator'} =~ s/^('|")//;
 $config->{'header-separator'} =~ s/('|")$//;
 
-
-# if something went wrong
-die unless $config;
+###################################################
+# Functions
+################################################### 
 
 =head2 getconfig 
 
@@ -228,15 +262,16 @@ Returns a hashref that contains all config variables from both the config file a
 
 sub getconfig {
 	# in case the user tells us to use a different one with -c
-	$configfile = &get_configfile($configfile);
+	$configfile = get_configfile($configfile);
 
 	# parse if exists
 	if (-e $configfile) {
 		print "Parsing config file '$configfile'.\n";
-		$config = &parse_config($configfile);
+		$config = parse_config($configfile);
 	}#}}}
 	else {
-		die "Fatal: Config file '$configfile' not found!\n";
+		print STDERR "Fatal: Config file '$configfile' not found!\n";
+		exit 1;
 	}
 
 	return $config;
@@ -246,11 +281,11 @@ sub getconfig {
 
 mini argument parser to get the config file name
 
-Returns the config filename as provided on the command line.
+Returns the config filename as provided with the option B<-c> on the command line.
 
 As an optional argument, this function accepts a default config filename which
 will be returned if there was no -c on the command line. Note: unless a default
-is provided, this function will return B<undef>.
+is provided, this function will return undef.
 
 =cut
 
@@ -288,7 +323,7 @@ Config file example:
 
 =cut 
 
-sub parse_config {#{{{
+sub parse_config {
 	my $file = shift;
 	my $conf = { };
 	my $fh = IO::File->new($file) or print "Fatal: Could not open config file '$file'\: $!\n" and exit(1);
@@ -314,7 +349,7 @@ sub parse_config {#{{{
 	}
 	close($fh);
 	return $conf;
-}#}}}
+}
 
 
 1;

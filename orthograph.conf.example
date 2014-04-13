@@ -16,31 +16,53 @@
 #-------------------------------------------------- 
 
 #
-# # MySQL connection settings.
+# # Database backend selection
 #
-mysql-username     = USERNAME
-mysql-password     = PASSWORD
-mysql-database     = DATABASE
+# Database backend. Defaults to 'sqlite', which means to use the file-based
+# SQLite database system
+database-backend   = sqlite
 
-# The path to your transcriptome data file. It is always best to use absolute
+#
+# # SQLite settings
+#
+# Database file for SQLite. Required if you use SQLite.
+# This is a plain file that can be located anywhere. Just give it a name, and
+# Orthograph will create it automatically.
+sqlite-database    = /PATH/TO/DATABASE
+
+# Path to the sqlite executable. Normally this is located at /usr/bin/sqlite3
+# (the default). Required if you use SQLite and have 'database-backend' set to
+# 'sqlite'. Change this if your setup differs. 
+sqlite-program     = /usr/bin/sqlite3
+
+#
+# # MySQL connection settings. Only required if you use MySQL and have
+# 'database-engine' set to 'mysql'.
+#
+#mysql-username     = USERNAME
+#mysql-password     = PASSWORD
+#mysql-database     = DATABASE
+
+# The path to your transcript data file. It is always best to use absolute
 # paths. You may only supply one file, not a directory of files.
 input-file         = FASTAFILE
 
 # Species name. Make sure to pick a unique name because otherwise results get
 # mixed up. You can, however, supply an existing name if you want to add
-# sequences to an existing data set. 
+# sequences to an existing data set (this has been neither tested nor
+# documented yet, though).
 species-name       = TEST-SPECIES
 
-# The ortholog set you created earlier.
+# The name of the ortholog set (not the path to a file) you created earlier.
 ortholog-set       = SETNAME
+
+# This is where your results are placed. Will be created if it doesn't exist.
+output-directory   = /PATH/TO/OUTPUT-DIR
 
 # Reference taxa. Must be a comma-separated list of taxa that are present in
 # your ortholog set. If you don't specify any reference taxa (i.e., comment out
 # this setting), all taxa in your set are used as reference taxa. 
 reference-taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN, YOUR, ORTHOLOG, SET
-
-# This is where your results are placed. Will be created if it doesn't exist.
-output-directory   = /PATH/TO/OUTPUT-DIR
 
 
 #--------------------------------------------------
@@ -93,7 +115,7 @@ exonerate-program    = exonerate
 # Prefix for your Orthograph database tables. Useful if you are running
 # multiple instances of Orthograph on the same database but don't want the data
 # to be mixed up. Defaults to 'orthograph'.
-#mysql-prefix = orthograph
+#db-prefix = orthograph
 
 #
 # # Settings that affect the HMM and BLAST searches.
@@ -104,8 +126,8 @@ exonerate-program    = exonerate
 # transcriptome file. The BLAST e-value threshold affects the second step, the
 # reciprocal search. Basically, this defines the false-positive probability
 # (lower e-value = lower probability).
-hmmsearch-evalue-threshold = 1e-05
-blast-evalue-threshold     = 1e-05
+#hmmsearch-evalue-threshold = 1e-05
+#blast-evalue-threshold     = 1e-05
 
 # You can also set a score threshold. A higher score means a better match. For
 # HMMsearch, E-value and score thresholds are mutually exclusive. If both are
@@ -121,8 +143,8 @@ blast-evalue-threshold     = 1e-05
 # normally don't want to do. Unless you have an idea of how many reciprocal
 # searches are required to effectively verify or reject a candidate ortholog,
 # don't change this setting. 
-# Defaults to 1000.
-#max-blast-searches         = 1000
+# Defaults to 100.
+#max-blast-searches         = 100
 
 # The soft threshold is a special concept of Orthograph: While checking in
 # strict mode (see below) whether the reciprocal hits are part of the ortholog
@@ -146,7 +168,7 @@ blast-evalue-threshold     = 1e-05
 #
 # Strict search. Normally it is enough for a match to occur if one of the
 # reference taxa is hit in the reciprocal search. In strict mode ALL reference
-# taxa must be hit to verify an ortholog assignment. This is (much) more
+# taxa must be hit to verify an ortholog assignment. This is much more
 # conservative.
 #strict      = 1
 
@@ -172,7 +194,11 @@ blast-evalue-threshold     = 1e-05
 
 # Header separator. This will be used to separate header fields in the output files.
 # May be an arbitrary string. Defaults to '|'. To use a whitespace character,
+<<<<<<< HEAD
 # enclose it in quotes (' ').
+=======
+# enclose it in quotes, e.g., ' '.
+>>>>>>> fc35af1412f7076ac7aface971524b8c40a8016a
 #header-separator = |
 
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally

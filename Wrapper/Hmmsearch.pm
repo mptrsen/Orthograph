@@ -218,7 +218,8 @@ sub result {#{{{
 		or croak("Fatal: Could not open resultfile");
   $self->{'result'} = [ <$fh> ];
   $fh->close;
-  splice(@{$self->{'result'}}, 0, 3);
+	# remove comment lines
+	@{$self->{'result'}} = grep { /^[^#]/ } @{$self->{'result'}};
   return $self->{'result'};
 }#}}}
 

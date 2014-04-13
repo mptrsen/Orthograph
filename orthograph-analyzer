@@ -52,7 +52,7 @@ my $version = 'beta2';
 # this message will be printed later when we have a log file handle
 my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
 	"Reciprocal Approach with Profile Hidden Markov models\n" .
-	"Copyright 2012 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
+	"Copyright 2014 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
 	"Version $version\n\n";
 my $program_file = $FindBin::Script;
 
@@ -81,6 +81,22 @@ else {
 my $config = $Orthograph::Config::config;
 
 #--------------------------------------------------
+# # Database settings
+#-------------------------------------------------- 
+# which database backend do we use?
+my $database_backend = $config->{'database-backend'};
+my $use_mysql        = $database_backend eq 'mysql'  ? 1 : 0;
+my $use_sqlite       = $database_backend eq 'sqlite' ? 1 : 0;
+my $database         = undef;
+if ($use_mysql)      {
+	use Wrapper::Mysql;
+	$database = $config->{'mysql-database'};
+}
+elsif ($use_sqlite) {
+	use Wrapper::Sqlite;
+	$database = $config->{'sqlite-database'};
+}
+#--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
 my $alignment_program          = $config->{'alignment-program'};
@@ -106,7 +122,7 @@ my $clear_files                = $config->{'clear-files'};
 my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
-my $estfile                    = $config->{'input-file'};
+my $input_file                 = $config->{'input-file'};
 my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
@@ -118,21 +134,21 @@ my $ntoutdir                   = $config->{'ntoutdir'};
 my $num_threads                = $config->{'num-threads'};
 
 # MySQL settings
-my $mysql_dbname               = $config->{'mysql-database'};
-my $mysql_dbpwd                = $config->{'mysql-password'};
-my $mysql_dbserver             = $config->{'mysql-server'};
-my $mysql_dbuser               = $config->{'mysql-username'};
+my $db_dbname                  = $config->{'mysql-database'};
+my $db_dbpwd                   = $config->{'mysql-password'};
+my $db_dbserver                = $config->{'mysql-server'};
+my $db_dbuser                  = $config->{'mysql-username'};
 
-my $mysql_table_blast          = $config->{'mysql_table_blast'};
-my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
-my $mysql_table_ests           = $config->{'mysql_table_ests'};
-my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
-my $mysql_table_log_evalues    = $config->{'mysql_table_log_evalues'};
-my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
-my $mysql_table_aaseqs         = $config->{'mysql_table_aaseqs'};
-my $mysql_table_seqpairs       = $config->{'mysql_table_sequence_pairs'};
-my $mysql_table_taxa           = $config->{'mysql_table_taxa'};
-my $mysql_table_orthologs      = $config->{'mysql_table_orthologs'};
+my $db_table_blast             = $config->{'db_table_blast'};
+my $db_table_blastdbs          = $config->{'db_table_blastdbs'};
+my $db_table_ests              = $config->{'db_table_ests'};
+my $db_table_hmmsearch         = $config->{'db_table_hmmsearch'};
+my $db_table_log_evalues       = $config->{'db_table_log_evalues'};
+my $db_table_set_details       = $config->{'db_table_set_details'};
+my $db_table_aaseqs            = $config->{'db_table_aaseqs'};
+my $db_table_seqpairs          = $config->{'db_table_sequence_pairs'};
+my $db_table_taxa              = $config->{'db_table_taxa'};
+my $db_table_orthologs         = $config->{'db_table_orthologs'};
 my $outdir                     = $config->{'output-directory'};
 my $orthoset                   = $config->{'ortholog-set'};
 my $preparedb                  = $config->{'prepare'};
@@ -148,11 +164,11 @@ my $verbose                    = $config->{'verbose'};
 #--------------------------------------------------
 # # More variables
 #-------------------------------------------------- 
-#{{{
 my $EMPTY                   = q{};
 my $alndir                  = $EMPTY;
 my $blastcount              = 0;
 my $blastdb                 = $EMPTY;
+my $blastdir                = $EMPTY;
 my $blasthitcount_total     = 0;
 my $count                   = 0;
 my $hmmcount                = 0;
@@ -162,65 +178,60 @@ my $hmmhitcount_total       = 0;
 my $hmmresultfileref        = $EMPTY;
 my $listspecies             = 0;
 my $logdir                  = $EMPTY;
-my $mysql_col_aaseq         = 'aa_seq';
-my $mysql_col_blastdbpath   = 'blastdb_path';
-my $mysql_col_date          = 'date';
-my $mysql_col_digest        = 'digest';
-my $mysql_col_evalue        = 'evalue';
-my $mysql_col_end           = 'end';
-my $mysql_col_env_end       = 'env_end';
-my $mysql_col_env_start     = 'env_start';
-my $mysql_col_hmm_end       = 'hmm_end';
-my $mysql_col_hmm_start     = 'hmm_start';
-my $mysql_col_log_evalue    = 'log_evalue';
-my $mysql_col_hdr           = 'header';
-my $mysql_col_hmm           = 'hmm';
-my $mysql_col_id            = 'id';
-my $mysql_col_longname      = 'longname';
-my $mysql_col_name          = 'name';
-my $mysql_col_orthoid       = 'ortholog_gene_id';
-my $mysql_col_query         = 'query';
-my $mysql_col_score         = 'score';
-my $mysql_col_seq           = 'sequence';
-my $mysql_col_seqpair       = 'sequence_pair';
-my $mysql_col_setid         = 'setid';
-my $mysql_col_start         = 'start';
-my $mysql_col_target        = 'target';
-my $mysql_col_taxid         = 'taxid';
-my $mysql_col_type          = 'type';
-my $mysql_col_taxon         = 'taxon';
-my $mysql_col_user          = 'user';
-my $mysql_dbi               = "dbi:mysql:$mysql_dbname:$mysql_dbserver";
-my $num_bp                  = 0;
-my $num_ests                = 0;
-my $num_hmms                = 0;
-my $orthocount              = 0;
-my $protfile                = $EMPTY;
-my $set_id                  = 0;
-my $species_id              = 0;
-my $stderr                  = undef;
-my $stdout                  = undef;
+my $db_col_aaseq         = 'aa_seq';
+my $db_col_blastdbpath   = 'blastdb_path';
+my $db_col_date          = 'date';
+my $db_col_digest        = 'digest';
+my $db_col_evalue        = 'evalue';
+my $db_col_end           = 'end';
+my $db_col_env_end       = 'env_end';
+my $db_col_env_start     = 'env_start';
+my $db_col_hmm_end       = 'hmm_end';
+my $db_col_hmm_start     = 'hmm_start';
+my $db_col_log_evalue    = 'log_evalue';
+my $db_col_hdr           = 'header';
+my $db_col_hmm           = 'hmm';
+my $db_col_id            = 'id';
+my $db_col_longname      = 'longname';
+my $db_col_name          = 'name';
+my $db_col_orthoid       = 'ortholog_gene_id';
+my $db_col_query         = 'query';
+my $db_col_score         = 'score';
+my $db_col_seq           = 'sequence';
+my $db_col_seqpair       = 'sequence_pair';
+my $db_col_setid         = 'setid';
+my $db_col_start         = 'start';
+my $db_col_target        = 'target';
+my $db_col_taxid         = 'taxid';
+my $db_col_type          = 'type';
+my $db_col_taxon         = 'taxon';
+my $db_col_user          = 'user';
+my $db_dbi               = "dbi:mysql:$db_dbname:$db_dbserver";
+my $num_bp               = 0;
+my $num_ests             = 0;
+my $num_hmms             = 0;
+my $orthocount           = 0;
+my $protfile             = $EMPTY;
+my $set_id               = 0;
+my $species_id           = 0;
+my $stderr               = undef;
+my $stdout               = undef;
 my $t0;  # these are used for timing 
 my $t1;  # these are used for timing 
-my $timestamp_diff          = 0;
-my $timestamp_end           = 0; # will hold the time at the end
-my $timestamp_start         = scalar time;
-my @lt                      = localtime time;
-my $timestring              = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
-# create new temporary directory and set it to not be deleted 
-my $tmpdir                  = File::Temp->newdir(
-                               'UNLINK' => 0,
-                               'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
-my @backup                  = ( );
-my @hmmfiles                = ( );
-my @reftaxa                 = ( );
-my @seqobjs                 = ( );
-#}}}
+my $timestamp_diff       = 0;
+my $timestamp_end        = 0; # will hold the time at the end
+my $timestamp_start      = scalar time;
+my @lt                   = localtime time;
+my $timestring           = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
+my @backup               = ( );
+my @hmmfiles             = ( );
+my @reftaxa              = ( );
+my @seqobjs              = ( );
+my $tmpdir               = '';
 
 # debug is also verbose
 if ($debug) {
 	$verbose = 1; 
-	$tmpdir->unlink_on_destroy(0);
 }
 
 # report configuration
@@ -234,23 +245,23 @@ if ($verbose) {
 
 
 # get the taxon id. create a new entry in the taxa table or return existing one
-$species_id = Wrapper::Mysql::insert_taxon_into_table($species_name)
+$species_id = insert_taxon_into_table($species_name)
 	or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
 $message .= "Got taxon id $species_id for '$species_name'\n" unless $quiet;
 
-# get real table names
-($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) = Wrapper::Mysql::get_real_table_names($species_id);
+# have the wrapper modules use the real table names
+get_real_table_names($species_id);
 
 #--------------------------------------------------
-# # Special case: Prepare the MySQL database by dropping and recreating all
+# # Special case: Prepare the database by dropping and recreating all
 # # tables if requested, then exit
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
 	local $| = 1;
-  print "Setting MySQL database $mysql_dbname to a clean slate... ";
+  print "Setting database $database to a clean slate... ";
 	local $| = 0;
-  &preparedb;
-  print "OK\nMySQL database now ready to run $program_name.\n";
+  preparedb();
+  print "OK\nDatabase now ready to run $program_name.\n";
   exit;
 }#}}}
 
@@ -269,7 +280,7 @@ if ($listspecies) {
 &intro;
 
 # get the set id
-$set_id = Wrapper::Mysql::get_set_id($orthoset)
+$set_id = get_set_id($orthoset)
 	or print $stderr "Warning: Could not get set id from database: $DBI::errstr\n";
 
 # prepare the HMMs
@@ -285,7 +296,7 @@ exit if $makeset;
 #-------------------------------------------------- 
 if ($reftaxa) { @reftaxa = split(/\s*,\s*/, $reftaxa) }
 else {
-	@reftaxa = Wrapper::Mysql::get_taxa_in_set($set_id)
+	@reftaxa = get_taxa_in_set($set_id)
 		or print $stderr "Warning: Could not get reference taxa from database: $DBI::errstr\n"
 }
 @hmmfiles = &hmmlist($hmmdir);
@@ -308,34 +319,34 @@ unless ($quiet) {#{{{
 #--------------------------------------------------
 # # translate the ESTs to protein, feed that stuff to the database
 #-------------------------------------------------- 
-$protfile = &translate_est(File::Spec->catfile($estfile));#{{{
+$protfile = &translate_est(File::Spec->catfile($input_file));#{{{
 
 # clear database of data from the same species
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = scalar time;
 	#my $n_deleted = &clear_db($species_name);
-	&preparedb or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
+	preparedb() or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
 	$t1 = scalar time;
 	#printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
 }
 
 unless ($continue) {
 	# store est data into the database:
-	print $stdout "Storing nucleotide sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+	print $stdout "Storing nucleotide sequences to database '$database' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($estfile, $mysql_table_ests, 2, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	load_data_infile($input_file, $db_table_ests, 2, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
 	# store translated est data into the database:
-	print $stdout "Storing translated sequences to MySQL database '$mysql_dbname' on $mysql_dbserver...\n" unless $quiet;
+	print $stdout "Storing translated sequences to database '$database' on $db_dbserver...\n" unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
 	$t0 = scalar time;
-	&load_data_infile($protfile, $mysql_table_ests, 1, [ $mysql_col_digest, $mysql_col_taxid, $mysql_col_type, $mysql_col_date, $mysql_col_hdr, $mysql_col_seq ]);
+	load_data_infile($protfile, $db_table_ests, 1, [ $db_col_digest, $db_col_taxid, $db_col_type, $db_col_date, $db_col_hdr, $db_col_seq ]);
 	$t1 = scalar time;
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
@@ -344,20 +355,20 @@ unless ($continue) {
 
 
 # get number of sequences for this species, report or die
-$num_ests = Wrapper::Mysql::get_number_of_ests_for_specid($species_id);
+$num_ests = get_number_of_ests_for_specid($species_id);
 if ($num_ests != 0) {
 	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
 		$num_ests,
 		$species_name,
-		$mysql_dbname,
-		$mysql_dbserver) unless $quiet;
+		$db_dbname,
+		$db_dbserver) unless $quiet;
 }
 else {
 	print $stderr "No sequences found for taxon id $species_id. Something went wrong. Check your input. Exiting.\n" and exit(1);
 }
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
-$protfile = &get_transcripts($species_id, 1);
+$protfile = get_transcripts($species_id, 1);
 #}}}
 
 #--------------------------------------------------
@@ -407,7 +418,7 @@ Wrapper::Blastp->searchprog($blastprog);
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
 #-------------------------------------------------- 
-printf($stdout "HMMsearching the protein file using all %d HMMs in %s:\n", scalar(@hmmfiles), $hmmdir)
+printf($stdout "HMMsearching the translated sequences using all %d HMMs in %s...\n", scalar(@hmmfiles), $hmmdir)
 	unless $quiet;
 $hmmcount = 0;
 $hmmhitcount = 0;
@@ -452,11 +463,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			;
 		}
 	}
-
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
-	my $count = &insert_results_into_table($mysql_table_hmmsearch, $hmmobj->hits_arrayref());
+	my $count = insert_results_into_table($db_table_hmmsearch, $hmmobj->hits_arrayref());
 	print $stdout "     ... pushed $count hits to database.\n" if $verbose;
 	++$hmmhitcount;
 	
@@ -465,8 +475,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	#-------------------------------------------------- 
 
 	# get hmmsearch results from database; use the first array item since they all share the query (HMM) ID 
-	my @hmmresults = @{ Wrapper::Mysql::get_hmmresults($hmmobj->hits_arrayref->[0]{'query'}, $species_id) }
-		or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
+	my @hmmresults = get_hmmresults($hmmobj->hits_arrayref->[0]{'query'}, $species_id);
 
 	# don't do too many blast searches...
 	my $max = scalar(@hmmresults) >= $max_blast_searches ? $max_blast_searches : scalar(@hmmresults);
@@ -475,7 +484,11 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	for (my $n = 0; $n < $max; ++$n) { #{{{
  		++$count;
 
-		my $tmpfile = &write_sequence_to_tempfile($hmmresults[$n], $hmmobj->hmmfile);
+		# the hmmsearch table id for this result
+		my $hmmsearch_id = $hmmresults[$n]->[4];
+
+		# create a new fasta file for the blast search
+		my $tmpfile = write_sequence_to_tempfile($hmmresults[$n], $hmmobj->hmmfile);
 
 		#--------------------------------------------------
 		# # run blastp 
@@ -484,7 +497,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		my $blastobj = Wrapper::Blastp->new($blastdb);
 		
 		# generate a blast output file name from the HMM name and the hit number
-		my $blastoutfile = &generate_blast_output_filename($hmmobj->hmmname, $hmmresults[$n]);
+		my $blastoutfile = generate_blast_output_filename($hmmobj->hmmname, $hmmresults[$n]);
 
 		# do the blastp search
 		$blastobj->blastp($tmpfile, $blastoutfile);
@@ -500,8 +513,8 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# skip to next if BLAST finds nothing
 		if ($blastobj->hitcount() == 0) { next HMMRESULT }
 
-		# insert the blast results into the db. 3-argument form.
-		my $count = &insert_results_into_table($mysql_table_blast, $blastobj->blasthits_arrayref, basename($blastdb));
+		# insert the blast results into the db. 4-argument form.
+		my $count = insert_results_into_table($db_table_blast, $blastobj->blasthits_arrayref, basename($blastdb), $hmmsearch_id);
 		print $stdout "            ... pushed $count hits to database.\n" if $verbose;
 	} #}}}
 
@@ -510,7 +523,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			if $verbose;
 	}
 
-	my $orthologs = &get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
+	my $orthologs = get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
 	next HMMFILE unless defined $$orthologs[0];	# skip empty results
 
 	# write the result to output file
@@ -555,6 +568,24 @@ exit(0);
 # # Functions 
 ###################################################
 
+sub insert_taxon_into_table {
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_taxon_into_table($species_name)
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_taxon_into_table($species_name)
+	}
+}
+
+sub get_real_table_names {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_real_table_names($species_id);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_real_table_names($species_id);
+	}
+}
+
 # Sub: progress_bar
 # Prints a self-overwriting, wget-style progress bar.
 # This is not written to the log file so it doesn't get cluttered.
@@ -576,10 +607,9 @@ sub progress_bar {#{{{
 sub intro {#{{{
 	# first things first: 
 	# construct output directory paths
+	# the output directory. create if it does not exist.
 	# outdir may be defined in the config file
 	$outdir = defined($outdir) ? $outdir : File::Spec->catdir('.', $species_name);
-
-	# the output directory. create if it does not exist.
 	if (-d $outdir) {
 		# no IO::Tee because the log dir has not been created yet 
 		$message .= "Using output dir $outdir.\n" unless $quiet;
@@ -589,6 +619,11 @@ sub intro {#{{{
 		$message .= "Output dir $outdir does not exist, creating...\n" unless $quiet;
 		&makedir($outdir) or die "Fatal: Failed to create output directory '$outdir'\n";
 	}
+	# create new temporary directory and set it to not be deleted 
+	$tmpdir = File::Temp->newdir(
+					 	'UNLINK' => 0,
+					 	'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
+	$tmpdir->unlink_on_destroy(0) if $debug;
 
 	# the other dirs
 	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
@@ -637,6 +672,10 @@ sub intro {#{{{
 		print $stdout "Using log file $logfile.\n";
 	}
 
+	# pass the new stdout and stderr filehandles to the database modules for their output
+	pass_stderr($stderr);
+	pass_stdout($stdout);
+
 	print $stderr "Fatal: Species name needed (-taxon NAME)!\n" and exit(1)
 		unless ($species_name);
 	
@@ -671,12 +710,22 @@ sub intro {#{{{
 		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 
-	# the EST file
-	if (-e $estfile) {
-		print $stdout "EST file $estfile exists.\n" unless $quiet;
+	# the BLAST directory
+	unless ($blastdir) { $blastdir = File::Spec->catdir($sets_dir, $orthoset, 'blast') }
+	if (-d $blastdir) {
+		print $stdout "BLAST dir $blastdir exists.\n" unless $quiet;
 	}
 	else {
-		print $stderr "Fatal: EST file $estfile does not exist!\n" and exit(1);
+		print $stdout "BLAST dir $blastdir does not exist, creating...\n" unless $quiet;
+		&makedir($blastdir) or print $stderr "Fatal: Failed to create directory $blastdir\n" and exit(1);
+	}
+
+	# the EST file
+	if (-e $input_file) {
+		print $stdout "EST file $input_file exists.\n" unless $quiet;
+	}
+	else {
+		print $stderr "Fatal: EST file $input_file does not exist!\n" and exit(1);
 	}
 
 	# the HMMsearch output directory
@@ -757,8 +806,8 @@ sub intro {#{{{
 
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	unless ( Wrapper::Mysql::set_exists($orthoset) ) {
-		die "Fatal: Set '$orthoset' does not exist in database '$mysql_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
+	unless ( set_exists($orthoset) ) {
+		die "Fatal: Set '$orthoset' does not exist in database '$db_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
 	}
 
 	# everything is fine
@@ -792,13 +841,13 @@ sub hmmlist {#{{{
 sub translate_est {#{{{
   my ($infile) = shift;
   (my $outfile = $infile) =~ s/(\.[^.]*$)/_prot$1/;
-  print $stdout "Translating $estfile in all six reading frames...\n" unless $quiet;
+  print $stdout "Translating $input_file in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
     print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
   }
   my @translateline = qq($translateprog $infile > $outfile);
-  system(@translateline) and die();
+  system(@translateline) and print "Fatal: could not translate input file. Is this nucleotide data?\n" and exit 1;
   return($outfile);
 }#}}}
 
@@ -875,81 +924,13 @@ sub cleardir {#{{{
 # Generate a clean database, deleting all existing tables and starting from scratch
 # Returns: True on success
 sub preparedb {#{{{
-	my $query_create_ests = "CREATE TABLE $mysql_table_ests ( 
-		`$mysql_col_id`        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		`$mysql_col_digest`    CHAR(32)            NOT NULL,           
-		`$mysql_col_taxid`     INT UNSIGNED        NOT NULL,       
-		`$mysql_col_type`      TINYINT(4) UNSIGNED NOT NULL,
-		`$mysql_col_date`      INT UNSIGNED,
-		`$mysql_col_hdr`       VARCHAR(4096)       NOT NULL,       
-		`$mysql_col_seq`       MEDIUMBLOB DEFAULT NULL,
-		PRIMARY KEY (`$mysql_col_id`),
-		INDEX (`$mysql_col_digest`(4)),
-		INDEX (`$mysql_col_taxid`),
-		INDEX (`$mysql_col_hdr`(10))
-		) ENGINE=MYISAM AUTO_INCREMENT=0";
-
-	my $query_create_hmmsearch = "CREATE TABLE $mysql_table_hmmsearch (
-		`$mysql_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		`$mysql_col_taxid`      INT UNSIGNED NOT NULL,       
-		`$mysql_col_query`      VARCHAR(255) NOT NULL,       
-		`$mysql_col_target`     CHAR(32)     NOT NULL,       
-		`$mysql_col_score`      DOUBLE       NOT NULL,
-		`$mysql_col_evalue`     CHAR(8)      NOT NULL,
-		`$mysql_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
-		`$mysql_col_env_start`  INT UNSIGNED NOT NULL,
-		`$mysql_col_env_end`    INT UNSIGNED NOT NULL,
-		`$mysql_col_hmm_start`  INT UNSIGNED NOT NULL,
-		`$mysql_col_hmm_end`    INT UNSIGNED NOT NULL,
-		PRIMARY KEY (`$mysql_col_id`),
-		INDEX (`$mysql_col_taxid`),
-		INDEX (`$mysql_col_query`),
-		INDEX (`$mysql_col_target`(4)),
-		INDEX (`$mysql_col_log_evalue`)
-		)";
-	
-	my $query_create_blast = "CREATE TABLE $mysql_table_blast (
-		`$mysql_col_id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
-		`$mysql_col_taxid`         INT UNSIGNED NOT NULL,       
-		`$mysql_col_query`         CHAR(32)     NOT NULL,       
-		`$mysql_col_target`        INT UNSIGNED NOT NULL,       
-		`$mysql_col_score`         DOUBLE       NOT NULL,
-		`$mysql_col_evalue`        CHAR(8)      NOT NULL,
-		`$mysql_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
-		`$mysql_col_start`         INT UNSIGNED NOT NULL,
-		`$mysql_col_end`           INT UNSIGNED NOT NULL,
-		PRIMARY KEY (`$mysql_col_id`),
-		INDEX (`$mysql_col_taxid`),
-		INDEX (`$mysql_col_query`(4)),
-		INDEX (`$mysql_col_target`),
-		INDEX (`$mysql_col_log_evalue`)
-		)";
-
-	# open connection
-	my $dbh = Wrapper::Mysql::mysql_dbh()
-		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-
-	# drop all tables
-	foreach ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
-		my $query_drop = "DROP TABLE IF EXISTS $_";
-		print $stdout "$query_drop;\n" if $verbose;
-		my $sql = $dbh->prepare($query_drop);
-		$sql->execute()
-		  or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
+	if ($use_mysql) {
+		Wrapper::Mysql::preparedb() and return 1;
 	}
-
-	# create all tables
-	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast) {
-		printf $stdout "$query;\n" if $verbose;
-		my $sql = $dbh->prepare($query);
-		$sql->execute()
-		  or print $stderr "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::preparedb() and return 1;
 	}
-
-	# disconnect
-	$dbh->disconnect();
-
-	return 1;
+	return 0;
 } #}}}
 
 
@@ -961,135 +942,49 @@ sub clear_db {#{{{
 	return unless $species_name;
 
 	# get the species id from the database
-	my $specid = Wrapper::Mysql::get_taxid_for_species($species_name)
+	my $specid = get_taxid_for_species($species_name)
 		or print $stderr "Warning: Could  not get species ID from database: $DBI::errstr\n";
 	return unless $specid;
 
-	# count number of records 
-	my $n = 0;
-
 	# clear previous results from the same species
-	my $dbh = Wrapper::Mysql::mysql_dbh()
-		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-
-	foreach my $table ($mysql_table_ests, $mysql_table_hmmsearch, $mysql_table_blast) {
-		my $query = "DROP TABLE $table";
-		my $sth = $dbh->prepare($query);
-		$n += $sth->execute();
-	}
-	# disconnect ASAP
-	$dbh->disconnect();
-
-	return $n;
+	return clear_db($specid);
 }#}}}
 
 # Sub: insert_results_into_table
-#	inserts the results of either hmmsearch or blastp into a mysql database
+#	inserts the results of either hmmsearch or blastp into a database
 # Expects: scalar string TABLENAME, reference to array HITS, scalar string BLASTDATABASE (optional)
 # Returns: Number of inserted results (hitcount)
 sub insert_results_into_table {#{{{
 	my $table = shift;
 	my $hits  = shift;
-	# called with 3 args, we are dealing with a blast result
-	my $blastdb = (scalar @_ == 1) ? shift : undef;
+	# called with 4 args, we are dealing with a blast result
+	my $hmmsearch_id = undef;
+	my $blastdb      = undef;
+	if (scalar @_ == 2) {
+		$blastdb      = shift;
+		$hmmsearch_id = shift;
+	}
 	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
 	my $hitcount;
-
+	
 	# this is a BLASTP result, we need the column 'blastdb'
 	if ($blastdb) {
-		my $query_insert_result = "INSERT IGNORE INTO $table (
-			`$mysql_col_taxid`,
-			`$mysql_col_query`,
-			`$mysql_col_target`,
-			`$mysql_col_score`,
-			`$mysql_col_evalue`,
-			`$mysql_col_log_evalue`,
-			`$mysql_col_start`,
-			`$mysql_col_end`
-			) VALUES (
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			?
-		)";
-
-		my $dbh = Wrapper::Mysql::mysql_dbh()
-			or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-		$dbh->do("START TRANSACTION");
-		my $sql = $dbh->prepare($query_insert_result);
-
-		# this is a reference to an array of hashes
-		foreach my $hit (@$hits) {
-			$sql->execute(
-				$species_id,
-				$hit->{'query'},  # query (HMM)
-				$hit->{'target'}, # target (header)
-				$hit->{'score'},  # score
-				$hit->{'evalue'},  # evalue
-				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,  # natural logarithm only if not 0
-				$hit->{'end'},
-				$hit->{'start'},
-			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
-			++$hitcount;
+		if ($use_mysql) {
+			return Wrapper::Mysql::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
 		}
-		$dbh->do("COMMIT");
-		$dbh->disconnect;
-		return $hitcount;
+		elsif ($use_sqlite) {
+			return Wrapper::Sqlite::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
+		}
 	}
 
 	# this is a HMMsearch result
 	else {
-		# SQL query for pushing HMMsearch results to the db
-		my $query_insert_result = "INSERT IGNORE INTO $table (
-			`$mysql_col_taxid`,
-			`$mysql_col_query`,
-			`$mysql_col_target`,
-			`$mysql_col_score`,
-			`$mysql_col_evalue`,
-			`$mysql_col_log_evalue`,
-			`$mysql_col_hmm_start`,
-			`$mysql_col_hmm_end`,
-			`$mysql_col_env_start`,
-			`$mysql_col_env_end`
-			) VALUES (
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			?,
-			?)";
-
-		my $dbh = DBI->connect($mysql_dbi, $mysql_dbuser, $mysql_dbpwd);
-		$dbh->do("START TRANSACTION");
-		my $sql = $dbh->prepare($query_insert_result);
-
-		# this is a reference to an array of hashes
-		foreach my $hit (@$hits) {
-			my $affected_rows = $sql->execute(
-				$species_id,
-				$hit->{'query'},  # query (HMM)
-				$hit->{'target'}, # target (header)
-				$hit->{'score'},  # score
-				$hit->{'evalue'}, # evalue
-				$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,	# natural logarithm only if evalue not 0
-				$hit->{'hmm_start'},  # start of hit domain on the HMM
-				$hit->{'hmm_end'},    # end of hit domain on the HMM
-				$hit->{'env_start'},  # start of hit domain on the target seq
-				$hit->{'env_end'},    # end of hit domain on the target seq
-			) or print $stderr "Fatal: Could not push to database!\n" and exit(1);
-			if ($affected_rows > 0) { ++$hitcount }
+		if ($use_mysql) {
+			return Wrapper::Mysql::insert_results_into_hmmsearch_table($hits, $species_id);
 		}
-		$dbh->do("COMMIT");
-		$dbh->disconnect;
-		return $hitcount;
+		elsif ($use_sqlite) {
+			return Wrapper::Sqlite::insert_results_into_hmmsearch_table($hits, $species_id);
+		}
 	}
 }#}}}
 
@@ -1112,37 +1007,37 @@ sub file_is_empty {
 # Returns: True if successful
 sub make_hmms {#{{{
 	my $set = shift;
-	my $set_id = Wrapper::Mysql::get_set_id($set)
+	my $set_id = get_set_id($set)
 		or print $stderr "Warning: Could not get set ID for set '$set' from database: $DBI::errstr\n";
 	my $hmmsuffix = '.hmm';
 	# does the alignment dir exist?
 	if (!-e $alndir) {
-		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
+		makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
 	}
 	# does the HMM dir exist?
 	if (!-e $hmmdir) {
-		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
+		makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 	print $stdout "Generating ortholog set $set...  This may take a long time, please be patient.\n" unless $quiet;
 
 	# get the ortholog set from the database
-	my $data = Wrapper::Mysql::get_ortholog_groups_for_set($set_id)
+	my $data = get_ortholog_groups_for_set($set_id)
 		or print $stderr "Warning: Could not get ortholog groups for set '$set' from database: $DBI::errstr\n";
 
 	my $num_orthoids = scalar(keys(%$data));
 	my $o = 0;
 	foreach my $orthoid (keys(%$data)) {
-		&progress_bar($o, $num_orthoids, 25, '-');
+		progress_bar($o, $num_orthoids, 25, '-');
 		++$o;
 		my $hmmfile = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
 
 		# does this HMM already exist?
 		# if so, skip to the next
-		if (-e $hmmfile and not &file_is_empty($hmmfile)) { next }
+		if (-e $hmmfile and not file_is_empty($hmmfile)) { next }
 
 		# if it exists, but the file is empty (this happens if you cancel the build
 		# process), rebuild this HMM
-		elsif (-e $hmmfile and &file_is_empty($hmmfile)) { print $stderr "Warning: Rebuilding HMM for $orthoid due to empty HMM file\n" }
+		elsif (-e $hmmfile and file_is_empty($hmmfile)) { print $stderr "Warning: Rebuilding HMM for $orthoid due to empty HMM file\n" }
 
 		# no, create new fasta file and so on
 		my $fafile = File::Spec->catfile($alndir, $orthoid . '.fa');
@@ -1154,16 +1049,16 @@ sub make_hmms {#{{{
 		$fafh->close();
 
 		# align
-		my $alnfile = &align($fafile, $orthoid)
-			or die("Fatal: Alignment failed for '$fafh': $!\n");
+		my $alnfile = align($fafile, $orthoid)
+			or die("Fatal: Alignment failed for '$fafh': $! (errcode $?)\n");
 
 		# convert to stockholm
-		my $stockhfile = &fasta2stockholm($alnfile, $orthoid)
-			or die("Fatal: Conversion to Stockholm format failed for '$alnfile': $!\n");
+		my $stockhfile = fasta2stockholm($alnfile, $orthoid)
+			or die("Fatal: Conversion to Stockholm format failed for '$alnfile': $! (errcode $?)\n");
 
 		# build HMM
-		&hmmbuild($stockhfile, $hmmfile)
-			or die("Fatal: HMM generation failed for '$alnfile': $!\n");
+		hmmbuild($stockhfile, $hmmfile)
+			or die("Fatal: HMM generation failed for '$alnfile': $! (errcode $?)\n");
 	}
 	undef($data);	# free memory... well, it's bound to go out of scope anyway
 	return($hmmdir);
@@ -1230,15 +1125,14 @@ sub hmmbuild {#{{{
 }#}}}
 
 # Sub: make_blastdb 
-# Create a BLAST database from a file. Pulls everything from the MySQL database.
+# Create a BLAST database from a file. Pulls everything from the database.
 # Arguments: Scalar string ortholog set name
 # Returns: Scalar string path_to_blastdbfile
 sub make_blastdb {#{{{
 	my $setid = shift or croak('Usage: make_blastdb(SETID)');
 
 	# build the paths for input and output
-	my $dbfile = File::Spec->catfile($sets_dir, $orthoset, 'blast', $orthoset);
-	my $infile = File::Spec->catfile($dbfile . ".fa");
+	my $dbfile = File::Spec->catfile($blastdir, $orthoset);
 
 	# check whether a database already exists
 	if (-e File::Spec->catfile($dbfile . '.psq')) {
@@ -1254,7 +1148,7 @@ sub make_blastdb {#{{{
 	$infh->unlink_on_destroy(0) if $debug;
 
 	# get the sequences from the database
-	my $sequences = Wrapper::Mysql::get_aaseqs_for_set($setid)
+	my $sequences = get_aaseqs_for_set($setid)
 		or print $stderr "Warning: Could not get sequences for set '$orthoset' from database: $DBI::errstr\n";
 
 	# write to output file
@@ -1265,7 +1159,7 @@ sub make_blastdb {#{{{
 		}
 		# but write out anyway
 		printf($infh ">%s\n%s\n", $h, $s)
-			or print $stderr "Fatal: Could not write to makeblastdb input file $infile: $!\n" and exit(1);
+			or print $stderr "Fatal: Could not write to makeblastdb input file $infh $!\n" and exit(1);
 	}
 	undef $sequences;
 	close($infh);
@@ -1273,13 +1167,13 @@ sub make_blastdb {#{{{
 
 	# make blast database
 	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset);
-	if (!$debug) {
-		push @makeblastdbcmd, qq( > /dev/null );
-	}
-	else {
+	if ($debug) {
 		print $stdout "@makeblastdbcmd\n";
 	}
-	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $!\n" and exit(1);
+	else {
+		push @makeblastdbcmd, qq( > /dev/null );
+	}
+	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $! (errcode $?)\n" and exit(1);
 	return $dbfile;
 }#}}}
 
@@ -1289,15 +1183,15 @@ sub make_blastdb {#{{{
 # Returns: scalar int number of loaded rows
 sub load_data_infile {#{{{
 	my $infile = shift(@_);
-	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($infile, $mysql_table_ests, $type [, $columns_reference])';
-	my $type = shift(@_) or croak 'Usage: &load_data_infile($infile, $mysql_table_ests, $type [, $columns_reference])';
+	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
+	my $type = shift(@_) or croak 'Usage: &load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
 	my $columns;
 	my $list;
 	my $bp = 0;
 	if (scalar(@_)) {
 		$columns = shift(@_);
 		unless (ref($columns)) {
-			croak 'Usage: &load_data_infile($infile, $mysql_table_ests [, $columns_reference])';
+			croak 'Usage: &load_data_infile($infile, $db_table_ests [, $columns_reference])';
 		}
 		$list = join(',', @$columns);
 	}
@@ -1333,29 +1227,20 @@ sub load_data_infile {#{{{
 	$tmpfh->close();
 	# no need to close the infh since we're already through it, it gets closed automagically
 
-	# load data from csv file into database
-	my $query_disable_keys = "ALTER TABLE $table_ests DISABLE KEYS";
-	my $query_enable_keys = "ALTER TABLE $table_ests ENABLE KEYS";
-	my $query = "LOAD DATA LOCAL INFILE '$tmpfh' INTO TABLE $table_ests FIELDS TERMINATED BY ',' ($list)";
+	$num_ests = load_ests_from_file($tmpfh, $list);
 
-	# open connection and do the transaction
-	my $dbh = Wrapper::Mysql::mysql_dbh()
-		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-
-	# flush tables, then disable indexes before loading the data. 
-	# afterwards re-index the table
-	print $stdout "Disabling indices on $table_ests...\n" if $verbose;
-	$dbh->do($query_disable_keys);
-	my $sth = $dbh->prepare($query);
-	print $stdout "Uploading data...\n" if $verbose;
-	$num_ests = $sth->execute() or die "Fatal: MySQL transaction failed\n";
-	print $stdout "Re-indexing $table_ests...\n" if $verbose;
-	$dbh->do($query_enable_keys) or die "Fatal: MySQL transaction failed\n";
-	# disconnect ASAP and die if errors
-	$dbh->disconnect;
-	if (defined($DBI::errstr)) { print $stderr "$DBI::errstr\n" and exit(1) }
-	return $bp;
 }#}}}
+
+sub load_ests_from_file {
+	my $f = shift;
+	my $list = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::load_ests_from_file($f, $list);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::load_ests_from_file($f, $list);
+	}
+}
 
 # Sub: get_transcripts 
 # Get transcript sequences from the database, using their ID as header
@@ -1366,16 +1251,27 @@ sub get_transcripts {#{{{
 	my $type = shift;
 	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
 	my $nseqs = 0;
-	my $data = Wrapper::Mysql::get_transcripts($species_id, $type)
+	my $data = get_transcripts_for_species($species_id, $type)
 		or print $stderr "Warning: Could not get transcript sequences from database: $DBI::errstr\n";
 	while (my $row = shift @$data) {
 		printf($tmpfh ">%s\n%s\n", $$row[0], $$row[1])
 			or print $stderr "Fatal: Could not write to file $tmpfh: $!\n" and exit(1);
 		++$nseqs;
 	}
-	print $stdout "Wrote $nseqs sequences to $tmpfh\n" unless $quiet;
+	print $stdout "Wrote $nseqs translated sequences to $tmpfh\n" unless $quiet;
 	return $tmpfh;
 }#}}}
+
+sub get_transcripts_for_species {
+	my $specid = shift;
+	my $type = shift;
+	if ($use_mysql) {
+		Wrapper::Mysql::get_transcripts_for_species($specid, $type);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::get_transcripts_for_species($specid, $type);
+	}
+}
 
 # Sub: get_orthologs
 # Get orthologous sequences from the database, the final result handler
@@ -1384,42 +1280,13 @@ sub get_transcripts {#{{{
 sub get_orthologs {#{{{
 	my $orthoid = shift;
 	my $estdigest = shift;
-	# what do we want from the database?
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT DISTINCT
-			$mysql_table_orthologs.$mysql_col_orthoid AS orthogroup,
-			$mysql_table_taxa.$mysql_col_name	        AS name,
-			$mysql_table_ests.$mysql_col_digest       AS EST_digest,
-      $mysql_table_aaseqs.$mysql_col_hdr        AS AA_header,
-      $mysql_table_aaseqs.$mysql_col_seq        AS AA_seq,
-      $mysql_table_ests.$mysql_col_hdr          AS EST_hdr,
-      $mysql_table_ests.$mysql_col_seq          AS EST_seq
-    FROM $mysql_table_aaseqs
-		INNER JOIN $mysql_table_taxa
-			ON $mysql_table_aaseqs.$mysql_col_taxid = $mysql_table_taxa.$mysql_col_id
-    INNER JOIN $mysql_table_blast 
-			ON $mysql_table_aaseqs.$mysql_col_id = $mysql_table_blast.$mysql_col_target 
-    INNER JOIN $mysql_table_hmmsearch 
-			ON $mysql_table_blast.$mysql_col_query = $mysql_table_hmmsearch.$mysql_col_target  
-    INNER JOIN $mysql_table_ests 
-			ON $mysql_table_hmmsearch.$mysql_col_target = $mysql_table_ests.$mysql_col_digest 
-    INNER JOIN $mysql_table_orthologs 
-			ON $mysql_table_hmmsearch.$mysql_col_query = $mysql_table_orthologs.$mysql_col_orthoid
-		INNER JOIN $mysql_table_seqpairs
-			ON $mysql_table_orthologs.$mysql_col_seqpair = $mysql_table_seqpairs.$mysql_col_id 
-		WHERE $mysql_table_orthologs.$mysql_col_orthoid = ?
-			AND $mysql_table_ests.$mysql_col_digest       = ?
-			AND $mysql_table_seqpairs.$mysql_col_aaseq    = $mysql_table_aaseqs.$mysql_col_id
-		ORDER BY $mysql_table_hmmsearch.$mysql_col_evalue, $mysql_table_blast.$mysql_col_evalue";
 
-	# open connection and do the transaction
-	my $dbh = Wrapper::Mysql::mysql_dbh()
-		or print $stderr "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-	my $sql = $dbh->prepare($query);
-	$sql->execute( $orthoid, $estdigest );
-	my $result = $sql->fetchall_arrayref();
-	$dbh->disconnect();
-	return $result;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_orthologs($orthoid, $estdigest);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_orthologs($orthoid, $estdigest);
+	}
 }#}}}
 
 sub write_sequence_to_tempfile {
@@ -1449,183 +1316,109 @@ sub generate_blast_output_filename {
 	return File::Spec->catfile($blastoutdir, $filename);
 }
 
+sub get_hmmresults {
+	my $hit = shift;
+	my $species_id = shift;
+	print "Getting list of HMMsearch results...\n" if $debug;
+	if ($use_mysql) {
+		return @{ Wrapper::Mysql::get_hmmresults($hit, $species_id) }
+			or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
+	}
+	elsif ($use_sqlite) {
+		return @{ Wrapper::Sqlite::get_hmmresults($hit, $species_id) }
+			or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
+	}
+}
+
+sub pass_stderr {
+	my $fh = shift;
+	if ($use_mysql) {
+		Wrapper::Mysql::pass_stderr($fh);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::pass_stderr($fh);
+	}
+}
+
+sub pass_stdout {
+	my $fh = shift;
+	if ($use_mysql) {
+		Wrapper::Mysql::pass_stdout($fh);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::pass_stdout($fh);
+	}
+}
+
+sub get_number_of_ests_for_specid {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_number_of_ests_for_specid($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_number_of_ests_for_specid($specid);
+	}
+}
+
+
+sub get_set_id {
+	my $setn = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_set_id($setn);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_set_id($setn);
+	}
+}
+
+sub get_taxa_in_set {
+	my $setid = shift;
+	if ($use_mysql) {
+		Wrapper::Mysql::get_taxa_in_set($setid);
+	}
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::get_taxa_in_set($setid);
+	}
+}
+
+sub set_exists {
+	my $set = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::set_exists($set);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::set_exists($set);
+	}
+}
+
+sub get_aaseqs_for_set {
+	my $sid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_aaseqs_for_set($sid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_aaseqs_for_set($sid);
+	}
+}
+
+sub get_taxid_for_species {
+	my $sn = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_taxid_for_species($sn);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_taxid_for_species($sn);
+	}
+}
+
+sub get_ortholog_groups_for_set {
+	my $sid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_ortholog_groups_for_set($sid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_ortholog_groups_for_set($sid);
+	}
+}
 
 __END__
-
-# Documentation#{{{
-=head1 NAME
-
-Orthograph
-
-=head1 DESCRIPTION
-
-F<Ortho>logy prediction using a F<G>raph-based, F<R>eciprocal F<A>pproach with
-F<P>rofile F<H>idden F<M>odels
-
-=head1 SYNOPSIS
-
-orthograph [OPTIONS]
-
-=head1 WARNING
-
-B<This documentation is outdated!> It will catch up with recent development on
-another day. However, careful work has been put into the README file, which
-also contains a quickstart guide. Please refer to that. 
-
-=head1 DESCRIPTION
-
-Orthograph expects a certain table structure for the core-ortholog set. You may
-run the provided script orthograph_manager with the B<-c> switch once, which
-does exactly that.
-
-=head1 OPTIONS
-
-=head2 -c CONFIGFILE
-
-Use CONFIGFILE instead of orthograph.conf. Any options on the command line override
-options set in the config file.
-
-=head2 -v
-
-Verbose output. More information about the HMMsearch and BLAST hits. Normally
-you don't want to see this. If you are really interested in what Orthograph is
-thinking during the analysis, uncomment this. Verbose and quiet are mutually
-exclusive.
-
-=head2 -q
-
-Quiet output. Uncomment this if you don't want to be bothered during the
-analysis. Verbose and quiet are mutually exclusive.
-
-No other options documented yet. Use the config file, please.
-
-=head1 CONFIG FILE
-
-The configuration file allows to set all options available on the command line
-so that the user is spared having to use a very long command every time.
-
-The config file has to be in ini-style: 
-
-	# this is a comment
-	translateprog  = fastatranslate
-	hmmdir         = /home/malty/thesis/orthograph/hmms
-	estfile        = /home/malty/data/cleaned/Andrena_vaga.fa
-	mysql_dbname   = orthograph
-	mysql_dbserver = localhost
-
-etc. Empty lines and comments are ignored, keys and values have to be separated
-by an equal sign. 
-
-For your convenience, there is an example config file provided in this package.
-You may customize it to your local environment.
-
-=head2 AVAILABLE OPTIONS:
-
-=head2 estfile
-
-The fasta file containing the EST sequence database.
-
-=head2 hmmsearch_evalue_threshold
-
-e-Value threshold for the HMM search. Must be a number in scientific notation
-like 1e-05 or something.
-
-=head2 hmmdir
-
-The directory containing the HMM files that are used to search the EST
-database. See also F<hmmfile>.
-
-=head2 hmmfile
-
-The HMM file to use if you want to run Orthograph on a single HMM.
-
-=head2 hmmsearch_output_dir
-
-The directory name where the hmmsearch output files will be placed.
-
-=head2 hmmsearchprog
-
-The hmmsearch program. On most systems, this is 'hmmsearch', which is the
-default. Change this if your binary has a different name.
-
-=head2 mysql_dbname
-
-MySQL: Database name. Ask your administrator if you don't know.
-
-=head2 mysql_dbpassword
-
-MySQL: Database password. Ask your administrator if you don't know.
-
-=head2 mysql_dbserver
-
-MySQL: Database server. Normally 'localhost'. Ask your administrator if you
-don't know.
-
-=head2 mysql_dbuser
-
-MySQL: Database user name. Ask your administrator if you don't know.
-
-=head2 mysql_table_ests
-
-MySQL: Table name for the EST sequences. Ask your administrator if you don't
-know.
-
-=head2 mysql_table_hmmsearch
-
-MySQL: Table name for the HMMsearch results. Ask your administrator if you
-don't know.
-
-=head2 mysql_table_blast
-
-MySQL: Table name for the BLAST results. Ask your administrator if you don't
-know.
-
-=head2 output_directory
-
-Output directory to use by Orthograph. It will be created if it does not exist.
-
-=head2 quiet
-
-Quiet operation: Orthograph will retain most of the status messages.
-
-=head2 species_name
-
-Name of the analyzed species. Will occur in the database as well as in all
-output files in appropriate places.
-
-=head2 hmmsearch_score_threshold
-
-Score threshold for the HMM search. Must be a number.
-
-=head2 translate_program
-
-The tool to use for translation of the EST sequence file. The program must
-accept a fasta file name as input and provide its output on STDOUT, which is
-then being redirected into a file that Orthograph uses.
-
-=head2 verbose
-
-Be verbose (output more information about what is going on). 
-
-=head1 AUTHOR
-
-Written by Malte Petersen <mptrsen@uni-bonn.de>
-
-=head1 COPYRIGHT
-
-Copyright (C) 2012 Malte Petersen 
-
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU General Public License for more details. You
-should have received a copy of the GNU General Public License along with this
-program; if not, write to the Free Software Foundation, Inc., 59 Temple Place,
-Suite 330, Boston, MA 02111-1307 USA
-
-=cut
-#}}}}
