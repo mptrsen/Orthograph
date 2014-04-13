@@ -109,7 +109,6 @@ my $makeblastdbprog            = $config->{'makeblastdb-program'};
 #--------------------------------------------------
 # # These variables can be set in the config file
 #-------------------------------------------------- 
-#{{{
 my $aaoutdir                   = $config->{'aaoutdir'};
 my $backup                     = $config->{'backup'};
 my $backup_ext                 = $config->{'backup-extension'};
@@ -159,7 +158,6 @@ my $u_subst                    = $config->{'substitute-u-with'};
 my $sets_dir                   = $config->{'sets-dir'};
 my $species_name               = $config->{'species-name'};
 my $verbose                    = $config->{'verbose'};
-#}}}
 
 #--------------------------------------------------
 # # More variables
@@ -357,10 +355,11 @@ unless ($continue) {
 # get number of sequences for this species, report or die
 $num_ests = get_number_of_ests_for_specid($species_id);
 if ($num_ests != 0) {
-	printf($stdout "%d sequences of %s in database '%s' on %s. \n",
+	printf($stdout "%d sequences of %s in %s '%s' on %s. \n",
 		$num_ests,
 		$species_name,
-		$db_dbname,
+		$use_mysql ? 'database' : 'attached database',
+		$use_mysql ? $db_dbname : Wrapper::Sqlite::attached_db_file(),
 		$db_dbserver) unless $quiet;
 }
 else {
@@ -807,7 +806,7 @@ sub intro {#{{{
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	unless ( set_exists($orthoset) ) {
-		die "Fatal: Set '$orthoset' does not exist in database '$db_dbname'. Typo in config file $configfile? Use $program_file-manager first to set up your ortholog sets. Ask your administrator.\n";
+		die "Fatal: Set '$orthoset' does not exist in database '$db_dbname'. Typo in config file $configfile? Use orthograph-manager first to set up your ortholog sets. Ask your administrator.\n";
 	}
 
 	# everything is fine
@@ -847,7 +846,7 @@ sub translate_est {#{{{
     return($outfile);
   }
   my @translateline = qq($translateprog $infile > $outfile);
-  system(@translateline) and print "Fatal: could not translate input file. Is this nucleotide data?\n" and exit 1;
+  system("@translateline") and print "Fatal: could not translate input file. Is this nucleotide data?\n" and exit 1;
   return($outfile);
 }#}}}
 
@@ -1119,7 +1118,7 @@ sub hmmbuild {#{{{
 	my $hmmname = basename($hmmfile, $hmmsuffix);
 	my @hmmbuild_cmd = qq($hmmbuild_program -n $hmmname $hmmfile $alnfile > /dev/null);
 	print $stdout "@hmmbuild_cmd\n" if $debug;
-	system(@hmmbuild_cmd) and
+	system("@hmmbuild_cmd") and
 		return 0;
 	return $hmmfile;
 }#}}}
@@ -1173,7 +1172,7 @@ sub make_blastdb {#{{{
 	else {
 		push @makeblastdbcmd, qq( > /dev/null );
 	}
-	system(@makeblastdbcmd) and print $stderr "Fatal: makeblastdb failed: $! (errcode $?)\n" and exit(1);
+	system("@makeblastdbcmd") and print $stderr "Fatal: BLAST database generation failed: $! (errcode $?)\n" and exit(1);
 	return $dbfile;
 }#}}}
 
