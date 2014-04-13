@@ -10,13 +10,20 @@ versions should be no problem. Downwards compatibility (i.e., older versions)
 has not been tested. Should be fine, too, but be wary with MAFFT, its developers
 change or drop features frequently across versions.
 
+You need a database backend, either SQLite (the default) or MySQL. If you don't
+know which one to pick, use SQLite. It's easier to install and use, but doesn't
+have the capabilities for a centralized server-client setup. In grid computing
+environments, this is an advantage since no network connections are required,
+but the database is a flat file on the hard drive.
+
 Package      | Version | Download from
 :------------|:--------|:-----------------------------------------------------------
-MySQL        | 5.1     | <http://www.mysql.com>
-MAFFT        | 6.951   | <http://mafft.cbrc.jp/alignment/software/>
-HMMer        | 3.0     | <http://hmmer.janelia.org>
-NCBI BLAST+  | 2.2.28+ | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
-Exonerate    | 2.2.0   | <http://www.ebi.ac.uk/~guy/exonerate/>
+SQLite       | 3.8.2   | http://sqlite.org/download.html
+MySQL        | 5.6.17  | http://dev.mysql.com/downloads/mysql/
+MAFFT        | 7.023b  | http://mafft.cbrc.jp/alignment/software/
+HMMer        | 3.1b1   | http://hmmer.janelia.org/software/
+NCBI BLAST+  | 2.2.28+ | ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+Exonerate    | 2.2.0   | http://www.ebi.ac.uk/~guy/exonerate/
 
 Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
@@ -77,46 +84,12 @@ QUICKSTART
 For a fast start into analysis using Orthograph, follow these steps. They
 assume that all required software packages are installed and work. 
 
-## 0. These conventions are used throughout this documentation:
+## 1. These conventions are used throughout this documentation:
 
 	$ some_command
 
 This means you should enter some_command at the shell prompt. The `$` sigil is
 not part of the command.
-
-	mysql> SOME STATEMENT;
-
-This means you should enter SOME STATEMENT at the MySQL prompt. The `mysql>` is
-not part of the statement, but the semicolon is.
-
-## 1. Set up the MySQL database. 
-
-Skip this step if you already have a MySQL account and a database (and know
-what your credentials are).
-
-There must exist a database for your usage and a database user must have the
-usual permissions on it. If you are the administrator of your local machine and
-installed MySQL yourself, you have those privileges. However, you should never
-do ordinary work as root (the administrator), so let's create a working user.
-Login to MySQL as root:
-
-	$ mysql -u root -p
-	Enter password:
-
-Enter the MySQL administrator password. You will be greeted by MySQL and then
-given a new prompt. Issue the following statement:
-
-	mysql> CREATE USER 'USERNAME'@'localhost' IDENTIFIED BY 'PASSWORD';
-
-Substitute USERNAME and PASSWORD with your username and password of choice. The
-single quotes are important. Next, you will create a database and grant the
-working user the necessary permissions on it:
-
-	mysql> CREATE DATABASE orthograph;
-	mysql> GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';
-
-You may use a different database name, of course. Make a note of your new user
-name, the password and the database name. You will need it later.
 
 ## 2. Create a config file. 
 
@@ -124,13 +97,14 @@ Make a copy of the supplied config file orthograph.conf.example and rename this
 copy to orthograph.conf. Edit it. The file is commented to help you start off.
 Most options are self-explanatory. 
 
-For now, it is sufficient to supply the MySQL settings (database, username,
-password). 
+For now, it is sufficient to supply the database settings (for SQLite: path to
+the database file; for MySQL: database, username, password). If you don't know
+how to create a MySQL user and a database, see the appendix (the very bottom of
+this file).
 
 Note: The config file is read by all three Orthograph tools. Especially the
-mandatory part of the file is important as it contains critical settings for
-the database interaction. Without these settings none of the programs will
-work.
+mandatory part of the file is important as it contains settings for the database
+interaction. Without these settings none of the programs will work.
 
 ## 3. Create the tables. Make the orthograph_manager script executable and use it:
 
@@ -185,6 +159,9 @@ If you made a mistake during input of the information, you may cancel the
 process at any time using `Ctrl+C`. To check what OGS are present in the
 database, call `orthograph-manager -lo`.
 
+Yes, I know. OGS loading is slow. I'm working on improving that performance. For
+now, be happy that you only need to do this once.
+
 ## 6. Optional: Load nucleotide sequence data into the database:
 
 	$ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
@@ -199,6 +176,9 @@ example, these two headers are not equal, even though they look similar:
 
 Make sure the nucleotide sequences can be correlated to the proteome sequences
 by giving identical names to corresponding sequences.
+
+And again, I know. OGS loading is slow. I'm working on improving that
+performance. For now, be happy that you only need to do this once.
 
 ## 7. Create the required database structure for Orthograph.
 
@@ -257,27 +237,6 @@ report after running orthograph-reporter.
 ## 12. Profit!
 
 
-COMMON PROBLEMS
-===============
-
-"No sequences found. Something went wrong. Check your input file. Exiting." 
-
-Really, check your input file. Is it empty? Is it a valid fasta file? If it
-looks ok, try deleting the translated version so Orthograph is forced to
-recreate it. 
-
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-+++ The rest of this document is outdated! So is `perldoc orthograph`. +++
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-INVOCATION
-==========
-
-Orthograph allows parsing a config file, which by default is named
-`orthograph.conf`.  Available options can be obtained using `perldoc
-orthograph`. Many options can be set or overridden on the command line. For
-those switches, also see `perldoc orthograph`.
-
 MySQL PERFORMANCE
 =================
 
@@ -304,11 +263,13 @@ this is the case and make sure it contains these modules:
 -  Carp
 -  Config
 -  DBD::mysql
+-  DBD::SQLite
 -  DBI
 -  Data::Dumper
 -  Digest::SHA
 -  File::Basename
 -  File::Path
+-  File::Spec
 -  File::Temp
 -  FindBin
 -  Getopt::Long
@@ -323,3 +284,50 @@ Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany
 [1]: <http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems>
 [2]: <http://forums.mysql.com/read.php?51,389833,389833>
 [3]: <http://cegg.unige.ch/orthodb5>
+
+APPENDIX
+========
+
+## Set up the database. 
+
+Skip this step if you already have a MySQL account and a database (and know
+what your credentials are).
+
+	mysql> SOME STATEMENT;
+
+This means you should enter SOME STATEMENT at the MySQL prompt. The `mysql>` is
+not part of the statement, but the semicolon is.
+
+There must exist a database for your usage and a database user must have the
+usual permissions on it. If you are the administrator of your local machine and
+installed MySQL yourself, you have those privileges. However, you should never
+do ordinary work as root (the administrator), so let's create a working user.
+Login to MySQL as root:
+
+	$ mysql -u root -p
+	Enter password:
+
+Enter the MySQL administrator password. You will be greeted by MySQL and then
+given a new prompt. Issue the following statement:
+
+	mysql> CREATE USER 'USERNAME'@'localhost' IDENTIFIED BY 'PASSWORD';
+
+Substitute USERNAME and PASSWORD with your username and password of choice. The
+single quotes are important. Next, you will create a database and grant the
+working user the necessary permissions on it:
+
+	mysql> CREATE DATABASE orthograph;
+	mysql> GRANT ALL ON orthograph.* TO 'USERNAME'@'localhost';
+
+You may use a different database name, of course. Make a note of your new user
+name, the password and the database name. You will need it later.
+
+COMMON PROBLEMS
+===============
+
+"No sequences found. Something went wrong. Check your input file. Exiting." 
+
+Really, check your input file. Is it empty? Is it a valid fasta file? If it
+looks ok, try deleting the translated version so Orthograph is forced to
+recreate it. 
+
