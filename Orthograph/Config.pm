@@ -182,10 +182,9 @@ $config->{'evalue-bin-size'}            //= 500;
 $config->{'exonerate-program'}          //= 'exonerate';
 $config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
-$config->{'hmmsearch-evalue-threshold'} //= defined $config->{'hmmsearch-score-threshold'} ? undef : 10;
 $config->{'hmmsearch-program'}          //= 'hmmsearch';
-$config->{'hmmsearch-program'}          //= 'hmmsearch';
-$config->{'hmmsearch-score-threshold'}  //= defined $config->{'hmmsearch-evalue-threshold'} ? undef : 10;
+$config->{'hmmsearch-score-threshold'}  //= 10;
+$config->{'hmmsearch-evalue-threshold'} //= 1e-5;
 $config->{'hmmsearchoutdir'}            //= basename($config->{'hmmsearch-program'});
 $config->{'load-ogs-nucleotide'}        //= '';
 $config->{'load-ogs-peptide'}           //= '';
@@ -235,11 +234,6 @@ if ($config->{'database-backend'} eq 'sqlite' and not defined $config->{'sqlite-
 
 if ($config->{'verbose'} and $config->{'quiet'}) {
 	print STDERR "Fatal: Can't operate in both verbose and quiet mode\n";
-	exit(1);
-}
-
-if ($config->{'hmmsearch-evalue-threshold'} and $config->{'hmmsearch-score-threshold'}) {
-	print STDERR "Fatal: Can't use both e-value and score thresholds\n";
 	exit(1);
 }
 

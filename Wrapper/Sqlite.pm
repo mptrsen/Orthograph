@@ -104,6 +104,7 @@ my $db_col_taxid            = 'taxid';
 my $db_col_type             = 'type';
 my $outdir                  = $config->{'output-directory'};
 my $orthoset                = $config->{'ortholog-set'};
+my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 my $quiet                   = $config->{'quiet'};
 my $reftaxa                 = $config->{'reference-taxa'};
 # substitution character for selenocysteine, which normally leads to blast freaking out
@@ -174,7 +175,8 @@ sub get_dbh {#{{{
 
 	if ($dbh) {
 		$dbh->sqlite_busy_timeout($db_timeout * 1000);
-		$dbh->do("ATTACH DATABASE '$attached_db_file' as '$db_attached'");
+		if ($debug) { print $query_attach_file, "\n" }
+		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
 	}
 	return undef;
@@ -399,12 +401,14 @@ sub load_csv_into_temptable {
 	my @loadqueries = (
 		".separator ,",
 		".mode csv",
-		".import $csvfile $temptable",
+		
+		"$query_attach_file;\n.import $csvfile $temptable",
 		".mode list",
 	);
 	foreach (@loadqueries) {
 		print $_, "\n" if $debug;
-		system qq{$sqlite -separator "," $database "$_"} and die "Fatal: Could not import CSV file into temporary table $temptable\n";
+		<STDIN>;
+		system qq{$sqlite -separator "," $database "$_"} and die "Fatal: Could not import CSV file '$csvfile' into temporary table $temptable\n";
 	}
 }
 
@@ -947,7 +951,7 @@ sub load_ests_from_file {
 	my $dbh = get_dbh();
 	foreach ($q_drop_temp, $q_create_temp) {
 		print $_, "\n" if $debug;
-		$dbh->do($_);
+		$dbh->do($_) or die;
 	}
 	$dbh->disconnect;
 	load_csv_into_temptable($f, $db_table_temp);
@@ -1733,10 +1737,12 @@ sub get_real_table_names {
 	my $real_table_ests      = $db_attached . '.' . $db_table_ests      . '_' . $specid;
 	my $real_table_hmmsearch = $db_attached . '.' . $db_table_hmmsearch . '_' . $specid;
 	my $real_table_blast     = $db_attached . '.' . $db_table_blast     . '_' . $specid;
+	my $real_table_temp      = $db_attached . '.' . $db_table_temp     . '_' . $specid;
 	$db_table_ests        = $real_table_ests;
 	$db_table_hmmsearch   = $real_table_hmmsearch;
 	$db_table_blast       = $real_table_blast;
-	return ($db_table_ests, $db_table_hmmsearch, $db_table_blast);
+	$db_table_temp        = $real_table_temp;
+	return ($db_table_ests, $db_table_hmmsearch, $db_table_blast, $db_table_temp);
 }
 
 

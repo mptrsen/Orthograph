@@ -120,22 +120,20 @@ exonerate-program    = exonerate
 #
 # # Settings that affect the HMM and BLAST searches.
 #
-# E-value threshold. The HMMsearch e-value threshold affects the specificity of
-# the HMM search, the first step in the reciprocal algorithm. It defines how
-# distantly related candidate orthologs may be when searching through the
-# transcriptome file. The BLAST e-value threshold affects the second step, the
-# reciprocal search. Basically, this defines the false-positive probability
-# (lower e-value = lower probability).
-#hmmsearch-evalue-threshold = 1e-05
-#blast-evalue-threshold     = 1e-05
-
-# You can also set a score threshold. A higher score means a better match. For
-# HMMsearch, E-value and score thresholds are mutually exclusive. If both are
-# set, the E-value threshold will be used (to use the score threshold, you have
-# to unset the E-value threshold). BLAST accepts both E-value and score
-# thresholds simultaneously.
+# Score threshold. A higher alignment score means a better match. Default value
+# is 10.
 #hmmsearch-score-threshold = 10
 #blast-score-threshold     = 10
+
+# You can also set an e-value threshold. The HMMsearch e-value threshold
+# affects the specificity of the HMM search, the first step in the reciprocal
+# algorithm. It defines how distantly related candidate orthologs may be when
+# searching through the transcriptome file. The BLAST e-value threshold affects
+# the second step, the reciprocal search. Basically, this defines the
+# false-positive probability (lower e-value = lower probability).
+# Default value is 1e-05 (0.00001).
+#hmmsearch-evalue-threshold = 1e-05
+#blast-evalue-threshold     = 1e-05
 
 # Maximum number of HMMsearch hits to consider. This setting is useful to limit
 # the number of reciprocal searches for very large number of HMMsearch hits.

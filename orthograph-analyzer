@@ -685,10 +685,6 @@ sub intro {#{{{
 	print $stderr "Fatal: Can't operate in both verbose and quiet mode\n" and exit(1)
 		if ($verbose and $quiet);
 
-	# mutually exclusive options
-	print $stderr "Fatal: Can't use both hmmsearch e-value and score thresholds\n" and exit(1)
-		if ($hmmsearch_evalue_threshold and $hmmsearch_score_threshold);
-
 	# the alignment directory (for ortholog set creation)
 	unless ($alndir) { $alndir = File::Spec->catdir($sets_dir, $orthoset, 'aln') }
 	if (-d $alndir) {
@@ -965,8 +961,12 @@ sub insert_results_into_table {#{{{
 	}
 	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
 	my $hitcount;
-	
-	# this is a BLASTP result, we need the column 'blastdb'
+
+	# filter results to those above score and below e-value thresholds
+	$hits = [ grep { $_->{'score'}  >= $hmmsearch_score_threshold  } @$hits ];
+	$hits = [ grep { $_->{'evalue'} <= $hmmsearch_evalue_threshold } @$hits ];
+
+	# this is a BLASTP result
 	if ($blastdb) {
 		if ($use_mysql) {
 			return Wrapper::Mysql::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
@@ -978,6 +978,15 @@ sub insert_results_into_table {#{{{
 
 	# this is a HMMsearch result
 	else {
+		#
+		# only insert as many results as needed
+		my $c = 0;
+		my $actual_hits = [ ];
+		while ($c++ < $max_blast_searches) {
+			push @$actual_hits, pop @$hits;
+		}
+		print Dumper $actual_hits; exit;
+		# done, hand over to insertion
 		if ($use_mysql) {
 			return Wrapper::Mysql::insert_results_into_hmmsearch_table($hits, $species_id);
 		}
