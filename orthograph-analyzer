@@ -1235,6 +1235,7 @@ sub load_data_infile {#{{{
 	$tmpfh->close();
 	# no need to close the infh since we're already through it, it gets closed automagically
 
+	print $stdout "Loading data into database...\n" if $verbose;
 	$num_ests = load_ests_from_file($tmpfh, $list);
 
 }#}}}
