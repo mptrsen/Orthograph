@@ -56,9 +56,9 @@ my $database                = $config->{'sqlite-database'};
 my $db_timeout              = 600;
 my $sqlite                  = $config->{'sqlite-program'};
 my $sleep_for               = 1;
+# user name in the following order: set name from config, environment variables $LOGNAME and $USER, uid
 my $db_dbuser               = $config->{'username'} || $ENV{"LOGNAME"} || $ENV{"USER"} || getpwuid $<;
 
-my $attached_db_file             = File::Spec->catfile($config->{'output-directory'}, $config->{'species-name'} . '.sqlite');
 my $db_attached             = 'species_database';
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
 my $db_table_blast          = $config->{'db_table_blast'};
@@ -110,13 +110,14 @@ my $reftaxa                 = $config->{'reference-taxa'};
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute-u-with'};
 my $sets_dir                = $config->{'sets-dir'};
-my $species_name            = $config->{'species-name'};
+# species name; remove all whitespace
+(my $species_name = $config->{'species-name'}) =~ s/\s/_/g;
 my $g_species_id            = undef;	# global variable
 my $verbose                 = $config->{'verbose'};
 my $debug                   = $config->{'debug'};
 my $stdout = *STDOUT;
 my $stderr = *STDERR;
-#}}}
+my $attached_db_file             = File::Spec->catfile($config->{'output-directory'}, $config->{'species-name'} . '.sqlite');
 
 
 
@@ -964,7 +965,7 @@ sub load_ests_from_file {
 		".mode list",
 	);
 	foreach (@loadqueries) {
-		my @cmd = qq{$sqlite -separator "," $attached_db_file "$_"};
+		my @cmd = qq{$sqlite -separator "," "$attached_db_file" "$_"};
 		if ($debug) {
 			print "@cmd\n";
 			print "execute? "; 
@@ -973,11 +974,9 @@ sub load_ests_from_file {
 		system("@cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $simple_table_temp\n";
 	}
 
-	#load_csv_into_temptable($f, $db_table_temp);
-
 	# transfer data from temptable into main table
 	my $q_transfer = "INSERT INTO $db_table_ests (
-    '$db_col_digest',
+		'$db_col_digest',
   	'$db_col_taxid',
   	'$db_col_type',
   	'$db_col_date',
