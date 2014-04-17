@@ -985,7 +985,6 @@ sub insert_results_into_table {#{{{
 		while ($c++ < $max_blast_searches) {
 			push @$actual_hits, pop @$hits;
 		}
-		print Dumper $actual_hits; exit;
 		# done, hand over to insertion
 		if ($use_mysql) {
 			return Wrapper::Mysql::insert_results_into_hmmsearch_table($hits, $species_id);
