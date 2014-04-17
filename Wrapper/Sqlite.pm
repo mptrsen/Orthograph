@@ -104,7 +104,6 @@ my $db_col_taxid            = 'taxid';
 my $db_col_type             = 'type';
 my $outdir                  = $config->{'output-directory'};
 my $orthoset                = $config->{'ortholog-set'};
-my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 my $quiet                   = $config->{'quiet'};
 my $reftaxa                 = $config->{'reference-taxa'};
 # substitution character for selenocysteine, which normally leads to blast freaking out
@@ -118,6 +117,7 @@ my $debug                   = $config->{'debug'};
 my $stdout = *STDOUT;
 my $stderr = *STDERR;
 my $attached_db_file             = File::Spec->catfile($config->{'output-directory'}, $config->{'species-name'} . '.sqlite');
+my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
 
 
