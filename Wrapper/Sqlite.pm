@@ -401,13 +401,15 @@ sub load_csv_into_temptable {
 	my @loadqueries = (
 		".separator ,",
 		".mode csv",
-		
-		"$query_attach_file;\n.import $csvfile $temptable",
+		".import $csvfile $temptable",
 		".mode list",
 	);
 	foreach (@loadqueries) {
-		print $_, "\n" if $debug;
-		<STDIN>;
+		if ($debug) {
+			print $_, "\n" if $debug;
+			print "execute? "; 
+			<STDIN>;
+		}
 		system qq{$sqlite -separator "," $database "$_"} and die "Fatal: Could not import CSV file '$csvfile' into temporary table $temptable\n";
 	}
 }
@@ -932,13 +934,16 @@ sub insert_taxon_into_table {
 
 
 sub load_ests_from_file {
-	my $f = shift;
+	my $csvfile = shift;
 	my $list = shift;
+	my $specid = shift;
 
 	# load data from csv file into database
 	# create temporary table first
-	my $q_drop_temp   = "DROP TABLE IF EXISTS $db_table_temp";
-	my $q_create_temp = "CREATE TABLE $db_table_temp (
+
+	my $simple_table_temp = $config->{'db_table_temp'} . '_' . $specid;
+	my $q_drop_temp   = "DROP TABLE IF EXISTS $simple_table_temp";
+	my $q_create_temp = "CREATE TABLE $simple_table_temp (
 	  '$db_col_digest' TEXT,
 		'$db_col_taxid'  INT,
 		'$db_col_type'   INT,
@@ -948,13 +953,27 @@ sub load_ests_from_file {
 	";
 
 	# load data into temptable
-	my $dbh = get_dbh();
-	foreach ($q_drop_temp, $q_create_temp) {
-		print $_, "\n" if $debug;
-		$dbh->do($_) or die;
+	# needs to work directly on the species database since apparently
+	# sqlite cannot use .import on attached databases. if anyone has an idea 
+	# or a solution on how to mitigate this, please let me know!
+	my @loadqueries = (
+		".mode csv",
+		$q_drop_temp,
+		$q_create_temp,
+		".import $csvfile $simple_table_temp",
+		".mode list",
+	);
+	foreach (@loadqueries) {
+		my @cmd = qq{$sqlite -separator "," $attached_db_file "$_"};
+		if ($debug) {
+			print "@cmd\n";
+			print "execute? "; 
+			<STDIN>;
+		}
+		system("@cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $simple_table_temp\n";
 	}
-	$dbh->disconnect;
-	load_csv_into_temptable($f, $db_table_temp);
+
+	#load_csv_into_temptable($f, $db_table_temp);
 
 	# transfer data from temptable into main table
 	my $q_transfer = "INSERT INTO $db_table_ests (
@@ -973,7 +992,7 @@ sub load_ests_from_file {
   	$db_table_temp.'$db_col_sequence'
 		FROM $db_table_temp
 	";
-	$dbh = get_dbh();
+	my $dbh = get_dbh();
 	print $q_transfer, "\n" if $debug;
 	my $sth = $dbh->prepare($q_transfer);
 	my $num_ests = $sth->execute();
@@ -1737,7 +1756,7 @@ sub get_real_table_names {
 	my $real_table_ests      = $db_attached . '.' . $db_table_ests      . '_' . $specid;
 	my $real_table_hmmsearch = $db_attached . '.' . $db_table_hmmsearch . '_' . $specid;
 	my $real_table_blast     = $db_attached . '.' . $db_table_blast     . '_' . $specid;
-	my $real_table_temp      = $db_attached . '.' . $db_table_temp     . '_' . $specid;
+	my $real_table_temp      = $db_attached . '.' . $db_table_temp      . '_' . $specid;
 	$db_table_ests        = $real_table_ests;
 	$db_table_hmmsearch   = $real_table_hmmsearch;
 	$db_table_blast       = $real_table_blast;

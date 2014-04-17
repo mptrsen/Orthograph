@@ -451,7 +451,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
 		for (my $i = 0; $i < scalar @$hits; $i++) {
-			printf $stdout "     [%d] %s [%d:%d] (%d:%d), e-value %2.1e\n",
+			printf $stdout "     [%d] %s [%d:%d] (hmm %d:%d), e-value %2.1e\n",
 				$i + 1,
 				$hits->[$i]->{'target'},
 				$hits->[$i]->{'env_start'},
@@ -1236,7 +1236,7 @@ sub load_data_infile {#{{{
 	# no need to close the infh since we're already through it, it gets closed automagically
 
 	print $stdout "Loading data into database...\n" if $verbose;
-	$num_ests = load_ests_from_file($tmpfh, $list);
+	$num_ests = load_ests_from_file($tmpfh, $list, $species_id);
 
 }#}}}
 
@@ -1244,10 +1244,10 @@ sub load_ests_from_file {
 	my $f = shift;
 	my $list = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::load_ests_from_file($f, $list);
+		return Wrapper::Mysql::load_ests_from_file($f, $list, $species_id);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::load_ests_from_file($f, $list);
+		return Wrapper::Sqlite::load_ests_from_file($f, $list, $species_id);
 	}
 }
 
