@@ -35,7 +35,6 @@ use File::Temp;     # temporary files
 use FindBin;        # locate the dir of this script during compile time
 use IO::Dir;        # object-oriented access to dirs
 use IO::File;       # object-oriented access to files
-# look into File::Find instead of doing the directory walk yourself
 
 # Custom modules
 use lib $FindBin::Bin;     # $Bin is the directory of the original script
@@ -43,7 +42,6 @@ use IO::Tee;               # not custom, but supplied because from CPAN
 use Seqload::Fasta;        # object-oriented access to fasta files
 use Wrapper::Hmmsearch;    # object-oriented interface to hmmsearch
 use Wrapper::Blastp;       # object-oriented interface to blastp
-use Wrapper::Mysql;        # wrapper functions for MySQL
 use Orthograph::Functions; # functions for all Orthograph tools
 use Orthograph::Config;    # configuration in global hashref $config; also handles command line arguments
 
@@ -242,14 +240,6 @@ if ($verbose) {
 }
 
 
-# get the taxon id. create a new entry in the taxa table or return existing one
-$species_id = insert_taxon_into_table($species_name)
-	or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
-$message .= "Got taxon id $species_id for '$species_name'\n" unless $quiet;
-
-# have the wrapper modules use the real table names
-get_real_table_names($species_id);
-
 #--------------------------------------------------
 # # Special case: Prepare the database by dropping and recreating all
 # # tables if requested, then exit
@@ -264,18 +254,9 @@ if ($preparedb) {#{{{
 }#}}}
 
 #--------------------------------------------------
-# # Another special case: List the species for which analysis data is present,
-# # then exit
-#-------------------------------------------------- 
-if ($listspecies) {
-	&listspecies;
-	exit(0);
-}
-
-#--------------------------------------------------
 # # Normal run. Input error checking, reporting etc
 #-------------------------------------------------- 
-&intro;
+&intro();
 
 # get the set id
 $set_id = get_set_id($orthoset)
@@ -785,6 +766,14 @@ sub intro {#{{{
 		&makedir($ntoutdir) or print $stderr "Fatal: Failed to create directory $ntoutdir\n" and exit(1);
 	}
 
+
+	# get the taxon id. create a new entry in the taxa table or return existing one
+	$species_id = insert_taxon_into_table($species_name)
+		or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
+	print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
+
+	# have the wrapper modules use the real table names
+	get_real_table_names($species_id);
 
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;
