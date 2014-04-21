@@ -177,7 +177,7 @@ sub get_dbh {#{{{
 	if ($dbh) {
 		$dbh->sqlite_busy_timeout($db_timeout * 1000);
 		if ($debug) { print $query_attach_file, "\n" }
-		$dbh->do($query_attach_file) or carp "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
+		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
 	}
 	return undef;
