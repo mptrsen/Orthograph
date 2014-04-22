@@ -432,7 +432,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
 		for (my $i = 0; $i < scalar @$hits; $i++) {
-			printf $stdout "     [%d] %s [%d:%d] (hmm %d:%d), e-value %2.1e\n",
+			printf $stdout "     [%d] %s [%d:%d] (hmm %d:%d), e-value %2.1e, score %.1f\n",
 				$i + 1,
 				$hits->[$i]->{'target'},
 				$hits->[$i]->{'env_start'},
@@ -440,6 +440,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 				$hits->[$i]->{'hmm_start'},
 				$hits->[$i]->{'hmm_end'},
 				$hits->[$i]->{'evalue'},
+				$hits->[$i]->{'score'},
 			;
 		}
 	}
@@ -972,14 +973,14 @@ sub insert_results_into_table {#{{{
 		my $c = 0;
 		my $actual_hits = [ ];
 		while ($c++ < $max_blast_searches) {
-			push @$actual_hits, pop @$hits;
+			push @$actual_hits, shift @$hits;
 		}
 		# done, hand over to insertion
 		if ($use_mysql) {
-			return Wrapper::Mysql::insert_results_into_hmmsearch_table($hits, $species_id);
+			return Wrapper::Mysql::insert_results_into_hmmsearch_table($actual_hits, $species_id);
 		}
 		elsif ($use_sqlite) {
-			return Wrapper::Sqlite::insert_results_into_hmmsearch_table($hits, $species_id);
+			return Wrapper::Sqlite::insert_results_into_hmmsearch_table($actual_hits, $species_id);
 		}
 	}
 }#}}}
