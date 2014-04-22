@@ -942,9 +942,9 @@ sub clear_db {#{{{
 sub insert_results_into_table {#{{{
 	my $table = shift;
 	my $hits  = shift;
-	# called with 4 args, we are dealing with a blast result
 	my $hmmsearch_id = undef;
 	my $blastdb      = undef;
+	# called with 4 args, we are dealing with a blast result
 	if (scalar @_ == 2) {
 		$blastdb      = shift;
 		$hmmsearch_id = shift;
@@ -952,29 +952,30 @@ sub insert_results_into_table {#{{{
 	if (ref $blastdb) { confess 'Usage: insert_results_into_table($table, $columns_ref, $blastdb)' }
 	my $hitcount;
 
-	# filter results to those above score and below e-value thresholds
-	$hits = [ grep { $_->{'score'}  >= $hmmsearch_score_threshold  } @$hits ];
-	$hits = [ grep { $_->{'evalue'} <= $hmmsearch_evalue_threshold } @$hits ];
 
 	# this is a BLASTP result
 	if ($blastdb) {
 		if ($use_mysql) {
-			return Wrapper::Mysql::insert_results_into_blast_table($actual_hits, $species_id, $hmmsearch_id);
+			return Wrapper::Mysql::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
 		}
 		elsif ($use_sqlite) {
-			return Wrapper::Sqlite::insert_results_into_blast_table($actual_hits, $species_id, $hmmsearch_id);
+			return Wrapper::Sqlite::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
 		}
 	}
 
 	# this is a HMMsearch result
 	else {
-		#
+		# filter results to those above score and below e-value thresholds
+		$hits = [ grep { $_->{'score'}  >= $hmmsearch_score_threshold  } @$hits ];
+		$hits = [ grep { $_->{'evalue'} <= $hmmsearch_evalue_threshold } @$hits ];
+
 		# only insert as many results as needed
 		my $c = 0;
 		my $actual_hits = [ ];
-		while ($c++ < $max_blast_searches) {
+		while ($c++ < $max_blast_searches and @hits) {
 			push @$actual_hits, shift @$hits;
 		}
+
 		# done, hand over to insertion
 		if ($use_mysql) {
 			return Wrapper::Mysql::insert_results_into_hmmsearch_table($actual_hits, $species_id);
