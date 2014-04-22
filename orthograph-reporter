@@ -337,14 +337,16 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		#}
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}) = get_orf($proteome_sequence, $est_sequence);
+		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}, $hit->{'orf_cdna_start'}, $hit->{'orf_cdna_end'}) = get_orf($proteome_sequence, $est_sequence);
 
-		# exonerate didn't get an alignment
-		if ($hit->{'orf_cdna_sequence'}) {
-			printf $stdout "Got this ORF for '%s'[%d-%d]:\n%s\n",
+		# exonerate got an alignment
+		if ($hit->{'orf_cdna_sequence'} and orf_overlap($hit)) {
+			printf $stdout "Got this ORF for '%s'[%d-%d] (orf coords %d-%d):\n%s\n",
 				$hit->{'hmmhit'},
 				$hit->{'env_start'},
 				$hit->{'env_end'},
+				$hit->{'orf_cdna_start'},
+				$hit->{'orf_cdna_end'},
 				$hit->{'orf_cdna_sequence'}
 					if $debug;
 
@@ -380,6 +382,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			$cdnaseq .= $hit->{'orf_cdna_sequence'};
 			print $stdout "Concatenated sequences\n" if $debug;
 		}
+		# exonerate didn't get an alignment
 		else {
 			if ($verbose) {
 				printf $stdout "Could not get an ORF for '%s'[%d:%d] and '%s'\n",
@@ -729,6 +732,28 @@ sub get_orf {
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }
 	return ($alignment->aa_sequence(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
+}
+
+# determines whether the ORF overlaps with the HMM alignment by a certain percentage. 
+sub orf_overlap {
+	my $hit = shift;
+	my $orf_len = length $hit->{'cdna_sequence'};
+	my $hmm_len = $hit->{'hmm_end'} - $hit->{'hmm_start'} + 1;
+	my $startdiff = 0;
+	# start difference
+	if ($hit->{'hmm_start'} > $hit->{'orf_cdna_start'}) {
+		$startdiff = $hit->{'hmm_start'} - $hit->{'orf_cdna_start'};
+	}
+	else {
+		$startdiff = $hit->{'orf_cdna_start'} - $hit->{'hmm_start'};
+	}
+	# end difference
+	if ($hit->{'hmm_end'} > $hit->{'orf_cdna_end'}) {
+		$enddiff = $hit->{'hmm_end'} - $hit->{'orf_cdna_end'};
+	}
+	else {
+		$enddiff = $hit->{'orf_cdna_end'} - $hit->{'hmm_end'};
+	}
 }
 
 sub get_ortholog_group {

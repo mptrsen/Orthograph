@@ -972,7 +972,7 @@ sub insert_results_into_table {#{{{
 		# only insert as many results as needed
 		my $c = 0;
 		my $actual_hits = [ ];
-		while ($c++ < $max_blast_searches and @hits) {
+		while ($c++ < $max_blast_searches and @$hits) {
 			push @$actual_hits, shift @$hits;
 		}
 
