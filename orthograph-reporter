@@ -340,7 +340,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}, $hit->{'orf_cdna_start'}, $hit->{'orf_cdna_end'}) = get_orf($proteome_sequence, $est_sequence);
 
 		# exonerate got an alignment
-		if ($hit->{'orf_cdna_sequence'} and orf_overlap($hit)) {
+		#if ($hit->{'orf_cdna_sequence'} and orf_overlap($hit)) {
+		if ($hit->{'orf_cdna_sequence'}) {
 			printf $stdout "Got this ORF for '%s'[%d-%d] (orf coords %d-%d):\n%s\n",
 				$hit->{'hmmhit'},
 				$hit->{'env_start'},
@@ -740,7 +741,12 @@ sub orf_overlap {
 	my $orf_len = length $hit->{'cdna_sequence'};
 	my $hmm_len = $hit->{'hmm_end'} - $hit->{'hmm_start'} + 1;
 	my $startdiff = 0;
+	my $enddiff = 0;
+
 	# start difference
+	if ($hit->{'env_start'} <= $hit->{'orf_cdna_end'} and $hit->{'env_end'} >= $hit->{'orf_cdna_start'}) {
+		return 1;
+	}
 	if ($hit->{'hmm_start'} > $hit->{'orf_cdna_start'}) {
 		$startdiff = $hit->{'hmm_start'} - $hit->{'orf_cdna_start'};
 	}

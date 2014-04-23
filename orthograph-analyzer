@@ -450,6 +450,12 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	my $count = insert_results_into_table($db_table_hmmsearch, $hmmobj->hits_arrayref());
 	print $stdout "     ... pushed $count hits to database.\n" if $verbose;
 	++$hmmhitcount;
+
+	# no hits above the thresholds
+	if ($count == 0) { 
+		print $stdout "         not conducting reciprocal search.\n" if $verbose;
+		next;
+	}
 	
 	#--------------------------------------------------
 	# # the reciprocal search
@@ -503,29 +509,6 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		print $stdout "\n(Don't be alarmed, the sequence identifiers are SHA256-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
 			if $verbose;
 	}
-
-	my $orthologs = get_orthologs($hmmobj->hmmname, $hmmobj->hits_arrayref()->[0]->{'target'});
-	next HMMFILE unless defined $$orthologs[0];	# skip empty results
-
-	# write the result to output file
-	my $outfh = IO::File->new(File::Spec->catfile($aaoutdir, $$orthologs[0][0] . '.fa'), 'w');
-	for (0..$#{$orthologs}) { 
-		printf $outfh ">%s|%s|%s\n%s\n", 
-			$$orthologs[0][0],  # the ortholog id
-			$$orthologs[$_][1],	# the taxon shorthand of the ortholog sequence
-			$$orthologs[$_][3],	# the sequence id of the ortholog sequence
-			$$orthologs[$_][4]  # the sequence
-				or print $stderr "Fatal: Could not write to output file $outfh: $!" and exit(1);
-	}
-	# the header and sequence of the hit
-	# this is the best hit since the SQL query sorts by evalue and we take the first one
-	printf $outfh ">%s|%s|%s\n%s\n",
-		$$orthologs[0][0],  # the ortholog id
-		$species_name,      # the name of the analyzed species 
-		# TODO reftaxon id
-		$$orthologs[0][5],  # the original sequence id
-		$$orthologs[0][6];  # the sequence
-	$outfh->close();
 
 }#}}}	# End hmmlist loop
 
