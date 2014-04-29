@@ -431,6 +431,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	$hmmhitcount_total += $hmmobj->hitcount();
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
+		my $hmmsearch_hits_above_threshold = 0;
 		for (my $i = 0; $i < scalar @$hits; $i++) {
 			printf $stdout "     [%d] %s [%d:%d] (hmm %d:%d), e-value %2.1e, score %.1f\n",
 				$i + 1,
@@ -442,7 +443,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 				$hits->[$i]->{'evalue'},
 				$hits->[$i]->{'score'},
 			;
+			if ($hits->[$i]->{'score'} >= $hmmsearch_score_threshold or $hits->[$i]->{'evalue'} <= $hmmsearch_evalue_threshold) { $hmmsearch_hits_above_threshold++ }
 		}
+		print $stdout "      $hmmsearch_hits_above_threshold hits above threshold\n";
 	}
 	#--------------------------------------------------
 	# # push results to database 
