@@ -322,7 +322,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		++$hitcount;
 
 		# get the sequences from the database
-		my $proteome_sequence = get_reference_sequence($hit->{'blast_hit'});
+		my ($proteome_sequence,$reftaxon) = get_reference_sequence($hit->{'blast_hit'});
 		my $est_sequence = get_nucleotide_transcript_for($hit->{'hmmhit'});
 
 		#--------------------------------------------------

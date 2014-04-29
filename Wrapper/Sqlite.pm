@@ -1691,9 +1691,13 @@ Fetches the amino acid sequence for ID from the database. Returns a string.
 
 sub get_reference_sequence {
 	my $id = shift @_ or croak "Usage: get_reference_sequence(ID)\n";
-	my $query = "SELECT $db_col_sequence 
+	my $query = "SELECT
+			$db_table_aaseqs.$db_col_sequence, 
+			$db_table_taxa.$db_col_name
 		FROM $db_table_aaseqs
-		WHERE $db_col_id = '$id'";
+		INNER JOIN $db_table_taxa
+			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.id
+		WHERE $db_table_aaseqs.$db_col_id = '$id'";
 	my $result = db_get($query);
 	return $result->[0]->[0];
 }
