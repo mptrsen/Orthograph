@@ -1699,7 +1699,7 @@ sub get_reference_sequence {
 			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.id
 		WHERE $db_table_aaseqs.$db_col_id = '$id'";
 	my $result = db_get($query);
-	return $result->[0]->[0];
+	return ($result->[0]->[0], $result->[0]->[1]);
 }
 
 sub get_transcript_for {

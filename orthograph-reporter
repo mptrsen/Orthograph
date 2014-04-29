@@ -309,7 +309,7 @@ my $counter = 0;
 ORTHOID:
 foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	my $transcripts = $transcripts_mapped_to->{$orthoid};
-	my ($hdr, $seq, $cdnaseq, $prev_end);
+	my ($hdr, $seq, $cdnaseq, $prev_end, $reftaxon, $reftaxon_score);
 	$hitcount = 0;
 	my $firsttime = 1;
 	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
@@ -322,7 +322,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		++$hitcount;
 
 		# get the sequences from the database
-		my ($proteome_sequence, $reftaxon, $reftaxon_score) = (get_reference_sequence($hit->{'blast_hit'}), $hit->{'blast_score'});
+		my $proteome_sequence;
+		($proteome_sequence, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
 		my $est_sequence = get_nucleotide_transcript_for($hit->{'hmmhit'});
 
 		#--------------------------------------------------
@@ -356,10 +357,10 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			if ($fill_with_x) {
 				if (defined $prev_end) {
 					my $num_x = $hit->{'hmm_start'} - $prev_end;
-					my $xes = 'X' x $num_x;
+					my $xes   = 'X' x $num_x;
 					# 'N' sequences to fill the cdna sequence are three times longer
-					my $ns  = 'N' x ($num_x * 3);
-					$seq .=  $xes;
+					my $ns    = 'N' x ($num_x * 3);
+					$seq     .=  $xes;
 					$cdnaseq .= $ns;
 					print $stdout "Added $num_x 'X' to sequence\n" if $debug;
 					printf $tfh "\t[%d ambigs]", $num_x;
@@ -380,16 +381,20 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			;
 
 			# concatenate sequences
-			$seq .= $hit->{'orf_aa_sequence'};
+			$seq     .= $hit->{'orf_aa_sequence'};
 			$cdnaseq .= $hit->{'orf_cdna_sequence'};
 			print $stdout "Concatenated sequences\n" if $debug;
 
       # assign (new) reference taxon if blast score higher
-			unless ($hit->{'reftaxon'}) { 
-				$hit->{'reftaxon'} = $reftaxon;
+			unless ($reftaxon) { 
+				$reftaxon       = $hit->{'reftaxon'};
+				$reftaxon_score = $hit->{'blast_score'};
 			}
 			else {
-				$hit->{'reftaxon'} = $reftaxon if $hit->{'blast_score'} > $reftaxon_score;
+				if ($hit->{'blast_score'} > $reftaxon_score) {
+					$reftaxon       = $hit->{'reftaxon'};
+					$reftaxon_score = $hit->{'blast_score'};
+				}
 			}
 		}
 		# exonerate didn't get an alignment
@@ -423,6 +428,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
 	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
+	# prepend orthoid, reference taxon, and taxon name
+	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
