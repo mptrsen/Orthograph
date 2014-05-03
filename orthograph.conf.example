@@ -25,10 +25,10 @@ database-backend   = sqlite
 #
 # # SQLite settings
 #
-# Database file for SQLite. Required if you use SQLite.
-# This is a plain file that can be located anywhere. Just give it a name, and
-# Orthograph will create it automatically.
-sqlite-database    = /PATH/TO/DATABASE
+# Path to the database file for SQLite. Required if you use SQLite. This is a
+# plain file that can be located anywhere. It will be created automatically. By
+# convention, SQLite database files carry the extension '.sqlite'.
+sqlite-database    = ORTHOGRAPH.sqlite
 
 # Path to the sqlite executable. Normally this is located at /usr/bin/sqlite3
 # (the default). Required if you use SQLite and have 'database-backend' set to
@@ -43,26 +43,29 @@ sqlite-program     = /usr/bin/sqlite3
 #mysql-password     = PASSWORD
 #mysql-database     = DATABASE
 
-# The path to your transcript data file. It is always best to use absolute
-# paths. You may only supply one file, not a directory of files.
+# The path to your transcript data file. Must be in Fasta format. It is always
+# best to use absolute paths. You may only supply one file, not a directory of
+# files.
 input-file         = FASTAFILE
 
 # Species name. Make sure to pick a unique name because otherwise results get
 # mixed up. You can, however, supply an existing name if you want to add
 # sequences to an existing data set (this has been neither tested nor
 # documented yet, though).
-species-name       = TEST-SPECIES
+species-name       = NAME
 
 # The name of the ortholog set (not the path to a file) you created earlier.
 ortholog-set       = SETNAME
 
 # This is where your results are placed. Will be created if it doesn't exist.
-output-directory   = /PATH/TO/OUTPUT-DIR
+# You should provide the path to a directory here or your output will be placed
+# in your current working directory.
+#output-directory   = /PATH/TO/OUTPUT/DIR
 
-# Reference taxa. Must be a comma-separated list of taxa that are present in
-# your ortholog set. If you don't specify any reference taxa (i.e., comment out
-# this setting), all taxa in your set are used as reference taxa. 
-reference-taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN, YOUR, ORTHOLOG, SET
+# Reference taxa. A comma-separated list of taxa that are present in your
+# ortholog set. If you don't specify any reference taxa (i.e., leave this
+# setting commented out), all taxa in your set are used as reference taxa. 
+#reference-taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN, YOUR, ORTHOLOG, SET
 
 
 #--------------------------------------------------
@@ -217,7 +220,7 @@ exonerate-program    = exonerate
 # directory).
 #sets-dir    = /PATH/TO/SETS/DIR
 
-# Log file. If set, all messages will also be written to this file. If this is
-# not set, messages are written to a log file in your output directory (see the
-# setting 'output-directory' above).
+# Path to log file. If set, all messages will also be written to this file. If
+# this is not set, messages are written to a log file in your output directory
+# (see the setting 'output-directory' above).
 #logfile     = /PATH/TO/LOGFILE

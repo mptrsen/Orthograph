@@ -138,9 +138,9 @@ $name = $db_dbuser unless defined($name);
 #-------------------------------------------------- 
 if ($delete_all) {
 	print "This will erase your Orthograph database structure. Are you sure (y/n)? ";
-	&get_yn() or exit;
+	get_yn() or exit;
 	print "OK, whatever you say.\n";
-	&drop_tables;
+	drop_tables();
 	print "OK.\n";
 	exit;
 }
@@ -149,22 +149,30 @@ if ($delete_all) {
 #-------------------------------------------------- 
 elsif ($create) {
 	print "This will create a new Orthograph table structure in the database '$database' with the table prefix '$db_prefix'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
-	&get_yn() or exit;
-	&drop_tables;
-	&create_tables;
+	get_yn() or exit;
+	drop_tables();
+	create_tables();
 	print "Created Orthograph table structure in database '$database'.\n";
+	if ($use_sqlite) {
+		if (-z Wrapper::Sqlite::attached_db_file()) {
+			unlink Wrapper::Sqlite::attached_db_file();
+		}
+		else {
+			print "Did not delete species database '" . Wrapper::Sqlite::attached_db_file() . "'  as it is not empty\n";
+		}
+	}
 	exit;
 }
 
 elsif ($delete_set) { 
-	&delete_set($delete_set);
+	delete_set($delete_set);
 	print "OK, removed orthology relationships for set '$delete_set' completely. No sequences were deleted from database.\n";
 	exit;
 }
 elsif ($delete_ogs) {
 	print "Deleting OGS sequences from $delete_ogs. Are you sure (y/n)? ";
-	&get_yn() or exit;
-	my $c = &delete_ogs($delete_ogs);
+	get_yn() or exit;
+	my $c = delete_ogs($delete_ogs);
 	print "OK, removed $c sequences for OGS '$delete_ogs' from the database.\n";
 	exit;
 }
@@ -199,7 +207,7 @@ elsif ($ispeptide) {
 }
 
 # otherwise, this must be an orthodb file
-$infile = shift @ARGV;
+$infile = shift @ARGV or die "Usage: $0 [OPTIONS] INPUTFILE\n";
 
 #--------------------------------------------------
 # # continue and gather information
@@ -584,12 +592,12 @@ sub create_blastdb {
 	else {
 		($taxsh = $infile) =~ s/\.(fa|fas|fasta|fsta|fsa)$//;
 	}
-	if (&check_if_fasta == 0) {
+	if (check_if_fasta() == 0) {
 		return 0;
 	}
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	# TODO make this work
-	my $blastdir = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} WHERE  = ");
+	my $blastdir = Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} WHERE  = ");
 	my $outfile = File::Spec->catfile($taxsh);
 	my @makeblastdbcmd = qq(makeblastdb -in $infile -out $outfile -input_type fasta -title $taxsh);
 }
@@ -611,7 +619,7 @@ sub get_setname {
 
 sub getblastdir {
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $bd = &Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} LIMIT 1");
+	my $bd = Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} LIMIT 1");
 	if (!$bd) {
 		print "Enter the location where the BLAST database directories are located (required): ";
 		$blastdir = <STDIN>;
@@ -696,7 +704,7 @@ sub delete_set {
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
 	my $this_set_dir = File::Spec->catdir($setdir, $setname);
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $data = &Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'set_details'} WHERE name = '$setname'");
+	my $data = Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'set_details'} WHERE name = '$setname'");
 	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
 	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
 	my $setid = $$data[0][0];
@@ -823,3 +831,4 @@ sub db_structure_present {
 		return Wrapper::Sqlite::db_structure_present();
 	}
 }
+

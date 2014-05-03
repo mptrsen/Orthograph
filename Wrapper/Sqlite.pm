@@ -116,7 +116,7 @@ my $verbose                 = $config->{'verbose'};
 my $debug                   = $config->{'debug'};
 my $stdout = *STDOUT;
 my $stderr = *STDERR;
-my $attached_db_file             = File::Spec->catfile($config->{'output-directory'}, $config->{'species-name'} . '.sqlite');
+my $attached_db_file        = File::Spec->catfile($config->{'output-directory'}, $species_name . '.sqlite');
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
 
@@ -2245,6 +2245,7 @@ sub delete_sequences_with_headers {
 	my $dbh = get_dbh();
 	my $sth = $dbh->prepare($q);
 	while (shift @$headers) {
+		print $sth->{Statement}, "\n" if $debug;
 		$sth->execute($_);
 		$count += $sth->rows();
 	}
