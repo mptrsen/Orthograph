@@ -79,6 +79,7 @@ my $overwrite               = $config->{'overwrite'};
 
 # other variables
 my $verbose                 = $config->{'verbose'};
+my $outputdir               = $config->{'output-directory'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                 = $config->{'substitute-u-with'};
@@ -150,6 +151,9 @@ if ($delete_all) {
 elsif ($create) {
 	print "This will create a new Orthograph table structure in the database '$database' with the table prefix '$db_prefix'.\nAny existing Orthograph table structures with that prefix will be erased. Are you sure (y/n)? ";
 	get_yn() or exit;
+	unless (-e $outputdir) {
+		die "Fatal: output directory $outputdir specified, but does not exist\n";
+	}
 	drop_tables();
 	create_tables();
 	print "Created Orthograph table structure in database '$database'.\n";
