@@ -433,7 +433,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	undef $fafh;
- 
+	print $stdout "wrote concatenated sequence $hdr to file $fafh\n" if $debug;
+
 	# do the same for the nucleotide sequences
 	my $core_sequences_nt = get_ortholog_group_nucleotide($set_id, $orthoid);
 	# new fasta file
@@ -447,6 +448,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	undef $fafh;
+	print $stdout "wrote concatenated sequence $hdr to file $fafh\n" if $debug;
 }
 undef $tfh;
 
