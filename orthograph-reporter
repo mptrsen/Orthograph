@@ -427,7 +427,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# print the core orthologs
 	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
 	# join the headers
-	$hdr = join $sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
+	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
