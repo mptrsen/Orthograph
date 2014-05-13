@@ -237,7 +237,7 @@ if (set_exists($setname)) {
 	get_yn() or print "OK, exiting\n" and exit;
 }
 
-print "Enter a description for the set (optional but recommended): "; 
+print "Enter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)! "; 
 $description = <STDIN>;
 unless ($description) { print "Caught EOF. Exiting.\n" and exit }
 chomp $description;
@@ -327,7 +327,7 @@ sub load_temp_table_with_data {
 	# ask the user for the taxon names that aren't complete
 	foreach (sort(keys %names)) {
 		unless ($names{$_}) {
-			print "Enter complete name for the shorthand '$_': ";
+			print "Enter complete name for the shorthand '$_' (no commas!): ";
 			$names{$_} = <STDIN>;
 			chomp $names{$_};
 		}
@@ -611,7 +611,7 @@ sub create_blastdb {
 # Arguments: none
 # Returns: scalar string setname
 sub get_setname {
-	print "Enter the set name (required; ASCII only): ";
+	print "Enter the set name (required; ASCII only, no commas!): ";
 	$setname = <STDIN>;
 	unless ($setname) { print "Caught EOF. Exiting.\n" and exit }
 	chomp $setname;
