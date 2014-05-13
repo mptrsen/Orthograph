@@ -194,11 +194,7 @@ exonerate-program    = exonerate
 
 # Header separator. This will be used to separate header fields in the output files.
 # May be an arbitrary string. Defaults to '|'. To use a whitespace character,
-<<<<<<< HEAD
-# enclose it in quotes (' ').
-=======
 # enclose it in quotes, e.g., ' '.
->>>>>>> fc35af1412f7076ac7aface971524b8c40a8016a
 #header-separator = |
 
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
