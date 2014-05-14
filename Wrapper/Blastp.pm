@@ -241,7 +241,7 @@ sub blastp {#{{{
 	else {
 		print STDERR "BLAST output file does not exist in '$outfile', conducting new search\n" if $debug;
 		# use outfmt 7 for comment lines
-		my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore qstart qend' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -num_threads $num_threads -db $db -query $queryfile -out $outfile);
+		my @blastcmd = qq($searchprog -outfmt '7' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -num_threads $num_threads -db $db -query $queryfile -out $outfile);
 
 		# do the search or die
 		print STDERR "\n@blastcmd\n\n"
@@ -310,7 +310,6 @@ sub result {#{{{
 Returns the BLAST result as an array of arrays.
 
 =cut
-
 sub blasthits_arrayref {#{{{
 	my $self = shift;
 	if ($self->{'blasthits'}) {
@@ -320,12 +319,16 @@ sub blasthits_arrayref {#{{{
 	foreach (@{$self->result}) {
 		my @line = split(/\s+/);
 		push(@{$self->{'blasthits'}}, {
-			'query'  => $line[0],
-			'target' => $line[1],
-			'evalue' => $line[2],
-			'score'  => $line[3],
-			'start'  => $line[4],
-			'end'    => $line[5],
+			'query'        => $line[0],
+			'target'       => $line[1],
+			'perc_ident'   => $line[2],
+			'length'       => $line[3],
+			'mismatches'   => $line[4],
+			'gap_openings' => $line[5],
+			'start'        => $line[6],
+			'end'          => $line[7],
+			'evalue'       => $line[10],
+			'score'        => $line[11],
 		});
 	}
 	return $self->{'blasthits'};

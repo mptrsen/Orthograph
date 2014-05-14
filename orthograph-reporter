@@ -56,36 +56,37 @@ elsif ($use_sqlite) {
 	$database = $config->{'sqlite-database'};
 }
 # MySQL settings
-my $mysql_table_blast          = $config->{'mysql_table_blast'};
-my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};
-my $mysql_table_ests           = $config->{'mysql_table_ests'};
-my $mysql_table_hmmsearch      = $config->{'mysql_table_hmmsearch'};
-my $mysql_table_set_details    = $config->{'mysql_table_set_details'};
-my $mysql_table_aaseqs         = $config->{'aaseqs'};
-my $mysql_table_seqpairs       = $config->{'sequence-pairs'};
-my $mysql_table_taxa           = $config->{'taxa'};
-my $mysql_table_orthologs      = $config->{'orthologs'};
+my $mysql_table_blast           = $config->{'mysql_table_blast'};
+my $mysql_table_blastdbs        = $config->{'mysql_table_blastdbs'};
+my $mysql_table_ests            = $config->{'mysql_table_ests'};
+my $mysql_table_hmmsearch       = $config->{'mysql_table_hmmsearch'};
+my $mysql_table_set_details     = $config->{'mysql_table_set_details'};
+my $mysql_table_aaseqs          = $config->{'aaseqs'};
+my $mysql_table_seqpairs        = $config->{'sequence-pairs'};
+my $mysql_table_taxa            = $config->{'taxa'};
+my $mysql_table_orthologs       = $config->{'orthologs'};
 
 # directory and output settings
-my $outdir                     = $config->{'output-directory'};
-my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir'});
-my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir'});
-my $logdir                     = File::Spec->catdir($outdir, 'log');
-my $debug                      = $config->{'debug'};
-my $quiet                      = $config->{'quiet'};
-my $concat_sep                 = 'PP';
-my $sep                        = $config->{'header-separator'};
-my $verbose                    = $config->{'verbose'};
+my $outdir                      = $config->{'output-directory'};
+my $aaoutdir                    = File::Spec->catdir($outdir, $config->{'aaoutdir'});
+my $ntoutdir                    = File::Spec->catdir($outdir, $config->{'ntoutdir'});
+my $logdir                      = File::Spec->catdir($outdir, 'log');
+my $debug                       = $config->{'debug'};
+my $quiet                       = $config->{'quiet'};
+my $concat_sep                  = 'PP';
+my $sep                         = $config->{'header-separator'};
+my $verbose                     = $config->{'verbose'};
 
 # settings for this specific analysis
-my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
-my $exonerate_program          = $config->{'exonerate-program'};
-my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
-my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
-my $reference_taxa             = $config->{'reference-taxa'};
-my $setname                    = $config->{'ortholog-set'};
-my $soft_threshold             = $config->{'soft-threshold'};
-my $speciesname                = $config->{'species-name'};
+my $blast_evalue_threshold      = $config->{'blast-evalue-threshold'};
+my $exonerate_program           = $config->{'exonerate-program'};
+my $hmmsearch_evalue_threshold  = $config->{'hmmsearch-evalue-threshold'};
+my $hmmsearch_score_threshold   = $config->{'hmmsearch-score-threshold'};
+my $reference_taxa              = $config->{'reference-taxa'};
+my $setname                     = $config->{'ortholog-set'};
+my $soft_threshold              = $config->{'soft-threshold'};
+my $speciesname                 = $config->{'species-name'};
+my $min_blast_alignment_overlap = $config->{'min-blast-alignment-overlap'};
 
 # open log and table output files 
 my $logfile = File::Spec->catfile($logdir, 'report.log');
@@ -233,6 +234,15 @@ foreach my $score (@$scores) {
 				# or does it overlap on transcript level?
 				elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 					printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n",
+						$orthoid,
+						$this_match->{'hmmhit'}
+							if $verbose;
+					next RESULT;
+				}
+
+				# does the blast result cover enough of the hmm alignment area?
+				elsif (no_blast_overlap($transcripts_mapped_to->{$orthoid}, $this_match < $min_blast_alignment_overlap)) {
+					printf $stdout "BLAST alignment covers the HMM alignment region for %s: discarded %s\n",
 						$orthoid,
 						$this_match->{'hmmhit'}
 							if $verbose;
@@ -584,10 +594,10 @@ sub hmm_overlap {
 	return 0;
 }
 
+# test whether the candidate overlaps on transcript level, return 1 or 0
 sub transcript_overlap {
 	my $already_assigned = shift;
 	my $candidate = shift;
-	# test whether the candidate overlaps on transcript level, return 1 or 0
 	foreach my $assigned_transcript (@$already_assigned) {
 		# the hmm coords do not overlap
 		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
@@ -601,6 +611,39 @@ sub transcript_overlap {
 		}
 	}
 	return 0;
+}
+
+# test whether the candidate blast alignment overlaps with the hmm alignment, 
+# return percentage
+sub blast_overlap_long_enough {
+	my $already_assigned    = shift;
+	my $candidate           = shift;
+	my $hmm_alignment_len   = 0;
+	my $blast_alignment_len = 0;
+	my $percentage_overlap  = 0;
+	foreach my $assigned_transcript (@$already_assigned) {
+		# determine alignment length
+		$hmm_alignment_len = abs($$assigned_transcript{'env_end'} - $$assigned_transcript{'env_start'}) + 1;
+		# calculate the region of the blast alignment relative to the hmm
+		# alignment region
+		$blast_alignment_len = (abs($$candidate{'hmm_end'} - $$candidate{'blast_start'}) + 1) - (abs($$candidate{'hmm_end'} - $$candidate{'blast_end'}) + 1);
+		# calculate the overlap percentage
+		$percentage_overlap = $blast_alignment_len / $hmm_alignment_len ;
+		if ($percentage_overlap < $min_blast_alignment_overlap) {
+			printf $stdout "%s[%d:%d] (hmm %d:%d) overlaps %.1f %% of the BLAST alignment region (%d:%d)\n",
+				$$candidate{'hmmhit'},
+				$$candidate{'env_start'},
+				$$candidate{'env_end'},
+				$$candidate{'hmm_start'},
+				$$candidate{'hmm_end'},
+				$percentage_overlap,
+				$$candidate{'blast_start'},
+				$$candidate{'blast_end'}
+					if $verbose;
+			return 0;
+		}
+	}
+	return 1;
 }
 
 sub print_overlap {
