@@ -576,7 +576,7 @@ sub hmm_overlap {
 				if $verbose;
 		}
 		else {
-			print_overlap($candidate, $assigned_transcript)
+			print_overlap($candidate, $assigned_transcript, 'hmm')
 				if $verbose;
 			return 1;
 		}
@@ -595,7 +595,7 @@ sub transcript_overlap {
 				if $verbose;
 		}
 		else {
-			print_overlap($candidate, $assigned_transcript)
+			print_overlap($candidate, $assigned_transcript, 'transcript')
 				if $verbose;
 			return 1;
 		}
@@ -606,7 +606,8 @@ sub transcript_overlap {
 sub print_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
-	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap.\n", 
+	my $level      = shift;
+	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap on %s level.\n", 
 		$$transcript{'hmmhit'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
@@ -616,14 +617,16 @@ sub print_overlap {
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
-		$$candidate{'hmm_end'}
+		$$candidate{'hmm_end'},
+		$level
 	;
 }
 
 sub print_no_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
-	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
+	my $level      = shift;
+	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap on %s level.\n", 
 		$$transcript{'hmmhit'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
@@ -633,7 +636,8 @@ sub print_no_overlap {
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
-		$$candidate{'hmm_end'}
+		$$candidate{'hmm_end'},
+		$level
 	;
 }
 
