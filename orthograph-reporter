@@ -425,7 +425,12 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# new fasta file
 	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
-	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences);
+	printf $fafh ">%s|%s|%s\n%s\n",
+		$orthoid, # ortholog id
+		$$_[0],   # reftaxon name
+		$$_[1],   # header
+		$$_[2]    # sequence
+			foreach (@$core_sequences);
 	# join the headers
 	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
 	# prepend orthoid, reference taxon, and taxon name
@@ -440,7 +445,12 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# new fasta file
 	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
 	# print the core orthologs
-	printf $fafh ">%s\n%s\n", $$_[0], $$_[1] foreach (@$core_sequences_nt);
+	printf $fafh ">%s|%s|%s\n%s\n",
+		$orthoid, # ortholog id
+		$$_[0],   # reftaxon name
+		$$_[1],   # header
+		$$_[2]    # sequence
+			foreach (@$core_sequences_nt);
 	# join headers
 	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
 	# prepend orthoid, reference taxon, and taxon name

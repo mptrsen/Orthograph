@@ -1082,12 +1082,16 @@ sub get_ortholog_group {
 	my $setid   = shift;
 	my $orthoid = shift;
 	my $query = "SELECT 
-		$db_table_aaseqs.$db_col_header, $db_table_aaseqs.$db_col_sequence
+			$db_table_taxa.$db_col_name,
+			$db_table_aaseqs.$db_col_header,
+			$db_table_aaseqs.$db_col_sequence
 		FROM $db_table_aaseqs
 		INNER JOIN $db_table_seqpairs
 			ON $db_table_aaseqs.$db_col_id = $db_table_seqpairs.$db_col_aaseq
 		INNER JOIN $db_table_orthologs
 			ON $db_table_seqpairs.$db_col_id = $db_table_orthologs.$db_col_seqpair
+		INNER JOIN $db_table_taxa
+			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.$db_col_id
 		AND   $db_table_orthologs.$db_col_setid = ?
 		AND   $db_table_orthologs.$db_col_orthoid = ?";
 	my $dbh = get_dbh()
@@ -1102,12 +1106,16 @@ sub get_ortholog_group_nucleotide {
 	my $setid   = shift;
 	my $orthoid = shift;
 	my $query = "SELECT 
-		$db_table_ntseqs.$db_col_header, $db_table_ntseqs.$db_col_sequence
+			$db_table_taxa.$db_col_name,
+			$db_table_ntseqs.$db_col_header,
+			$db_table_ntseqs.$db_col_sequence
 		FROM $db_table_ntseqs
 		INNER JOIN $db_table_seqpairs
 			ON $db_table_ntseqs.$db_col_id = $db_table_seqpairs.$db_col_ntseq
 		INNER JOIN $db_table_orthologs
 			ON $db_table_seqpairs.$db_col_id = $db_table_orthologs.$db_col_seqpair
+		INNER JOIN $db_table_taxa
+			ON $db_table_ntseqs.$db_col_taxid = $db_table_taxa.$db_col_id
 		AND   $db_table_orthologs.$db_col_setid = ?
 		AND   $db_table_orthologs.$db_col_orthoid = ?";
 	my $dbh = get_dbh()
