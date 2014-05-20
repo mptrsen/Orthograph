@@ -199,6 +199,9 @@ sub db_get {#{{{
 	my @args = @_;
   # prepare anonymous array
 	my $results = [ ];
+
+	print Dumper( $query, @args) if $debug;
+
   # connect and fetch stuff
 	my $dbh = get_dbh()
 		or return undef;
@@ -2296,6 +2299,12 @@ sub get_list_of_tables {
 	if ($!) { die "Fatal: Could not get list of tables: $!\n" }
 	unless (grep /$db_table_orthologs/, @$r) { return 0 }
 	return 1;
+}
+
+sub get_reftaxon_id {
+	my $shorthand = shift;
+	my $result = db_get("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ?", $shorthand);
+	return $$result[0][0];
 }
 
 1;

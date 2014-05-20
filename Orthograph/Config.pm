@@ -93,6 +93,7 @@ GetOptions( $config,
   'db_table_set_details',
   'db_table_taxa',
 	'num-threads=i',
+  'ogs-version=s',
   'ortholog-set=s',
   'output-directory=s',
 	'overwrite|o',
@@ -100,7 +101,7 @@ GetOptions( $config,
   'quiet',
   'quiet|q',
   'reference-taxa=s',
-  'reference-taxon=s',
+  'reference-taxon-shorthand=s',
   'sets-dir=s',
   'soft-threshold=i',
   'species-name=s',
@@ -194,12 +195,14 @@ $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
+$config->{'ogs-version'}                //= '';
 $config->{'ortholog-set'}               //= '';
 $config->{'output-directory'}           //= '.';
 $config->{'overwrite'}                  //= 0;
 $config->{'prepare'}                    //= 0;  
 $config->{'quiet'}                      //= 0;  # I like my quiet
 $config->{'reference-taxa'}             //= '';
+$config->{'reference-taxon-shorthand'}  //= '';
 $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 5;
 $config->{'species-name'}               //= '';
