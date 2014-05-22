@@ -214,7 +214,7 @@ sub result {
 
 sub aa_sequence {
 	my $self = shift;
-	unless ($self->{'aa_sequence'}) { $self->parse_result() }
+	unless ($self->{'aa_sequence'}) { $self->get_orf() }
 	unless ($self->{'aa_sequence'}) { return undef }
 	$self->{'aa_sequence'} =~ s/\s//g;
 	return $self->{'aa_sequence'};
@@ -222,30 +222,69 @@ sub aa_sequence {
 
 sub cdna_sequence {
 	my $self = shift;
-	unless ($self->{'cdna_sequence'}) { $self->parse_result() }
+	unless ($self->{'cdna_sequence'}) { $self->get_orf() }
 	unless ($self->{'cdna_sequence'}) { return undef }
 	$self->{'cdna_sequence'} =~ s/\s//g;
 	return $self->{'cdna_sequence'};
 }
 
-sub parse_result {
+sub get_orf {
 	my $self = shift;
-	my $header;
 	# if there was no result
 	if (-z $self->{'resultfile'}) { return undef }
 
+	my $cdna_seq = '';
+
 	# otherwise, continue
+	my $orf_list = slurp_orfs_from_fasta($self);
+
+	for (my $i = 0; $i < scalar @$orf_list; $i++) {
+		$cdna_seq .= $orf_list->[$i]->{'cdna_seq'};
+		# don't do this for the last orf
+		if ($i < scalar(@$orf_list) - 1) {
+			my $num_missing = $orf_list->[$i+1]->{'cdna_start'} - $orf_list->[$i]->{'cdna_end'} - 1;
+			my $indel = substr($self->{'target'}->{'sequence'}, $orf_list->[$i]->{'cdna_end'}, $num_missing);
+			$indel = uc($indel);
+			# append gap characters until codon filled
+			while (length($indel) % 3 != 0) { $indel .= '-' }
+		}
+	}
+	
+	$self->{'cdna_sequence'} = $cdna_seq;
+	return $self;
+	
+}
+
+
+sub slurp_orfs_from_fasta {
+	my $self = shift;
+	my $list = [ ];
 	my $fh = Seqload::Fasta->open($self->{'resultfile'});
 	# watch for the order of sequences, they must correspond to the order in
 	# the --ryo option in the exonerate call
-	($header, $self->{'cdna_sequence'}) = $fh->next_seq();
-	my @fields = split ' ', $header;
-	$self->{'cdna_start'} = $fields[1];
-	$self->{'cdna_end'}   = $fields[2];
-	(undef, $self->{'aa_sequence'})   = $fh->next_seq();
+	while (my ($h_cdna, $s_cdna) = $fh->next_seq()) {
+		# there will always be two sequences per alignment, so fetching the next one is ok
+		my ($h_aa, $s_aa) = $fh->next_seq();
+		# but test anyway
+		croak "Fatal: no sequence found for ORF (aa)\n" unless $h_aa and $s_aa;
+		my @fields = split ' ', $h_cdna;
+		my $cdna_start = $fields[1];
+		my $cdna_end   = $fields[2];
+		@fields = split ' ', $h_aa;
+		my $aa_start   = $fields[1];
+		my $aa_end     = $fields[2];
+		push @$list, {
+			'cdna_start' => $cdna_start,
+			'cdna_end' => $cdna_end,
+			'aa_start' => $aa_start,
+			'aa_end'   => $aa_end,
+			'cdna_seq' => $s_cdna,
+			'aa_seq'   => $s_aa,
+		};
+	}
 	undef $fh;
+	return $list;
 }
-
 
 =head2 query
 
