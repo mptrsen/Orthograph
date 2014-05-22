@@ -162,6 +162,17 @@ database, call `orthograph-manager -lo`.
 Yes, I know. OGS loading is slow. I'm working on improving that performance. For
 now, be happy that you only need to do this once.
 
+There are options to specify OGS taxon and version so you can easily automate
+the process:
+
+  -ogs-version VERSION
+	-reference-taxon-shorthand TAXON
+
+the version can be an arbitrary string (but enclose it in quotes if it contains
+spaces). The shorthand must be a shorthand that is present in the ortholog set
+file (and therefore in the database), just like you would enter it at the
+prompt; otherwise, the taxon cannot be correlated.
+
 ## 6. Optional: Load nucleotide sequence data into the database:
 
 	$ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
@@ -179,6 +190,9 @@ by giving identical names to corresponding sequences.
 
 And again, I know. OGS loading is slow. I'm working on improving that
 performance. For now, be happy that you only need to do this once.
+
+The same options for specifying OGS taxon and version number (see step 5) are
+available for nucleotide data, as well.
 
 ## 7. Create the required database structure for Orthograph.
 
