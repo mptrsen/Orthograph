@@ -267,6 +267,7 @@ sub get_orf {
 	}
 	
 	$self->{'cdna_sequence'} = $cdna_seq;
+	$self->{'aa_sequence'} = $aa_seq;
 	return $self;
 	
 }
