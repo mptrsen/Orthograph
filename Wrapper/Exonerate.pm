@@ -234,6 +234,7 @@ sub get_orf {
 	if (-z $self->{'resultfile'}) { return undef }
 
 	my $cdna_seq = '';
+	my $aa_seq   = '';
 
 	# otherwise, continue
 	my $orf_list = slurp_orfs_from_fasta($self);
@@ -245,12 +246,23 @@ sub get_orf {
 
 	for (my $i = 0; $i < scalar @$orf_list; $i++) {
 		$cdna_seq .= $orf_list->[$i]->{'cdna_seq'};
+		$aa_seq .= $orf_list->[$i]->{'aa_seq'};
 		# don't do this for the last orf
 		if ($i < scalar(@$orf_list) - 1) {
+			# the cdna sequence
 			my $num_missing = $orf_list->[$i+1]->{'cdna_start'} - $orf_list->[$i]->{'cdna_end'} - 1;
 			my $indel = lc(substr($self->{'target'}->{'sequence'}, $orf_list->[$i]->{'cdna_end'}, $num_missing));
 			# append gap characters until codon filled
+			# no need to do that for the aa sequence
 			while (length($indel) % 3 != 0) { $indel .= '-' }
+			# append indel sequence
+			$cdna_seq .= $indel;
+
+			# the aa sequence accordingly
+			$num_missing = $orf_list->[$i+1]->{'aa_start'} - $orf_list->[$i]->{'aa_end'} - 1;
+			$indel = lc(substr($self->{'query'}->{'sequence'}, $orf_list->[$i]->{'aa_end'}, $num_missing));
+			# append indel
+			$aa_seq .= $indel;
 		}
 	}
 	
