@@ -238,13 +238,17 @@ sub get_orf {
 	# otherwise, continue
 	my $orf_list = slurp_orfs_from_fasta($self);
 
+	# start is the beginning of the first orf,
+	# end the end of the last
+	$self->{'cdna_start'} = $orf_list->[0]->{'cdna_start'};
+	$self->{'cdna_end'} = $orf_list->[-1]->{'cdna_end'};
+
 	for (my $i = 0; $i < scalar @$orf_list; $i++) {
 		$cdna_seq .= $orf_list->[$i]->{'cdna_seq'};
 		# don't do this for the last orf
 		if ($i < scalar(@$orf_list) - 1) {
 			my $num_missing = $orf_list->[$i+1]->{'cdna_start'} - $orf_list->[$i]->{'cdna_end'} - 1;
-			my $indel = substr($self->{'target'}->{'sequence'}, $orf_list->[$i]->{'cdna_end'}, $num_missing);
-			$indel = uc($indel);
+			my $indel = lc(substr($self->{'target'}->{'sequence'}, $orf_list->[$i]->{'cdna_end'}, $num_missing));
 			# append gap characters until codon filled
 			while (length($indel) % 3 != 0) { $indel .= '-' }
 		}
@@ -275,11 +279,11 @@ sub slurp_orfs_from_fasta {
 		my $aa_end     = $fields[2];
 		push @$list, {
 			'cdna_start' => $cdna_start,
-			'cdna_end' => $cdna_end,
-			'aa_start' => $aa_start,
-			'aa_end'   => $aa_end,
-			'cdna_seq' => $s_cdna,
-			'aa_seq'   => $s_aa,
+			'cdna_end'   => $cdna_end,
+			'aa_start'   => $aa_start,
+			'aa_end'     => $aa_end,
+			'cdna_seq'   => $s_cdna,
+			'aa_seq'     => $s_aa,
 		};
 	}
 	undef $fh;

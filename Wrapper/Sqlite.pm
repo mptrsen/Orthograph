@@ -1730,7 +1730,7 @@ sub get_nucleotide_transcript_for {
 	my $result = db_get($query, $digest);
 	# remove the revcomp/translate portion
 	print "translated header: <$result->[0]->[0]>\n" if $debug;
-	(my $original_header = $result->[0]->[0]) =~ s/( |_)?(\[revcomp]:)?\[translate\(\d\)\]$//;
+	(my $original_header = $result->[0]->[0]) =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
 	print "original header: <$original_header>\n" if $debug;
 	$query = "SELECT $db_col_sequence
 		FROM $db_table_ests
