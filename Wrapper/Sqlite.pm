@@ -1096,7 +1096,8 @@ sub get_ortholog_group {
 		INNER JOIN $db_table_taxa
 			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.$db_col_id
 		AND   $db_table_orthologs.$db_col_setid = ?
-		AND   $db_table_orthologs.$db_col_orthoid = ?";
+		AND   $db_table_orthologs.$db_col_orthoid = ?
+		ORDER BY $db_table_taxa.$db_col_name";
 	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);
@@ -1120,7 +1121,8 @@ sub get_ortholog_group_nucleotide {
 		INNER JOIN $db_table_taxa
 			ON $db_table_ntseqs.$db_col_taxid = $db_table_taxa.$db_col_id
 		AND   $db_table_orthologs.$db_col_setid = ?
-		AND   $db_table_orthologs.$db_col_orthoid = ?";
+		AND   $db_table_orthologs.$db_col_orthoid = ?
+		ORDER BY $db_table_taxa.$db_col_name";
 	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query);

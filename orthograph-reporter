@@ -342,7 +342,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}, $hit->{'orf_cdna_start'}, $hit->{'orf_cdna_end'}) = get_orf($proteome_sequence, $est_sequence);
 
 		# exonerate got an alignment
-		#if ($hit->{'orf_cdna_sequence'} and orf_overlap($hit)) {
 		if ($hit->{'orf_cdna_sequence'}) {
 			printf $stdout "Got this ORF for '%s'[%d-%d] (orf coords %d-%d):\n%s\n",
 				$hit->{'hmmhit'},
@@ -416,7 +415,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 	# skip the rest since no sequence could be gathered
 	unless (defined $seq) {
-		print $stdout "No ORFs found for this orthoid, skipping...\n" if $verbose;
+		print $stdout "No ORFs found for this orthoid, skipping...\n" unless $quiet;
 		next ORTHOID;
 	}
 
@@ -765,7 +764,7 @@ sub get_orf {
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }
-	return ($alignment->aa_sequence(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
+	return ($alignment->translated_cdna(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
 }
 
 # determines whether the ORF overlaps with the HMM alignment by a certain percentage. 

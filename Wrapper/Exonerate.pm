@@ -27,14 +27,15 @@ use Data::Dumper;
 
 use Seqload::Fasta;	# object-oriented access to fasta files
 
-my $verbose    = 0;
-my $debug      = 0;
-my $exhaustive = 0;
-my $outdir     = File::Spec->catdir('.');
-my $searchprog = 'exonerate';
-my @searchcmd;
+my $verbose          = 0;
+my $debug            = 0;
+my $exhaustive       = 0;
+my $outdir           = File::Spec->catdir('.');
+my $searchprog       = 'exonerate';
+my $translateprog    = 'fastatranslate';
 my $evalue_threshold = 10;
-my $score_threshold = 10;
+my $score_threshold  = 10;
+my @searchcmd;
 
 sub new {
 	my ($class, $query, $target) = @_;
@@ -117,6 +118,26 @@ sub searchprog {
   $searchprog = shift;
 }
 
+=head2 translateprog
+
+Sets the translation program. Expects a string. Defaults to 'F<exonerate>'.
+
+NOTE: the program must be able to be called like this:
+
+PROGRAM -F 1 FASTAFILE
+
+where the -F option specifies the reading frame. It must provide output on
+STDOUT and in Fasta format.
+
+=cut
+
+sub translateprog {
+  my $class = shift;
+  if (ref $class) { confess("Class method called as object method") }
+  unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->translateprog(COMMAND)") }
+  $translateprog = shift;
+}
+
 =head2 score_threshold
 
 Sets or returns the score threshold to use for the exonerate search. Defaults to
@@ -187,6 +208,28 @@ sub search {
 	# run the beast now
 	system($exonerate_cmd) and confess "Error running exonerate: $!\n";
 	$self->{'resultfile'} = $outfile;
+	return 1;
+}
+
+sub translated_cdna {
+	my $self = shift;
+	unless ($self->{'cdna_translated'}) { translate_cdna($self) }
+	return $self->{'cdna_translated'};
+}
+
+sub translate_cdna {
+	my $self = shift;
+	my $outfile = File::Spec->catfile($outdir, 'translatethis.fa');
+	my $translatefile = fastaify('cdna', $self->{'cdna_sequence'});
+	my $translate_cmd = qq($translateprog -F 1 $translatefile);
+	if ($debug) {
+		print 'Translating CDNA...', "\n";
+		print $translate_cmd;
+	}
+	my $translated_cdna_fasta = [ `$translate_cmd` ] or croak "Fatal: Couldn't translate CDNA sequence using command '$translate_cmd'\n";
+	shift @$translated_cdna_fasta;
+	chomp @$translated_cdna_fasta;
+	$self->{'cdna_translated'} = join '', @$translated_cdna_fasta;
 	return 1;
 }
 
@@ -299,3 +342,4 @@ sub fastaify {
 	return $fh;
 }
 
+'this line intentionally left true'
