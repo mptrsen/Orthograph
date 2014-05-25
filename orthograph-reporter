@@ -134,6 +134,8 @@ my $totaltime            = 0;
 
 # set exonerate path from config file
 Wrapper::Exonerate->searchprog($exonerate_program);
+# set exonerate output dir from config file
+Wrapper::Exonerate->outdir($logdir);
 
 # get the species id from the database
 $species_id = get_taxid_for_species($speciesname);
@@ -322,9 +324,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		++$hitcount;
 
 		# get the sequences from the database
-		my $proteome_sequence;
-		($proteome_sequence, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
-		my $est_sequence = get_nucleotide_transcript_for($hit->{'hmmhit'});
+		($hit->{'proteome_sequence'}, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
+		$hit->{'est_sequence'} = get_nucleotide_transcript_for($hit->{'hmmhit'});
 
 		#--------------------------------------------------
 		# # (don't) trim the transcript sequence to the domain coordinates
@@ -339,10 +340,10 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		#}
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}, $hit->{'orf_cdna_start'}, $hit->{'orf_cdna_end'}) = get_orf($proteome_sequence, $est_sequence);
+		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}, $hit->{'orf_cdna_start'}, $hit->{'orf_cdna_end'}) = get_orf($hit);
+		print Dumper $hit and exit if $orthoid eq 'EOG512JMP';
 
 		# exonerate got an alignment
-		#if ($hit->{'orf_cdna_sequence'} and orf_overlap($hit)) {
 		if ($hit->{'orf_cdna_sequence'}) {
 			printf $stdout "Got this ORF for '%s'[%d-%d] (orf coords %d-%d):\n%s\n",
 				$hit->{'hmmhit'},
@@ -406,7 +407,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					$hit->{'env_end'},
 					$hit->{'blast_hit'},
 				;
-				print $stdout "Skipping this transcript\n";
+				print $stdout "Skipping this transcript\n" unless $quiet;
 			}
 			next HIT;
 		}
@@ -416,14 +417,15 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 	# skip the rest since no sequence could be gathered
 	unless (defined $seq) {
-		print $stdout "No ORFs found for this orthoid, skipping...\n" if $verbose;
+		print $stdout "No ORFs found for this orthoid, skipping...\n" unless $quiet;
 		next ORTHOID;
 	}
 
 	# get the core ortholog sequences for this group
 	my $core_sequences = get_ortholog_group($set_id, $orthoid);
 	# new fasta file
-	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
+	my $fafn = File::Spec->catfile($aaoutdir, $orthoid . '.fa');
+	my $fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
 	printf $fafh ">%s|%s|%s\n%s\n",
 		$orthoid, # ortholog id
@@ -437,13 +439,14 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
-	print $stdout "wrote concatenated sequence $hdr to file $fafh\n" if $debug;
+	print $stdout "wrote concatenated sequence $hdr to file $fafn\n" if $debug;
 	undef $fafh;
 
 	# do the same for the nucleotide sequences
 	my $core_sequences_nt = get_ortholog_group_nucleotide($set_id, $orthoid);
 	# new fasta file
-	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
+	$fafn = File::Spec->catfile($ntoutdir, $orthoid . '.fa');
+	$fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
 	printf $fafh ">%s|%s|%s\n%s\n",
 		$orthoid, # ortholog id
@@ -457,7 +460,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
-	print $stdout "wrote concatenated sequence $hdr to file $fafh\n" if $debug;
+	print $stdout "wrote concatenated sequence $hdr to file $fafn\n" if $debug;
 	undef $fafh;
 }
 undef $tfh;
@@ -758,14 +761,23 @@ sub transcripts_overlap {
 # clips sequences if it detects frameshift errors and stuff like that.
 
 sub get_orf {
-	my $proteome_sequence = shift;
-	my $est_sequence      = shift;
-	unless ($proteome_sequence and $est_sequence) { return undef }
-	Wrapper::Exonerate->outdir($logdir);
-	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
+	my $candidate = shift;
+	unless ($candidate->{'proteome_sequence'} and $candidate->{'est_sequence'}) { return undef }
+	my $alignment = Wrapper::Exonerate->new($candidate->{'proteome_sequence'}, $candidate->{'est_sequence'});
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }
-	return ($alignment->aa_sequence(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
+
+	# now trim the orf to the hmmsearch result coordinates
+	my $orf_start = abs($candidate->{'env_start'} - $alignment->cdna_start());
+	my $orf_end   = abs($candidate->{'env_end'}   - $alignment->cdna_end());
+	my $orf_len   = $orf_end - $orf_start;
+	print "est sequence length: ", length $candidate->{'est_sequence'}, "\n";
+	print "translated sequence length: ", length $alignment->translated_cdna(), "\n";
+	print "substr($alignment->translated_cdna(), $orf_start - 1, $orf_len)\n" if $debug;
+	my $actual_orf_translated = substr($alignment->translated_cdna(), $orf_start - 1, $orf_len);
+	printf $stdout "Trimmed ORF to coords %d-%d\n", $orf_start, $orf_end if $debug;
+
+	return ($actual_orf_translated, $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
 }
 
 # determines whether the ORF overlaps with the HMM alignment by a certain percentage. 

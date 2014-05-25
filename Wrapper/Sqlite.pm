@@ -119,6 +119,7 @@ my $stderr = *STDERR;
 my $attached_db_file        = File::Spec->catfile($config->{'output-directory'}, $species_name . '.sqlite');
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
+if ($debug) { print "Sqlite: using species database '$attached_db_file' as '$db_attached'\n" }
 
 
 =head1 FUNCTIONS
@@ -176,7 +177,6 @@ sub get_dbh {#{{{
 
 	if ($dbh) {
 		$dbh->sqlite_busy_timeout($db_timeout * 1000);
-		if ($debug) { print $query_attach_file, "\n" }
 		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
 	}
@@ -1709,6 +1709,7 @@ sub get_reference_sequence {
 		INNER JOIN $db_table_taxa
 			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.id
 		WHERE $db_table_aaseqs.$db_col_id = '$id'";
+	print $query, "\n" if $debug;
 	my $result = db_get($query);
 	return ($result->[0]->[0], $result->[0]->[1]);
 }
@@ -1718,6 +1719,7 @@ sub get_transcript_for {
 	my $query  = "SELECT $db_col_sequence
 		FROM $db_table_ests
 		WHERE $db_col_digest = ?";
+	print $query, $digest, "\n" if $debug;
 	my $result = db_get($query, $digest);
 	return $result->[0]->[0];
 }

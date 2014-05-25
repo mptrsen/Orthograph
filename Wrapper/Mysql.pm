@@ -119,6 +119,8 @@ defined $db_dbuser   or fail_and_exit('MySQL database username not specified');
 defined $db_dbpwd    or fail_and_exit('MySQL database password not specified');
 defined $db_dbserver or fail_and_exit('MySQL database server not specified');
 
+if ($debug) { print "Mysql: using database '$db_dbname' on '$db_dbserver'\n" }
+
 =head2 pass_stderr
 
 Reassign STDERR to a different filehandle

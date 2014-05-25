@@ -27,14 +27,15 @@ use Data::Dumper;
 
 use Seqload::Fasta;	# object-oriented access to fasta files
 
-my $verbose    = 0;
-my $debug      = 0;
-my $exhaustive = 0;
-my $outdir     = File::Spec->catdir('.');
-my $searchprog = 'exonerate';
-my @searchcmd;
+my $verbose          = 0;
+my $debug            = 0;
+my $exhaustive       = 0;
+my $outdir           = File::Spec->catdir('.');
+my $searchprog       = 'exonerate';
+my $translateprog    = 'fastatranslate';
 my $evalue_threshold = 10;
-my $score_threshold = 10;
+my $score_threshold  = 10;
+my @searchcmd;
 
 sub new {
 	my ($class, $query, $target) = @_;
@@ -115,6 +116,26 @@ sub searchprog {
   if (ref $class) { confess("Class method called as object method") }
   unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->searchprog(COMMAND)") }
   $searchprog = shift;
+}
+
+=head2 translateprog
+
+Sets the translation program. Expects a string. Defaults to 'F<exonerate>'.
+
+NOTE: the program must be able to be called like this:
+
+PROGRAM -F 1 FASTAFILE
+
+where the -F option specifies the reading frame. It must provide output on
+STDOUT and in Fasta format.
+
+=cut
+
+sub translateprog {
+  my $class = shift;
+  if (ref $class) { confess("Class method called as object method") }
+  unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->translateprog(COMMAND)") }
+  $translateprog = shift;
 }
 
 =head2 score_threshold
@@ -214,7 +235,7 @@ sub result {
 
 sub aa_sequence {
 	my $self = shift;
-	unless ($self->{'aa_sequence'}) { $self->get_orf() }
+	unless ($self->{'aa_sequence'}) { $self->parse_result() }
 	unless ($self->{'aa_sequence'}) { return undef }
 	$self->{'aa_sequence'} =~ s/\s//g;
 	return $self->{'aa_sequence'};
@@ -222,86 +243,52 @@ sub aa_sequence {
 
 sub cdna_sequence {
 	my $self = shift;
-	unless ($self->{'cdna_sequence'}) { $self->get_orf() }
+	unless ($self->{'cdna_sequence'}) { $self->parse_result() }
 	unless ($self->{'cdna_sequence'}) { return undef }
 	$self->{'cdna_sequence'} =~ s/\s//g;
 	return $self->{'cdna_sequence'};
 }
 
-sub get_orf {
+sub translated_cdna {
 	my $self = shift;
+	unless ($self->{'cdna_translated'}) { translate_cdna($self) }
+	return $self->{'cdna_translated'};
+}
+
+sub translate_cdna {
+	my $self = shift;
+	my $outfile = File::Spec->catfile($outdir, 'translatethis.fa');
+	my $translatefile = fastaify('cdna', $self->{'cdna_sequence'});
+	my $translate_cmd = qq($translateprog -F 1 $translatefile);
+	if ($debug) {
+		print 'Translating CDNA...', "\n";
+		print $translate_cmd, "\n";
+	}
+	my $translated_cdna_fasta = [ `$translate_cmd` ] or croak "Fatal: Couldn't translate CDNA sequence using command '$translate_cmd'\n";
+	shift @$translated_cdna_fasta;
+	chomp @$translated_cdna_fasta;
+	$self->{'cdna_translated'} = join '', @$translated_cdna_fasta;
+	return 1;
+}
+
+sub parse_result {
+	my $self = shift;
+	my $header;
 	# if there was no result
 	if (-z $self->{'resultfile'}) { return undef }
 
-	my $cdna_seq = '';
-	my $aa_seq   = '';
-
 	# otherwise, continue
-	my $orf_list = slurp_orfs_from_fasta($self);
-
-	# start is the beginning of the first orf,
-	# end the end of the last
-	$self->{'cdna_start'} = $orf_list->[0]->{'cdna_start'};
-	$self->{'cdna_end'} = $orf_list->[-1]->{'cdna_end'};
-
-	for (my $i = 0; $i < scalar @$orf_list; $i++) {
-		$cdna_seq .= $orf_list->[$i]->{'cdna_seq'};
-		$aa_seq .= $orf_list->[$i]->{'aa_seq'};
-		# don't do this for the last orf
-		if ($i < scalar(@$orf_list) - 1) {
-			# the cdna sequence
-			my $num_missing = $orf_list->[$i+1]->{'cdna_start'} - $orf_list->[$i]->{'cdna_end'} - 1;
-			my $indel = lc(substr($self->{'target'}->{'sequence'}, $orf_list->[$i]->{'cdna_end'}, $num_missing));
-			# append gap characters until codon filled
-			# no need to do that for the aa sequence
-			while (length($indel) % 3 != 0) { $indel .= '-' }
-			# append indel sequence
-			$cdna_seq .= $indel;
-
-			# the aa sequence accordingly
-			$num_missing = $orf_list->[$i+1]->{'aa_start'} - $orf_list->[$i]->{'aa_end'} - 1;
-			$indel = lc(substr($self->{'query'}->{'sequence'}, $orf_list->[$i]->{'aa_end'}, $num_missing));
-			# append indel
-			$aa_seq .= $indel;
-		}
-	}
-	
-	$self->{'cdna_sequence'} = $cdna_seq;
-	$self->{'aa_sequence'} = $aa_seq;
-	return $self;
-	
-}
-
-
-sub slurp_orfs_from_fasta {
-	my $self = shift;
-	my $list = [ ];
 	my $fh = Seqload::Fasta->open($self->{'resultfile'});
 	# watch for the order of sequences, they must correspond to the order in
 	# the --ryo option in the exonerate call
-	while (my ($h_cdna, $s_cdna) = $fh->next_seq()) {
-		# there will always be two sequences per alignment, so fetching the next one is ok
-		my ($h_aa, $s_aa) = $fh->next_seq();
-		# but test anyway
-		croak "Fatal: no sequence found for ORF (aa)\n" unless $h_aa and $s_aa;
-		my @fields = split ' ', $h_cdna;
-		my $cdna_start = $fields[1];
-		my $cdna_end   = $fields[2];
-		@fields = split ' ', $h_aa;
-		my $aa_start   = $fields[1];
-		my $aa_end     = $fields[2];
-		push @$list, {
-			'cdna_start' => $cdna_start,
-			'cdna_end'   => $cdna_end,
-			'aa_start'   => $aa_start,
-			'aa_end'     => $aa_end,
-			'cdna_seq'   => $s_cdna,
-			'aa_seq'     => $s_aa,
-		};
-	}
+	($header, $self->{'cdna_sequence'}) = $fh->next_seq();
+	my @fields = split ' ', $header;
+	$self->{'cdna_start'} = $fields[1];
+	$self->{'cdna_end'}   = $fields[2];
+	(undef, $self->{'aa_sequence'})   = $fh->next_seq();
 	undef $fh;
-	return $list;
 }
+
 
 =head2 query
 
@@ -355,3 +342,4 @@ sub fastaify {
 	return $fh;
 }
 
+'this line intentionally left true'
