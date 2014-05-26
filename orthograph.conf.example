@@ -173,7 +173,11 @@ exonerate-program    = exonerate
 # conservative.
 #strict      = 1
 
-# Minimum ORF overlap
+# Minimum ORF overlap. Each transcript is given to Exonerate to correct for
+# frameshift errors etc. The resulting ORF must overlap the HMM alignment
+# region by this percentage. Note that the value must be specified as a
+# fraction of 1.
+# 0.5 (50%) is the default; a higher value makes this more conservative.
 #minimum-orf-overlap = 0.5
 
 # Clear pre-existing data of the same species from the database prior to the
