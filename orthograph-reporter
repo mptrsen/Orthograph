@@ -82,6 +82,7 @@ my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
 my $exonerate_program          = $config->{'exonerate-program'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
+my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
@@ -339,7 +340,12 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		#}
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		($hit->{'orf_aa_sequence'}, $hit->{'orf_cdna_sequence'}, $hit->{'orf_cdna_start'}, $hit->{'orf_cdna_end'}) = get_orf($proteome_sequence, $est_sequence);
+		( $hit->{'orf_aa_sequence'},
+			$hit->{'orf_cdna_sequence'},
+			$hit->{'orf_cdna_start'},
+			$hit->{'orf_cdna_end'},
+			$hit->{'orf_aa_start'},
+			$hit->{'orf_aa_end'} ) = get_orf($proteome_sequence, $est_sequence);
 
 		# exonerate got an alignment
 		if ($hit->{'orf_cdna_sequence'}) {
@@ -352,48 +358,71 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				$hit->{'orf_cdna_sequence'}
 					if $debug;
 
-			# before concatenating, fill gaps with 'X' if desired
-			if ($fill_with_x) {
-				if (defined $prev_end) {
-					my $num_x = $hit->{'hmm_start'} - $prev_end;
-					my $xes   = 'X' x $num_x;
-					# 'N' sequences to fill the cdna sequence are three times longer
-					my $ns    = 'N' x ($num_x * 3);
-					$seq     .=  $xes;
-					$cdnaseq .= $ns;
-					print $stdout "Added $num_x 'X' to sequence\n" if $debug;
-					printf $tfh "\t[%d ambigs]", $num_x;
+			# check whether the overlap to the hmm alignment is sufficient
+			my $orf_overlap = orf_overlaps_hmm($hit);
+
+			if ($orf_overlap >= $orf_overlap_minimum) {
+				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) by %.2f %%\n",
+					$hit->{'orf_aa_start'},
+					$hit->{'orf_aa_end'},
+					$hit->{'hmm_start'},
+					$hit->{'hmm_end'},
+					$orf_overlap * 100,
+						if $verbose;
+
+				# before concatenating, fill gaps with 'X' if desired
+				if ($fill_with_x) {
+					if (defined $prev_end) {
+						my $num_x = $hit->{'hmm_start'} - $prev_end;
+						my $xes   = 'X' x $num_x;
+						# 'N' sequences to fill the cdna sequence are three times longer
+						my $ns    = 'N' x ($num_x * 3);
+						$seq     .=  $xes;
+						$cdnaseq .= $ns;
+						print $stdout "Added $num_x 'X' to sequence\n" if $debug;
+						printf $tfh "\t[%d ambigs]", $num_x;
+					}
+					$prev_end = $hit->{'hmm_end'};
 				}
-				$prev_end = $hit->{'hmm_end'};
-			}
 
-			# write the ortholog gene id to the table, but only once
-			if ($firsttime) {
-				print $tfh $orthoid;
-				$firsttime = 0;
-			}
+				# write the ortholog gene id to the table, but only once
+				if ($firsttime) {
+					print $tfh $orthoid;
+					$firsttime = 0;
+				}
 
-			# write the transcripts to the table
-			printf $tfh "\t%s[len %d]",
-				$hit->{'header'},                 # transcript ID
-				length $hit->{'orf_aa_sequence'}, # ORF sequence length
-			;
+				# write the transcripts to the table
+				printf $tfh "\t%s[len %d]",
+					$hit->{'header'},                 # transcript ID
+					length $hit->{'orf_aa_sequence'}, # ORF sequence length
+				;
 
-			# concatenate sequences
-			$seq     .= $hit->{'orf_aa_sequence'};
-			$cdnaseq .= $hit->{'orf_cdna_sequence'};
-			print $stdout "Concatenated sequences\n" if $debug;
+				# concatenate sequences
+				$seq     .= $hit->{'orf_aa_sequence'};
+				$cdnaseq .= $hit->{'orf_cdna_sequence'};
+				print $stdout "Concatenated sequences\n" if $debug;
 
-      # assign (new) reference taxon if blast score higher
-			unless ($reftaxon) { 
-				$reftaxon       = $hit->{'reftaxon'};
-				$reftaxon_score = $hit->{'blast_score'};
-			}
-			else {
-				if ($hit->{'blast_score'} > $reftaxon_score) {
+				# assign (new) reference taxon if blast score higher
+				unless ($reftaxon) { 
 					$reftaxon       = $hit->{'reftaxon'};
 					$reftaxon_score = $hit->{'blast_score'};
 				}
+				else {
+					if ($hit->{'blast_score'} > $reftaxon_score) {
+						$reftaxon       = $hit->{'reftaxon'};
+						$reftaxon_score = $hit->{'blast_score'};
+					}
+				}
+			}
+			else {
+				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) only by %.2f %%, skipping this transcript\n", 
+					$hit->{'orf_aa_start'},
+					$hit->{'orf_aa_end'},
+					$hit->{'hmm_start'},
+					$hit->{'hmm_end'},
+					$orf_overlap * 100,
+						if $verbose;
+				next HIT;
 			}
 		}
 		# exonerate didn't get an alignment
@@ -565,13 +594,6 @@ sub is_reciprocal_match {
 	}
 
 	return undef;
-}
-
-sub insert_candidate {
-	my $already_assigned = shift;
-	my $candidate = shift;
-	# insert the candidate at the appropriate position and return the arrayref of
-	# assigned transcripts
 }
 
 sub hmm_overlap {
@@ -764,33 +786,26 @@ sub get_orf {
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }
-	return ($alignment->translated_cdna(), $alignment->cdna_sequence(), $alignment->cdna_start(), $alignment->cdna_end());
+	return (
+		$alignment->translated_cdna(),
+		$alignment->cdna_sequence(),
+		$alignment->cdna_start(),
+		$alignment->cdna_end(),
+		$alignment->aa_start(),
+		$alignment->aa_end()
+	);
 }
 
 # determines whether the ORF overlaps with the HMM alignment by a certain percentage. 
-sub orf_overlap {
-	my $hit = shift;
-	my $orf_len = length $hit->{'cdna_sequence'};
-	my $hmm_len = $hit->{'hmm_end'} - $hit->{'hmm_start'} + 1;
-	my $startdiff = 0;
-	my $enddiff = 0;
-
-	# start difference
-	if ($hit->{'env_start'} <= $hit->{'orf_cdna_end'} and $hit->{'env_end'} >= $hit->{'orf_cdna_start'}) {
-		return 1;
-	}
-	if ($hit->{'hmm_start'} > $hit->{'orf_cdna_start'}) {
-		$startdiff = $hit->{'hmm_start'} - $hit->{'orf_cdna_start'};
-	}
+sub orf_overlaps_hmm {
+	my $cand = shift;
+	my $reference_length = $cand->{'ali_end'} - $cand->{'ali_start'};
+	my $orf_overlap = $cand->{'ali_end'} - $cand->{'orf_aa_start'};
+	# if the orf is somewhere else, there is no overlap
+	if ($orf_overlap < 1) { return 0 }
+	# calculate percentage
 	else {
-		$startdiff = $hit->{'orf_cdna_start'} - $hit->{'hmm_start'};
-	}
-	# end difference
-	if ($hit->{'hmm_end'} > $hit->{'orf_cdna_end'}) {
-		$enddiff = $hit->{'hmm_end'} - $hit->{'orf_cdna_end'};
-	}
-	else {
-		$enddiff = $hit->{'orf_cdna_end'} - $hit->{'hmm_end'};
+		return $orf_overlap / $reference_length;
 	}
 }
 

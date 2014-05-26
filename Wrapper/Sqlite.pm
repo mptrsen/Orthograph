@@ -76,6 +76,8 @@ my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
+my $db_col_ali_end          = 'ali_end';
+my $db_col_ali_start        = 'ali_start';
 my $db_col_date             = 'date';
 my $db_col_digest           = 'digest';
 my $db_col_end              = 'end';
@@ -599,6 +601,8 @@ sub preparedb {
 		`$db_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
 		`$db_col_env_start`  UNSIGNED INTEGER NOT NULL,
 		`$db_col_env_end`    UNSIGNED INTEGER NOT NULL,
+		`$db_col_ali_start`  UNSIGNED INTEGER NOT NULL,
+		`$db_col_ali_end`    UNSIGNED INTEGER NOT NULL,
 		`$db_col_hmm_start`  UNSIGNED INTEGER NOT NULL,
 		`$db_col_hmm_end`    UNSIGNED INTEGER NOT NULL
 		)";
@@ -1377,6 +1381,8 @@ sub get_hmmresults_for_single_score {
 			$db_table_hmmsearch.$db_col_evalue,
 			$db_table_hmmsearch.$db_col_hmm_start,
 			$db_table_hmmsearch.$db_col_hmm_end,
+			$db_table_hmmsearch.$db_col_ali_start,
+			$db_table_hmmsearch.$db_col_ali_end,
 			$db_table_hmmsearch.$db_col_env_start,
 			$db_table_hmmsearch.$db_col_env_end,
 			$db_table_ests.$db_col_header
@@ -1419,9 +1425,11 @@ sub get_hmmresults_for_single_score {
 			'hmm_evalue'   => $$line[3],
 			'hmm_start'    => $$line[4],
 			'hmm_end'      => $$line[5],
-			'env_start'    => $$line[6],
-			'env_end'      => $$line[7],
-			'header'       => $$line[8],
+			'ali_start'    => $$line[6],
+			'ali_end'      => $$line[7],
+			'env_start'    => $$line[8],
+			'env_end'      => $$line[9],
+			'header'       => $$line[10],
 		});
 	}
 	$sth->finish();
@@ -1442,6 +1450,8 @@ sub get_blastresults_for_hmmsearch_id {
 			$db_table_hmmsearch.$db_col_target,
 			$db_table_hmmsearch.$db_col_env_start,
 			$db_table_hmmsearch.$db_col_env_end,
+			$db_table_hmmsearch.$db_col_ali_start,
+			$db_table_hmmsearch.$db_col_ali_end,
 			$db_table_hmmsearch.$db_col_hmm_start,
 			$db_table_hmmsearch.$db_col_hmm_end,
 			$db_table_ests.$db_col_header
@@ -1484,9 +1494,11 @@ sub get_blastresults_for_hmmsearch_id {
 			'hmmhit'       => $$line[5],
 			'env_start'    => $$line[6],
 			'env_end'      => $$line[7],
-			'hmm_start'    => $$line[8],
-			'hmm_end'      => $$line[9],
-			'header'       => $$line[10],
+			'ali_start'    => $$line[8],
+			'ali_end'      => $$line[9],
+			'hmm_start'    => $$line[10],
+			'hmm_end'      => $$line[11],
+			'header'       => $$line[12],
 		});
 	}
 	$sth->finish();
@@ -1960,9 +1972,13 @@ sub insert_results_into_hmmsearch_table {
 		`$db_col_log_evalue`,
 		`$db_col_hmm_start`,
 		`$db_col_hmm_end`,
+		`$db_col_ali_start`,
+		`$db_col_ali_end`,
 		`$db_col_env_start`,
 		`$db_col_env_end`
 		) VALUES (
+		?,
+		?,
 		?,
 		?,
 		?,
@@ -1989,8 +2005,10 @@ sub insert_results_into_hmmsearch_table {
 			$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,	# natural logarithm only if evalue not 0
 			$hit->{'hmm_start'},  # start of hit domain on the HMM
 			$hit->{'hmm_end'},    # end of hit domain on the HMM
-			$hit->{'env_start'},  # start of hit domain on the target seq
-			$hit->{'env_end'},    # end of hit domain on the target seq
+			$hit->{'ali_start'},  # start of hit domain on the target seq
+			$hit->{'ali_end'},    # end of hit domain on the target seq
+			$hit->{'env_start'},  # start of hit domain on the target seq (envelope)
+			$hit->{'env_end'},    # end of hit domain on the target seq (envelope)
 		) or print "Fatal: Could not push to database!\n" and exit(1);
 		if ($affected_rows > 0) { ++$hitcount }
 	}
@@ -2300,7 +2318,7 @@ sub get_list_of_tables {
 	my $r = [ `$cmd` ];
 	if ($!) { die "Fatal: Could not get list of tables: $!\n" }
 	unless (grep /$db_table_orthologs/, @$r) { return 0 }
-	return 1;
+	return $r;
 }
 
 sub get_reftaxon_id {

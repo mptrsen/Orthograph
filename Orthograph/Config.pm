@@ -196,6 +196,7 @@ $config->{'max-blast-searches'}         //= 100;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
 $config->{'ogs-version'}                //= '';
+$config->{'orf-overlap-minimum'}        //= 0.5;
 $config->{'ortholog-set'}               //= '';
 $config->{'output-directory'}           //= '.';
 $config->{'overwrite'}                  //= 0;

@@ -75,6 +75,8 @@ my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
+my $db_col_ali_end          = 'ali_end';
+my $db_col_ali_start        = 'ali_start';
 my $db_col_date             = 'date';
 my $db_col_digest           = 'digest';
 my $db_col_end              = 'end';
@@ -572,6 +574,8 @@ sub preparedb {
 		`$db_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
 		`$db_col_env_start`  INT UNSIGNED NOT NULL,
 		`$db_col_env_end`    INT UNSIGNED NOT NULL,
+		`$db_col_ali_start`  INT UNSIGNED NOT NULL,
+		`$db_col_ali_end`    INT UNSIGNED NOT NULL,
 		`$db_col_hmm_start`  INT UNSIGNED NOT NULL,
 		`$db_col_hmm_end`    INT UNSIGNED NOT NULL,
 		PRIMARY KEY (`$db_col_id`),
@@ -1645,9 +1649,13 @@ sub insert_results_into_hmmsearch_table {
 		`$db_col_log_evalue`,
 		`$db_col_hmm_start`,
 		`$db_col_hmm_end`,
+		`$db_col_ali_start`,
+		`$db_col_ali_end`,
 		`$db_col_env_start`,
 		`$db_col_env_end`
 		) VALUES (
+		?,
+		?,
 		?,
 		?,
 		?,
@@ -1674,8 +1682,10 @@ sub insert_results_into_hmmsearch_table {
 			$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,	# natural logarithm only if evalue not 0
 			$hit->{'hmm_start'},  # start of hit domain on the HMM
 			$hit->{'hmm_end'},    # end of hit domain on the HMM
-			$hit->{'env_start'},  # start of hit domain on the target seq
-			$hit->{'env_end'},    # end of hit domain on the target seq
+			$hit->{'ali_start'},  # start of hit domain on the target seq
+			$hit->{'ali_end'},    # end of hit domain on the target seq
+			$hit->{'env_start'},  # start of hit domain on the target seq (envelope)
+			$hit->{'env_end'},    # end of hit domain on the target seq (envelope)
 		) or print "Fatal: Could not push to database!\n" and exit(1);
 		if ($affected_rows > 0) { ++$hitcount }
 	}

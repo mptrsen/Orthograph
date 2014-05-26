@@ -173,6 +173,9 @@ exonerate-program    = exonerate
 # conservative.
 #strict      = 1
 
+# Minimum ORF overlap
+#minimum-orf-overlap = 0.5
+
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
 # but doesn't hurt otherwise. 

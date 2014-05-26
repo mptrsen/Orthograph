@@ -240,12 +240,14 @@ sub hits_arrayref {#{{{
     # maximum of 19 columns, the last one may contain whitespace
     my @line = split(/\s+/);  
     push(@{$self->{'hits'}}, {
-      'target' => $line[0],		# target ID
-      'query'  => $line[3],		# query ID
-      'evalue' => $line[12],	# e-value of the best domain
-      'score'  => $line[13],	# score of the best domain
+      'target'     => $line[0],		# target ID
+      'query'      => $line[3],		# query ID
+      'evalue'     => $line[12],	# e-value of the best domain
+      'score'      => $line[13],	# score of the best domain
       'hmm_start'  => $line[15],	# beginning of domain
       'hmm_end'    => $line[16],	# end of domain
+			'ali_start'  => $line[17],	# beginning of domain
+			'ali_end'    => $line[18],	# end of domain
       'env_start'  => $line[19],	# beginning of domain
       'env_end'    => $line[20],	# end of domain
     });

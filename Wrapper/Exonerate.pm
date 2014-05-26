@@ -243,6 +243,16 @@ sub cdna_end {
 	return $self->{'cdna_end'};
 }
 
+sub aa_start {
+	my $self = shift;
+	return $self->{'aa_start'};
+}
+
+sub aa_end {
+	my $self = shift;
+	return $self->{'aa_end'};
+}
+
 sub result {
 	my $self = shift;
 	if ($self->{'result'}) { return $self->{'result'} }
@@ -281,11 +291,18 @@ sub parse_result {
 	my $fh = Seqload::Fasta->open($self->{'resultfile'});
 	# watch for the order of sequences, they must correspond to the order in
 	# the --ryo option in the exonerate call
+	# get the cdna sequence
 	($header, $self->{'cdna_sequence'}) = $fh->next_seq();
+	# get the cdna coordinates 
 	my @fields = split ' ', $header;
 	$self->{'cdna_start'} = $fields[1];
 	$self->{'cdna_end'}   = $fields[2];
-	(undef, $self->{'aa_sequence'})   = $fh->next_seq();
+	# get the aa sequence
+	($header, $self->{'aa_sequence'})   = $fh->next_seq();
+	# get the aa coordinates
+	@fields = split ' ', $header;
+	$self->{'aa_start'} = $fields[1];
+	$self->{'aa_end'}   = $fields[2];
 	undef $fh;
 }
 
