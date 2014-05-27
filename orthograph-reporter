@@ -361,12 +361,13 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			# check whether the overlap to the hmm alignment is sufficient
 			my $orf_overlap = orf_overlaps_hmm($hit);
 
+			# the overlap is sufficient, so this is ok
 			if ($orf_overlap >= $orf_overlap_minimum) {
 				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) by %.2f %%\n",
 					$hit->{'orf_aa_start'},
 					$hit->{'orf_aa_end'},
-					$hit->{'hmm_start'},
-					$hit->{'hmm_end'},
+					$hit->{'ali_start'},
+					$hit->{'ali_end'},
 					$orf_overlap * 100,
 						if $verbose;
 
@@ -415,11 +416,11 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				}
 			}
 			else {
-				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) only by %.2f %%, skipping this transcript\n", 
+				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) by %.2f %%, skipping this transcript\n", 
 					$hit->{'orf_aa_start'},
 					$hit->{'orf_aa_end'},
-					$hit->{'hmm_start'},
-					$hit->{'hmm_end'},
+					$hit->{'ali_start'},
+					$hit->{'ali_end'},
 					$orf_overlap * 100,
 						if $verbose;
 				next HIT;
@@ -799,13 +800,20 @@ sub get_orf {
 # determines whether the ORF overlaps with the HMM alignment by a certain percentage. 
 sub orf_overlaps_hmm {
 	my $cand = shift;
-	my $reference_length = $cand->{'ali_end'} - $cand->{'ali_start'};
-	my $orf_overlap = $cand->{'ali_end'} - $cand->{'orf_aa_start'};
+	my $orf_length = $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'};
+	my $orf_overlap = $cand->{'orf_aa_end'} - $cand->{'ali_start'};
 	# if the orf is somewhere else, there is no overlap
 	if ($orf_overlap < 1) { return 0 }
+	elsif ($cand->{'orf_aa_end'} <= $cand->{'ali_start'}) { return 0 }
+	elsif ($cand->{'ali_end'}    <= $cand->{'orf_aa_start'}) { return 0 }
 	# calculate percentage
-	else {
-		return $orf_overlap / $reference_length;
+	# case 1: the orf starts before the hmm alignment region
+	elsif ($cand->{'orf_aa_start'} < $cand->{'ali_start'}) {
+		return $orf_overlap / $orf_length;
+	}
+	# case 2: the orf ends after the hmm alignment region
+	elsif ($cand->{'orf_aa_end'} < $cand->{'ali_end'}) {
+		return $orf_overlap / $orf_length;
 	}
 }
 

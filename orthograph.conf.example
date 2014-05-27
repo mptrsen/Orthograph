@@ -178,7 +178,7 @@ exonerate-program    = exonerate
 # region by this percentage. Note that the value must be specified as a
 # fraction of 1.
 # 0.5 (50%) is the default; a higher value makes this more conservative.
-#minimum-orf-overlap = 0.5
+#orf-overlap-minimum = 0.5
 
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
