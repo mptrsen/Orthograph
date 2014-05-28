@@ -82,6 +82,7 @@ my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
 my $exonerate_program          = $config->{'exonerate-program'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
+my $orthoid_list_file          = $config->{'cog-list-file'};
 my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
@@ -97,6 +98,12 @@ my $logfile = File::Spec->catfile($logdir, 'report-' . $timestring . '.log');
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open report file '$logfile'\: $!\n";
 my $tablefile = File::Spec->catfile($logdir, 'table.txt');
+
+# read the list of orthoids from file
+my $list_of_wanted_orthoids;
+if ($orthoid_list_file) {
+	$list_of_wanted_orthoids = Orthograph::Functions::file2arrayref($orthoid_list_file);
+}
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
@@ -200,6 +207,10 @@ foreach my $score (@$scores) {
 	RESULT:
 	foreach my $result (@$hmmresults) {
 		my $orthoid = $result->{'orthoid'};
+		# skip this result if it concerns a ortholog group that we didn't want
+		if ($list_of_wanted_orthoids) {
+			next unless grep { /$orthoid/ } @$list_of_wanted_orthoids;
+		}
 
 		print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
 

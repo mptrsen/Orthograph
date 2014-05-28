@@ -20,6 +20,22 @@ package Orthograph::Functions;
 
 =cut
 
-use IO::File;
+use strict;
+use warnings;
+use autodie;
+
+=head2 file2arrayref
+
+Reads a file, line by line. Removes linebreaks and returns an arrayref.
+
+=cut
+
+sub file2arrayref {
+	my $f = shift;
+	open my $fh, '<', $f;
+	my $l = [ <$fh> ];
+	chomp @$l;
+	return $l;
+}
 
 1;

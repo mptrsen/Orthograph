@@ -60,6 +60,7 @@ GetOptions( $config,
   'blastp-output-dir=s',
   'clear-database!',
   'clear-files!',
+	'cog-list-file=s',
 	'concatenation-header-separator=s',
   'configfile|c=s',
   'database-backend=s',
@@ -156,6 +157,7 @@ $config->{'blast-score-threshold'}      //= 10;
 $config->{'blastoutdir'}                //= basename($config->{'blast-program'});
 $config->{'clear-files'}                //= 0;
 $config->{'clear-database'}             //= 1;
+$config->{'cog-list-file'}              //= '';
 $config->{'concatenation-header-separator'} //= 'PP';
 $config->{'configfile'}                 //= $configfile;
 $config->{'continue'}                   //= 0;
