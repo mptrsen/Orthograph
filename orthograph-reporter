@@ -73,7 +73,7 @@ my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
-my $concat_sep                 = 'PP';
+my $concat_sep                 = $config->{'concatenation-header-separator'};
 my $sep                        = $config->{'header-separator'};
 my $verbose                    = $config->{'verbose'};
 
@@ -120,8 +120,8 @@ my $hmmresults           = undef;
 my $insert_n             = 1;
 my $n_complete_orthoids  = 0;
 my $table                = [ ];
-my $strict               = 0;
 my @reftaxa              = ( );
+my $strict               = 0;
 my $species_id           = 0;
 my $set_id               = 0;
 my $match                = 0;
@@ -290,11 +290,11 @@ foreach my $score (@$scores) {
 # END SCORE
 }
 
-print "\n";
-print "####################################\n";
-print "Finished fetching from the database.\n";
-print "Starting output.\n";
-print "####################################\n";
+print $stdout "\n";
+print $stdout "####################################\n";
+print $stdout "Finished fetching from the database.\n";
+print $stdout "Starting output.\n";
+print $stdout "####################################\n";
 
 
 # a tablefile
@@ -313,16 +313,17 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# get the transcripts and sort by hmm alignment length
 	my $list_of_hits = $transcripts_mapped_to->{$orthoid};
 	$list_of_hits = [ sort { $a->{'ali_end'} - $a->{'ali_start'} <=> $b->{'ali_end'} - $b->{'ali_start'} } @$list_of_hits ];
-	my ($hdr, $seq, $cdnaseq, $prev_end, $reftaxon, $reftaxon_score);
-	$hitcount     = 0;
-	my $firsttime = 1;
-	my $i = 0;
+	my ($hdr, $seq, $cdnahdr, $cdnaseq, $reftaxon, $reftaxon_score);
+	$hitcount            = 0;
+	my $firsttime        = 1;
+	my $i                = 0;
+	my $output_sequences = [ ];
 
 	++$counter;
-	printf "Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
+	printf $stdout "Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
 	# each reciprocal hit
 	HIT:
-	while (my $hit = $list_of_hits->[$i]) {
+	while (my $hit = shift @$list_of_hits) {
 		++$hitcount;
 		++$i;
 
@@ -365,20 +366,14 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					$orf_overlap * 100,
 						if $verbose;
 
-				# before concatenating, fill gaps with 'X' if desired
-				if ($fill_with_x) {
-					if (defined $prev_end) {
-						my $num_x = $hit->{'hmm_start'} - $prev_end;
-						my $xes   = 'X' x $num_x;
-						# 'N' sequences to fill the cdna sequence are three times longer
-						my $ns    = 'N' x ($num_x * 3);
-						$seq     .=  $xes;
-						$cdnaseq .= $ns;
-						print $stdout "Added $num_x 'X' to sequence\n" if $debug;
-						printf $tfh "\t[%d ambigs]", $num_x;
-					}
-					$prev_end = $hit->{'hmm_end'};
+				# check whether this ORF overlaps with any previous hits
+				if (overlaps_previous_hit($list_of_hits, $hit)) {
+					print $stdout "Skipping this transcript\n" if $verbose;
+					next HIT;
 				}
+
+				# ok, this can be added to the output sequences
+				push @$output_sequences, $hit;
 
 				# write the ortholog gene id to the table, but only once
 				if ($firsttime) {
@@ -392,33 +387,24 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					length $hit->{'orf_aa_sequence'}, # ORF sequence length
 				;
 
-				# concatenate sequences
-				$seq     .= $hit->{'orf_aa_sequence'};
-				$cdnaseq .= $hit->{'orf_cdna_sequence'};
-				printf $stdout "Appended sequence (%d/%d sites) to existing sequence (%d/%d sites)\n", length $seq, length $cdnaseq, length($seq) - length($hit->{'orf_aa_sequence'}), length($cdnaseq) - length($hit->{'orf_cdna_sequence'}) if $debug;
-
 				# assign (new) reference taxon if blast score higher
-				unless ($reftaxon) { 
+				if (not defined $reftaxon) { 
 					$reftaxon       = $hit->{'reftaxon'};
 					$reftaxon_score = $hit->{'blast_score'};
 				}
-				else {
-					if ($hit->{'blast_score'} > $reftaxon_score) {
-						$reftaxon       = $hit->{'reftaxon'};
-						$reftaxon_score = $hit->{'blast_score'};
-					}
+				elsif ($hit->{'blast_score'} > $reftaxon_score) {
+					$reftaxon       = $hit->{'reftaxon'};
+					$reftaxon_score = $hit->{'blast_score'};
 				}
 			}
 			else {
-				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) by %.2f %%, skipping this transcript\n", 
+				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) only by %.2f %%, skipping this transcript\n", 
 					$hit->{'orf_aa_start'},
 					$hit->{'orf_aa_end'},
 					$hit->{'ali_start'},
 					$hit->{'ali_end'},
 					$orf_overlap * 100,
 						if $verbose;
-				# remove this from the list of hits
-				splice(@$list_of_hits, $i, 1);
 				next HIT;
 			}
 		}
@@ -433,19 +419,21 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				;
 				print $stdout "Skipping this transcript\n";
 			}
-			# remove this from the list of hits
-			splice(@$list_of_hits, $i, 1);
 			next HIT;
 		}
+
 	}
 
 	print $tfh "\n";
 
 	# skip the rest since no sequence could be gathered
-	unless (defined $seq) {
-		print $stdout "No ORFs found for this orthoid, skipping...\n" unless $quiet;
+	unless (@$output_sequences) {
+		print $stdout "No ORFs found for $orthoid, skipping...\n" unless $quiet;
 		next ORTHOID;
 	}
+
+	# concatenate headers and sequences in order
+	($hdr, $seq, $cdnahdr, $cdnaseq) = concatenate_sequences($output_sequences);
 
 	# get the core ortholog sequences for this group
 	my $core_sequences = get_ortholog_group($set_id, $orthoid);
@@ -459,14 +447,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[1],   # header
 		$$_[2]    # sequence
 			foreach (@$core_sequences);
-	# join the headers
-	$hdr = $list_of_hits->[0]->{'header'} . ':[len ' . length($list_of_hits->[0]->{'orf_aa_sequence'}) . ']';
-	$i = 1;
-	while (defined $list_of_hits->[$i]->{'orf_aa_sequence'}) {
-		$hdr .= $concat_sep . $list_of_hits->[$i]->{'header'} . ':[len ' . length($list_of_hits->[$i]->{'orf_aa_sequence'}) . ']';
-		$i++;
-	}
-	#$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$list_of_hits );
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
@@ -486,14 +466,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[1],   # header
 		$$_[2]    # sequence
 			foreach (@$core_sequences_nt);
-	# join headers
-	$hdr = $list_of_hits->[0]->{'header'} . ':[len ' . length($list_of_hits->[0]->{'orf_cdna_sequence'}) . ']';
-	$i = 1;
-	while (defined $list_of_hits->[$i]->{'orf_aa_sequence'}) {
-		$hdr .= $concat_sep . $list_of_hits->[$i]->{'header'} . ':[len ' . length($list_of_hits->[$i]->{'orf_cdna_sequence'}) . ']';
-		$i++;
-	}
-	#$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$list_of_hits );
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
@@ -503,6 +475,10 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 	# one more
 	$n_complete_orthoids++;
+	printf $stdout "Mapped %d transcripts to %s\n",
+		scalar @$output_sequences,
+		$orthoid
+			unless $quiet;
 }
 undef $tfh;
 
@@ -869,6 +845,79 @@ sub orf_overlaps_hmm {
 	if ($cand->{'orf_aa_start'} > $cand->{'ali_start'} and $cand->{'orf_aa_end'} < $cand->{'ali_end'}) {
 			return 1;
 	}
+}
+
+sub overlaps_previous_hit {
+	my $other_hits = shift;
+	my $cand       = shift;
+	foreach my $hit ( grep { defined $_->{'orf_aa_sequence'} } @$other_hits ) {
+		# starts before other hit is over or ends after start of other hit
+		if ($cand->{'orf_aa_start'} < $hit->{'orf_aa_end'} or $cand->{'orf_aa_end'} > $hit->{'orf_aa_start'}) {
+			printf $stdout "ORF (%d-%d) overlaps other ORF (%d-%d)\n",
+				$cand->{'orf_aa_start'}, 
+				$cand->{'orf_aa_end'},
+				$hit->{'orf_aa_start'},
+				$hit->{'orf_aa_end'}
+					if $verbose;
+			return 1;
+		}
+	}
+	# otherwise, it's fine, no overlap
+	return 0;
+}
+
+sub concatenate_sequences {
+	my $hits = shift;
+
+	# sort by order on the output sequence
+	$hits = [ sort { $a->{'orf_aa_start'} <=> $b->{'orf_aa_start'} } @$hits ];
+	my $prev_end;
+	my $seq;
+	my $cdnaseq;
+	my $hdr;
+	my $cdnahdr;
+	foreach my $hit (@$hits) {
+
+		# before concatenating, fill gaps with 'X' if desired
+		if ($fill_with_x) {
+			if (defined $prev_end) {
+				my $num_x = $hit->{'orf_aa_start'} - $prev_end;
+				my $xes   = 'X' x $num_x;
+				# 'N' sequences to fill the cdna sequence are three times longer
+				my $ns    = 'N' x ($num_x * 3);
+				$seq     .=  $xes;
+				$cdnaseq .= $ns;
+				print $stdout "Added $num_x 'X' to sequence\n" if $debug;
+				printf $tfh "\t[%d ambigs]", $num_x;
+			}
+			$prev_end = $hit->{'hmm_end'};
+		}
+
+		# concatenate sequences
+		$seq     .= $hit->{'orf_aa_sequence'};
+		$cdnaseq .= $hit->{'orf_cdna_sequence'};
+		printf $stdout "Appended sequence (%d/%d sites) to existing sequence (%d/%d sites)\n",
+			length $seq,
+			length $cdnaseq,
+			length($seq) - length($hit->{'orf_aa_sequence'}),
+			length($cdnaseq) - length($hit->{'orf_cdna_sequence'})
+				if $debug;
+	}
+	# join aa headers
+	$hdr = $hits->[0]->{'header'} . ':[len ' . length($hits->[0]->{'orf_aa_sequence'}) . ']';
+	my $i = 1;
+	while (defined $hits->[$i]->{'orf_aa_sequence'}) {
+		$hdr .= $concat_sep . $hits->[$i]->{'header'} . ':[len ' . length($hits->[$i]->{'orf_aa_sequence'}) . ']';
+		$i++;
+	}
+	# join cdna headers
+	$cdnahdr = $hits->[0]->{'header'} . ':[len ' . length($hits->[0]->{'orf_cdna_sequence'}) . ']';
+	$i = 1;
+	while (defined $hits->[$i]->{'orf_aa_sequence'}) {
+		$hdr .= $concat_sep . $hits->[$i]->{'header'} . ':[len ' . length($hits->[$i]->{'orf_cdna_sequence'}) . ']';
+		$i++;
+	}
+	return ($hdr, $seq, $cdnahdr, $cdnaseq);
 }
 
 sub get_ortholog_group {
