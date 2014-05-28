@@ -315,30 +315,20 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	my ($hdr, $seq, $cdnaseq, $prev_end, $reftaxon, $reftaxon_score);
 	$hitcount     = 0;
 	my $firsttime = 1;
+	my $i = 0;
 
 	++$counter;
 	printf "Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
 	# each reciprocal hit
 	HIT:
-	while (my $hit = shift @$list_of_hits) {
+	while (my $hit = $list_of_hits->[$i]) {
 		++$hitcount;
+		++$i;
 
 		# get the sequences from the database
 		my $proteome_sequence;
 		($proteome_sequence, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
 		my $est_sequence = get_nucleotide_transcript_for($hit->{'hmmhit'});
-
-		#--------------------------------------------------
-		# # (don't) trim the transcript sequence to the domain coordinates
-		# my $start  = ($hit->{'env_start'} - 1) * 3;
-		# my $length = ($hit->{'env_end'} - $hit->{'env_start'} - 1) * 3;
-		# $est_sequence = substr($est_sequence, $start, $length);
-		#-------------------------------------------------- 
-
-		# if the sequence is on the reverse strand, we need to reverse it 
-		#if ($hit->{'blast_start'} > $hit->{'blast_end'}) {
-			#$est_sequence = reverse $est_sequence;
-		#}
 
 		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
 		( $hit->{'orf_aa_sequence'},
@@ -402,7 +392,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				# concatenate sequences
 				$seq     .= $hit->{'orf_aa_sequence'};
 				$cdnaseq .= $hit->{'orf_cdna_sequence'};
-				print $stdout "Concatenated sequences\n" if $debug;
+				printf $stdout "Appended sequence (%d AA) to existing sequence (%d AA)\n", length $seq, length($seq) - length($hit->{'orf_aa_sequence'}) if $debug;
 
 				# assign (new) reference taxon if blast score higher
 				unless ($reftaxon) { 
@@ -424,6 +414,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					$hit->{'ali_end'},
 					$orf_overlap * 100,
 						if $verbose;
+				# remove this from the list of hits
+				splice(@$list_of_hits, $i, 1);
 				next HIT;
 			}
 		}
@@ -438,6 +430,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				;
 				print $stdout "Skipping this transcript\n";
 			}
+			# remove this from the list of hits
+			splice(@$list_of_hits, $i, 1);
 			next HIT;
 		}
 	}
@@ -453,7 +447,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# get the core ortholog sequences for this group
 	my $core_sequences = get_ortholog_group($set_id, $orthoid);
 	# new fasta file
-	my $fafh = IO::File->new(File::Spec->catfile($aaoutdir, $orthoid . '.fa'), 'w');
+	my $fafn = File::Spec->catfile($aaoutdir, $orthoid . '.fa');
+	my $fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
 	printf $fafh ">%s|%s|%s\n%s\n",
 		$orthoid, # ortholog id
@@ -462,18 +457,25 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[2]    # sequence
 			foreach (@$core_sequences);
 	# join the headers
-	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$list_of_hits );
+	$hdr = $list_of_hits->[0]->{'header'} . ':[len ' . length($list_of_hits->[0]->{'orf_aa_sequence'}) . ']';
+	my $i = 1;
+	while (defined $list_of_hits->[$i]->{'orf_aa_sequence'}) {
+		$hdr .= $concat_sep . $list_of_hits->[$i]->{'header'} . ':[len ' . length($list_of_hits->[$i]->{'orf_aa_sequence'}) . ']';
+		$i++;
+	}
+	#$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$list_of_hits );
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
+	print $stdout "wrote concatenated sequence $hdr to file $fafn\n" if $debug;
 	undef $fafh;
-	print $stdout "wrote concatenated sequence $hdr to file $fafh\n" if $debug;
 
 	# do the same for the nucleotide sequences
 	my $core_sequences_nt = get_ortholog_group_nucleotide($set_id, $orthoid);
 	# new fasta file
-	$fafh = IO::File->new(File::Spec->catfile($ntoutdir, $orthoid . '.fa'), 'w');
+	$fafn = File::Spec->catfile($ntoutdir, $orthoid . '.fa');
+	$fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
 	printf $fafh ">%s|%s|%s\n%s\n",
 		$orthoid, # ortholog id
@@ -482,13 +484,19 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[2]    # sequence
 			foreach (@$core_sequences_nt);
 	# join headers
-	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$list_of_hits );
+	$hdr = $list_of_hits->[0]->{'header'} . ':[len ' . length($list_of_hits->[0]->{'orf_cdna_sequence'}) . ']';
+	$i = 1;
+	while (defined $list_of_hits->[$i]->{'orf_aa_sequence'}) {
+		$hdr .= $concat_sep . $list_of_hits->[$i]->{'header'} . ':[len ' . length($list_of_hits->[$i]->{'orf_cdna_sequence'}) . ']';
+		$i++;
+	}
+	#$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$list_of_hits );
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
+	print $stdout "wrote concatenated sequence $hdr to file $fafn\n" if $debug;
 	undef $fafh;
-	print $stdout "wrote concatenated sequence $hdr to file $fafh\n" if $debug;
 }
 undef $tfh;
 
