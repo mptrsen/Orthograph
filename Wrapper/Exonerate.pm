@@ -224,7 +224,7 @@ sub translate_cdna {
 	my $translate_cmd = qq($translateprog -F 1 $translatefile);
 	if ($debug) {
 		print 'Translating CDNA...', "\n";
-		print $translate_cmd;
+		print $translate_cmd, "\n";
 	}
 	my $translated_cdna_fasta = [ `$translate_cmd` ] or croak "Fatal: Couldn't translate CDNA sequence using command '$translate_cmd'\n";
 	shift @$translated_cdna_fasta;
@@ -355,7 +355,7 @@ sub fastaify {
 	my $fh = File::Temp->new(UNLINK=>1);
 	printf { $fh } ">%s\n%s\n", $header, $sequence;
 	close $fh;
-	if ($debug) {
+	if ($debug > 1) {
 		printf "Wrote this sequence to Fasta file '%s':\n>%s\n%s\n", $fh, $header, $sequence;
 	}
 	return $fh;

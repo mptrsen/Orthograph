@@ -118,6 +118,7 @@ my $data_by_evalue       = { };
 my $hitcount             = 0;
 my $hmmresults           = undef;
 my $insert_n             = 1;
+my $n_complete_orthoids  = 0;
 my $table                = [ ];
 my $strict               = 0;
 my @reftaxa              = ( );
@@ -340,14 +341,16 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 		# exonerate got an alignment
 		if ($hit->{'orf_cdna_sequence'}) {
-			printf $stdout "Got this ORF for '%s'[%d-%d] (orf coords %d-%d):\n%s\n",
+			printf $stdout "Got an ORF for '%s'[%d-%d] (ORF coords %d-%d)\n",
 				$hit->{'hmmhit'},
 				$hit->{'env_start'},
 				$hit->{'env_end'},
 				$hit->{'orf_cdna_start'},
-				$hit->{'orf_cdna_end'},
-				$hit->{'orf_cdna_sequence'}
+				$hit->{'orf_cdna_end'}
 					if $debug;
+			if ($debug > 1) {
+				print $hit->{'orf_cdna_sequence'}, "\n";
+			}
 
 			# check whether the overlap to the hmm alignment is sufficient
 			my $orf_overlap = orf_overlaps_hmm($hit);
@@ -392,7 +395,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				# concatenate sequences
 				$seq     .= $hit->{'orf_aa_sequence'};
 				$cdnaseq .= $hit->{'orf_cdna_sequence'};
-				printf $stdout "Appended sequence (%d AA) to existing sequence (%d AA)\n", length $seq, length($seq) - length($hit->{'orf_aa_sequence'}) if $debug;
+				printf $stdout "Appended sequence (%d/%d sites) to existing sequence (%d/%d sites)\n", length $seq, length $cdnaseq, length($seq) - length($hit->{'orf_aa_sequence'}), length($cdnaseq) - length($hit->{'orf_cdna_sequence'}) if $debug;
 
 				# assign (new) reference taxon if blast score higher
 				unless ($reftaxon) { 
@@ -458,7 +461,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			foreach (@$core_sequences);
 	# join the headers
 	$hdr = $list_of_hits->[0]->{'header'} . ':[len ' . length($list_of_hits->[0]->{'orf_aa_sequence'}) . ']';
-	my $i = 1;
+	$i = 1;
 	while (defined $list_of_hits->[$i]->{'orf_aa_sequence'}) {
 		$hdr .= $concat_sep . $list_of_hits->[$i]->{'header'} . ':[len ' . length($list_of_hits->[$i]->{'orf_aa_sequence'}) . ']';
 		$i++;
@@ -497,12 +500,16 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
 	print $stdout "wrote concatenated sequence $hdr to file $fafn\n" if $debug;
 	undef $fafh;
+
+	# one more
+	$n_complete_orthoids++;
 }
 undef $tfh;
 
 # yay
 $endtime = scalar time;
 printf $stdout "## Orthograph report for %s completed in %.2f total seconds\n", $speciesname, $endtime - $starttime;
+printf $stdout "## Found %d putative orthologs\n", $n_complete_orthoids unless $quiet;
 exit;
 
 
@@ -816,7 +823,8 @@ sub orf_overlaps_hmm {
 	elsif ($cand->{'ali_end'}    < $cand->{'orf_aa_start'}) { return 0 }
 	# orf coords are identical to hmm coords (100% overlap)
 	elsif ($cand->{'orf_aa_start'} == $cand->{'ali_start'} and $cand->{'orf_aa_end'} == $cand->{'ali_end'}) { return 1 }
-	# calculate percentage
+
+	# calculate percentage overlap
 	# orf and hmm start are the same
 	if ($cand->{'orf_aa_start'} == $cand->{'ali_start'}) {
 		# orf ends after hmm, start is the same (orf is longer than hmm)
@@ -834,7 +842,6 @@ sub orf_overlaps_hmm {
 	if ($cand->{'orf_aa_end'} == $cand->{'ali_end'}) {
 		# orf starts after hmm, end is the same (orf is shorter than hmm, fits completely)
 		if ($cand->{'orf_aa_start'} > $cand->{'ali_start'}) {
-			$orf_overlap = $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'};
 			return 1;
 		}
 		# orf starts before hmm, end is the same (orf is longer than hmm)
@@ -858,8 +865,8 @@ sub orf_overlaps_hmm {
 			$orf_overlap = $cand->{'orf_aa_end'} - $cand->{'ali_start'};
 			return $orf_overlap / $orf_length;
 	}
-	# orf starts before hmm, ends after hmm (shorter than hmm, fits completely)
-	if ($cand->{'orf_aa_start'} < $cand->{'ali_start'} and $cand->{'orf_aa_end'} > $cand->{'ali_end'}) {
+	# orf starts after hmm, ends before hmm (shorter than hmm, fits completely)
+	if ($cand->{'orf_aa_start'} > $cand->{'ali_start'} and $cand->{'orf_aa_end'} < $cand->{'ali_end'}) {
 			return 1;
 	}
 }

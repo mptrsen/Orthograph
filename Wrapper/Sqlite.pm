@@ -121,6 +121,7 @@ my $stderr = *STDERR;
 my $attached_db_file        = File::Spec->catfile($config->{'output-directory'}, $species_name . '.sqlite');
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
+print "Using attached database '$attached_db_file' as '$db_attached'\n";
 
 
 =head1 FUNCTIONS
@@ -178,7 +179,7 @@ sub get_dbh {#{{{
 
 	if ($dbh) {
 		$dbh->sqlite_busy_timeout($db_timeout * 1000);
-		if ($debug) { print $query_attach_file, "\n" }
+		if ($debug > 1) { print $query_attach_file, "\n" }
 		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
 	}
@@ -202,7 +203,7 @@ sub db_get {#{{{
   # prepare anonymous array
 	my $results = [ ];
 
-	print Dumper( $query, @args) if $debug;
+	print Dumper( $query, @args) if $debug > 1;
 
   # connect and fetch stuff
 	my $dbh = get_dbh()
@@ -411,8 +412,8 @@ sub load_csv_into_temptable {
 		".mode list",
 	);
 	foreach (@loadqueries) {
-		if ($debug) {
-			print $_, "\n" if $debug;
+		if ($debug > 1) {
+			print $_, "\n";
 			print "execute? "; 
 			<STDIN>;
 		}
@@ -999,7 +1000,7 @@ sub load_ests_from_file {
 		FROM $db_table_temp
 	";
 	my $dbh = get_dbh();
-	print $q_transfer, "\n" if $debug;
+	print $q_transfer, "\n" if $debug > 1;
 	my $sth = $dbh->prepare($q_transfer);
 	my $num_ests = $sth->execute();
 	$sth->finish();
@@ -1330,7 +1331,7 @@ sub get_results_for_logevalue {
 	else      { $query .= "\n			AND $db_table_hmmsearch.$db_col_log_evalue = ?" }
 
 	# good for debugging
-	print $query . "\n" if $debug;
+	print $query . "\n" if $debug > 1;
 
 	my $dbh = get_dbh()
 		or return undef;
@@ -1404,7 +1405,7 @@ sub get_hmmresults_for_single_score {
 	";
 
 	# good for debugging
-	print $query . "\n" if $debug;
+	print $query . "\n" if $debug > 1;
 
 	my $dbh = get_dbh()
 		or return undef;
@@ -1468,7 +1469,7 @@ sub get_blastresults_for_hmmsearch_id {
 	";
 
 	# good for debugging
-	if ($debug) {
+	if ($debug > 1) {
 		print $query . "\n";
 		print "Executing this query with $hmmsearch_id\n";
 	}
@@ -1550,7 +1551,7 @@ sub get_results_for_single_score {
 	";
 
 	# good for debugging
-	print $query . "\n" if $debug;
+	print $query . "\n" if $debug > 1;
 
 	my $dbh = get_dbh()
 		or return undef;
@@ -1635,7 +1636,7 @@ sub get_results_for_score {
 	else      { $query .= "\n			AND $db_table_hmmsearch.$db_col_score = ?" }
 
 	# good for debugging
-	print $query . "\n" if $debug;
+	print $query . "\n" if $debug > 1;
 
 	my $dbh = get_dbh()
 		or return undef;
@@ -1899,7 +1900,7 @@ sub get_real_header {
 		FROM $db_table_ests
 		WHERE $db_table_ests.$db_col_digest = ?
 		LIMIT 1";
-	print $q, "\n" if $debug;
+	print $q, "\n" if $debug > 1;
 	my $d = db_get($q, $digest);
 	return $d->[0]->[0];
 }
@@ -2075,7 +2076,7 @@ sub create_temptable_for_ogs_data {
 	`header`   TEXT(255) NOT NULL,
 	`sequence` TEXT)";
 	my $dbh = get_dbh();
-	print $stdout $q, "\n" if $debug;
+	print $stdout $q, "\n" if $debug > 1;
 	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
 	$dbh->do($q);
 	$dbh->disconnect();
@@ -2276,7 +2277,7 @@ sub delete_sequences_with_headers {
 	my $dbh = get_dbh();
 	my $sth = $dbh->prepare($q);
 	while (shift @$headers) {
-		print $sth->{Statement}, "\n" if $debug;
+		print $sth->{Statement}, "\n" if $debug > 1;
 		$sth->execute($_);
 		$count += $sth->rows();
 	}
