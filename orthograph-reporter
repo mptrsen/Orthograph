@@ -309,17 +309,18 @@ my $counter = 0;
 # walk the orthologs, concatenate in order if multiple
 ORTHOID:
 foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
-	my $transcripts = $transcripts_mapped_to->{$orthoid};
+	# get the transcripts and sort by hmm alignment length
+	my $list_of_hits = $transcripts_mapped_to->{$orthoid};
+	$list_of_hits = [ sort { $a->{'ali_end'} - $a->{'ali_start'} <=> $b->{'ali_end'} - $b->{'ali_start'} } @$list_of_hits ];
 	my ($hdr, $seq, $cdnaseq, $prev_end, $reftaxon, $reftaxon_score);
-	$hitcount = 0;
+	$hitcount     = 0;
 	my $firsttime = 1;
-	$transcripts = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$transcripts ];
 
 	++$counter;
 	printf "Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
 	# each reciprocal hit
 	HIT:
-	foreach my $hit (@$transcripts) {
+	while (my $hit = shift @$list_of_hits) {
 		++$hitcount;
 
 		# get the sequences from the database
@@ -461,7 +462,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[2]    # sequence
 			foreach (@$core_sequences);
 	# join the headers
-	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$transcripts );
+	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_aa_sequence'}) . ']' } grep { defined $_->{'orf_aa_sequence'} } @$list_of_hits );
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
@@ -481,7 +482,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[2]    # sequence
 			foreach (@$core_sequences_nt);
 	# join headers
-	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$transcripts );
+	$hdr = join $concat_sep, ( map { $_->{'header'} . ':[len ' . length($_->{'orf_cdna_sequence'}) . ']' } grep { defined $_->{'orf_cdna_sequence'} } @$list_of_hits );
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
@@ -799,21 +800,59 @@ sub get_orf {
 
 # determines whether the ORF overlaps with the HMM alignment by a certain percentage. 
 sub orf_overlaps_hmm {
-	my $cand = shift;
-	my $orf_length = $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'};
-	my $orf_overlap = $cand->{'orf_aa_end'} - $cand->{'ali_start'};
+	my $cand        = shift;
+	my $orf_overlap = 0;
+	my $orf_length  = $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'};
 	# if the orf is somewhere else, there is no overlap
-	if ($orf_overlap < 1) { return 0 }
-	elsif ($cand->{'orf_aa_end'} <= $cand->{'ali_start'}) { return 0 }
-	elsif ($cand->{'ali_end'}    <= $cand->{'orf_aa_start'}) { return 0 }
+	if    ($cand->{'orf_aa_end'} < $cand->{'ali_start'})    { return 0 }
+	elsif ($cand->{'ali_end'}    < $cand->{'orf_aa_start'}) { return 0 }
+	# orf coords are identical to hmm coords (100% overlap)
+	elsif ($cand->{'orf_aa_start'} == $cand->{'ali_start'} and $cand->{'orf_aa_end'} == $cand->{'ali_end'}) { return 1 }
 	# calculate percentage
-	# case 1: the orf starts before the hmm alignment region
-	elsif ($cand->{'orf_aa_start'} < $cand->{'ali_start'}) {
-		return $orf_overlap / $orf_length;
+	# orf and hmm start are the same
+	if ($cand->{'orf_aa_start'} == $cand->{'ali_start'}) {
+		# orf ends after hmm, start is the same (orf is longer than hmm)
+		if ($cand->{'orf_aa_end'} > $cand->{'ali_end'}) { 
+			$orf_overlap = $cand->{'ali_end'} - $cand->{'orf_aa_start'};
+			return $orf_overlap / $orf_length;
+		}
+		# orf ends before hmm, start is the same (orf is shorter than hmm, fits completely)
+		else {
+			$orf_overlap = $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'};
+			return 1;
+		}
 	}
-	# case 2: the orf ends after the hmm alignment region
-	elsif ($cand->{'orf_aa_end'} < $cand->{'ali_end'}) {
-		return $orf_overlap / $orf_length;
+	# orf and hmm end are the same
+	if ($cand->{'orf_aa_end'} == $cand->{'ali_end'}) {
+		# orf starts after hmm, end is the same (orf is shorter than hmm, fits completely)
+		if ($cand->{'orf_aa_start'} > $cand->{'ali_start'}) {
+			$orf_overlap = $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'};
+			return 1;
+		}
+		# orf starts before hmm, end is the same (orf is longer than hmm)
+		else {
+			$orf_overlap = $cand->{'orf_aa_end'} - $cand->{'ali_start'};
+			return $orf_overlap / $orf_length;
+		}
+	}
+	# orf starts before hmm, ends before hmm (partial overlap)
+	if ($cand->{'orf_aa_start'} < $cand->{'ali_start'} and $cand->{'orf_aa_end'} < $cand->{'ali_end'}) {
+			$orf_overlap = $cand->{'orf_aa_end'} - $cand->{'ali_start'};
+			return $orf_overlap / $orf_length;
+	}
+	# orf starts after hmm, ends after hmm (partial overlap)
+	if ($cand->{'orf_aa_start'} > $cand->{'ali_start'} and $cand->{'orf_aa_end'} > $cand->{'ali_end'}) {
+			$orf_overlap = $cand->{'ali_end'} - $cand->{'orf_aa_start'};
+			return $orf_overlap / $orf_length;
+	}
+	# orf starts before hmm, ends after hmm (orf is longer than hmm)
+	if ($cand->{'orf_aa_start'} < $cand->{'ali_start'} and $cand->{'orf_aa_end'} > $cand->{'ali_end'}) {
+			$orf_overlap = $cand->{'orf_aa_end'} - $cand->{'ali_start'};
+			return $orf_overlap / $orf_length;
+	}
+	# orf starts before hmm, ends after hmm (shorter than hmm, fits completely)
+	if ($cand->{'orf_aa_start'} < $cand->{'ali_start'} and $cand->{'orf_aa_end'} > $cand->{'ali_end'}) {
+			return 1;
 	}
 }
 

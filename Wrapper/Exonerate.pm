@@ -235,7 +235,8 @@ sub translate_cdna {
 
 sub cdna_start {
 	my $self = shift;
-	return $self->{'cdna_start'};
+	# add 1 since exonerate uses 0-based coordinates
+	return $self->{'cdna_start'} + 1;
 }
 
 sub cdna_end {
@@ -245,7 +246,8 @@ sub cdna_end {
 
 sub aa_start {
 	my $self = shift;
-	return $self->{'aa_start'};
+	# add 1 since exonerate uses 0-based coordinates
+	return $self->{'aa_start'} + 1;
 }
 
 sub aa_end {
