@@ -88,8 +88,12 @@ my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
 my $speciesname                = $config->{'species-name'};
 
+# make a nice time string
+my @lt                   = localtime time;
+my $timestring           = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
+
 # open log and table output files 
-my $logfile = File::Spec->catfile($logdir, 'report.log');
+my $logfile = File::Spec->catfile($logdir, 'report-' . $timestring . '.log');
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open report file '$logfile'\: $!\n";
 my $tablefile = File::Spec->catfile($logdir, 'table.txt');
@@ -136,6 +140,7 @@ my $totaltime            = 0;
 
 # set exonerate path from config file
 Wrapper::Exonerate->searchprog($exonerate_program);
+Wrapper::Exonerate->outdir($logdir);
 
 # get the species id from the database
 $species_id = get_taxid_for_species($speciesname);
@@ -775,7 +780,6 @@ sub get_orf {
 	my $proteome_sequence = shift;
 	my $est_sequence      = shift;
 	unless ($proteome_sequence and $est_sequence) { return undef }
-	Wrapper::Exonerate->outdir($logdir);
 	my $alignment = Wrapper::Exonerate->new($proteome_sequence, $est_sequence);
 	$alignment->search();
 	unless ($alignment->cdna_sequence()) { return undef }

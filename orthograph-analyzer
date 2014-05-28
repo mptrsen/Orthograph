@@ -630,7 +630,7 @@ sub intro {#{{{
 			$message .= "Log dir $logdir does not exist, creating...\n" unless $quiet;
 			&makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
 		}
-		$logfile = File::Spec->catfile($logdir,  'orthograph-' . $timestamp_start . '.log');
+		$logfile = File::Spec->catfile($logdir,  'orthograph-' . $timestring . '.log');
 		my $logfh = IO::File->new($logfile, 'w') or die "Fatal: Could not create log file '$logfile': $!\n";
 		$stdout = IO::Tee->new(
 			\*STDOUT,
