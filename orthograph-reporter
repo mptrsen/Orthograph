@@ -80,6 +80,7 @@ my $verbose                    = $config->{'verbose'};
 # settings for this specific analysis
 my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
 my $exonerate_program          = $config->{'exonerate-program'};
+my $fill_with_x                = $config->{'fill-with-x'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $orthoid_list_file          = $config->{'cog-list-file'};
@@ -317,7 +318,6 @@ print $stdout "####################################\n";
 my $tfh = IO::File->new($tablefile, 'w')
 	or print $stderr "Fatal: Could not open table file $tablefile\: $!\n" and exit(1);
 
-my $fill_with_x = 1;
 my $num_n = 0;
 my $num_orthologs = scalar keys %$transcripts_mapped_to;
 my $l_counter = length $num_orthologs;
@@ -462,7 +462,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[0],   # reftaxon name
 		$$_[1],   # header
 		$$_[2]    # sequence
-			foreach (@$core_sequences);
+			foreach (sort @$core_sequences);
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
@@ -481,7 +481,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[0],   # reftaxon name
 		$$_[1],   # header
 		$$_[2]    # sequence
-			foreach (@$core_sequences_nt);
+			foreach (sort @$core_sequences_nt);
 	# prepend orthoid, reference taxon, and taxon name
 	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
 	# print the concatenated sequence
@@ -887,10 +887,10 @@ sub concatenate_sequences {
 	# sort by order on the output sequence
 	$hits = [ sort { $a->{'orf_aa_start'} <=> $b->{'orf_aa_start'} } @$hits ];
 	my $prev_end;
-	my $seq;
-	my $cdnaseq;
-	my $hdr;
-	my $cdnahdr;
+	my $seq = '';
+	my $cdnaseq = '';
+	my $hdr = '';
+	my $cdnahdr = '';
 	foreach my $hit (@$hits) {
 
 		# before concatenating, fill gaps with 'X' if desired
@@ -905,7 +905,7 @@ sub concatenate_sequences {
 				print $stdout "Added $num_x 'X' to sequence\n" if $debug;
 				printf $tfh "\t[%d ambigs]", $num_x;
 			}
-			$prev_end = $hit->{'hmm_end'};
+			$prev_end = $hit->{'orf_aa_end'};
 		}
 
 		# concatenate sequences

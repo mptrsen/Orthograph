@@ -66,6 +66,7 @@ GetOptions( $config,
   'database-backend=s',
   'db-prefix=s',
   'debug|d+',
+	'fill-with-x',
   'input-file|i=s',
 	'header-separator=s',
   'hmmsearch-evalue-threshold=f',
@@ -100,7 +101,7 @@ GetOptions( $config,
 die "Fatal: Error parsing config" unless $config;
 
 #--------------------------------------------------
-# # These variables can be set in the config file
+# # These variables can be set in the config file. The defaults are set here.
 #-------------------------------------------------- 
 
 # MySQL settings
@@ -166,15 +167,16 @@ $config->{'debug'}                      //= 0;
 $config->{'delete-ogs'}                 //= '';
 $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
-$config->{'input-file'}                 //= '';
 $config->{'evalue-bin-size'}            //= 500;
 $config->{'exonerate-program'}          //= 'exonerate';
+$config->{'fill-with-x'}                //= 1;
 $config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
 $config->{'hmmsearch-program'}          //= 'hmmsearch';
 $config->{'hmmsearch-score-threshold'}  //= 10;
 $config->{'hmmsearch-evalue-threshold'} //= 1e-5;
 $config->{'hmmsearchoutdir'}            //= basename($config->{'hmmsearch-program'});
+$config->{'input-file'}                 //= '';
 $config->{'load-ogs-nucleotide'}        //= '';
 $config->{'load-ogs-peptide'}           //= '';
 $config->{'logfile'}                    //= '';
