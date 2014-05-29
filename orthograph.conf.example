@@ -180,6 +180,11 @@ exonerate-program    = exonerate
 # 0.5 (50%) is the default; a higher value makes this more conservative.
 #orf-overlap-minimum = 0.5
 
+# If you are only interested in a few genes from your ortholog set, you can 
+# provide Orthograph with a list of ortholog IDs in a file. The IDs must be
+# in a single line each, and there must be no empty lines in the file. 
+#cog-list-file = /PATH/TO/FILE
+
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
 # but doesn't hurt otherwise. 

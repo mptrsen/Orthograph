@@ -32,7 +32,7 @@ Reads a file, line by line. Removes linebreaks and returns an arrayref.
 
 sub file2arrayref {
 	my $f = shift;
-	open my $fh, '<', $f;
+	open my $fh, '<', $f or die "Fatal: Could not open file '$f': $!\n";
 	my $l = [ <$fh> ];
 	chomp @$l;
 	return $l;
