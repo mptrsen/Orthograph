@@ -210,6 +210,7 @@ ones that will affect the searches.
 
 	$ ./orthograph-analyzer
 
+
 ## 10. Get some coffee, sit back and watch (or do something else).
 
 Orthograph generates the profile hidden Markov models (pHMMs) for your ortholog
@@ -344,4 +345,17 @@ COMMON PROBLEMS
 Really, check your input file. Is it empty? Is it a valid fasta file? If it
 looks ok, try deleting the translated version so Orthograph is forced to
 recreate it. 
+
+OPTIONS
+=======
+
+Orthograph accepts a number of options, both on the command line and in the
+config file. They are listed here.
+
+  -cog-list-file LISTFILE
+
+If you are only interested in a few genes from your ortholog set, you can 
+provide Orthograph with a list of ortholog IDs in a file. The IDs must be
+in a single line each, and there must be no empty lines in the file. 
+
 
