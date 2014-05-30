@@ -80,6 +80,7 @@ my $verbose                    = $config->{'verbose'};
 # settings for this specific analysis
 my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
 my $exonerate_program          = $config->{'exonerate-program'};
+my $translate_program          = $config->{'translate-program'};
 my $fill_with_x                = $config->{'fill-with-x'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
@@ -146,8 +147,9 @@ my $starttime            = scalar time;
 my $endtime              = 0;
 my $totaltime            = 0;
 
-# set exonerate path from config file
+# get exonerate and fastatranslate path from config file
 Wrapper::Exonerate->searchprog($exonerate_program);
+Wrapper::Exonerate->translateprog($translate_program);
 Wrapper::Exonerate->outdir($logdir);
 
 # get the species id from the database

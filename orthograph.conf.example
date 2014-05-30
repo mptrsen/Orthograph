@@ -167,12 +167,6 @@ exonerate-program    = exonerate
 # 
 # # Other options
 #
-# Strict search. Normally it is enough for a match to occur if one of the
-# reference taxa is hit in the reciprocal search. In strict mode ALL reference
-# taxa must be hit to verify an ortholog assignment. This is much more
-# conservative.
-#strict      = 1
-
 # Minimum ORF overlap. Each transcript is given to Exonerate to correct for
 # frameshift errors etc. The resulting ORF must overlap the HMM alignment
 # region by this percentage. Note that the value must be specified as a
@@ -184,6 +178,12 @@ exonerate-program    = exonerate
 # provide Orthograph with a list of ortholog IDs in a file. The IDs must be
 # in a single line each, and there must be no empty lines in the file. 
 #cog-list-file = /PATH/TO/FILE
+
+# Strict search. Normally it is enough for a match to occur if one of the
+# reference taxa is hit in the reciprocal search. In strict mode ALL reference
+# taxa must be hit to verify an ortholog assignment. This is much more
+# conservative.
+#strict      = 1
 
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
