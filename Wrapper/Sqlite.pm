@@ -208,7 +208,7 @@ sub db_get {#{{{
   # connect and fetch stuff
 	my $dbh = get_dbh()
 		or return undef;
-	my $sth = $dbh->prepare($query);
+	my $sth = $dbh->prepare($query) or return undef;
 	$sth = execute($sth, $db_timeout, @args);
 	while (my @result = $sth->fetchrow_array() ) {
 		push(@$results, \@result);
