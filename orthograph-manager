@@ -400,7 +400,7 @@ sub create_tables {
 # generate a csv file from the ortholog set fasta file
 sub make_csv {
 	my $inf = shift @_;
-	my $fh = File::Temp->new(UNLINK=>0);
+	my $fh = File::Temp->new(UNLINK=>1);
 
 	my $faobj = Seqload::Fasta->open($inf);
 	no warnings;	# disable warnings for printing of the NULL column

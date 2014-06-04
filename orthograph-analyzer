@@ -129,6 +129,17 @@ my $max_blast_searches         = $config->{'max-blast-searches'};
 my $makeset                    = $config->{'make-set'};
 my $ntoutdir                   = $config->{'ntoutdir'};
 my $num_threads                = $config->{'num-threads'};
+my $outdir                     = $config->{'output-directory'};
+my $orthoset                   = $config->{'ortholog-set'};
+my $preparedb                  = $config->{'prepare'};
+my $quiet                      = $config->{'quiet'};
+my $reftaxa                    = $config->{'reference-taxa'};
+# substitution character for selenocysteine, which normally leads to blast freaking out
+my $u_subst                    = $config->{'substitute-u-with'};
+my $sets_dir                   = $config->{'sets-dir'};
+my $species_name               = $config->{'species-name'};
+my $tmpdir                     = $config->{'temp-dir'};
+my $verbose                    = $config->{'verbose'};
 
 # MySQL settings
 my $db_dbname                  = $config->{'mysql-database'};
@@ -146,34 +157,24 @@ my $db_table_aaseqs            = $config->{'db_table_aaseqs'};
 my $db_table_seqpairs          = $config->{'db_table_sequence_pairs'};
 my $db_table_taxa              = $config->{'db_table_taxa'};
 my $db_table_orthologs         = $config->{'db_table_orthologs'};
-my $outdir                     = $config->{'output-directory'};
-my $orthoset                   = $config->{'ortholog-set'};
-my $preparedb                  = $config->{'prepare'};
-my $quiet                      = $config->{'quiet'};
-my $reftaxa                    = $config->{'reference-taxa'};
-# substitution character for selenocysteine, which normally leads to blast freaking out
-my $u_subst                    = $config->{'substitute-u-with'};
-my $sets_dir                   = $config->{'sets-dir'};
-my $species_name               = $config->{'species-name'};
-my $verbose                    = $config->{'verbose'};
 
 #--------------------------------------------------
 # # More variables
 #-------------------------------------------------- 
-my $EMPTY                   = q{};
-my $alndir                  = $EMPTY;
-my $blastcount              = 0;
-my $blastdb                 = $EMPTY;
-my $blastdir                = $EMPTY;
-my $blasthitcount_total     = 0;
-my $count                   = 0;
-my $hmmcount                = 0;
-my $hmmdir                  = $EMPTY;
-my $hmmhitcount             = 0;
-my $hmmhitcount_total       = 0;
-my $hmmresultfileref        = $EMPTY;
-my $listspecies             = 0;
-my $logdir                  = $EMPTY;
+my $EMPTY                = q{};
+my $alndir               = $EMPTY;
+my $blastcount           = 0;
+my $blastdb              = $EMPTY;
+my $blastdir             = $EMPTY;
+my $blasthitcount_total  = 0;
+my $count                = 0;
+my $hmmcount             = 0;
+my $hmmdir               = $EMPTY;
+my $hmmhitcount          = 0;
+my $hmmhitcount_total    = 0;
+my $hmmresultfileref     = $EMPTY;
+my $listspecies          = 0;
+my $logdir               = $EMPTY;
 my $db_col_aaseq         = 'aa_seq';
 my $db_col_blastdbpath   = 'blastdb_path';
 my $db_col_date          = 'date';
@@ -223,7 +224,6 @@ my @backup               = ( );
 my @hmmfiles             = ( );
 my @reftaxa              = ( );
 my @seqobjs              = ( );
-my $tmpdir               = '';
 
 # debug is also verbose
 if ($debug) {
@@ -256,16 +256,16 @@ if ($preparedb) {#{{{
 #--------------------------------------------------
 # # Normal run. Input error checking, reporting etc
 #-------------------------------------------------- 
-&intro();
+intro();
 
 # get the set id
 $set_id = get_set_id($orthoset)
 	or print $stderr "Warning: Could not get set id from database: $DBI::errstr\n";
 
 # prepare the HMMs
-$hmmdir = &make_hmms($orthoset);
+$hmmdir = make_hmms($orthoset);
 # prepare the BLAST database
-$blastdb = &make_blastdb($set_id);
+$blastdb = make_blastdb($set_id);
 
 # exit here if we were only supposed to create the set
 exit if $makeset;
@@ -278,16 +278,16 @@ else {
 	@reftaxa = get_taxa_in_set($set_id)
 		or print $stderr "Warning: Could not get reference taxa from database: $DBI::errstr\n"
 }
-@hmmfiles = &hmmlist($hmmdir);
+@hmmfiles = hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
 
 
 unless ($quiet) {#{{{
-	print $stdout "Using temporary directory $tmpdir.\n"
+	print $stdout "Using temporary directory '$tmpdir'.\n"
 		if $tmpdir;
-  print $stdout "Using HMM dir $hmmdir with ", scalar(@hmmfiles), " HMM files.\n" 
+  print $stdout "Using HMM dir '$hmmdir' with ", scalar(@hmmfiles), " HMM files.\n" 
     if $hmmdir;
-  print $stdout "Using HMM file $hmmfile.\n" 
+  print $stdout "Using HMM file '$hmmfile'.\n" 
     if $hmmfile;
   print $stdout "HMMsearch e-Value cutoff: $hmmsearch_evalue_threshold.\n" 
     if $hmmsearch_evalue_threshold;
@@ -298,13 +298,13 @@ unless ($quiet) {#{{{
 #--------------------------------------------------
 # # translate the ESTs to protein, feed that stuff to the database
 #-------------------------------------------------- 
-$protfile = &translate_est(File::Spec->catfile($input_file));#{{{
+$protfile = translate_est(File::Spec->catfile($input_file));#{{{
 
 # clear database of data from the same species
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	$t0 = scalar time;
-	#my $n_deleted = &clear_db($species_name);
+	#my $n_deleted = clear_db($species_name);
 	preparedb() or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
 	$t1 = scalar time;
 	#printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
@@ -585,18 +585,21 @@ sub intro {#{{{
 	$outdir = defined($outdir) ? $outdir : File::Spec->catdir('.', $species_name);
 	if (-d $outdir) {
 		# no IO::Tee because the log dir has not been created yet 
-		$message .= "Using output dir $outdir.\n" unless $quiet;
+		$message .= "Using output dir '$outdir'.\n" unless $quiet;
 	}
 	else {
 		# no IO::Tee because the log dir has not been created yet 
-		$message .= "Output dir $outdir does not exist, creating...\n" unless $quiet;
-		&makedir($outdir) or die "Fatal: Failed to create output directory '$outdir'\n";
+		$message .= "Output dir '$outdir' does not exist, creating...\n" unless $quiet;
+		makedir($outdir) or die "Fatal: Failed to create output directory '$outdir'\n";
 	}
-	# create new temporary directory and set it to not be deleted 
-	$tmpdir = File::Temp->newdir(
-					 	'UNLINK' => 0,
-					 	'TEMPLATE' => File::Spec->catdir($outdir, 'tmpXXXX'));
-	$tmpdir->unlink_on_destroy(0) if $debug;
+	# create new directory to hold the temporary files
+	if (-d $tmpdir) {
+		$message .= "Using tempdir '$tmpdir'.\n" unless $quiet;
+	}
+	else {
+		$message .= "Tempdir '$tmpdir' does not exist, creating...\n" unless $quiet;
+		makedir($tmpdir) or die "Fatal: Failed to create temporary directory '$tmpdir'\n";
+	}
 
 	# the other dirs
 	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
@@ -624,11 +627,11 @@ sub intro {#{{{
 	else {
 		$logdir = File::Spec->catdir($outdir, 'log');
 		if (-d $logdir) {
-			$message .= "Using log dir $logdir.\n" unless $quiet;
+			$message .= "Using log dir '$logdir'.\n" unless $quiet;
 		}
 		else {
-			$message .= "Log dir $logdir does not exist, creating...\n" unless $quiet;
-			&makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
+			$message .= "Log dir '$logdir' does not exist, creating...\n" unless $quiet;
+			makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
 		}
 		$logfile = File::Spec->catfile($logdir,  'orthograph-' . $timestring . '.log');
 		my $logfh = IO::File->new($logfile, 'w') or die "Fatal: Could not create log file '$logfile': $!\n";
@@ -642,7 +645,7 @@ sub intro {#{{{
 		);
 		# print the messages that were collected so far
 		print $stdout $message;
-		print $stdout "Using log file $logfile.\n";
+		print $stdout "Using log file '$logfile'.\n";
 	}
 
 	# pass the new stdout and stderr filehandles to the database modules for their output
@@ -662,31 +665,31 @@ sub intro {#{{{
 	# the alignment directory (for ortholog set creation)
 	unless ($alndir) { $alndir = File::Spec->catdir($sets_dir, $orthoset, 'aln') }
 	if (-d $alndir) {
-		print $stdout "Alignment dir $alndir exists.\n" unless $quiet;
+		print $stdout "Alignment dir '$alndir' exists.\n" unless $quiet;
 	}
 	else {
-		print $stdout "Alignment dir $alndir does not exist, creating...\n" unless $quiet;
-		&makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
+		print $stdout "Alignment dir '$alndir' does not exist, creating...\n" unless $quiet;
+		makedir($alndir) or print $stderr "Fatal: Failed to create directory $alndir\n" and exit(1);
 	}
 
 	# the HMM directory
 	unless ($hmmdir) { $hmmdir = File::Spec->catdir($sets_dir, $orthoset, 'hmms') }
 	if (-d $hmmdir) {
-		print $stdout "HMM dir $hmmdir exists.\n" unless $quiet;
+		print $stdout "HMM dir '$hmmdir' exists.\n" unless $quiet;
 	}
 	else {
-		print $stdout "HMM dir $hmmdir does not exist, creating...\n" unless $quiet;
-		&makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
+		print $stdout "HMM dir '$hmmdir' does not exist, creating...\n" unless $quiet;
+		makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 
 	# the BLAST directory
 	unless ($blastdir) { $blastdir = File::Spec->catdir($sets_dir, $orthoset, 'blast') }
 	if (-d $blastdir) {
-		print $stdout "BLAST dir $blastdir exists.\n" unless $quiet;
+		print $stdout "BLAST dir '$blastdir' exists.\n" unless $quiet;
 	}
 	else {
-		print $stdout "BLAST dir $blastdir does not exist, creating...\n" unless $quiet;
-		&makedir($blastdir) or print $stderr "Fatal: Failed to create directory $blastdir\n" and exit(1);
+		print $stdout "BLAST dir '$blastdir' does not exist, creating...\n" unless $quiet;
+		makedir($blastdir) or print $stderr "Fatal: Failed to create directory $blastdir\n" and exit(1);
 	}
 
 	# the EST file
@@ -699,64 +702,64 @@ sub intro {#{{{
 
 	# the HMMsearch output directory
 	if (-d $hmmoutdir) {
-		print $stdout "HMMsearch output dir $hmmoutdir exists.\n" unless $quiet;
+		print $stdout "HMMsearch output dir '$hmmoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			&cleardir($hmmoutdir);
-			print $stdout "Purged HMMsearch output dir $hmmoutdir of old result files.\n" unless $quiet;
+			cleardir($hmmoutdir);
+			print $stdout "Purged HMMsearch output dir '$hmmoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
-			&schedule_for_backup($hmmoutdir);
+			schedule_for_backup($hmmoutdir);
 		}
 	}
 	else {
-		print $stdout "HMMsearch output dir $hmmoutdir does not exist, creating...\n" unless $quiet;
-		&makedir($hmmoutdir) or print $stderr "Fatal: Failed to create directory $hmmoutdir\n" and exit(1);
+		print $stdout "HMMsearch output dir '$hmmoutdir' does not exist, creating...\n" unless $quiet;
+		makedir($hmmoutdir) or print $stderr "Fatal: Failed to create directory $hmmoutdir\n" and exit(1);
 	}
 
   # the BLASTP output directory
   if (-d $blastoutdir) {
-    print $stdout "BLASTP output dir $blastoutdir exists.\n" unless $quiet;
+    print $stdout "BLASTP output dir '$blastoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			&cleardir($blastoutdir);
-			print $stdout "Purged BLAST output dir $blastoutdir of old result files.\n" unless $quiet;
+			cleardir($blastoutdir);
+			print $stdout "Purged BLAST output dir '$blastoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
-			&schedule_for_backup($blastoutdir);
+			schedule_for_backup($blastoutdir);
 		}
   }
   else {
-    print $stdout "BLASTP output dir $blastoutdir does not exist, creating...\n" unless $quiet;
-    &makedir($blastoutdir) or print $stderr "Fatal: Failed to create directory $blastoutdir\n" and exit(1);
+    print $stdout "BLASTP output dir '$blastoutdir' does not exist, creating...\n" unless $quiet;
+    makedir($blastoutdir) or print $stderr "Fatal: Failed to create directory $blastoutdir\n" and exit(1);
   }
 	# the aa output directory
 	if (-d $aaoutdir) {
-		print $stdout "AA output dir $aaoutdir exists.\n" unless $quiet;
+		print $stdout "AA output dir '$aaoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			&cleardir($aaoutdir);
-			print $stdout "Purged AA output dir $aaoutdir of old result files.\n" unless $quiet;
+			cleardir($aaoutdir);
+			print $stdout "Purged AA output dir '$aaoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
-			&schedule_for_backup($aaoutdir);
+			schedule_for_backup($aaoutdir);
 		}
 	}
 	else {
-		print $stdout "AA output dir $aaoutdir does not exist, creating...\n" unless $quiet;
-		&makedir($aaoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
+		print $stdout "AA output dir '$aaoutdir' does not exist, creating...\n" unless $quiet;
+		makedir($aaoutdir) or print $stderr "Fatal: Failed to create directory $aaoutdir\n" and exit(1);
 	}
 	# the nt output directory
 	if (-d $ntoutdir) {
-		print $stdout "NT output dir $ntoutdir exists.\n" unless $quiet;
+		print $stdout "NT output dir '$ntoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			&cleardir($ntoutdir);
-			print $stdout "Purged nt output dir $ntoutdir of old result files.\n" unless $quiet;
+			cleardir($ntoutdir);
+			print $stdout "Purged nt output dir '$ntoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
-			&schedule_for_backup($ntoutdir);
+			schedule_for_backup($ntoutdir);
 		}
 	}
 	else {
-		print $stdout "NT output dir $ntoutdir does not exist, creating...\n" unless $quiet;
-		&makedir($ntoutdir) or print $stderr "Fatal: Failed to create directory $ntoutdir\n" and exit(1);
+		print $stdout "NT output dir '$ntoutdir' does not exist, creating...\n" unless $quiet;
+		makedir($ntoutdir) or print $stderr "Fatal: Failed to create directory $ntoutdir\n" and exit(1);
 	}
 
 
@@ -770,15 +773,15 @@ sub intro {#{{{
 
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;
-	my $tarfile = &create_tarball(@backup);
-	printf($stdout "Old output files backed up in %s (%d files).\n", $tarfile, scalar @backup) unless $quiet;
+	my $tarfile = create_tarball(@backup);
+	printf($stdout "Old output files backed up in '%s' (%d files).\n", $tarfile, scalar @backup) unless $quiet;
 	undef(@backup);	# not needed anymore
 	undef($tarfile);
 	if ($clear_files) {
 		# empty the directories
-		&cleardir($hmmoutdir);
-		&cleardir($blastoutdir);
-		&cleardir($aaoutdir);
+		cleardir($hmmoutdir);
+		cleardir($blastoutdir);
+		cleardir($aaoutdir);
 	}
 
 	# does the set exist?
@@ -837,7 +840,7 @@ sub schedule_for_backup {#{{{
 		while (my $file = $dirh->read()) {
 			next if $file =~ /^\./;
 			next if $file =~ /^backup/;
-			&schedule_for_backup(File::Spec->catfile($outfile, $file));
+			schedule_for_backup(File::Spec->catfile($outfile, $file));
 		}
 		$dirh->close();
 	}
@@ -1126,14 +1129,14 @@ sub make_blastdb {#{{{
 
 	# check whether a database already exists
 	if (-e File::Spec->catfile($dbfile . '.psq')) {
-		print $stdout "BLAST DB for set $orthoset exists in $dbfile.\n" unless $quiet;
+		print $stdout "BLAST DB for set $orthoset exists in '$dbfile'.\n" unless $quiet;
 		return $dbfile;
 	}
 
 	# database not extant, we have to create it
 	print $stdout "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
 		unless $quiet;
-	my $infh = File::Temp->new( UNLINK => 0 );
+	my $infh = File::Temp->new( UNLINK => 1, DIR => $tmpdir );
 	# don't delete this file if debugging
 	$infh->unlink_on_destroy(0) if $debug;
 
@@ -1177,21 +1180,25 @@ sub make_blastdb {#{{{
 # Returns: scalar int number of loaded rows
 sub load_data_infile {#{{{
 	my $infile = shift(@_);
-	my $table_ests = shift(@_) or croak 'Usage: &load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
-	my $type = shift(@_) or croak 'Usage: &load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
+	my $table_ests = shift(@_) or croak 'Usage: load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
+	my $type = shift(@_) or croak 'Usage: load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
 	my $columns;
 	my $list;
 	my $bp = 0;
 	if (scalar(@_)) {
 		$columns = shift(@_);
 		unless (ref($columns)) {
-			croak 'Usage: &load_data_infile($infile, $db_table_ests [, $columns_reference])';
+			croak 'Usage: load_data_infile($infile, $db_table_ests [, $columns_reference])';
 		}
 		$list = join(',', @$columns);
 	}
 
 	# Create temporary csv file for high-speed reading into database
-	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile('/tmp', 'XXXX'));
+	my $tmpfh = File::Temp->new(
+		'UNLINK' => 1,
+		'DIR' => File::Spec->catdir($tmpdir),
+		'TEMPLATE' => 'XXXX'
+	);
 	my $infh = Seqload::Fasta->open($infile);
 	print $stdout "Writing data to temporary file...\n" if $verbose;
 	while (my ($h, $s) = $infh->next_seq()) {
@@ -1248,7 +1255,11 @@ sub load_ests_from_file {
 sub get_transcripts {#{{{
 	my $species_id = shift;
 	my $type = shift;
-	my $tmpfh = File::Temp->new('UNLINK' => 1, 'TEMPLATE' => File::Spec->catfile($tmpdir, 'XXXX'));
+	my $tmpfh = File::Temp->new(
+		'UNLINK'   => 1,
+		'DIR'      => File::Spec->catdir($tmpdir),
+		'TEMPLATE' => 'XXXX'
+	);
 	my $nseqs = 0;
 	my $data = get_transcripts_for_species($species_id, $type)
 		or print $stderr "Warning: Could not get transcript sequences from database: $DBI::errstr\n";
@@ -1293,8 +1304,10 @@ sub write_sequence_to_tempfile {
 	my $hmmfilename = shift @_;
 	# setup a temporary file to hold the sequence to be blasted
 	my $tmpfile = File::Temp->new(
-		'UNLINK' => 1, 
-		'TEMPLATE' => File::Spec->catfile($tmpdir, basename($hmmfilename) . '-XXXX'));
+		'UNLINK'   => 1, 
+		'DIR'      => File::Spec->catdir($tmpdir), 
+		'TEMPLATE' => basename($hmmfilename) . '-XXXX'
+	);
 	# don't delete this file if debugging
 	$tmpfile->unlink_on_destroy(0) if $debug;
 	# get sequence length

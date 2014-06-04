@@ -121,7 +121,7 @@ my $stderr = *STDERR;
 my $attached_db_file        = File::Spec->catfile($config->{'output-directory'}, $species_name . '.sqlite');
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
-print "Using attached database '$attached_db_file' as '$db_attached'\n";
+print "Using file '$attached_db_file' as attached database '$db_attached'\n";
 
 
 =head1 FUNCTIONS
