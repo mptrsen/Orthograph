@@ -568,6 +568,9 @@ sub is_reciprocal_match {
 	my $orthoid = shift;
 	my $blastresults = shift;
 
+	# this is for reftaxon counting
+	my $reftaxon_count = { map { $_ => 0 } @$reftaxa };
+
 	# set the mismatch counter
 	$mismatches = 0;
 
@@ -582,8 +585,16 @@ sub is_reciprocal_match {
 
 			$match = $result;
 
+			if ($strict) {
+				my $reftaxon = get_reftaxon_shorthand($result->{'blast_hit'});
+				if (exists $reftaxon_count->{$reftaxon}) {
+					$reftaxon_count->{$reftaxon} = 1;
+				}
+			}
 			# one hit is enough if not in strict mode
-			return $match unless $strict;
+			else {
+				return $match;
+			}
 		}
 		else {  # not found
 			# cry
@@ -1106,5 +1117,15 @@ sub get_results_for_single_score {
 	}
 	elsif ($use_sqlite) {
 		return Wrapper::Sqlite::get_results_for_single_score($setid, $score);
+	}
+}
+
+sub get_reftaxon_shorthand {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_reftaxon_shorthand ($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_reftaxon_shorthand ($specid);
 	}
 }
