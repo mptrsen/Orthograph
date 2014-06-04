@@ -328,9 +328,9 @@ my $counter = 0;
 # walk the orthologs, concatenate in order if multiple
 ORTHOID:
 foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
-	# get the transcripts and sort by hmm alignment length
+	# get the transcripts and sort by descending hmm alignment length
 	my $list_of_hits = $transcripts_mapped_to->{$orthoid};
-	$list_of_hits = [ sort { $a->{'ali_end'} - $a->{'ali_start'} <=> $b->{'ali_end'} - $b->{'ali_start'} } @$list_of_hits ];
+	$list_of_hits = [ sort { $b->{'ali_end'} - $b->{'ali_start'} <=> $a->{'ali_end'} - $a->{'ali_start'} } @$list_of_hits ];
 	my ($hdr, $seq, $cdnahdr, $cdnaseq, $reftaxon, $reftaxon_score);
 	$hitcount            = 0;
 	my $firsttime        = 1;
