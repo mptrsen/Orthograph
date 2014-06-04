@@ -171,7 +171,10 @@ unless ($set_id) {
 
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
-if ($reference_taxa) { @reftaxa = split(/\s*,\s*/, $reference_taxa) }
+if ($reference_taxa) {
+	$reference_taxa =~ s/\s*$//;
+	@reftaxa = split(/\s*,\s*/, $reference_taxa);
+}
 else { @reftaxa = get_taxa_in_set($set_id) }
 
 # get a orthoid => list_of_aaseq_ids relationship from the db

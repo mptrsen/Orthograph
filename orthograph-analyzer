@@ -1433,4 +1433,14 @@ sub get_ortholog_groups_for_set {
 	}
 }
 
+
+sub species_tables_present {
+	my $specid = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::species_tables_present($specid);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::species_tables_present($specid);
+	}
+}
 __END__
