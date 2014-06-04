@@ -1164,6 +1164,10 @@ sub make_blastdb {#{{{
 		push @makeblastdbcmd, qq( > /dev/null );
 	}
 	system("@makeblastdbcmd") and print $stderr "Fatal: BLAST database generation failed: $! (errcode $?)\n" and exit(1);
+	#
+	# make sure the tempfile is deleted
+	undef $infh;
+
 	return $dbfile;
 }#}}}
 
@@ -1218,8 +1222,12 @@ sub load_data_infile {#{{{
 	# no need to close the infh since we're already through it, it gets closed automagically
 
 	print $stdout "Loading data into database...\n" if $verbose;
-	$num_ests = load_ests_from_file($tmpfh, $list, $species_id);
+	load_ests_from_file($tmpfh, $list, $species_id) or print $stderr "Fatal: Failed to load data into database\n" and exit(1);
+	#
+	# make sure the tempfile is deleted
+	undef $tmpfh;
 
+	return 1;
 }#}}}
 
 sub load_ests_from_file {

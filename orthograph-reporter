@@ -385,7 +385,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						if $verbose;
 
 				# check whether this ORF overlaps with any previous hits
-				if (overlaps_previous_hit($list_of_hits, $hit)) {
+				if (overlaps_previous_hit($output_sequences, $hit)) {
 					print $stdout "Skipping this transcript\n" if $verbose;
 					next HIT;
 				}
