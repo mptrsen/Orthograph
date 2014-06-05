@@ -90,6 +90,7 @@ my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
 my $speciesname                = $config->{'species-name'};
+my $strict                     = $config->{'strict'};
 
 # make a nice time string
 my @lt                   = localtime time;
@@ -134,7 +135,6 @@ my $insert_n             = 1;
 my $n_complete_orthoids  = 0;
 my $table                = [ ];
 my @reftaxa              = ( );
-my $strict               = 0;
 my $species_id           = 0;
 my $set_id               = 0;
 my $match                = 0;
@@ -569,26 +569,37 @@ sub is_reciprocal_match {
 	my $blastresults = shift;
 
 	# this is for reftaxon counting
-	my $reftaxon_count = { map { $_ => 0 } @$reftaxa };
+	my $reftaxon_count = { map { $_ => 0 } @reftaxa };
 
 	# set the mismatch counter
 	$mismatches = 0;
 
 	foreach my $result (@$blastresults) {
+		my $reftaxon = get_reftaxon_shorthand($result->{'blast_hit'}) 
+			or print $stderr 'Fatal: Could not get reference taxon shorthand for ' . $result->{'blast_hit'} . "\n" and exit(1);
+		printf $stdout "got reftaxon %s for reciprocal hit %d\n", $reftaxon, $result->{'blast_hit'} if $debug;
 		if ( first { /$result->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} ) {
 
-			printf $stdout "    reciprocal hit %s for %s used in %s!\n",
+			printf $stdout "    reciprocal hit %d (%s) used in %s!\n",
 				$result->{'blast_hit'},
-				$result->{'hmmhit'},
+				$reftaxon,
 				$orthoid
 					if $verbose;
 
 			$match = $result;
 
 			if ($strict) {
-				my $reftaxon = get_reftaxon_shorthand($result->{'blast_hit'});
 				if (exists $reftaxon_count->{$reftaxon}) {
 					$reftaxon_count->{$reftaxon} = 1;
+				}
+				if ($debug) {
+					print "These taxa have been hit yet: \n";
+					printf "  %s: %d\n", $_, $reftaxon_count->{$_} foreach keys %$reftaxon_count;
+				}
+				# all reftaxa have been hit,
+				# even under strict conditions this is a reciprocal match
+				if (not grep { $_ == 0 } values %$reftaxon_count) {
+					return $match;
 				}
 			}
 			# one hit is enough if not in strict mode
@@ -599,13 +610,11 @@ sub is_reciprocal_match {
 		else {  # not found
 			# cry
 			++$mismatches;
-			printf $stdout "    reciprocal hit %s not used in this HMM (mismatch #%d) :(\n",
+			printf $stdout "    reciprocal hit %d (%s) not used in this HMM (mismatch #%d) :(\n",
 				$result->{'blast_hit'},
+				$reftaxon,
 				$mismatches
 					if $verbose;
-
-			# in a strict search, that's it for this orthoid
-			return undef if $strict;
 
 			# no match
 			undef $match;

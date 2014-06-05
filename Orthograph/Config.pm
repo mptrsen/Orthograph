@@ -94,6 +94,7 @@ GetOptions( $config,
   'soft-threshold=i',
   'species-name=s',
 	'sqlite-database=s',
+	'strict',
   'substitute-u-with=s',
   'verbose|v',
 ) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);
@@ -199,6 +200,7 @@ $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 5;
 $config->{'species-name'}               //= '';
 $config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
+$config->{'strict'}                     //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= 'X';
 $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');

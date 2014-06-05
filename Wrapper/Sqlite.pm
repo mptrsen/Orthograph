@@ -2329,7 +2329,7 @@ sub get_reftaxon_id {
 
 sub get_reftaxon_shorthand {
 	my $id = shift;
-	my $result = db_get("SELECT $db_table_taxa.$db_col_name FROM $db_table_taxa INNER JOIN $db_table_aaseqs ON $db_table_taxa.$db_col_id = $db_table_aaseqs.$db_col_aaseq WHERE $db_table_aaseqs.$db_col_id = ?", $id);
+	my $result = db_get("SELECT $db_table_taxa.$db_col_name FROM $db_table_taxa INNER JOIN $db_table_aaseqs ON $db_table_taxa.$db_col_id = $db_table_aaseqs.$db_col_taxid WHERE $db_table_aaseqs.$db_col_id = ?", $id);
 	return $$result[0][0];
 }
 
