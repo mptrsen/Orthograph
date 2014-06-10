@@ -374,6 +374,11 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				print $hit->{'orf_cdna_sequence'}, "\n";
 			}
 
+			# crop the orf to hmm alignment coordinates if the user chose to
+			if ($crop_orf) {
+				$hit = crop_orf($hit);
+			}
+
 			# check whether the overlap to the hmm alignment is sufficient
 			my $orf_overlap = orf_overlaps_hmm($hit);
 
