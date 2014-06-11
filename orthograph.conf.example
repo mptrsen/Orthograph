@@ -205,6 +205,13 @@ exonerate-program    = exonerate
 # character. The default is not to substitute.
 #substitute-u-with = X
 
+# Correct for frameshift errors using Exonerate. This ensures that you receive
+# a 100% corresponding nucleotide sequence for your predicted orthologous
+# transcripts, but may lead to lost transcripts where no matching alignment
+# could be obtained by Exonerate. This is the default behaviour; uncomment this
+# line to turn it off.
+#want-frameshift-correction = 0
+
 # Header separator. This will be used to separate header fields in the output files.
 # May be an arbitrary string. Defaults to '|'. To use a whitespace character,
 # enclose it in quotes, e.g., ' '.

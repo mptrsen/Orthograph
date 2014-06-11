@@ -690,18 +690,18 @@ sub list_sets {
 }
 
 sub list_ogs {
-	my $ogs = get_list_of_ogs();
-	my $maxlen_longname = 0;
-	my $maxlen_version  = 0;
-	foreach (keys %$ogs) {
-		$maxlen_version = length($_) if (length($_) > $maxlen_version);
-		$maxlen_longname = length($$ogs{$_}) if (length($$ogs{$_}) > $maxlen_longname);
+	my $list = get_list_of_ogs();
+	my $maxlen_name = 0;
+	my $maxlen_version  = 7;
+	foreach (@$list) {
+		$maxlen_version = length($_->[1]) if (length($_->[1]) > $maxlen_version);
+		$maxlen_name = length($_->[0]) if (length($_->[0]) > $maxlen_name);
 	}
-	print "The following taxa are presently installed with OGS and proteomes:\n";
-	printf("%-${maxlen_longname}s  %s\n", 'Taxon', 'OGS version');
-	printf("%-${maxlen_longname}s  %11s\n", '-' x 5, '-' x 11);
-	foreach (sort keys(%$ogs)) {
-		printf("%-${maxlen_longname}s  %s\n", $_, $$ogs{$_});
+	print "The following OGS are presently installed:\n";
+	printf("%-${maxlen_name}s  %-${maxlen_version}s %s\n", 'Taxon', 'version', 'sequences');
+	printf("%-${maxlen_name}s--%-${maxlen_version}s-%s\n", '-' x $maxlen_name, '-' x $maxlen_version, '-' x 9);
+	foreach (sort { $a->[0] cmp $b->[0] } @$list) {
+		printf("%-${maxlen_name}s  %-${maxlen_version}s %-9s\n", $_->[0], $_->[1], $_->[2]);
 	}
 	return 1;
 }

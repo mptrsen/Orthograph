@@ -530,22 +530,17 @@ Returns: array reference (list of OGS)
 =cut
 
 sub get_list_of_ogs {#{{{
-	my %ogslist = ();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT DISTINCT $db_table_taxa.name , $db_table_ogs.version
-		FROM $db_table_aaseqs
-		INNER JOIN $db_table_seqpairs
-			ON $db_table_aaseqs.id  = $db_table_seqpairs.aa_seq
-		INNER JOIN $db_table_taxa
-			ON $db_table_seqpairs.taxid = $db_table_taxa.id
+	my $query = "SELECT DISTINCT $db_table_taxa.name , $db_table_ogs.version, COUNT($db_table_aaseqs.id)
+		FROM $db_table_taxa
 		INNER JOIN $db_table_ogs
-			ON $db_table_taxa.id = $db_table_ogs.taxid"
+			ON $db_table_taxa.id = $db_table_ogs.taxid
+		INNER JOIN $db_table_aaseqs
+			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.id
+		GROUP BY $db_table_aaseqs.$db_col_taxid"
 	;
 	my $data = db_get($query);
-	foreach my $item (@$data) {
-		$ogslist{$$item[0]} = $$item[1];
-	}
-	return(\%ogslist);
+	return $data;
 }#}}}
 
 

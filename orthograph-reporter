@@ -91,6 +91,7 @@ my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
 my $speciesname                = $config->{'species-name'};
 my $strict                     = $config->{'strict'};
+my $want_frameshift_correction = $config->{'want-frameshift-correction'};
 
 # make a nice time string
 my @lt                   = localtime time;
@@ -353,99 +354,101 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		($proteome_sequence, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
 		my $est_sequence = get_nucleotide_transcript_for($hit->{'hmmhit'});
 
-		# exonerate the orf (correct for frameshifts etc and produce corresponding nt sequence)
-		( $hit->{'orf_aa_sequence'},
-			$hit->{'orf_cdna_sequence'},
-			$hit->{'orf_cdna_start'},
-			$hit->{'orf_cdna_end'},
-			$hit->{'orf_aa_start'},
-			$hit->{'orf_aa_end'} ) = get_orf($proteome_sequence, $est_sequence);
-
-		# exonerate got an alignment
-		if ($hit->{'orf_cdna_sequence'}) {
-			printf $stdout "Got an ORF for '%s'[%d-%d] (ORF coords %d-%d)\n",
-				$hit->{'hmmhit'},
-				$hit->{'env_start'},
-				$hit->{'env_end'},
+		# crop the est sequence to hmm alignment region
+		$est_sequence = crop_to_hmm($est_sequence, $hit);
+		
+		# correct for frameshift errors and stuff like that if the user chose to
+		if ($want_frameshift_correction) {
+			# exonerate the orf (produce corresponding nucleotide sequence)
+			( $hit->{'orf_aa_sequence'},
+				$hit->{'orf_cdna_sequence'},
 				$hit->{'orf_cdna_start'},
-				$hit->{'orf_cdna_end'}
-					if $debug;
-			if ($debug > 1) {
-				print $hit->{'orf_cdna_sequence'}, "\n";
-			}
+				$hit->{'orf_cdna_end'},
+				$hit->{'orf_aa_start'},
+				$hit->{'orf_aa_end'} ) = get_orf($proteome_sequence, $est_sequence);
 
-			# crop the orf to hmm alignment coordinates if the user chose to
-			if ($crop_orf) {
-				$hit = crop_orf($hit);
-			}
-
-			# check whether the overlap to the hmm alignment is sufficient
-			my $orf_overlap = orf_overlaps_hmm($hit);
-
-			# the overlap is sufficient, so this is ok
-			if ($orf_overlap >= $orf_overlap_minimum) {
-				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) by %.2f %%\n",
-					$hit->{'orf_aa_start'},
-					$hit->{'orf_aa_end'},
-					$hit->{'ali_start'},
-					$hit->{'ali_end'},
-					$orf_overlap * 100,
-						if $verbose;
-
-				# check whether this ORF overlaps with any previous hits
-				if (overlaps_previous_hit($output_sequences, $hit)) {
-					print $stdout "Skipping this transcript\n" if $verbose;
-					next HIT;
-				}
-
-				# ok, this can be added to the output sequences
-				push @$output_sequences, $hit;
-
-				# write the ortholog gene id to the table, but only once
-				if ($firsttime) {
-					print $tfh $orthoid;
-					$firsttime = 0;
-				}
-
-				# write the transcripts to the table
-				printf $tfh "\t%s[len %d]",
-					$hit->{'header'},                 # transcript ID
-					length $hit->{'orf_aa_sequence'}, # ORF sequence length
-				;
-
-				# assign (new) reference taxon if blast score higher
-				if (not defined $reftaxon) { 
-					$reftaxon       = $hit->{'reftaxon'};
-					$reftaxon_score = $hit->{'blast_score'};
-				}
-				elsif ($hit->{'blast_score'} > $reftaxon_score) {
-					$reftaxon       = $hit->{'reftaxon'};
-					$reftaxon_score = $hit->{'blast_score'};
-				}
-			}
-			else {
-				printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) only by %.2f %%, skipping this transcript\n", 
-					$hit->{'orf_aa_start'},
-					$hit->{'orf_aa_end'},
-					$hit->{'ali_start'},
-					$hit->{'ali_end'},
-					$orf_overlap * 100,
-						if $verbose;
-				next HIT;
-			}
-		}
-		# exonerate didn't get an alignment
-		else {
-			if ($verbose) {
-				printf $stdout "Could not get an ORF for '%s'[%d:%d] and '%s'\n",
-					$hit->{'header'},
+			# exonerate got an alignment
+			if ($hit->{'orf_cdna_sequence'}) {
+				printf $stdout "Got an ORF for '%s'[%d-%d] (ORF coords %d-%d)\n",
+					$hit->{'hmmhit'},
 					$hit->{'env_start'},
 					$hit->{'env_end'},
-					$hit->{'blast_hit'},
-				;
-				print $stdout "Skipping this transcript\n";
+					$hit->{'orf_cdna_start'},
+					$hit->{'orf_cdna_end'}
+						if $debug;
+				if ($debug > 1) {
+					print $hit->{'orf_cdna_sequence'}, "\n";
+				}
+
+				# check whether the overlap to the hmm alignment is sufficient
+				my $orf_overlap = orf_overlaps_hmm($hit);
+
+				# the overlap is sufficient, so this is ok
+				if ($orf_overlap >= $orf_overlap_minimum) {
+					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) by %.2f %%\n",
+						$hit->{'orf_aa_start'},
+						$hit->{'orf_aa_end'},
+						$hit->{'ali_start'},
+						$hit->{'ali_end'},
+						$orf_overlap * 100,
+							if $verbose;
+
+					# check whether this ORF overlaps with any previous hits
+					if (overlaps_previous_hit($output_sequences, $hit)) {
+						print $stdout "Skipping this transcript\n" if $verbose;
+						next HIT;
+					}
+
+
+					# ok, this can be added to the output sequences
+					push @$output_sequences, $hit;
+
+					# write the ortholog gene id to the table, but only once
+					if ($firsttime) {
+						print $tfh $orthoid;
+						$firsttime = 0;
+					}
+
+					# write the transcripts to the table
+					printf $tfh "\t%s[len %d]",
+						$hit->{'header'},                 # transcript ID
+						length $hit->{'orf_aa_sequence'}, # ORF sequence length
+					;
+
+					# assign (new) reference taxon if blast score higher
+					if (not defined $reftaxon) { 
+						$reftaxon       = $hit->{'reftaxon'};
+						$reftaxon_score = $hit->{'blast_score'};
+					}
+					elsif ($hit->{'blast_score'} > $reftaxon_score) {
+						$reftaxon       = $hit->{'reftaxon'};
+						$reftaxon_score = $hit->{'blast_score'};
+					}
+				}
+				else {
+					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) only by %.2f %%, skipping this transcript\n", 
+						$hit->{'orf_aa_start'},
+						$hit->{'orf_aa_end'},
+						$hit->{'ali_start'},
+						$hit->{'ali_end'},
+						$orf_overlap * 100,
+							if $verbose;
+					next HIT;
+				}
 			}
-			next HIT;
+			# exonerate didn't get an alignment
+			else {
+				if ($verbose) {
+					printf $stdout "Could not get an ORF for '%s'[%d:%d] and '%s'\n",
+						$hit->{'header'},
+						$hit->{'env_start'},
+						$hit->{'env_end'},
+						$hit->{'blast_hit'},
+					;
+					print $stdout "Skipping this transcript\n";
+				}
+				next HIT;
+			}
 		}
 
 	}
@@ -949,20 +952,60 @@ sub concatenate_sequences {
 				if $debug;
 	}
 	# join aa headers
-	$hdr = $hits->[0]->{'header'} . ':[len ' . length($hits->[0]->{'orf_aa_sequence'}) . ']';
+	($hdr, $cdnahdr) = join_headers($hits);
+
+	return ($hdr, $seq, $cdnahdr, $cdnaseq);
+}
+
+sub join_headers {
+	my $hits = shift;
+	my $hdr = '';
+	my $cdnahdr = '';
+	my $hamstr_compatible = 1;
+	# join aa headers
+	$hdr = $hits->[0]->{'header'};
+	if ($hamstr_compatible) {
+		$hdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
+		$hdr .= '-' . length($hits->[0]->{'orf_aa_sequence'});
+	}
+	else {
+		$hdr .= ':[len ' . length($hits->[0]->{'orf_aa_sequence'}) . ']';
+	}
 	my $i = 1;
 	while (defined $hits->[$i]->{'orf_aa_sequence'}) {
-		$hdr .= $concat_sep . $hits->[$i]->{'header'} . ':[len ' . length($hits->[$i]->{'orf_aa_sequence'}) . ']';
+		$hdr .= $concat_sep . $hits->[$i]->{'header'};
+		if ($hamstr_compatible) {
+			$hdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
+			$hdr .= '-' . length($hits->[$i]->{'orf_aa_sequence'});
+		}
+		else {
+			$hdr .= ':[len ' . length($hits->[$i]->{'orf_aa_sequence'}) . ']';
+		}
 		$i++;
 	}
 	# join cdna headers
-	$cdnahdr = $hits->[0]->{'header'} . ':[len ' . length($hits->[0]->{'orf_cdna_sequence'}) . ']';
-	$i = 1;
-	while (defined $hits->[$i]->{'orf_aa_sequence'}) {
-		$hdr .= $concat_sep . $hits->[$i]->{'header'} . ':[len ' . length($hits->[$i]->{'orf_cdna_sequence'}) . ']';
+	$cdnahdr = $hits->[0]->{'header'};
+	if ($hamstr_compatible) {
+		$cdnahdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
+		$cdnahdr .= '-' . length($hits->[0]->{'orf_cdna_sequence'});
+	}
+	else {
+		$cdnahdr .= ':[len ' . length($hits->[0]->{'orf_cdna_sequence'}) . ']';
+	}
+	my $i = 1;
+	while (defined $hits->[$i]->{'orf_cdna_sequence'}) {
+		$cdnahdr .= $concat_sep . $hits->[$i]->{'header'};
+		if ($hamstr_compatible) {
+			$cdnahdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
+			$cdnahdr .= '-' . length($hits->[$i]->{'orf_cdna_sequence'});
+		}
+		else {
+			$cdnahdr .= ':[len ' . length($hits->[$i]->{'orf_cdna_sequence'}) . ']';
+		}
 		$i++;
 	}
-	return ($hdr, $seq, $cdnahdr, $cdnaseq);
+
+	return($hdr, $cdnahdr);
 }
 
 sub get_ortholog_group {
@@ -1159,4 +1202,11 @@ sub get_reftaxon_shorthand {
 			exit(1);
 		}
 	}
+}
+
+sub crop_to_hmm {
+	my $s = shift;
+	my $h = shift;
+	my $l = abs($h->{'ali_end'} - $h->{'ali_start'} + 1);
+	return substr($s, $h->{'ali_start'} - 1, $l);
 }

@@ -97,6 +97,7 @@ GetOptions( $config,
 	'strict',
   'substitute-u-with=s',
   'verbose|v',
+  'want-frameshift-correction',
 ) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);
 
 # if something went wrong
@@ -206,6 +207,7 @@ $config->{'substitute-u-with'}          //= 'X';
 $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
+$config->{'want-frameshift-correction'} //= 1;
 
 #--------------------------------------------------
 # # compound options
