@@ -491,7 +491,7 @@ sub load_taxon {
 
 	# the user provided a reference taxon name
 	if ($reference_taxon_shorthand) {
-		$reference_taxon_id = get_reftaxon_id($reference_taxon_shorthand) or die;
+		$reference_taxon_id = get_reftaxon_id($reference_taxon_shorthand) or fail_and_exit("Reference taxon '$reference_taxon_shorthand' not found in database");
 		print "Using reference taxon $reference_taxon_shorthand (id $reference_taxon_id)\n";
 	}
 	else {

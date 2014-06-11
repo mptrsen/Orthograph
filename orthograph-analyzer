@@ -762,6 +762,11 @@ sub intro {#{{{
 		makedir($ntoutdir) or print $stderr "Fatal: Failed to create directory $ntoutdir\n" and exit(1);
 	}
 
+	# check whether the database structure exists
+	if (!db_structure_present()) {
+		fail_and_exit("Orthograph database structure not present! Did you forget to run `orthograph-manager -create`?");
+	}
+
 
 	# get the taxon id. create a new entry in the taxa table or return existing one
 	$species_id = insert_taxon_into_table($species_name)
@@ -1443,4 +1448,22 @@ sub species_tables_present {
 		return Wrapper::Sqlite::species_tables_present($specid);
 	}
 }
+
+sub db_structure_present {
+	if ($use_mysql) {
+		return Wrapper::Mysql::db_structure_present();
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::db_structure_present();
+	}
+}
+
+
+sub fail_and_exit {
+	my $msg = shift @_;
+	print STDERR 'Fatal: ' . $msg . "\n";
+	exit 1;
+}
+
 __END__
+

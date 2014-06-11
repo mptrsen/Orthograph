@@ -2229,11 +2229,9 @@ sub import_ogs_into_database {
 		}
 		
 	}
-
-
-		# update OGS table
-		"INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
-
+	# update OGS table
+	db_do("INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')") or croak "Fatal: Could not update OGS table: $DBI::errstr\n";
+	return 1;
 }
 
 # progress_bar
@@ -2307,10 +2305,9 @@ sub clear_db {
 }
 
 sub db_structure_present {
-	if (!-e $database) { return 0 }
+	if (! -e $database) { return 0 }
 	my $r = get_list_of_tables();
-	unless (grep /$db_table_orthologs/, @$r) { return 0 }
-	else    { return 1 }
+	return grep /$db_table_orthologs/, @$r;
 }
 
 sub get_list_of_tables {
