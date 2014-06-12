@@ -176,7 +176,7 @@ exonerate-program    = exonerate
 
 # HaMStR compatible output. Leave this uncommented if you want to use scripts
 # that depend on the sequence header format that the older HaMStR pipeline
-# used.
+# used. The default is a more human-readable format, hence this extra option.
 hamstr-compatible-output = 1
 
 # If you are only interested in a few genes from your ortholog set, you can 
