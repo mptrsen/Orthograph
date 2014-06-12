@@ -71,6 +71,7 @@ my $outdir                     = $config->{'output-directory'};
 my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir'});
 my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir'});
 my $logdir                     = File::Spec->catdir($outdir, 'log');
+my $hamstr_compatible          = $config->{'hamstr-compatible-output'};
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
 my $concat_sep                 = $config->{'concatenation-header-separator'};
@@ -90,8 +91,8 @@ my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
 my $speciesname                = $config->{'species-name'};
-my $strict                     = $config->{'strict'};
-my $want_frameshift_correction = $config->{'want-frameshift-correction'};
+my $strict_search              = $config->{'strict-search'};
+my $no_frameshift_correction   = $config->{'no-frameshift-correction'};
 
 # make a nice time string
 my @lt                   = localtime time;
@@ -118,6 +119,15 @@ my $stderr = IO::Tee->new(
 	\*STDERR,
 	$logfh,
 );
+
+# report configuration
+if ($verbose) {
+	print "Using the following configuration settings:\n";
+	foreach (sort keys %$config) {
+		printf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
+	}
+	print "\n";
+}
 
 # also be verbose if debugging
 if ($debug) { $verbose = 1; Wrapper::Exonerate->debug(1) }
@@ -356,9 +366,22 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 		# crop the est sequence to hmm alignment region
 		$est_sequence = crop_to_hmm($est_sequence, $hit);
-		
-		# correct for frameshift errors and stuff like that if the user chose to
-		if ($want_frameshift_correction) {
+
+		# if you don't want me to correct for frameshift errors...
+		if ($no_frameshift_correction) {
+			print Dumper $hit; exit;
+
+			( $hit->{'orf_aa_sequence'},
+				$hit->{'orf_cdna_sequence'},
+				$hit->{'orf_cdna_start'},
+				$hit->{'orf_cdna_end'},
+				$hit->{'orf_aa_start'},
+				$hit->{'orf_aa_end'} ) = hmm_to_orf($hit, $est_sequence, $proteome_sequence);
+			# this can be added to the output sequences
+			push @$output_sequences, $hit;
+			next HIT;
+		}
+		else {
 			# exonerate the orf (produce corresponding nucleotide sequence)
 			( $hit->{'orf_aa_sequence'},
 				$hit->{'orf_cdna_sequence'},
@@ -367,12 +390,25 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				$hit->{'orf_aa_start'},
 				$hit->{'orf_aa_end'} ) = get_orf($proteome_sequence, $est_sequence);
 
+			# exonerate didn't get an alignment
+			if (not $hit->{'orf_cdna_sequence'}) {
+				if ($verbose) {
+					printf $stdout "Could not get an ORF for '%s'[%d:%d] and '%s'\n",
+						$hit->{'header'},
+						$hit->{'ali_start'},
+						$hit->{'ali_end'},
+						$hit->{'blast_hit'},
+					;
+					print $stdout "Skipping this transcript\n";
+				}
+				next HIT;
+			}
 			# exonerate got an alignment
-			if ($hit->{'orf_cdna_sequence'}) {
+			else {
 				printf $stdout "Got an ORF for '%s'[%d-%d] (ORF coords %d-%d)\n",
 					$hit->{'hmmhit'},
-					$hit->{'env_start'},
-					$hit->{'env_end'},
+					$hit->{'ali_start'},
+					$hit->{'ali_end'},
 					$hit->{'orf_cdna_start'},
 					$hit->{'orf_cdna_end'}
 						if $debug;
@@ -381,10 +417,21 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				}
 
 				# check whether the overlap to the hmm alignment is sufficient
-				my $orf_overlap = orf_overlaps_hmm($hit);
+				my $orf_overlap = orf_percentage($hit);
 
-				# the overlap is sufficient, so this is ok
-				if ($orf_overlap >= $orf_overlap_minimum) {
+				# this is too little
+				if ($orf_overlap < $orf_overlap_minimum) {
+					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) only by %.2f %%, skipping this transcript\n", 
+						$hit->{'orf_aa_start'},
+						$hit->{'orf_aa_end'},
+						$hit->{'ali_start'},
+						$hit->{'ali_end'},
+						$orf_overlap * 100,
+							if $verbose;
+					next HIT;
+				}
+				# the overlap is sufficient, this is ok
+				else {
 					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) by %.2f %%\n",
 						$hit->{'orf_aa_start'},
 						$hit->{'orf_aa_end'},
@@ -425,32 +472,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						$reftaxon_score = $hit->{'blast_score'};
 					}
 				}
-				else {
-					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (%d-%d) only by %.2f %%, skipping this transcript\n", 
-						$hit->{'orf_aa_start'},
-						$hit->{'orf_aa_end'},
-						$hit->{'ali_start'},
-						$hit->{'ali_end'},
-						$orf_overlap * 100,
-							if $verbose;
-					next HIT;
-				}
-			}
-			# exonerate didn't get an alignment
-			else {
-				if ($verbose) {
-					printf $stdout "Could not get an ORF for '%s'[%d:%d] and '%s'\n",
-						$hit->{'header'},
-						$hit->{'env_start'},
-						$hit->{'env_end'},
-						$hit->{'blast_hit'},
-					;
-					print $stdout "Skipping this transcript\n";
-				}
-				next HIT;
 			}
 		}
-
 	}
 
 	print $tfh "\n";
@@ -467,7 +490,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# get the core ortholog sequences for this group
 	my $core_sequences = get_ortholog_group($set_id, $orthoid);
 	# new fasta file
-	my $fafn = File::Spec->catfile($aaoutdir, $orthoid . '.fa');
+	my $fafn = File::Spec->catfile($aaoutdir, $orthoid . '.aa.fa');
 	my $fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
 	printf $fafh ">%s|%s|%s\n%s\n",
@@ -486,7 +509,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	# do the same for the nucleotide sequences
 	my $core_sequences_nt = get_ortholog_group_nucleotide($set_id, $orthoid);
 	# new fasta file
-	$fafn = File::Spec->catfile($ntoutdir, $orthoid . '.fa');
+	$fafn = File::Spec->catfile($ntoutdir, $orthoid . '.nt.fa');
 	$fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
 	printf $fafh ">%s|%s|%s\n%s\n",
@@ -496,10 +519,10 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		$$_[2]    # sequence
 			foreach (sort @$core_sequences_nt);
 	# prepend orthoid, reference taxon, and taxon name
-	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
+	$cdnahdr = join $sep, ($orthoid, $reftaxon, $speciesname, $cdnahdr);
 	# print the concatenated sequence
-	printf $fafh ">%s\n%s\n", $hdr, $cdnaseq;
-	print $stdout "wrote concatenated sequence $hdr to file $fafn\n" if $debug;
+	printf $fafh ">%s\n%s\n", $cdnahdr, $cdnaseq;
+	print $stdout "wrote concatenated sequence $cdnahdr to file $fafn\n" if $debug;
 	undef $fafh;
 
 	# one more
@@ -596,7 +619,7 @@ sub is_reciprocal_match {
 
 			$match = $result;
 
-			if ($strict) {
+			if ($strict_search) {
 				if (exists $reftaxon_count->{$reftaxon}) {
 					$reftaxon_count->{$reftaxon} = 1;
 				}
@@ -895,6 +918,11 @@ sub orf_overlaps_hmm {
 	}
 }
 
+sub orf_percentage {
+	my $h = shift;
+	return length( $h->{'orf_aa_sequence'} ) / ( abs( $h->{'ali_end'} - $h->{'ali_start'} ) + 1 );
+}
+
 sub overlaps_previous_hit {
 	my $other_hits = shift;
 	my $cand       = shift;
@@ -961,10 +989,10 @@ sub join_headers {
 	my $hits = shift;
 	my $hdr = '';
 	my $cdnahdr = '';
-	my $hamstr_compatible = 1;
 	# join aa headers
 	$hdr = $hits->[0]->{'header'};
 	if ($hamstr_compatible) {
+		# remove translation portion
 		$hdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
 		$hdr .= '-' . length($hits->[0]->{'orf_aa_sequence'});
 	}
@@ -975,6 +1003,7 @@ sub join_headers {
 	while (defined $hits->[$i]->{'orf_aa_sequence'}) {
 		$hdr .= $concat_sep . $hits->[$i]->{'header'};
 		if ($hamstr_compatible) {
+			# remove translation portion
 			$hdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
 			$hdr .= '-' . length($hits->[$i]->{'orf_aa_sequence'});
 		}
@@ -992,7 +1021,7 @@ sub join_headers {
 	else {
 		$cdnahdr .= ':[len ' . length($hits->[0]->{'orf_cdna_sequence'}) . ']';
 	}
-	my $i = 1;
+	$i = 1;
 	while (defined $hits->[$i]->{'orf_cdna_sequence'}) {
 		$cdnahdr .= $concat_sep . $hits->[$i]->{'header'};
 		if ($hamstr_compatible) {
@@ -1207,6 +1236,13 @@ sub get_reftaxon_shorthand {
 sub crop_to_hmm {
 	my $s = shift;
 	my $h = shift;
-	my $l = abs($h->{'ali_end'} - $h->{'ali_start'} + 1);
+	my $l = abs($h->{'ali_end'} - $h->{'ali_start'} + 1) * 3;
+	printf $stdout "Cropping sequence %s to HMM alignment region (%d-%d)\n", $h->{'header'}, $h->{'ali_start'}, $h->{'ali_end'} if $verbose;
 	return substr($s, $h->{'ali_start'} - 1, $l);
+}
+
+sub hmm_to_orf {
+	my $h = shift;
+	return (
+	);
 }

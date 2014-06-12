@@ -68,6 +68,7 @@ GetOptions( $config,
   'debug|d+',
 	'fill-with-x',
   'input-file|i=s',
+	'hamstr-compatible-output',
 	'header-separator=s',
   'hmmsearch-evalue-threshold=f',
   'hmmsearch-output-dir=s',
@@ -80,6 +81,7 @@ GetOptions( $config,
   'mysql-password=s',
   'mysql-server=s',
   'mysql-username=s',
+  'no-frameshift-correction',
 	'num-threads=i',
   'ogs-version=s',
   'ortholog-set=s',
@@ -94,10 +96,9 @@ GetOptions( $config,
   'soft-threshold=i',
   'species-name=s',
 	'sqlite-database=s',
-	'strict',
+	'strict-search',
   'substitute-u-with=s',
   'verbose|v',
-  'want-frameshift-correction',
 ) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);
 
 # if something went wrong
@@ -173,6 +174,7 @@ $config->{'destroy'}                    //= 0;
 $config->{'evalue-bin-size'}            //= 500;
 $config->{'exonerate-program'}          //= 'exonerate';
 $config->{'fill-with-x'}                //= 1;
+$config->{'hamstr-compatible-output'}   //= 0;
 $config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
 $config->{'hmmsearch-program'}          //= 'hmmsearch';
@@ -186,6 +188,7 @@ $config->{'logfile'}                    //= '';
 $config->{'make-set'}                   //= 0;
 $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
+$config->{'no-frameshift-correction'}   //= 0;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
 $config->{'ogs-version'}                //= '';
@@ -201,13 +204,12 @@ $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 5;
 $config->{'species-name'}               //= '';
 $config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
-$config->{'strict'}                     //= 0;
+$config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= 'X';
 $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
-$config->{'want-frameshift-correction'} //= 1;
 
 #--------------------------------------------------
 # # compound options

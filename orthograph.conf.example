@@ -174,6 +174,11 @@ exonerate-program    = exonerate
 # 0.5 (50%) is the default; a higher value makes this more conservative.
 #orf-overlap-minimum = 0.5
 
+# HaMStR compatible output. Leave this uncommented if you want to use scripts
+# that depend on the sequence header format that the older HaMStR pipeline
+# used.
+hamstr-compatible-output = 1
+
 # If you are only interested in a few genes from your ortholog set, you can 
 # provide Orthograph with a list of ortholog IDs in a file. The IDs must be
 # in a single line each, and there must be no empty lines in the file. 
@@ -183,7 +188,7 @@ exonerate-program    = exonerate
 # reference taxa is hit in the reciprocal search. In strict mode ALL reference
 # taxa must be hit to verify an ortholog assignment. This is much more
 # conservative.
-#strict      = 1
+#strict-search = 1
 
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
@@ -197,7 +202,7 @@ exonerate-program    = exonerate
 # will speed up the process significantly, since the search programs don't have
 # to be run again.
 # Uncomment this line if you want the files deleted.
-#clear-result-files           = 1
+#clear-result-files = 1
 
 # Selenocysteine (U) may occur in some protein sequences. However, some
 # alignment programs do not accept this nonstandard amino acid symbol. You can
@@ -210,7 +215,7 @@ exonerate-program    = exonerate
 # transcripts, but may lead to lost transcripts where no matching alignment
 # could be obtained by Exonerate. This is the default behaviour; uncomment this
 # line to turn it off.
-#want-frameshift-correction = 0
+#no-frameshift-correction = 0
 
 # Header separator. This will be used to separate header fields in the output files.
 # May be an arbitrary string. Defaults to '|'. To use a whitespace character,
@@ -221,13 +226,13 @@ exonerate-program    = exonerate
 # you don't want to see this. If you are really interested in what Orthograph is
 # thinking during the analysis, uncomment this. Verbose and quiet are mutually
 # exclusive.
-#verbose     = 1
+#verbose = 1
 
 # Quiet output. Uncomment this if you don't want to be bothered during the
 # analysis. After starting, Orthograph will keep still until the analysis is
 # complete (or unexpected things happen). Verbose and quiet are mutually
 # exclusive.
-#quiet       = 1
+#quiet = 1
 
 
 #
@@ -237,9 +242,9 @@ exonerate-program    = exonerate
 # (that is, the BLAST database, the HMMs and the alignment files for each
 # ortholog gene) in a separate place. Defaults to 'sets' (in the current
 # directory).
-#sets-dir    = /PATH/TO/SETS/DIR
+#sets-dir = /PATH/TO/SETS/DIR
 
 # Path to log file. If set, all messages will also be written to this file. If
 # this is not set, messages are written to a log file in your output directory
 # (see the setting 'output-directory' above).
-#logfile     = /PATH/TO/LOGFILE
+#logfile = /PATH/TO/LOGFILE
