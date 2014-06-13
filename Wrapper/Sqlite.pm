@@ -1766,7 +1766,6 @@ sub get_nuc_for_pep {
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $db_timeout, $pepid);
 	my $data = $sth->fetchall_arrayref();
-	print Dumper($data); exit;
 }
 
 =head2 get_real_table_names(int ID, string EST_TABLE, string HMMSEARCH_TABLE, string BLAST_TABLE)

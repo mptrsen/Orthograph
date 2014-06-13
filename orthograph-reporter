@@ -369,8 +369,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 		# if you don't want me to correct for frameshift errors...
 		if ($no_frameshift_correction) {
-			print Dumper $hit; exit;
-
 			( $hit->{'orf_aa_sequence'},
 				$hit->{'orf_cdna_sequence'},
 				$hit->{'orf_cdna_start'},
@@ -668,7 +666,7 @@ sub hmm_overlap {
 	foreach my $assigned_transcript (@$already_assigned) {
 		# the hmm coords do not overlap
 		if ($$candidate{'hmm_end'} <= $$assigned_transcript{'hmm_start'} or $$candidate{'hmm_start'} >= $$assigned_transcript{'hmm_end'}) {
-			print_no_overlap($candidate, $assigned_transcript)
+			print_no_overlap($candidate, $assigned_transcript, 'hmm')
 				if $verbose;
 		}
 		else {
@@ -685,9 +683,9 @@ sub transcript_overlap {
 	my $candidate = shift;
 	# test whether the candidate overlaps on transcript level, return 1 or 0
 	foreach my $assigned_transcript (@$already_assigned) {
-		# the hmm coords do not overlap
+		# the env coords do not overlap
 		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
-			print_no_overlap($candidate, $assigned_transcript)
+			print_no_overlap($candidate, $assigned_transcript, 'transcript')
 				if $verbose;
 		}
 		else {
