@@ -2160,6 +2160,23 @@ sub import_ogs_into_database {
 		AND $otherseqtable.$db_col_header = ?
 	";
 
+	my $query_get_pair_id = "
+		SELECT 
+			$db_table_seqpairs.$db_col_id,
+			$seqtable.$db_col_id,
+			$otherseqtable.$db_col_id
+		FROM $db_table_seqpairs
+		LEFT JOIN $seqtable
+			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		LEFT JOIN $db_table_taxa
+			ON $db_table_seqpairs.$db_col_taxid = $db_table_taxa.$db_col_id
+		WHERE $db_table_taxa.$db_col_id = ?
+		AND $seqtable.$db_col_header = ?
+		OR $otherseqtable.$db_col_header = ?
+	";
+			
 	my $query_update_pair = "
 		UPDATE $db_table_seqpairs 
 		SET 
@@ -2175,7 +2192,7 @@ sub import_ogs_into_database {
 	my $dbh = get_dbh();
 	$dbh->do($query_insert_sequences) or die "Fatal: OGS loading failed: $DBI::errstr\n";
 	my $sth_ins = $dbh->prepare($query_insert_pair);
-	my $sth_sel = $dbh->prepare($query_select_pair);
+	my $sth_sel = $dbh->prepare($query_get_pair_id);
 	my $sth_upd = $dbh->prepare($query_update_pair);
 	
 
@@ -2206,7 +2223,7 @@ sub import_ogs_into_database {
 				<STDIN>;
 			}
 			# determine the seqpairs id
-			$sth_sel->execute($taxon, $hdr, $taxon, $hdr);
+			$sth_sel->execute($taxon, $hdr, $hdr);
 			my $ids = $sth_sel->fetchall_arrayref();
 			if (scalar @$ids > 1) { croak "Fatal: Found more than one record with ID '$hdr'! Database corrupted?\n" }
 			elsif (scalar @$ids == 0) { croak "Fatal: Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.\n" }
