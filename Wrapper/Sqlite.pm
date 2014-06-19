@@ -2183,7 +2183,7 @@ sub import_ogs_into_database {
 		INNER JOIN $otherseqtable
 			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
 		INNER JOIN $db_table_seqpairs
-			ON $seqtable.$db_col_id = $db_table_seqpairs.$seqcol
+			ON $otherseqtable.$db_col_id = $db_table_seqpairs.$otherseqcol
 		WHERE $seqtable.$db_col_header = ?
 		AND $db_table_seqpairs.$db_col_taxid = ?;
 	";
@@ -2230,7 +2230,7 @@ sub import_ogs_into_database {
 			if ($debug) {
 				print "no rows affected, sequence pair already exists. attempting update...\n";
 				print $sth_sel->{Statement};
-				printf "Execute this with <%s>, and <%s>? ", $taxon, $hdr;
+				printf "Execute this with <%s>, and <%s>? ", $hdr, $taxon;
 				<STDIN>;
 			}
 			# determine the seqpairs id
