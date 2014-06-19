@@ -322,7 +322,7 @@ Config file example:
 sub parse_config {
 	my $file = shift;
 	my $conf = { };
-	my $fh = IO::File->new($file) or print "Fatal: Could not open config file '$file'\: $!\n" and exit(1);
+	open my $fh, '<', $file  or print "Fatal: Could not open config file '$file'\: $!\n" and exit(1);
 
 	while (my $line = $fh->getline()) {
 		next if $line =~ /^\s*$/; # skip empty lines

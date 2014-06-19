@@ -2193,7 +2193,7 @@ sub import_ogs_into_database {
 	
 		if ($debug) {
 			print $sth_ins->{Statement};
-			printf "Execute this with %s, %s, %s and %s? ", $taxon, $hdr, $taxon, $hdr;
+			printf "Execute this with <%s>, <%s>, <%s> and <%s>? ", $taxon, $hdr, $taxon, $hdr;
 			<STDIN>;
 		}
 		$sth_ins->execute($taxon, $hdr, $taxon, $hdr);
@@ -2202,20 +2202,20 @@ sub import_ogs_into_database {
 			if ($debug) {
 				print "no rows affected, sequence pair already exists. attempting update...\n";
 				print $sth_sel->{Statement};
-				printf "Execute this with %s, %s, %s and %s? ", $taxon, $hdr, $taxon, $hdr;
+				printf "Execute this with <%s>, <%s>, <%s> and <%s>? ", $taxon, $hdr, $taxon, $hdr;
 				<STDIN>;
 			}
 			# determine the seqpairs id
 			$sth_sel->execute($taxon, $hdr, $taxon, $hdr);
 			my $ids = $sth_sel->fetchall_arrayref();
-			if (scalar @$ids > 1) { croak "Fatal: SELECT statement returned more than one row!\n" }
-			elsif (scalar @$ids == 0) { croak "Fatal: SELECT statement returned zero rows!\n" }
+			if (scalar @$ids > 1) { croak "Fatal: Found more than one record with ID '$hdr'! Database corrupted?\n" }
+			elsif (scalar @$ids == 0) { croak "Fatal: Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.\n" }
 			if ($debug) {
 				print "got these ids: \n";
 				printf "%s, ", defined $_ ? $_ : 'NULL' foreach (@{$$ids[0]});
 				print "\n";
 				print $sth_upd->{Statement};
-				printf "Execute this with %s, %s, %s, %s and %s? ", $taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0];
+				printf "Execute this with <%s>, <%s>, <%s>, <%s> and <%s>? ", $taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0];
 				<STDIN>;
 			}
 			$sth_upd->execute($taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0]);
