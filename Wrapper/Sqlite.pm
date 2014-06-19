@@ -2165,18 +2165,16 @@ sub import_ogs_into_database {
 			$db_table_seqpairs.$db_col_id,
 			$seqtable.$db_col_id,
 			$otherseqtable.$db_col_id
-		FROM $db_table_seqpairs
-		LEFT JOIN $seqtable
-			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
+		FROM $seqtable
 		LEFT JOIN $otherseqtable
 			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
-		LEFT JOIN $db_table_taxa
-			ON $db_table_seqpairs.$db_col_taxid = $db_table_taxa.$db_col_id
-		WHERE $db_table_taxa.$db_col_id = ?
+		LEFT JOIN $db_table_seqpairs
+			ON $db_table_seqpairs.$db_col_seqcol = $seqtable.$db_col_id
+		WHERE $db_table_seqpairs.$db_col_taxid = ?
 		AND $seqtable.$db_col_header = ?
 		OR $otherseqtable.$db_col_header = ?
 	";
-			
+
 	my $query_update_pair = "
 		UPDATE $db_table_seqpairs 
 		SET 
@@ -2219,12 +2217,13 @@ sub import_ogs_into_database {
 			if ($debug) {
 				print "no rows affected, sequence pair already exists. attempting update...\n";
 				print $sth_sel->{Statement};
-				printf "Execute this with <%s>, <%s>, <%s> and <%s>? ", $taxon, $hdr, $taxon, $hdr;
+				printf "Execute this with <%s>, <%s>, and <%s>? ", $taxon, $hdr, $hdr;
 				<STDIN>;
 			}
 			# determine the seqpairs id
 			$sth_sel->execute($taxon, $hdr, $hdr);
 			my $ids = $sth_sel->fetchall_arrayref();
+			print Dumper $ids if $debug;
 			if (scalar @$ids > 1) { croak "Fatal: Found more than one record with ID '$hdr'! Database corrupted?\n" }
 			elsif (scalar @$ids == 0) { croak "Fatal: Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.\n" }
 			if ($debug) {
