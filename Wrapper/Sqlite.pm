@@ -2161,30 +2161,17 @@ sub import_ogs_into_database {
 	";
 
 	my $query_get_pair_id = "
-		SELECT 
-			$db_table_seqpairs.$db_col_id,
-			$seqtable.$db_col_id,
-			$otherseqtable.$db_col_id
-		FROM $seqtable
-		LEFT JOIN $otherseqtable
-			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
-		LEFT JOIN $db_table_seqpairs
-			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
-		WHERE $db_table_seqpairs.$db_col_taxid = ?
-		AND $seqtable.$db_col_header = ?
-		OR $otherseqtable.$db_col_header = ?
-	";
-	$query_get_pair_id = "
 		SELECT
 			$db_table_seqpairs.$db_col_id,
 			$seqtable.$db_col_id,
 			$otherseqtable.$db_col_id
 		FROM $seqtable
-		INNER JOIN $otherseqtable
-			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
 		INNER JOIN $db_table_seqpairs
-			ON $otherseqtable.$db_col_id = $db_table_seqpairs.$otherseqcol
+			ON $seqtable.$db_col_id = $db_table_seqpairs.$seqcol
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
 		WHERE $seqtable.$db_col_header = ?
+		OR $otherseqtable.$db_col_header = ?
 		AND $db_table_seqpairs.$db_col_taxid = ?;
 	";
 
