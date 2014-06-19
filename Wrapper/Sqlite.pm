@@ -2169,10 +2169,23 @@ sub import_ogs_into_database {
 		LEFT JOIN $otherseqtable
 			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
 		LEFT JOIN $db_table_seqpairs
-			ON $db_table_seqpairs.$db_col_seqcol = $seqtable.$db_col_id
+			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
 		WHERE $db_table_seqpairs.$db_col_taxid = ?
 		AND $seqtable.$db_col_header = ?
 		OR $otherseqtable.$db_col_header = ?
+	";
+	$query_get_pair_id = "
+		SELECT
+			$db_table_seqpairs.$db_col_id,
+			$seqtable.$db_col_id,
+			$otherseqtable.$db_col_id
+		FROM $seqtable
+		INNER JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		INNER JOIN $db_table_seqpairs
+			ON $seqtable.$db_col_id = $db_table_seqpairs.$seqcol
+		WHERE $seqtable.$db_col_header = ?
+		AND $db_table_seqpairs.$db_col_taxid = ?;
 	";
 
 	my $query_update_pair = "
@@ -2217,7 +2230,7 @@ sub import_ogs_into_database {
 			if ($debug) {
 				print "no rows affected, sequence pair already exists. attempting update...\n";
 				print $sth_sel->{Statement};
-				printf "Execute this with <%s>, <%s>, and <%s>? ", $taxon, $hdr, $hdr;
+				printf "Execute this with <%s>, and <%s>? ", $taxon, $hdr;
 				<STDIN>;
 			}
 			# determine the seqpairs id
