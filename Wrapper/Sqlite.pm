@@ -2130,37 +2130,23 @@ sub import_ogs_into_database {
 		AND $otherseqtable.$db_col_header = ?
 	";
 
-	my $query_select_pair = "
+	my $query_get_pair_id = "
 		SELECT 
 			$db_table_seqpairs.$db_col_id,
 			$seqtable.$db_col_id,
 			$otherseqtable.$db_col_id
-		FROM $db_table_seqpairs
-		LEFT JOIN $seqtable
-			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
-		LEFT JOIN $otherseqtable
+		FROM $seqtable
+		INNER JOIN $otherseqtable
 			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
-		LEFT JOIN $db_table_taxa
-			ON $db_table_seqpairs.$db_col_taxid = $db_table_taxa.$db_col_id
-		WHERE $db_table_taxa.$db_col_id = ?
-		AND $seqtable.$db_col_header = ?
-		UNION 
-		SELECT 
-			$db_table_seqpairs.$db_col_id,
-			$seqtable.$db_col_id,
-			$otherseqtable.$db_col_id
-		FROM $db_table_seqpairs
-		LEFT JOIN $seqtable
-			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
-		LEFT JOIN $otherseqtable
-			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
-		LEFT JOIN $db_table_taxa
-			ON $db_table_seqpairs.$db_col_taxid = $db_table_taxa.$db_col_id
-		WHERE $db_table_taxa.$db_col_id = ?
-		AND $otherseqtable.$db_col_header = ?
+		INNER JOIN $db_table_seqpairs
+			ON $seqtable.$db_col_id = $db_table_seqpairs.$seqcol
+			OR $otherseqtable.$db_col_id = $db_table_seqpairs.$otherseqcol
+		WHERE $seqtable.$db_col_header = ?
+		OR $otherseqtable.$db_col_header = ?
+		AND $db_table_seqpairs.$db_col_taxid = ?;
 	";
 
-	my $query_get_pair_id = "
+	my $query_select_pair = "
 		SELECT
 			$db_table_seqpairs.$db_col_id,
 			$seqtable.$db_col_id,
