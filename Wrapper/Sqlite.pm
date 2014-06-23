@@ -2143,7 +2143,7 @@ sub import_ogs_into_database {
 			OR $otherseqtable.$db_col_id = $db_table_seqpairs.$otherseqcol
 		WHERE $seqtable.$db_col_header = ?
 		OR $otherseqtable.$db_col_header = ?
-		AND $db_table_seqpairs.$db_col_taxid = ?;
+		AND $seqtable.$db_col_taxid = ?;
 	";
 
 	my $query_select_pair = "
