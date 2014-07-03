@@ -94,7 +94,7 @@ my $db_col_score            = 'score';
 my $db_col_name             = 'name';
 my $db_col_ntseq            = 'nt_seq';
 my $db_col_ogsid            = 'ogs_id';
-my $db_col_ogsversion       = 'ogs_version';
+my $db_col_ogsversion       = 'version';
 my $db_col_orthoid          = 'ortholog_gene_id';
 my $db_col_query            = 'query';
 my $db_col_setid            = 'setid';
@@ -2135,15 +2135,14 @@ sub import_ogs_into_database {
 			$db_table_seqpairs.$db_col_id,
 			$seqtable.$db_col_id,
 			$otherseqtable.$db_col_id
-		FROM $seqtable
-		INNER JOIN $otherseqtable
-			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
-		INNER JOIN $db_table_seqpairs
-			ON $seqtable.$db_col_id = $db_table_seqpairs.$seqcol
-			OR $otherseqtable.$db_col_id = $db_table_seqpairs.$otherseqcol
-		WHERE $seqtable.$db_col_header = ?
-		OR $otherseqtable.$db_col_header = ?
-		AND $seqtable.$db_col_taxid = ?;
+		FROM $db_table_seqpairs
+		LEFT JOIN $seqtable
+			ON $db_table_seqpairs.$seqcol = $seqtable.$db_col_id
+		LEFT JOIN $otherseqtable
+			ON $db_table_seqpairs.$otherseqcol = $otherseqtable.$db_col_id 
+		WHERE ($seqtable.$db_col_header = ?
+			OR $otherseqtable.$db_col_header = ?)
+			AND $seqtable.$db_col_taxid = ?;
 	";
 
 	my $query_select_pair = "
@@ -2174,7 +2173,18 @@ sub import_ogs_into_database {
 	";
 
 	my $dbh = get_dbh();
-	$dbh->do($query_insert_sequences) or die "Fatal: OGS loading failed: $DBI::errstr\n";
+	$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
+	# update OGS table
+	my $query_insert_ogs = "INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
+	if ($debug) {
+		print $query_insert_ogs, "\n";
+		printf "Execute this with <%s>, <%s>, and <%s>? ", $type, $taxon, $ogsversion;
+		<STDIN>;
+	}
+	$dbh->do($query_insert_ogs) or fail_and_exit("Could not update OGS table: $DBI::errstr");
+	my $ogsid = $dbh->selectall_arrayref("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = $taxon AND $db_col_ogsversion = $ogsversion");
+	$ogsid = $$ogsid[0][0];
+	print "Got OGS ID $ogsid for taxon ID $taxon\n" if $debug;
 	my $sth_ins = $dbh->prepare($query_insert_pair);
 	my $sth_sel = $dbh->prepare($query_get_pair_id);
 	my $sth_upd = $dbh->prepare($query_update_pair);
@@ -2203,30 +2213,28 @@ sub import_ogs_into_database {
 			if ($debug) {
 				print "no rows affected, sequence pair already exists. attempting update...\n";
 				print $sth_sel->{Statement};
-				printf "Execute this with <%s>, and <%s>? ", $hdr, $taxon;
+				printf "Execute this with <%s>, <%s>, and <%s>? ", $hdr, $hdr, $taxon;
 				<STDIN>;
 			}
 			# determine the seqpairs id
-			$sth_sel->execute($taxon, $hdr, $hdr);
+			$sth_sel->execute($hdr, $hdr, $taxon);
 			my $ids = $sth_sel->fetchall_arrayref();
 			print Dumper $ids if $debug;
-			if (scalar @$ids > 1) { croak "Fatal: Found more than one record with ID '$hdr'! Database corrupted?\n" }
-			elsif (scalar @$ids == 0) { croak "Fatal: Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.\n" }
+			if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
+			elsif (scalar @$ids == 0) { fail_and_exit("Fatal: Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.") }
 			if ($debug) {
 				print "got these ids: \n";
 				printf "%s, ", defined $_ ? $_ : 'NULL' foreach (@{$$ids[0]});
 				print "\n";
 				print $sth_upd->{Statement};
-				printf "Execute this with <%s>, <%s>, <%s>, <%s> and <%s>? ", $taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0];
+				printf "Execute this with <%s>, <%s>, <%s>, <%s> and <%s>? ", $taxon, $ogsid, $$ids[0][1], $$ids[0][2], $$ids[0][0];
 				<STDIN>;
 			}
-			$sth_upd->execute($taxon, $ogsversion, $$ids[0][1], $$ids[0][2], $$ids[0][0]);
-			if ($sth_upd->rows() == 0) { croak "Fatal: UPDATE didn't affect anything (no rows updated)!\n" }
+			$sth_upd->execute($taxon, $ogsid, $$ids[0][1], $$ids[0][2], $$ids[0][0]);
+			if ($sth_upd->rows() == 0) { fail_and_exit('Fatal: UPDATE didn\'t affect anything (no rows updated)!') }
 		}
 		
 	}
-	# update OGS table
-	db_do("INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')") or croak "Fatal: Could not update OGS table: $DBI::errstr\n";
 	return 1;
 }
 
