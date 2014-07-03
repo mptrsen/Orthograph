@@ -302,8 +302,8 @@ sub create_tables {
 			`id`           INTEGER PRIMARY KEY,
 			`taxid`        INTEGER    UNSIGNED,
 			`ogs_id`       INTEGER    UNSIGNED,
-			`aa_seq`       INTEGER    UNSIGNED UNIQUE,
-			`nt_seq`       INTEGER    UNSIGNED UNIQUE, 
+			`aa_seq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL,
+			`nt_seq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL, 
 			`date`         INTEGER    UNSIGNED DEFAULT CURRENT_TIMESTAMP,
 			`user`         INTEGER    UNSIGNED)",
 
@@ -2130,6 +2130,18 @@ sub import_ogs_into_database {
 		AND $otherseqtable.$db_col_header = ?
 	";
 
+	my $query_get_pair_ids = "
+		SELECT
+			$seqtable.$db_col_id,
+			$otherseqtable.$db_col_id
+		FROM
+			$seqtable
+		INNER JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		WHERE $seqtable.$db_col_header = ?
+			AND $seqtable.$db_col_taxid = ?
+	";
+
 	my $query_get_pair_id = "
 		SELECT 
 			$db_table_seqpairs.$db_col_id,
@@ -2142,22 +2154,15 @@ sub import_ogs_into_database {
 			ON $db_table_seqpairs.$otherseqcol = $otherseqtable.$db_col_id 
 		WHERE ($seqtable.$db_col_header = ?
 			OR $otherseqtable.$db_col_header = ?)
-			AND $seqtable.$db_col_taxid = ?;
+			AND $db_table_seqpairs.$db_col_taxid = ?;
 	";
 
 	my $query_select_pair = "
 		SELECT
-			$db_table_seqpairs.$db_col_id,
-			$seqtable.$db_col_id,
-			$otherseqtable.$db_col_id
-		FROM $seqtable
-		INNER JOIN $db_table_seqpairs
-			ON $seqtable.$db_col_id = $db_table_seqpairs.$seqcol
-		LEFT JOIN $otherseqtable
-			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
-		WHERE $seqtable.$db_col_header = ?
-		OR $otherseqtable.$db_col_header = ?
-		AND $db_table_seqpairs.$db_col_taxid = ?;
+			$db_table_seqpairs.$db_col_id
+		FROM $db_table_seqpairs
+		WHERE $db_table_seqpairs.$seqcol = ?
+			OR $db_table_seqpairs.$otherseqcol = ?
 	";
 
 	my $query_update_pair = "
@@ -2185,9 +2190,10 @@ sub import_ogs_into_database {
 	my $ogsid = $dbh->selectall_arrayref("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = $taxon AND $db_col_ogsversion = $ogsversion");
 	$ogsid = $$ogsid[0][0];
 	print "Got OGS ID $ogsid for taxon ID $taxon\n" if $debug;
-	my $sth_ins = $dbh->prepare($query_insert_pair);
-	my $sth_sel = $dbh->prepare($query_get_pair_id);
-	my $sth_upd = $dbh->prepare($query_update_pair);
+	my $sth_ins = $dbh->prepare($query_insert_pair) or die;
+	my $sth_sel = $dbh->prepare($query_get_pair_ids) or die;
+	my $sth_selp = $dbh->prepare($query_select_pair) or die;
+	my $sth_upd = $dbh->prepare($query_update_pair) or die;
 	
 
 	# for each header
@@ -2213,24 +2219,35 @@ sub import_ogs_into_database {
 			if ($debug) {
 				print "no rows affected, sequence pair already exists. attempting update...\n";
 				print $sth_sel->{Statement};
-				printf "Execute this with <%s>, <%s>, and <%s>? ", $hdr, $hdr, $taxon;
+				printf "Execute this with <%s>, and <%s>? ", $hdr, $taxon;
 				<STDIN>;
 			}
-			# determine the seqpairs id
-			$sth_sel->execute($hdr, $hdr, $taxon);
+			# determine the nt and aa sequence ids
+			$sth_sel->execute($hdr, $taxon);
 			my $ids = $sth_sel->fetchall_arrayref();
 			print Dumper $ids if $debug;
 			if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
-			elsif (scalar @$ids == 0) { fail_and_exit("Fatal: Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.") }
+			elsif (scalar @$ids == 0) { fail_and_exit("Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.") }
 			if ($debug) {
 				print "got these ids: \n";
-				printf "%s, ", defined $_ ? $_ : 'NULL' foreach (@{$$ids[0]});
+				printf "<%s> ", defined $_ ? $_ : 'NULL' foreach (@{$$ids[0]});
 				print "\n";
-				print $sth_upd->{Statement};
-				printf "Execute this with <%s>, <%s>, <%s>, <%s> and <%s>? ", $taxon, $ogsid, $$ids[0][1], $$ids[0][2], $$ids[0][0];
+			}
+			# get the sequence pair id
+			if ($debug) {
+				print $sth_selp->{Statement};
+				printf "Execute this with <%s> and <%s>? ", @{$$ids[0]};
 				<STDIN>;
 			}
-			$sth_upd->execute($taxon, $ogsid, $$ids[0][1], $$ids[0][2], $$ids[0][0]);
+			$sth_selp->execute(@{$$ids[0]});
+			my $seqpairid = $dbh->selectcol_arrayref($sth_selp);
+			if ($debug) {
+				print "got sequence pair ID $$seqpairid[0]\n";
+				print $sth_upd->{Statement};
+				printf "Execute this with <%s>, <%s>, <%s>, <%s> and <%s>? ", $taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0];
+				<STDIN>;
+			}
+			$sth_upd->execute($taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
 			if ($sth_upd->rows() == 0) { fail_and_exit('Fatal: UPDATE didn\'t affect anything (no rows updated)!') }
 		}
 		
