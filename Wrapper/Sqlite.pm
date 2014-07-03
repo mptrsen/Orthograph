@@ -2136,7 +2136,7 @@ sub import_ogs_into_database {
 			$otherseqtable.$db_col_id
 		FROM
 			$seqtable
-		INNER JOIN $otherseqtable
+		LEFT JOIN $otherseqtable
 			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
 		WHERE $seqtable.$db_col_header = ?
 			AND $seqtable.$db_col_taxid = ?
