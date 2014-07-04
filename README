@@ -18,6 +18,7 @@ but the database is a flat file on the hard drive.
 
 Package      | Version | Download from
 :------------|:--------|:-----------------------------------------------------------
+Perl         | 5.14    | http://www.perl.org
 SQLite       | 3.8.2   | http://sqlite.org/download.html
 MySQL        | 5.6.17  | http://dev.mysql.com/downloads/mysql/
 MAFFT        | 7.023b  | http://mafft.cbrc.jp/alignment/software/
@@ -74,8 +75,8 @@ from the OGS:
 
 The OGS must be present as amino acid sequences, and may be present as
 nucleotide sequences. If the latter is missing, no nucleotide sequences can be
-output. The sequence identifiers of corresponding nucleotide and amino acid
-sequences must be identical.
+output for the reference taxa. The sequence identifiers of corresponding
+nucleotide and amino acid sequences must be identical.
 
 
 QUICKSTART
@@ -168,7 +169,7 @@ the process:
   -ogs-version VERSION
 	-reference-taxon-shorthand TAXON
 
-the version can be an arbitrary string (but enclose it in quotes if it contains
+The version can be an arbitrary string (but enclose it in quotes if it contains
 spaces). The shorthand must be a shorthand that is present in the ortholog set
 file (and therefore in the database), just like you would enter it at the
 prompt; otherwise, the taxon cannot be correlated.
@@ -194,7 +195,7 @@ performance. For now, be happy that you only need to do this once.
 The same options for specifying OGS taxon and version number (see step 5) are
 available for nucleotide data, as well.
 
-## 7. Create the required database structure for Orthograph.
+## 7. Create the required database structure for the Orthograph search program.
 
 Make orthograph-analyzer executable and run it with the -prepare option:
 
