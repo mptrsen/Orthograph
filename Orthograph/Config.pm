@@ -52,8 +52,7 @@ GetOptions( $config,
   'aaoutdir=s',
   'alignment-program=s',
 	'backup',
-  'backup-extension',
-  'blast-evalue-threshold',
+  'backup-extension=s',
   'blast-evalue-threshold=f',
   'blast-max-hits=i',
   'blast-score-threshold=i',
@@ -61,18 +60,19 @@ GetOptions( $config,
   'blastp-output-dir=s',
   'clear-database!',
   'clear-files!',
+	'cog-list-file=s',
+	'concatenation-header-separator=s',
   'configfile|c=s',
   'database-backend=s',
   'db-prefix=s',
-  'debug|d',
-  'input-file',
+  'debug|d+',
+	'fill-with-x',
   'input-file|i=s',
+	'hamstr-compatible-output',
 	'header-separator=s',
-  'hmmsearch-evalue-threshold',
   'hmmsearch-evalue-threshold=f',
-  'hmmsearch-output-dir',
-  'hmmsearch-score=i',
-  'hmmsearch-score-threshold',
+  'hmmsearch-output-dir=s',
+  'hmmsearch-score-threshold=i',
   'hmmsearchprog=s',
   'logfile|log=s',
 	'make-set',
@@ -81,30 +81,22 @@ GetOptions( $config,
   'mysql-password=s',
   'mysql-server=s',
   'mysql-username=s',
-  'db_table_aaseqs',
-  'db_table_blast',
-  'db_table_blastdbs',
-  'db_table_ests',
-  'db_table_hmmsearch',
-  'db_table_log_evalues',
-  'db_table_orthologs',
-  'db_table_sequence_pairs',
-  'db_table_sequence_types',
-  'db_table_set_details',
-  'db_table_taxa',
+  'no-frameshift-correction',
 	'num-threads=i',
+  'ogs-version=s',
   'ortholog-set=s',
+	'orf-overlap-minimum=f',
   'output-directory=s',
 	'overwrite|o',
   'preparedb',
-  'quiet',
   'quiet|q',
   'reference-taxa=s',
-  'reference-taxon=s',
+  'reference-taxon-shorthand=s',
   'sets-dir=s',
   'soft-threshold=i',
   'species-name=s',
 	'sqlite-database=s',
+	'strict-search',
   'substitute-u-with=s',
   'verbose|v',
 ) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);
@@ -113,7 +105,7 @@ GetOptions( $config,
 die "Fatal: Error parsing config" unless $config;
 
 #--------------------------------------------------
-# # These variables can be set in the config file
+# # These variables can be set in the config file. The defaults are set here.
 #-------------------------------------------------- 
 
 # MySQL settings
@@ -170,6 +162,8 @@ $config->{'blast-score-threshold'}      //= 10;
 $config->{'blastoutdir'}                //= basename($config->{'blast-program'});
 $config->{'clear-files'}                //= 0;
 $config->{'clear-database'}             //= 1;
+$config->{'cog-list-file'}              //= '';
+$config->{'concatenation-header-separator'} //= 'PP';
 $config->{'configfile'}                 //= $configfile;
 $config->{'continue'}                   //= 0;
 $config->{'create'}                     //= 0;
@@ -177,36 +171,43 @@ $config->{'debug'}                      //= 0;
 $config->{'delete-ogs'}                 //= '';
 $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
-$config->{'input-file'}                 //= '';
 $config->{'evalue-bin-size'}            //= 500;
 $config->{'exonerate-program'}          //= 'exonerate';
+$config->{'fill-with-x'}                //= 1;
+$config->{'hamstr-compatible-output'}   //= 0;
 $config->{'header-separator'}           //= '|';
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
-$config->{'hmmsearch-evalue-threshold'} //= defined $config->{'hmmsearch-score-threshold'} ? undef : 10;
 $config->{'hmmsearch-program'}          //= 'hmmsearch';
-$config->{'hmmsearch-program'}          //= 'hmmsearch';
-$config->{'hmmsearch-score-threshold'}  //= defined $config->{'hmmsearch-evalue-threshold'} ? undef : 10;
+$config->{'hmmsearch-score-threshold'}  //= 10;
+$config->{'hmmsearch-evalue-threshold'} //= 1e-5;
 $config->{'hmmsearchoutdir'}            //= basename($config->{'hmmsearch-program'});
+$config->{'input-file'}                 //= '';
 $config->{'load-ogs-nucleotide'}        //= '';
 $config->{'load-ogs-peptide'}           //= '';
 $config->{'logfile'}                    //= '';
 $config->{'make-set'}                   //= 0;
 $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
+$config->{'no-frameshift-correction'}   //= 0;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
+$config->{'ogs-version'}                //= '';
+$config->{'orf-overlap-minimum'}        //= 0.5;
 $config->{'ortholog-set'}               //= '';
-$config->{'output-directory'}           //= '';
+$config->{'output-directory'}           //= '.';
 $config->{'overwrite'}                  //= 0;
 $config->{'prepare'}                    //= 0;  
 $config->{'quiet'}                      //= 0;  # I like my quiet
 $config->{'reference-taxa'}             //= '';
+$config->{'reference-taxon-shorthand'}  //= '';
 $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 5;
 $config->{'species-name'}               //= '';
 $config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
+$config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= 'X';
+$config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
 
@@ -235,11 +236,6 @@ if ($config->{'database-backend'} eq 'sqlite' and not defined $config->{'sqlite-
 
 if ($config->{'verbose'} and $config->{'quiet'}) {
 	print STDERR "Fatal: Can't operate in both verbose and quiet mode\n";
-	exit(1);
-}
-
-if ($config->{'hmmsearch-evalue-threshold'} and $config->{'hmmsearch-score-threshold'}) {
-	print STDERR "Fatal: Can't use both e-value and score thresholds\n";
 	exit(1);
 }
 
@@ -326,7 +322,7 @@ Config file example:
 sub parse_config {
 	my $file = shift;
 	my $conf = { };
-	my $fh = IO::File->new($file) or print "Fatal: Could not open config file '$file'\: $!\n" and exit(1);
+	open my $fh, '<', $file  or print "Fatal: Could not open config file '$file'\: $!\n" and exit(1);
 
 	while (my $line = $fh->getline()) {
 		next if $line =~ /^\s*$/; # skip empty lines

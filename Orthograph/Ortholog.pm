@@ -192,4 +192,21 @@ sub real_header {
 	return $self->{'real_header'};
 }
 
+
+=head crop_to_hmm
+
+Crops the ORF sequence including coordinates to the HMM region of the alignment.
+
+=cut
+
+sub crop_to_orf {
+	my $self = shift;
+	unless ($self->orf_aa_start() and $self->orf_aa_end()) {
+		return 0;
+	}
+	else {
+		
+	}
+}
+
 'This line intentionally left false';

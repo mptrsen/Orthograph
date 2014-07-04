@@ -25,10 +25,10 @@ database-backend   = sqlite
 #
 # # SQLite settings
 #
-# Database file for SQLite. Required if you use SQLite.
-# This is a plain file that can be located anywhere. Just give it a name, and
-# Orthograph will create it automatically.
-sqlite-database    = /PATH/TO/DATABASE
+# Path to the database file for SQLite. Required if you use SQLite. This is a
+# plain file that can be located anywhere. It will be created automatically. By
+# convention, SQLite database files carry the extension '.sqlite'.
+sqlite-database    = ORTHOGRAPH.sqlite
 
 # Path to the sqlite executable. Normally this is located at /usr/bin/sqlite3
 # (the default). Required if you use SQLite and have 'database-backend' set to
@@ -43,26 +43,29 @@ sqlite-program     = /usr/bin/sqlite3
 #mysql-password     = PASSWORD
 #mysql-database     = DATABASE
 
-# The path to your transcript data file. It is always best to use absolute
-# paths. You may only supply one file, not a directory of files.
+# The path to your transcript data file. Must be in Fasta format. It is always
+# best to use absolute paths. You may only supply one file, not a directory of
+# files.
 input-file         = FASTAFILE
 
 # Species name. Make sure to pick a unique name because otherwise results get
 # mixed up. You can, however, supply an existing name if you want to add
 # sequences to an existing data set (this has been neither tested nor
 # documented yet, though).
-species-name       = TEST-SPECIES
+species-name       = NAME
 
 # The name of the ortholog set (not the path to a file) you created earlier.
 ortholog-set       = SETNAME
 
 # This is where your results are placed. Will be created if it doesn't exist.
-output-directory   = /PATH/TO/OUTPUT-DIR
+# You should provide the path to a directory here or your output will be placed
+# in your current working directory.
+#output-directory   = /PATH/TO/OUTPUT/DIR
 
-# Reference taxa. Must be a comma-separated list of taxa that are present in
-# your ortholog set. If you don't specify any reference taxa (i.e., comment out
-# this setting), all taxa in your set are used as reference taxa. 
-reference-taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN, YOUR, ORTHOLOG, SET
+# Reference taxa. A comma-separated list of taxa that are present in your
+# ortholog set. If you don't specify any reference taxa (i.e., leave this
+# setting commented out), all taxa in your set are used as reference taxa. 
+#reference-taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN, YOUR, ORTHOLOG, SET
 
 
 #--------------------------------------------------
@@ -120,22 +123,20 @@ exonerate-program    = exonerate
 #
 # # Settings that affect the HMM and BLAST searches.
 #
-# E-value threshold. The HMMsearch e-value threshold affects the specificity of
-# the HMM search, the first step in the reciprocal algorithm. It defines how
-# distantly related candidate orthologs may be when searching through the
-# transcriptome file. The BLAST e-value threshold affects the second step, the
-# reciprocal search. Basically, this defines the false-positive probability
-# (lower e-value = lower probability).
-#hmmsearch-evalue-threshold = 1e-05
-#blast-evalue-threshold     = 1e-05
-
-# You can also set a score threshold. A higher score means a better match. For
-# HMMsearch, E-value and score thresholds are mutually exclusive. If both are
-# set, the E-value threshold will be used (to use the score threshold, you have
-# to unset the E-value threshold). BLAST accepts both E-value and score
-# thresholds simultaneously.
+# Score threshold. A higher alignment score means a better match. Default value
+# is 10.
 #hmmsearch-score-threshold = 10
 #blast-score-threshold     = 10
+
+# You can also set an e-value threshold. The HMMsearch e-value threshold
+# affects the specificity of the HMM search, the first step in the reciprocal
+# algorithm. It defines how distantly related candidate orthologs may be when
+# searching through the transcriptome file. The BLAST e-value threshold affects
+# the second step, the reciprocal search. Basically, this defines the
+# false-positive probability (lower e-value = lower probability).
+# Default value is 1e-05 (0.00001).
+#hmmsearch-evalue-threshold = 1e-05
+#blast-evalue-threshold     = 1e-05
 
 # Maximum number of HMMsearch hits to consider. This setting is useful to limit
 # the number of reciprocal searches for very large number of HMMsearch hits.
@@ -166,11 +167,28 @@ exonerate-program    = exonerate
 # 
 # # Other options
 #
+# Minimum ORF overlap. Each transcript is given to Exonerate to correct for
+# frameshift errors etc. The resulting ORF must overlap the HMM alignment
+# region by this percentage. Note that the value must be specified as a
+# fraction of 1.
+# 0.5 (50%) is the default; a higher value makes this more conservative.
+#orf-overlap-minimum = 0.5
+
+# HaMStR compatible output. Leave this uncommented if you want to use scripts
+# that depend on the sequence header format that the older HaMStR pipeline
+# used. The default is a more human-readable format, hence this extra option.
+hamstr-compatible-output = 1
+
+# If you are only interested in a few genes from your ortholog set, you can 
+# provide Orthograph with a list of ortholog IDs in a file. The IDs must be
+# in a single line each, and there must be no empty lines in the file. 
+#cog-list-file = /PATH/TO/FILE
+
 # Strict search. Normally it is enough for a match to occur if one of the
 # reference taxa is hit in the reciprocal search. In strict mode ALL reference
 # taxa must be hit to verify an ortholog assignment. This is much more
 # conservative.
-#strict      = 1
+#strict-search = 1
 
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
@@ -184,13 +202,20 @@ exonerate-program    = exonerate
 # will speed up the process significantly, since the search programs don't have
 # to be run again.
 # Uncomment this line if you want the files deleted.
-#clear-result-files           = 1
+#clear-result-files = 1
 
 # Selenocysteine (U) may occur in some protein sequences. However, some
 # alignment programs do not accept this nonstandard amino acid symbol. You can
 # tell Orthograph to substitute all 'U' in the sequences with a different
 # character. The default is not to substitute.
 #substitute-u-with = X
+
+# Correct for frameshift errors using Exonerate. This ensures that you receive
+# a 100% corresponding nucleotide sequence for your predicted orthologous
+# transcripts, but may lead to lost transcripts where no matching alignment
+# could be obtained by Exonerate. This is the default behaviour; uncomment this
+# line to turn it off.
+#no-frameshift-correction = 0
 
 # Header separator. This will be used to separate header fields in the output files.
 # May be an arbitrary string. Defaults to '|'. To use a whitespace character,
@@ -201,13 +226,13 @@ exonerate-program    = exonerate
 # you don't want to see this. If you are really interested in what Orthograph is
 # thinking during the analysis, uncomment this. Verbose and quiet are mutually
 # exclusive.
-#verbose     = 1
+#verbose = 1
 
 # Quiet output. Uncomment this if you don't want to be bothered during the
 # analysis. After starting, Orthograph will keep still until the analysis is
 # complete (or unexpected things happen). Verbose and quiet are mutually
 # exclusive.
-#quiet       = 1
+#quiet = 1
 
 
 #
@@ -217,9 +242,9 @@ exonerate-program    = exonerate
 # (that is, the BLAST database, the HMMs and the alignment files for each
 # ortholog gene) in a separate place. Defaults to 'sets' (in the current
 # directory).
-#sets-dir    = /PATH/TO/SETS/DIR
+#sets-dir = /PATH/TO/SETS/DIR
 
-# Log file. If set, all messages will also be written to this file. If this is
-# not set, messages are written to a log file in your output directory (see the
-# setting 'output-directory' above).
-#logfile     = /PATH/TO/LOGFILE
+# Path to log file. If set, all messages will also be written to this file. If
+# this is not set, messages are written to a log file in your output directory
+# (see the setting 'output-directory' above).
+#logfile = /PATH/TO/LOGFILE

@@ -20,6 +20,31 @@ package Orthograph::Functions;
 
 =cut
 
-use IO::File;
+use strict;
+use warnings;
+use autodie;
+
+=head2 file2arrayref
+
+Reads a file, line by line. Removes linebreaks and returns an arrayref.
+
+=cut
+
+sub file2arrayref {
+	my $f = shift;
+	open my $fh, '<', $f or die "Fatal: Could not open file '$f': $!\n";
+	my $l = [ <$fh> ];
+	chomp @$l;
+	return $l;
+}
+
+sub touch {
+	my $now = time;
+	my $file = shift @_;
+	utime($now, $now, $file)
+	|| open(my $fn, '>>', $file)
+	|| croak("Couldn't touch file $file: $!\n");
+	return 1;
+}
 
 1;

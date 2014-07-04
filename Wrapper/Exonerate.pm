@@ -27,14 +27,15 @@ use Data::Dumper;
 
 use Seqload::Fasta;	# object-oriented access to fasta files
 
-my $verbose    = 0;
-my $debug      = 0;
-my $exhaustive = 0;
-my $outdir     = File::Spec->catdir('.');
-my $searchprog = 'exonerate';
-my @searchcmd;
+my $verbose          = 0;
+my $debug            = 0;
+my $exhaustive       = 0;
+my $outdir           = File::Spec->catdir('.');
+my $searchprog       = 'exonerate';
+my $translateprog    = 'fastatranslate';
 my $evalue_threshold = 10;
-my $score_threshold = 10;
+my $score_threshold  = 10;
+my @searchcmd;
 
 sub new {
 	my ($class, $query, $target) = @_;
@@ -117,6 +118,26 @@ sub searchprog {
   $searchprog = shift;
 }
 
+=head2 translateprog
+
+Sets the translation program. Expects a string. Defaults to 'F<exonerate>'.
+
+NOTE: the program must be able to be called like this:
+
+PROGRAM -F 1 FASTAFILE
+
+where the -F option specifies the reading frame. It must provide output on
+STDOUT and in Fasta format.
+
+=cut
+
+sub translateprog {
+  my $class = shift;
+  if (ref $class) { confess("Class method called as object method") }
+  unless (scalar @_ == 1) { confess("Usage: Wrapper::Exonerate->translateprog(COMMAND)") }
+  $translateprog = shift;
+}
+
 =head2 score_threshold
 
 Sets or returns the score threshold to use for the exonerate search. Defaults to
@@ -178,7 +199,7 @@ sub search {
 	# roll your own output for exonerate
 	#my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
 	# just the target coding sequence (tcs)
-	my $exonerate_ryo = '>ca\n%tcs>qa\n%qas';
+	my $exonerate_ryo = '>cdna %tcb %tce\n%tcs>aa %qab %qae\n%qas';
 
 	# the complete command line
 	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --querytype protein --targettype dna --verbose 0 --showalignment no --showvulgar no $exhaustive --query $queryfile --target $targetfile > $outfile);
@@ -190,14 +211,48 @@ sub search {
 	return 1;
 }
 
+sub translated_cdna {
+	my $self = shift;
+	unless ($self->{'cdna_translated'}) { translate_cdna($self) }
+	return $self->{'cdna_translated'};
+}
+
+sub translate_cdna {
+	my $self = shift;
+	my $outfile = File::Spec->catfile($outdir, 'translatethis.fa');
+	my $translatefile = fastaify('cdna', $self->{'cdna_sequence'});
+	my $translate_cmd = qq($translateprog -F 1 $translatefile);
+	if ($debug) {
+		print 'Translating CDNA...', "\n";
+		print $translate_cmd, "\n";
+	}
+	my $translated_cdna_fasta = [ `$translate_cmd` ] or croak "Fatal: Couldn't translate CDNA sequence using command '$translate_cmd'\n";
+	shift @$translated_cdna_fasta;
+	chomp @$translated_cdna_fasta;
+	$self->{'cdna_translated'} = join '', @$translated_cdna_fasta;
+	return 1;
+}
+
 sub cdna_start {
 	my $self = shift;
-	return $self->{'cdna_start'};
+	# add 1 since exonerate uses 0-based coordinates
+	return $self->{'cdna_start'} + 1;
 }
 
 sub cdna_end {
 	my $self = shift;
 	return $self->{'cdna_end'};
+}
+
+sub aa_start {
+	my $self = shift;
+	# add 1 since exonerate uses 0-based coordinates
+	return $self->{'aa_start'} + 1;
+}
+
+sub aa_end {
+	my $self = shift;
+	return $self->{'aa_end'};
 }
 
 sub result {
@@ -238,11 +293,18 @@ sub parse_result {
 	my $fh = Seqload::Fasta->open($self->{'resultfile'});
 	# watch for the order of sequences, they must correspond to the order in
 	# the --ryo option in the exonerate call
+	# get the cdna sequence
 	($header, $self->{'cdna_sequence'}) = $fh->next_seq();
+	# get the cdna coordinates 
 	my @fields = split ' ', $header;
 	$self->{'cdna_start'} = $fields[1];
 	$self->{'cdna_end'}   = $fields[2];
-	(undef, $self->{'aa_sequence'})   = $fh->next_seq();
+	# get the aa sequence
+	($header, $self->{'aa_sequence'})   = $fh->next_seq();
+	# get the aa coordinates
+	@fields = split ' ', $header;
+	$self->{'aa_start'} = $fields[1];
+	$self->{'aa_end'}   = $fields[2];
 	undef $fh;
 }
 
@@ -293,9 +355,10 @@ sub fastaify {
 	my $fh = File::Temp->new(UNLINK=>1);
 	printf { $fh } ">%s\n%s\n", $header, $sequence;
 	close $fh;
-	if ($debug) {
+	if ($debug > 1) {
 		printf "Wrote this sequence to Fasta file '%s':\n>%s\n%s\n", $fh, $header, $sequence;
 	}
 	return $fh;
 }
 
+'this line intentionally left true'
