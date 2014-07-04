@@ -38,4 +38,13 @@ sub file2arrayref {
 	return $l;
 }
 
+sub touch {
+	my $now = time;
+	my $file = shift @_;
+	utime($now, $now, $file)
+	|| open(my $fn, '>>', $file)
+	|| croak("Couldn't touch file $file: $!\n");
+	return 1;
+}
+
 1;

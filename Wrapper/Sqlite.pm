@@ -45,6 +45,7 @@ use Exporter;
 use FindBin;        # locate the dir of this script during compile time
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config;                # configuration parser getconfig()
+use Orthograph::Functions;
 use Data::Dumper;
 use DBI;
 use DBD::SQLite;
@@ -128,6 +129,7 @@ my $attached_db_file        = File::Spec->catfile($config->{'output-directory'},
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
 print "Using file '$attached_db_file' as attached database '$db_attached'\n";
+unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
 
 
 =head1 FUNCTIONS
@@ -2186,7 +2188,7 @@ sub import_ogs_into_database {
 			$db_col_id = ?
 	";
 
-	my $dbh = get_dbh( {'noattach'} );
+	my $dbh = get_dbh( {'noattach' => 1 } );
 	$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
 	# update OGS table
 	my $query_insert_ogs = "INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
