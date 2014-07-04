@@ -2187,7 +2187,7 @@ sub import_ogs_into_database {
 		<STDIN>;
 	}
 	$dbh->do($query_insert_ogs) or fail_and_exit("Could not update OGS table: $DBI::errstr");
-	my $ogsid = $dbh->selectall_arrayref("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = $taxon AND $db_col_ogsversion = $ogsversion");
+	my $ogsid = $dbh->selectall_arrayref("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = $taxon AND $db_col_ogsversion = '$ogsversion'");
 	$ogsid = $$ogsid[0][0];
 	print "Got OGS ID $ogsid for taxon ID $taxon\n" if $debug;
 	my $sth_ins = $dbh->prepare($query_insert_pair) or die;
