@@ -174,7 +174,6 @@ Returns: Database handle
 
 sub get_dbh {#{{{
 	my $args = shift @_;
-	my $noattach = $args->{'noattach'};
 	my $dbh = undef;
 	my $slept = 0;
 
@@ -189,7 +188,6 @@ sub get_dbh {#{{{
 
 	if ($dbh) {
 		$dbh->sqlite_busy_timeout($db_timeout * 1000);
-		if ($noattach) { return $dbh }
 		if ($debug > 1) { print $query_attach_file, "\n" }
 		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
@@ -2188,7 +2186,7 @@ sub import_ogs_into_database {
 			$db_col_id = ?
 	";
 
-	my $dbh = get_dbh( {'noattach' => 1 } );
+	my $dbh = get_dbh();
 	$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
 	# update OGS table
 	my $query_insert_ogs = "INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
