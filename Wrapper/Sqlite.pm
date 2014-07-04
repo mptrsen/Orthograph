@@ -78,8 +78,11 @@ my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_ali_end          = 'ali_end';
 my $db_col_ali_start        = 'ali_start';
+my $db_col_blastdb_path     = 'blastdb_path';
+my $db_col_core             = 'core';
 my $db_col_date             = 'date';
 my $db_col_digest           = 'digest';
+my $db_col_description      = 'description';
 my $db_col_end              = 'end';
 my $db_col_env_end          = 'env_end';
 my $db_col_env_start        = 'env_start';
@@ -90,6 +93,7 @@ my $db_col_hmmsearch_id     = 'hmmsearch_id';
 my $db_col_header           = 'header';
 my $db_col_id               = 'id';
 my $db_col_log_evalue       = 'log_evalue';
+my $db_col_longname         = 'longname';
 my $db_col_score            = 'score';
 my $db_col_name             = 'name';
 my $db_col_ntseq            = 'nt_seq';
@@ -104,6 +108,8 @@ my $db_col_start            = 'start';
 my $db_col_target           = 'target';
 my $db_col_taxid            = 'taxid';
 my $db_col_type             = 'type';
+my $db_col_user             = 'user';
+my $db_col_version          = 'version';
 my $outdir                  = $config->{'output-directory'};
 my $orthoset                = $config->{'ortholog-set'};
 my $quiet                   = $config->{'quiet'};
@@ -165,6 +171,8 @@ Returns: Database handle
 =cut
 
 sub get_dbh {#{{{
+	my $args = shift @_;
+	my $noattach = $args->{'noattach'};
 	my $dbh = undef;
 	my $slept = 0;
 
@@ -179,6 +187,7 @@ sub get_dbh {#{{{
 
 	if ($dbh) {
 		$dbh->sqlite_busy_timeout($db_timeout * 1000);
+		if ($noattach) { return $dbh }
 		if ($debug > 1) { print $query_attach_file, "\n" }
 		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
@@ -278,84 +287,84 @@ sub create_tables {
 	my %create_table = (#{{{
 		# table: blastdbs
 		'blastdbs' => "CREATE TABLE `$t->{'blastdbs'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`setid`        INTEGER UNSIGNED DEFAULT NULL UNIQUE,
-			`blastdb_path` TEXT(255) DEFAULT NULL)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_setid`        INTEGER UNSIGNED DEFAULT NULL UNIQUE,
+			`$db_col_blastdb_path` TEXT(255) DEFAULT NULL)",
 		
 		# table: ogs
 		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`type`         INT(1),
-			`taxid`        INTEGER UNSIGNED NOT NULL UNIQUE,
-			`version`      TEXT(255))",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_type`         INT(1),
+			`$db_col_taxid`        INTEGER UNSIGNED NOT NULL UNIQUE,
+			`$db_col_version`      TEXT(255))",
 		
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
-			`id`               INTEGER PRIMARY KEY,
-			`setid`            INTEGER UNSIGNED NOT NULL,
-			`ortholog_gene_id` TEXT(10)  NOT NULL,
-			`sequence_pair`    INTEGER UNSIGNED NOT NULL,
+			`$db_col_id`               INTEGER PRIMARY KEY,
+			`$db_col_setid`            INTEGER UNSIGNED NOT NULL,
+			`$db_col_orthoid         ` TEXT(10)  NOT NULL,
+			`$db_col_seqpair`    INTEGER UNSIGNED NOT NULL,
 			UNIQUE (setid, ortholog_gene_id, sequence_pair))",
 
 		# table: sequence_pairs
 		'sequence_pairs' => "CREATE TABLE `$t->{'seqpairs'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`taxid`        INTEGER    UNSIGNED,
-			`ogs_id`       INTEGER    UNSIGNED,
-			`aa_seq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL,
-			`nt_seq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL, 
-			`date`         INTEGER    UNSIGNED DEFAULT CURRENT_TIMESTAMP,
-			`user`         INTEGER    UNSIGNED)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_taxid`        INTEGER    UNSIGNED,
+			`$db_col_ogsid`       INTEGER    UNSIGNED,
+			`$db_col_aaseq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL,
+			`$db_col_ntseq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL, 
+			`$db_col_date`         INTEGER    UNSIGNED DEFAULT CURRENT_TIMESTAMP,
+			`$db_col_user`         INTEGER    UNSIGNED)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`taxid`        INTEGER             NOT NULL, 
-			`header`       TEXT(512)    UNIQUE,
-			`sequence`     MEDIUMBLOB,
-			`user`         INTEGER UNSIGNED,
-			`date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_taxid`        INTEGER      NOT NULL, 
+			`$db_col_header`       TEXT(512)    UNIQUE,
+			`$db_col_sequence`     MEDIUMBLOB,
+			`$db_col_user`         INTEGER UNSIGNED,
+			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_nt
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`taxid`        INTEGER             NOT NULL, 
-			`header`       TEXT(512)    UNIQUE,
-			`sequence`     MEDIUMBLOB,
-			`user`         INTEGER UNSIGNED,
-			`date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_taxid`        INTEGER      NOT NULL, 
+			`$db_col_header`       TEXT(512)    UNIQUE,
+			`$db_col_sequence`     MEDIUMBLOB,
+			`$db_col_user`         INTEGER UNSIGNED,
+			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: set_details
 		'set_details' => "CREATE TABLE `$t->{'set_details'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`name`         TEXT(255) UNIQUE,
-			`description`  BLOB)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_name`         TEXT(255) UNIQUE,
+			`$db_col_description`  BLOB)",
 
 		# table: taxa
 		'taxa' => "CREATE TABLE `$t->{'taxa'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`name`         TEXT(20)  UNIQUE,
-			`longname`     TEXT(255), 
-			`core`         TINYINTEGER UNSIGNED NOT NULL)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_name`         TEXT(20)  UNIQUE,
+			`$db_col_longname`     TEXT(255), 
+			`$db_col_core`         TINYINTEGER UNSIGNED NOT NULL)",
 		
 		# table: users
 		'users' => "CREATE TABLE `$t->{'users'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`name`         TEXT(255) UNIQUE)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_name`         TEXT(255) UNIQUE)",
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
-			`id`           INTEGER PRIMARY KEY,
-			`type`         TEXT(3)     UNIQUE)",
+			`$db_col_id`           INTEGER PRIMARY KEY,
+			`$db_col_type`         TEXT(3)     UNIQUE)",
 	);#}}}
 
 	my @indices = (
 		# indices for sequences_aa
-"CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_taxid  ON $t->{'aaseqs'} (taxid)",
-"CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_taxid  ON $t->{'ntseqs'} (taxid)",
-"CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_header  ON $t->{'aaseqs'} (header)",
-"CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_header  ON $t->{'ntseqs'} (header)",
-"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_aa_seq  ON $t->{'seqpairs'} (aa_seq)",
-"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_nt_seq  ON $t->{'seqpairs'} (nt_seq)",
+"CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_$db_col_taxid  ON $t->{'aaseqs'} ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_$db_col_taxid  ON $t->{'ntseqs'} ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_$db_col_header  ON $t->{'aaseqs'} ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_$db_col_header  ON $t->{'ntseqs'} ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_$db_col_aaseq  ON $t->{'seqpairs'} ($db_col_aaseq)",
+"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_$db_col_ntseq  ON $t->{'seqpairs'} ($db_col_aaseq)",
 	);
 
 	# useful pragmas for performance?
@@ -2177,7 +2186,7 @@ sub import_ogs_into_database {
 			$db_col_id = ?
 	";
 
-	my $dbh = get_dbh();
+	my $dbh = get_dbh( {'noattach'} );
 	$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
 	# update OGS table
 	my $query_insert_ogs = "INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
