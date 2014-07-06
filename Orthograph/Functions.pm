@@ -41,8 +41,8 @@ sub file2arrayref {
 sub touch {
 	my $now = time;
 	my $file = shift @_;
-	utime($now, $now, $file)
-	|| open(my $fn, '>>', $file)
+	utime $now, $now, $file
+	|| open my $fn, '>>', $file
 	|| croak("Couldn't touch file $file: $!\n");
 	return 1;
 }

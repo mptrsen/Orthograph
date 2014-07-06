@@ -128,7 +128,8 @@ my $stderr = *STDERR;
 my $attached_db_file        = File::Spec->catfile($config->{'output-directory'}, $species_name . '.sqlite');
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
-print "Using file '$attached_db_file' as attached database '$db_attached'\n";
+print "Using SQLite database file '$database'\n" unless $quiet;
+print "Using file '$attached_db_file' as attached database '$db_attached'\n" unless $quiet;
 unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
 
 
