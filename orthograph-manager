@@ -562,7 +562,7 @@ sub load_taxon {
 	import_ogs_into_database($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $reference_taxon_id, $ogsversion);
 	my $n_seqpairs = get_sequence_count_for_taxon($reference_taxon_id);
 
-	printf("%d sequences for %s in database %s on %s.\n", $n_seqpairs, $reference_taxon_shorthand, $database, $db_dbserver);
+	printf("\n%d sequences for %s in database %s on %s.\n", $n_seqpairs, $reference_taxon_shorthand, $database, $db_dbserver);
 	return 1;
 }
 
