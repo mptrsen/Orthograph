@@ -302,9 +302,9 @@ sub create_tables {
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
 			`$db_col_id`               INTEGER PRIMARY KEY,
 			`$db_col_setid`            INTEGER UNSIGNED NOT NULL,
-			`$db_col_orthoid         ` TEXT(10)  NOT NULL,
-			`$db_col_seqpair`    INTEGER UNSIGNED NOT NULL,
-			UNIQUE (setid, ortholog_gene_id, sequence_pair))",
+			`$db_col_orthoid`          TEXT(10)  NOT NULL,
+			`$db_col_seqpair`          INTEGER UNSIGNED NOT NULL,
+			UNIQUE ($db_col_setid, $db_col_orthoid, $db_col_seqpair))",
 
 		# table: sequence_pairs
 		'sequence_pairs' => "CREATE TABLE `$t->{'seqpairs'}` (
@@ -380,7 +380,7 @@ sub create_tables {
 	my $dbh = get_dbh();
 	foreach (values %create_table, @indices) {
 		print $_, ";\n" if $verbose;
-		$dbh->do($_) or die "Could not exec query: $!\n";
+		$dbh->do($_) or die "Could not exec query: $DBI::errstr\n";
 	}
 	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
 	$dbh->disconnect;
@@ -477,7 +477,7 @@ sub fill_tables_from_temp_table {
 			INNER JOIN $t->{'users'}
 				ON $t->{'users'}.name = '$db_dbuser'",
 		# orthologous groups
-		"INSERT OR IGNORE INTO $t->{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
+		"INSERT OR IGNORE INTO $t->{'orthologs'} ($db_col_setid, $db_col_orthoid, $db_col_seqpair) 
 			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
 			FROM $t->{'aaseqs'} 
 			INNER JOIN $temptable 
