@@ -2176,7 +2176,7 @@ sub import_ogs_into_database {
 	";
 
 	my $query_update_pair = "
-		UPDATE $db_table_seqpairs 
+		UPDATE OR IGNORE $db_table_seqpairs 
 		SET 
 			$db_col_taxid = ?,
 			$db_col_ogsid = ?,
@@ -2258,7 +2258,7 @@ sub import_ogs_into_database {
 				<STDIN>;
 			}
 			$sth_upd->execute($taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
-			if ($sth_upd->rows() == 0) { fail_and_exit('Fatal: UPDATE didn\'t affect anything (no rows updated)!') }
+			if ($sth_upd->rows() == 0) { warn "Warning: no rows updated for sequence '$hdr'!\n") }
 		}
 		
 	}
