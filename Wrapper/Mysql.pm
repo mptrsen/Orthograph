@@ -297,7 +297,7 @@ sub create_tables {
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header),
+			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header(24)),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -306,7 +306,7 @@ sub create_tables {
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header),
+			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header(24)),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",

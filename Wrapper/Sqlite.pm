@@ -2258,7 +2258,7 @@ sub import_ogs_into_database {
 				<STDIN>;
 			}
 			$sth_upd->execute($taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
-			if ($sth_upd->rows() == 0) { warn "Warning: no rows updated for sequence '$hdr'!\n" }
+			if ($sth_upd->rows() == 0) { warn "Sequence already present in database: '$hdr'!\n" }
 		}
 		
 	}

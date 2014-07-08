@@ -160,6 +160,11 @@ If you made a mistake during input of the information, you may cancel the
 process at any time using `Ctrl+C`. To check what OGS are present in the
 database, call `orthograph-manager -lo`.
 
+If you had attempted this step previously and canceled it mid-process, it may
+be that there are remnants of those attempts in the database when you try it
+again. You will be notified of this with "Sequence already present in database"
+messages.
+
 Yes, I know. OGS loading is slow. I'm working on improving that performance. For
 now, be happy that you only need to do this once.
 
