@@ -85,12 +85,14 @@ QUICKSTART
 For a fast start into analysis using Orthograph, follow these steps. They
 assume that all required software packages are installed and work. 
 
+
 ## 1. These conventions are used throughout this documentation:
 
 	$ some_command
 
 This means you should enter some_command at the shell prompt. The `$` sigil is
 not part of the command.
+
 
 ## 2. Create a config file. 
 
@@ -107,6 +109,7 @@ Note: The config file is read by all three Orthograph tools. Especially the
 mandatory part of the file is important as it contains settings for the database
 interaction. Without these settings none of the programs will work.
 
+
 ## 3. Create the tables. Make the orthograph_manager script executable and use it:
 
 	$ chmod +x orthograph-manager
@@ -115,6 +118,7 @@ interaction. Without these settings none of the programs will work.
 The `-create` switch tells the script to setup the database structure for
 Orthograph.  It will create a number of tables, all of which start with the
 prefix `orthograph_` (or whatever prefix you chose in the config file). 
+
 
 ## 4. Upload your ortholog set into the database:
 
@@ -140,6 +144,7 @@ orthograph_manager` for further information. Make a note of your ortholog set
 name. You will need it later.
 
 To check what sets have been uploaded so far, call `orthograph-manager -ls`. 
+
 
 ## 5. Load proteome sequences into the database :
 
@@ -179,6 +184,7 @@ spaces). The shorthand must be a shorthand that is present in the ortholog set
 file (and therefore in the database), just like you would enter it at the
 prompt; otherwise, the taxon cannot be correlated.
 
+
 ## 6. Optional: Load nucleotide sequence data into the database:
 
 	$ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
@@ -200,12 +206,14 @@ performance. For now, be happy that you only need to do this once.
 The same options for specifying OGS taxon and version number (see step 5) are
 available for nucleotide data, as well.
 
+
 ## 7. Create the required database structure for the Orthograph search program.
 
 Make orthograph-analyzer executable and run it with the -prepare option:
 
 	$ chmod +x orthograph-analyzer
 	$ ./orthograph-analyzer -prepare
+
 
 ## 8. Complete your config file if you didn't fill out everything before.
 

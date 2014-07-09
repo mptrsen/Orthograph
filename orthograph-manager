@@ -87,15 +87,17 @@ my $ogsversion                = $config->{'ogs-version'};
 my $u_subst                   = $config->{'substitute-u-with'};
 
 # which database backend do we use?
-my $use_mysql       = $database_backend eq 'mysql'  ? 1 : 0;
-my $use_sqlite      = $database_backend eq 'sqlite' ? 1 : 0;
+my $use_mysql       = $database_backend =~ /mysql/i  ? 1 : 0;
+my $use_sqlite      = $database_backend =~ /sqlite/i ? 1 : 0;
 my $database        = undef;
+
+# load the database modules at runtime, depending on the backend setting
 if ($use_mysql)     {
-	use Wrapper::Mysql;
+	require Wrapper::Mysql;
 	$database = $config->{'mysql-database'};
 }
 elsif ($use_sqlite) {
-	use Wrapper::Sqlite;
+	require Wrapper::Sqlite;
 	$database = $config->{'sqlite-database'};
 }
 
@@ -556,7 +558,7 @@ sub load_taxon {
 	}
 	$tmpfh->close();
 
-	print "Data looks OK, uploading...\n";
+	print "Data look OK, uploading...\n";
 
 	create_temptable_for_ogs_data();
 	import_ogs_into_database($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $reference_taxon_id, $ogsversion);
@@ -666,15 +668,13 @@ sub getblastdir {
 
 
 sub list_sets {
-	my $sets;
-	if ($use_mysql) {
-		$sets = Wrapper::Mysql::get_ortholog_sets();
-	}
-	elsif ($use_sqlite) {
-		$sets = Wrapper::Sqlite::get_ortholog_sets();
-	}
 	my $maxlen_set  = 0;
 	my $maxlen_desc = 0;
+	my $sets = get_ortholog_sets();
+	if (not $sets) {
+		print "No sets in database.\n";
+		return 1;
+	}
 	# determine maximum length of set names for the table
 	foreach (keys(%$sets)) {
 		$maxlen_set = length($_) if (length($_) > $maxlen_set);
@@ -693,6 +693,10 @@ sub list_ogs {
 	my $list = get_list_of_ogs();
 	my $maxlen_name = 0;
 	my $maxlen_version  = 7;
+	if (not defined $list->[0]) {
+		print "No OGS in database.\n";
+		return 0;
+	}
 	foreach (@$list) {
 		$maxlen_version = length($_->[1]) if (length($_->[1]) > $maxlen_version);
 		$maxlen_name = length($_->[0]) if (length($_->[0]) > $maxlen_name);
@@ -826,6 +830,14 @@ sub get_taxa_in_all_sets{
 	}
 }
 
+sub get_ortholog_sets {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_ortholog_sets();
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_ortholog_sets();
+	}
+}
 
 sub get_list_of_ogs{
 	my $specid = shift;

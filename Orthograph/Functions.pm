@@ -38,6 +38,12 @@ sub file2arrayref {
 	return $l;
 }
 
+=head2 touch
+
+Touches a file (updates its access times, creates an empty file if it doesn't exist)
+
+=cut
+
 sub touch {
 	my $now = time;
 	my $file = shift @_;

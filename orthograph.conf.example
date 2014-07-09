@@ -19,7 +19,7 @@
 # # Database backend selection
 #
 # Database backend. Defaults to 'sqlite', which means to use the file-based
-# SQLite database system
+# SQLite database system. Set this to 'mysql' if you want to use MySQL.
 database-backend   = sqlite
 
 #

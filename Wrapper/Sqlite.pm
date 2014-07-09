@@ -128,6 +128,7 @@ my $stderr = *STDERR;
 my $attached_db_file        = File::Spec->catfile($config->{'output-directory'}, $species_name . '.sqlite');
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
+# report that this module is loaded
 print "Using SQLite database file '$database'\n" unless $quiet;
 print "Using file '$attached_db_file' as attached database '$db_attached'\n" unless $quiet;
 unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
@@ -549,8 +550,7 @@ sub get_list_of_ogs {#{{{
 			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.id
 		GROUP BY $db_table_aaseqs.$db_col_taxid"
 	;
-	my $data = db_get($query);
-	return $data;
+	return(db_get($query));
 }#}}}
 
 
@@ -2235,7 +2235,6 @@ sub import_ogs_into_database {
 			# determine the nt and aa sequence ids
 			$sth_sel->execute($hdr, $taxon);
 			my $ids = $sth_sel->fetchall_arrayref();
-			print Dumper $ids if $debug;
 			if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
 			elsif (scalar @$ids == 0) { fail_and_exit("Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.") }
 			if ($debug) {
@@ -2258,7 +2257,7 @@ sub import_ogs_into_database {
 				<STDIN>;
 			}
 			$sth_upd->execute($taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
-			if ($sth_upd->rows() == 0) { warn "Sequence already present in database: '$hdr'!\n" }
+			if ($sth_upd->rows() == 0) { warn "Warning: Sequence already present in database: '$hdr'!\n" }
 		}
 		
 	}

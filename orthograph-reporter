@@ -44,17 +44,19 @@ my $config = $Orthograph::Config::config;	# copy config variables
 #-------------------------------------------------- 
 # which database backend do we use?
 my $database_backend = $config->{'database-backend'};
-my $use_mysql        = $database_backend eq 'mysql'  ? 1 : 0;
-my $use_sqlite       = $database_backend eq 'sqlite' ? 1 : 0;
+my $use_mysql        = $database_backend =~ /mysql/i  ? 1 : 0;
+my $use_sqlite       = $database_backend =~ /sqlite/i ? 1 : 0;
 my $database         = undef;
+# load the database modules at runtime, depending on the backend setting
 if ($use_mysql)      {
-	use Wrapper::Mysql;
+	require Wrapper::Mysql;
 	$database = $config->{'mysql-database'};
 }
 elsif ($use_sqlite) {
-	use Wrapper::Sqlite;
+	require Wrapper::Sqlite;
 	$database = $config->{'sqlite-database'};
 }
+
 # MySQL settings
 my $mysql_table_blast          = $config->{'mysql_table_blast'};
 my $mysql_table_blastdbs       = $config->{'mysql_table_blastdbs'};

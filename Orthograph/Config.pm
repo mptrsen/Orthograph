@@ -224,12 +224,12 @@ if ($config->{'debug'}) { $config->{'verbose'} = 1 }
 #--------------------------------------------------
 # # mutually exclusive options
 #-------------------------------------------------- 
-if ($config->{'database-backend'} ne 'mysql' and $config->{'database-backend'} ne 'sqlite') {
+if ($config->{'database-backend'} !~ /mysql/i and $config->{'database-backend'} !~ /sqlite/i) {
 	print STDERR "Fatal: Database backend not set correctly! Must be 'mysql' or 'sqlite'.\n";
 	exit 1;
 }
 
-if ($config->{'database-backend'} eq 'sqlite' and not defined $config->{'sqlite-database'}) {
+if ($config->{'database-backend'} =~ /sqlite/i and not defined $config->{'sqlite-database'}) {
 	print STDERR "Fatal: SQLite database backend selected, but database file not specified\n";
 	exit 1;
 }

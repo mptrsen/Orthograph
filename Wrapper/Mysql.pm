@@ -121,6 +121,9 @@ defined $db_dbuser   or fail_and_exit('MySQL database username not specified');
 defined $db_dbpwd    or fail_and_exit('MySQL database password not specified');
 defined $db_dbserver or fail_and_exit('MySQL database server not specified');
 
+# report that this module is loaded
+print "Using MySQL database '$db_dbname' on $db_dbserver\n" unless $quiet;
+
 =head2 pass_stderr
 
 Reassign STDERR to a different filehandle
@@ -492,7 +495,6 @@ Returns: array reference (list of OGS)
 =cut
 
 sub get_list_of_ogs {#{{{
-	my %ogslist = ();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT $db_table_taxa.name , $db_table_ogs.version
 		FROM $db_table_aaseqs
@@ -503,11 +505,7 @@ sub get_list_of_ogs {#{{{
 		INNER JOIN $db_table_ogs
 			ON $db_table_taxa.id = $db_table_ogs.taxid"
 	;
-	my $data = db_get($query);
-	foreach my $item (@$data) {
-		$ogslist{$$item[0]} = $$item[1];
-	}
-	return(\%ogslist);
+	return db_get($query);
 }#}}}
 
 sub get_list_of_taxa {
@@ -1432,7 +1430,6 @@ sub get_nuc_for_pep {
 	my $sth = $dbh->prepare($query);
 	$sth = execute($sth, $db_timeout, $pepid);
 	my $data = $sth->fetchall_arrayref();
-	print Dumper($data); exit;
 }
 
 =head2 get_real_table_names(int ID, string EST_TABLE, string HMMSEARCH_TABLE, string BLAST_TABLE)
