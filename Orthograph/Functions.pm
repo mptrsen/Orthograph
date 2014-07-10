@@ -22,6 +22,7 @@ package Orthograph::Functions;
 
 use strict;
 use warnings;
+use Carp;
 use File::Basename;
 use File::Path qw( make_path );	# this also uses File::Spec
 
@@ -55,7 +56,7 @@ sub touch {
 		close $fh or warn "Warning: Couldn't close file '$file': $!\n";
 		return 1;
 	}
-	utime $now, $now, $file or die $! or croak("Fatal: Couldn't touch file $file: $!\n");
+	utime $now, $now, $file or croak("Fatal: Couldn't touch file $file: $!\n");
 	return 1;
 }
 
