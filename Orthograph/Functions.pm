@@ -22,7 +22,8 @@ package Orthograph::Functions;
 
 use strict;
 use warnings;
-use autodie;
+use File::Basename;
+use File::Path qw( make_path );	# this also uses File::Spec
 
 =head2 file2arrayref
 
@@ -47,9 +48,14 @@ Touches a file (updates its access times, creates an empty file if it doesn't ex
 sub touch {
 	my $now = time;
 	my $file = shift @_;
-	utime $now, $now, $file
-	|| open my $fn, '>>', $file
-	|| croak("Couldn't touch file $file: $!\n");
+	my $dir = dirname($file);
+	unless (-e $file) { 
+		unless (-e $dir) { make_path($dir) }
+		open my $fh, '>>', $file or die "Fatal: Couldn't open file '$file': $!\n";
+		close $fh or warn "Warning: Couldn't close file '$file': $!\n";
+		return 1;
+	}
+	utime $now, $now, $file or die $! or croak("Fatal: Couldn't touch file $file: $!\n");
 	return 1;
 }
 
