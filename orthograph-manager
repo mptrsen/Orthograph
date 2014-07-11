@@ -310,7 +310,7 @@ sub load_temp_table_with_data {
 	my $csvfile = shift @_;
 
 	if ($use_mysql) {
-		Wrapper::Mysql::create_temptable($temptable);
+		Wrapper::Mysql::create_temp_table($temptable);
 		Wrapper::Mysql::load_csv_into_temptable($csvfile, $temptable);
 	}
 	elsif ($use_sqlite) {
