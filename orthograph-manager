@@ -349,7 +349,7 @@ sub load_temp_table_with_data {
 
 sub get_dbh {
 	if ($use_mysql) {
-		my $dbh = Wrapper::Mysql::mysql_dbh() or fail_and_exit("Couldn't get database connection here");
+		my $dbh = Wrapper::Mysql::get_dbh() or fail_and_exit("Couldn't get database connection here");
 		return $dbh;
 	}
 	elsif ($use_sqlite) {
