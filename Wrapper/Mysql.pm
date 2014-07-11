@@ -300,7 +300,7 @@ sub create_tables {
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header(24)),
+			`header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -309,7 +309,7 @@ sub create_tables {
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
 			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(4096),            INDEX(header), UNIQUE(header(24)),
+			`header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
 			`sequence`     MEDIUMBLOB,
 			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
@@ -358,7 +358,7 @@ sub create_temp_table {
 			`orthoset` VARCHAR(255), INDEX(orthoset),
 			`orthoid`  VARCHAR(255), INDEX(orthoid),
 			`blastdb`  VARCHAR(255),
-			`header`   VARCHAR(512), INDEX(header),
+			`header`   VARCHAR(512), INDEX(header(24)),
 			`sequence` MEDIUMBLOB,
 			`description` VARCHAR(255))";
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";

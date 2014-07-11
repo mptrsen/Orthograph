@@ -2257,7 +2257,10 @@ sub import_ogs_into_database {
 				<STDIN>;
 			}
 			$sth_upd->execute($taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
-			if ($sth_upd->rows() == 0) { warn "Warning: Sequence already present in database: '$hdr'!\n" }
+			if ($sth_upd->rows() == 0) {
+				warn "Warning: Sequence already present in database: '$hdr': $DBI::errstr\n";
+				warn sprintf "These IDs messed up: %d %d %d\n", $$ids[0][0], $$ids[0][0], $$seqpairid[0];
+			}
 		}
 		
 	}
