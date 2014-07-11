@@ -1736,7 +1736,7 @@ sub get_taxon_shorthands {
 	my $dbh = get_dbh();
 	my $sth = $dbh->prepare($q);
 	$sth->execute();
-	my $res = $sth->sql->fetchall_arrayref();
+	my $res = $sth->fetchall_arrayref();
 	$dbh->disconnect;
 	return $res;
 }
