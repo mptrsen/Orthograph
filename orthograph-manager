@@ -491,6 +491,9 @@ sub load_taxon {
 	# get taxon shorthand
 	my $list = get_taxon_shorthands();
 
+	# report input file
+	print "Using input file $inf\n";
+
 	# the user provided a reference taxon name
 	if ($reference_taxon_shorthand) {
 		$reference_taxon_id = get_reftaxon_id($reference_taxon_shorthand) or fail_and_exit("Reference taxon '$reference_taxon_shorthand' not found in database");
