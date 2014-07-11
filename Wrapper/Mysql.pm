@@ -1836,6 +1836,12 @@ sub db_structure_present {
 	else    { return 0 }
 }
 
+sub get_reftaxon_id {
+	my $shorthand = shift;
+	my $result = db_get("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ?", $shorthand);
+	return $$result[0][0];
+}
+
 sub get_reftaxon_shorthand {
 	my $id = shift;
 	my $result = db_get("SELECT $db_table_taxa.$db_col_name FROM $db_table_taxa INNER JOIN $db_table_aaseqs ON $db_table_taxa.$db_col_id = $db_table_aaseqs.$db_col_aaseq WHERE $db_table_aaseqs.$db_col_id = ?", $id);
