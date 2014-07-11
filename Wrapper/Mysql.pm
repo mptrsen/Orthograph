@@ -514,6 +514,13 @@ sub get_list_of_taxa {
 	return $r;
 }
 
+sub get_sequence_count_for_taxon {
+	my $taxon = shift;
+	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.taxid = '$taxon'";
+	my $r = db_get($q);
+	return $$r[0][0];
+}
+
 
 =head2 get_ortholog_groups_for_set($setid)
 
