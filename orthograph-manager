@@ -474,7 +474,10 @@ sub load_taxon {
 	my $inf = shift(@_);
 	my $mode = shift(@_);
 	# make sure the file exists
-	return 0 unless -f $inf;
+	unless (-f $inf) {
+		print "File not found: '$inf'\n";
+		return 0;
+	}
 	# the two sequence tables are 'aaseqs' and 'ntseqs'
 	# $seqtable and $otherseqtable assume opposing values, respectively,
 	# depending on the mode in which the function is called.
