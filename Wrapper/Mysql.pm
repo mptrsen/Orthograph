@@ -1695,7 +1695,7 @@ sub insert_results_into_hmmsearch_table {
 			$hit->{'ali_end'},    # end of hit domain on the target seq
 			$hit->{'env_start'},  # start of hit domain on the target seq (envelope)
 			$hit->{'env_end'},    # end of hit domain on the target seq (envelope)
-		) or print "Fatal: Could not push to database!\n" and exit(1);
+		) or fail_and_exit('Could not push to database!');
 		if ($affected_rows > 0) { ++$hitcount }
 	}
 	$dbh->do("COMMIT");

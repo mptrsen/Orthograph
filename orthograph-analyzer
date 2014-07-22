@@ -251,10 +251,10 @@ if ($verbose) {
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
 	local $| = 1;
-  print "Setting database $database to a clean slate... ";
+  print $stdout "Setting database $database to a clean slate... ";
 	local $| = 0;
   preparedb();
-  print "OK\nDatabase now ready to run $program_name.\n";
+  print $stdout "OK\nDatabase now ready to run $program_name.\n";
   exit;
 }#}}}
 
@@ -431,7 +431,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		$hmmcount,
 		$num_hmms,
 		($hmmcount * 100 / $num_hmms)) unless $quiet;
-	printf($stdout "  %d first-tier hits\n", $hmmobj->hitcount()) if $verbose;
+	printf $stdout "  %d first-tier hit%s\n",
+		$hmmobj->hitcount(),
+		$hmmobj->hitcount() > 1 ? 's' : '',
+		if $verbose;
 	# and do not care further with HMM files that did not return any result
 	if ($hmmobj->hitcount() == 0) { 
 		next HMMFILE;
@@ -454,15 +457,22 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 				$hits->[$i]->{'evalue'},
 				$hits->[$i]->{'score'},
 			;
-			if ($hits->[$i]->{'score'} >= $hmmsearch_score_threshold or $hits->[$i]->{'evalue'} <= $hmmsearch_evalue_threshold) { $hmmsearch_hits_above_threshold++ }
+			if ($hits->[$i]->{'score'} >= $hmmsearch_score_threshold and $hits->[$i]->{'evalue'} <= $hmmsearch_evalue_threshold) { $hmmsearch_hits_above_threshold++ }
 		}
-		print $stdout "      $hmmsearch_hits_above_threshold hits above threshold\n";
+		printf $stdout "      %d hit%s within thresholds (e-value: %.1e, score: %.1f)\n",
+			$hmmsearch_hits_above_threshold,
+			$hmmsearch_hits_above_threshold > 1 ? 's' : '',
+			$hmmsearch_evalue_threshold,
+			$hmmsearch_score_threshold;
 	}
 	#--------------------------------------------------
 	# # push results to database 
 	#-------------------------------------------------- 
 	my $count = insert_results_into_table($db_table_hmmsearch, $hmmobj->hits_arrayref());
-	print $stdout "     ... pushed $count hits to database.\n" if $verbose;
+	printf $stdout "     ... pushed %d hit%s to database.\n",
+		$count,
+		$count > 1 ? 's' : ''
+			if $verbose;
 	++$hmmhitcount;
 
 	# no hits above the thresholds
@@ -503,8 +513,9 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 		# do the blastp search
 		$blastobj->blastp($tmpfile, $blastoutfile);
 
-		printf($stdout "       %4d BLASTP hits detected for [%d] against %s, e-value below %2.1e\n",
+		printf($stdout "       %4d BLASTP hit%s detected for [%d] against %s, e-value below %2.1e\n",
 			$blastobj->hitcount,
+			$blastobj->hitcount > 1 ? 's' : '',
 			$n + 1,
 			basename($blastdb),
 			$blast_evalue_threshold) if $verbose;
@@ -516,7 +527,10 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 
 		# insert the blast results into the db. 4-argument form.
 		my $count = insert_results_into_table($db_table_blast, $blastobj->blasthits_arrayref, basename($blastdb), $hmmsearch_id);
-		print $stdout "            ... pushed $count hits to database.\n" if $verbose;
+		printf $stdout "     ... pushed %d hit%s to database.\n",
+			$count,
+			$count > 1 ? 's' : ''
+				if $verbose;
 	} #}}}
 
 	if ($hmmcount <= scalar(@hmmfiles) / 100) {
@@ -837,7 +851,7 @@ sub translate_est {#{{{
     return($outfile);
   }
   my @translateline = qq($translateprog $infile > $outfile);
-  system("@translateline") and print "Fatal: could not translate input file. Is this nucleotide data?\n" and exit 1;
+  system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?';
   return($outfile);
 }#}}}
 
@@ -1341,7 +1355,7 @@ sub generate_blast_output_filename {
 sub get_hmmresults {
 	my $hit = shift;
 	my $species_id = shift;
-	print "Getting list of HMMsearch results...\n" if $debug;
+	print $stdout "Getting list of HMMsearch results...\n" if $debug;
 	if ($use_mysql) {
 		return @{ Wrapper::Mysql::get_hmmresults($hit, $species_id) }
 			or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
