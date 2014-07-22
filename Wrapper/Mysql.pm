@@ -1768,6 +1768,7 @@ sub create_temptable_for_ogs_data {
 sub import_ogs_into_database {
 	my ($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
 	my $userid = db_get("SELECT $db_col_id FROM $db_table_users WHERE $db_col_name = '$db_dbuser'");
+	$userid = $$userid[0][0];
 	my @q = (
 		# load data into temp table
 		"LOAD DATA LOCAL INFILE '$tmpfh' 
