@@ -74,6 +74,7 @@ my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
+my $db_table_users          = $config->{'db_table_users'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_ali_end          = 'ali_end';
 my $db_col_ali_start        = 'ali_start';
@@ -444,7 +445,7 @@ sub fill_tables_from_temp_table {
 	my $dbh = get_dbh();
 	my $nrows;
 	foreach (@queries) {
-		print $_ . ";\n";
+		print $_ . ";\n" if $debug;
 		$nrows = $dbh->do($_) or die();
 		($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
 	}
@@ -1766,6 +1767,7 @@ sub create_temptable_for_ogs_data {
 
 sub import_ogs_into_database {
 	my ($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
+	my $userid = db_get("SELECT $db_col_id FROM $db_table_users WHERE $db_col_name = '$db_dbuser'");
 	my @q = (
 		# load data into temp table
 		"LOAD DATA LOCAL INFILE '$tmpfh' 
@@ -1782,7 +1784,7 @@ sub import_ogs_into_database {
 
 		# insert sequence pairs relationships
 		"INSERT INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$db_dbuser'
+		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$userid'
 		FROM $db_table_taxa
 		RIGHT JOIN $seqtable
 		ON $seqtable.taxid = $db_table_taxa.id
