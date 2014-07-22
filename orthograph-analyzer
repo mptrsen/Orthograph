@@ -912,12 +912,12 @@ sub cleardir {#{{{
 # Returns: True on success
 sub preparedb {#{{{
 	if ($use_mysql) {
-		Wrapper::Mysql::preparedb() and return 1;
+		Wrapper::Mysql::preparedb() or return 0;
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::preparedb() and return 1;
+		Wrapper::Sqlite::preparedb() or return 0;
 	}
-	return 0;
+	return 1;
 } #}}}
 
 

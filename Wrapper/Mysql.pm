@@ -561,18 +561,18 @@ sub get_ortholog_groups_for_set {
 
 sub preparedb {
 	my $query_create_ests = "CREATE TABLE $db_table_ests ( 
-		`$db_col_id`        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-		`$db_col_digest`    CHAR(32)     NOT NULL,           
-		`$db_col_taxid`     INT UNSIGNED NOT NULL,       
-		`$db_col_type`      TINYINT(4) UNSIGNED NOT NULL,
+		`$db_col_id`        BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
+		`$db_col_digest`    CHAR(32)            NOT NULL,           
+		`$db_col_taxid`     INT UNSIGNED        NOT NULL,       
+		`$db_col_type`      TINYINT(1) UNSIGNED NOT NULL,
 		`$db_col_date`      INT UNSIGNED,
-		`$db_col_header`    VARCHAR      NOT NULL,       
+		`$db_col_header`    VARCHAR(4096)       NOT NULL,       
 		`$db_col_sequence`  MEDIUMBLOB DEFAULT NULL,
 		PRIMARY KEY (`$db_col_id`),
 		INDEX (`$db_col_digest`(4)),
 		INDEX (`$db_col_taxid`),
 		INDEX (`$db_col_header`(10))
-		) ENGINE=MYISAM AUTO_INCREMENT=0";
+		) ENGINE=MYISAM";
 
 	my $query_create_hmmsearch = "CREATE TABLE $db_table_hmmsearch (
 		`$db_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
