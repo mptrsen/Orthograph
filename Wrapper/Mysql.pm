@@ -444,10 +444,14 @@ sub fill_tables_from_temp_table {
 
 	my $dbh = get_dbh();
 	my $nrows;
+	my $step = 1;
 	foreach (@queries) {
 		print $_ . ";\n" if $debug;
 		$nrows = $dbh->do($_) or die();
-		($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
+		print "Step $step completed\n" if $verbose;
+		if ($debug) {
+			($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
+		}
 	}
 	$dbh->disconnect;
 	return $nrows;
