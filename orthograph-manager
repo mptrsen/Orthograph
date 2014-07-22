@@ -224,7 +224,7 @@ die("Fatal: file not found: $infile\n") unless -f $infile;
 
 # TODO stop here if db structure is not present!
 if (!db_structure_present()) {
-	fail_and_exit("Orthograph database structure not present! Did you forget to run `orthograph-manager -create`?");
+	fail_and_exit('Orthograph database structure not present! Did you forget to run `orthograph-manager -create`?');
 }
 
 print "Setting up core ortholog set from '$infile' in database '$database' on host '$db_dbserver'... (press CTRL+C to abort)\n";
@@ -349,11 +349,11 @@ sub load_temp_table_with_data {
 
 sub get_dbh {
 	if ($use_mysql) {
-		my $dbh = Wrapper::Mysql::get_dbh() or fail_and_exit("Couldn't get database connection here");
+		my $dbh = Wrapper::Mysql::get_dbh() or fail_and_exit('Couldn not get a database connection');
 		return $dbh;
 	}
 	elsif ($use_sqlite) {
-		my $dbh = Wrapper::Sqlite::get_dbh() or fail_and_exit("Couldn't get database connection here");
+		my $dbh = Wrapper::Sqlite::get_dbh() or fail_and_exit('Could not get a database connection');
 		return $dbh;
 	}
 }
@@ -567,7 +567,7 @@ sub load_taxon {
 	print "Data look OK, uploading...\n";
 
 	create_temptable_for_ogs_data();
-	import_ogs_into_database($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $reference_taxon_id, $ogsversion);
+	import_ogs_into_database($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $reference_taxon_id, $ogsversion) or fail_and_exit('Failed to import OGS into database');
 	my $n_seqpairs = get_sequence_count_for_taxon($reference_taxon_id);
 
 	printf("\n%d sequences for %s in database %s on %s.\n", $n_seqpairs, $reference_taxon_shorthand, $database, $db_dbserver);

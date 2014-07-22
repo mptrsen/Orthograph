@@ -1765,7 +1765,7 @@ sub create_temptable_for_ogs_data {
 }
 
 sub import_ogs_into_database {
-	my ($tmpfh, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
+	my ($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
 	my @q = (
 		# load data into temp table
 		"LOAD DATA LOCAL INFILE '$tmpfh' 
@@ -1798,7 +1798,18 @@ sub import_ogs_into_database {
 		"INSERT IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')"
 	);
 
-
+	my $dbh = get_dbh();
+	my $ret = undef;
+	foreach my $query (@q) {
+		if ($debug) {
+			print $query, "\n";
+		}
+		$ret = $dbh->do($query);
+		unless (defined $ret) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 sub delete_sequences_with_headers {
