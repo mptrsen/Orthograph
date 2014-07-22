@@ -46,7 +46,8 @@ use Orthograph::Functions; # functions for all Orthograph tools
 use Orthograph::Config;    # configuration in global hashref $config; also handles command line arguments
 
 my $program_name = 'Orthograph';
-my $version = 'beta2';
+$0 = $program_name;
+my $version = 'beta3';
 # this message will be printed later when we have a log file handle
 my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
 	"Reciprocal Approach with Profile Hidden Markov models\n" .
@@ -86,6 +87,7 @@ my $database_backend = $config->{'database-backend'};
 my $use_mysql        = $database_backend =~ /mysql/i  ? 1 : 0;
 my $use_sqlite       = $database_backend =~ /sqlite/i ? 1 : 0;
 my $database         = undef;
+my $attached_db_file = undef;
 # load the database modules at runtime, depending on the backend setting
 if ($use_mysql)      {
 	require Wrapper::Mysql;
@@ -94,6 +96,7 @@ if ($use_mysql)      {
 elsif ($use_sqlite) {
 	require Wrapper::Sqlite;
 	$database = $config->{'sqlite-database'};
+	$attached_db_file = Wrapper::Sqlite::attached_db_file();
 }
 
 #--------------------------------------------------
@@ -315,7 +318,7 @@ if ($clear_database) {
 unless ($continue) {
 	# store est data into the database:
 	printf $stdout "Storing nucleotide sequences to database '%s' on %s...\n",
-		Wrapper::Sqlite::attached_db_file(),
+		$use_sqlite ? $attached_db_file : $db_dbname,
 		$db_dbserver
 			unless $quiet;
 
@@ -327,7 +330,7 @@ unless ($continue) {
 
 	# store translated est data into the database:
 	printf $stdout "Storing translated sequences to database '%s' on %s...\n",
-		Wrapper::Sqlite::attached_db_file(),
+		$attached_db_file,
 		$db_dbserver
 			unless $quiet;
 
@@ -348,7 +351,7 @@ if ($num_ests != 0) {
 		$num_ests,
 		$species_name,
 		$use_mysql ? 'database' : 'attached database',
-		$use_mysql ? $db_dbname : Wrapper::Sqlite::attached_db_file(),
+		$use_mysql ? $db_dbname : $attached_db_file,
 		$db_dbserver) unless $quiet;
 }
 else {

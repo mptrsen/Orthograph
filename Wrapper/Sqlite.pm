@@ -794,7 +794,7 @@ sub get_number_of_ests_for_specid {
 	my $specid = shift @_ or croak "Usage: get_number_of_ests_for_specid(SPECID)";
 
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $result = db_get("SELECT COUNT(*) FROM $db_table_ests");
+	my $result = db_get("SELECT COUNT(*) FROM $db_table_ests WHERE $db_col_type = 2");
 
 	return $$result[0][0];
 }
