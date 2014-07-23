@@ -298,7 +298,8 @@ sub create_tables {
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_type`         INT(1),
 			`$db_col_taxid`        INTEGER UNSIGNED NOT NULL,
-			`$db_col_version`      TEXT(255))",
+			`$db_col_version`      TEXT(255),
+			UNIQUE ($db_col_type, $db_col_version))",
 		
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
@@ -2087,7 +2088,7 @@ sub create_temptable_for_ogs_data {
 }
 
 sub import_ogs_into_database {
-	my ($f, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
+	my ($f, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxid, $ogsversion) = @_;
 
 	load_csv_into_temptable($f, $db_table_temp);
 
@@ -2187,24 +2188,77 @@ sub import_ogs_into_database {
 			$db_col_id = ?
 	";
 
+	my $query_get_seq_id = "
+		SELECT $seqtable.$db_col_id FROM $seqtable WHERE $db_col_header = ? AND $db_col_taxid = ?
+	";
+
+	my $query_get_otherseq_id = "
+		SELECT $otherseqtable.$db_col_id FROM $otherseqtable WHERE $db_col_header = ? AND $db_col_taxid = ?
+	";
+
+	my $query_insert_seqpair = "
+		INSERT OR IGNORE INTO $db_table_seqpairs (
+			$db_col_taxid,
+			$seqcol,
+			$otherseqcol,
+			$db_col_date
+		)
+		VALUES (
+			?,
+			?,
+			?,
+			CURRENT_TIMESTAMP
+		)
+	";
+
+	# if # affected > 0 : ok
+	# else: 
+
+	my $query_get_seqpair_id = "
+		SELECT
+			$db_table_seqpairs.$db_col_id
+		FROM $db_table_seqpairs
+		WHERE $db_table_seqpairs.$seqcol = ?
+			OR $db_table_seqpairs.$otherseqcol = ?
+	";
+
+	my $query_update_seqpair = "
+		UPDATE OR IGNORE $db_table_seqpairs 
+		SET 
+			$db_col_taxid = ?,
+			$db_col_ogsid = ?,
+			$seqcol = ?,
+			$otherseqcol = ?,
+			$db_col_date = CURRENT_TIMESTAMP
+		WHERE
+			$db_col_id = ?
+	";
+
 	my $dbh = get_dbh();
 	$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
 	# update OGS table
-	my $query_insert_ogs = "INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxon', '$ogsversion')";
+	my $query_insert_ogs = "INSERT OR IGNORE INTO $db_table_ogs (`type`, `taxid`, `version`) VALUES ('$type', '$taxid', '$ogsversion')";
 	if ($debug) {
 		print $query_insert_ogs, "\n";
-		printf "Execute this with <%s>, <%s>, and <%s>? ", $type, $taxon, $ogsversion;
-		<STDIN>;
+		printf "Execute this with <%s>, <%s>, and <%s>? ", $type, $taxid, $ogsversion;
+		quit_on_q();
 	}
-	$dbh->do($query_insert_ogs) or fail_and_exit("Could not update OGS table: $DBI::errstr");
-	my $ogsid = $dbh->selectall_arrayref("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = $taxon AND $db_col_ogsversion = '$ogsversion'");
+	$dbh->do($query_insert_ogs) or fail_and_exit("Could not update OGS table: no entry added");
+	my $ogsid = $dbh->selectall_arrayref("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = $taxid AND $db_col_ogsversion = '$ogsversion' AND $db_col_type = $type");
 	$ogsid = $$ogsid[0][0];
-	print "Got OGS ID $ogsid for taxon ID $taxon\n" if $debug;
+	print "Got OGS ID $ogsid for taxon ID $taxid\n" if $debug;
+
 	my $sth_ins  = $dbh->prepare( $query_insert_pair  ) or die;
 	my $sth_sel  = $dbh->prepare( $query_get_pair_ids ) or die;
 	my $sth_selp = $dbh->prepare( $query_select_pair  ) or die;
 	my $sth_upd  = $dbh->prepare( $query_update_pair  ) or die;
-	
+
+	my $sth_get_seq_id      = $dbh->prepare( $query_get_seq_id      ) or die;
+	my $sth_get_otherseq_id = $dbh->prepare( $query_get_otherseq_id ) or die;
+	my $sth_insert_seqpair  = $dbh->prepare( $query_insert_seqpair  ) or die;
+	my $sth_get_seqpair_id  = $dbh->prepare( $query_get_seqpair_id  ) or die;
+	my $sth_update_seqpair  = $dbh->prepare( $query_update_seqpair  ) or die;
+
 
 	# for each header
 	#		get the corresponding id from the other seq table, if there is one
@@ -2215,25 +2269,148 @@ sub import_ogs_into_database {
 	my $c = 0;
 	my $n = scalar @$hdrs;
 	foreach my $hdr (@$hdrs) {
+		# report progress
 		$c++;
 		progress_bar($c, $n, 25, '-');
+
+		# reset variables
+		my ($seqid, $otherseqid);
+
+		# get the seq id
+		if ($debug) {
+			printf "Query: %s\nExecute with <%s> and <%s>?",
+				$query_get_seq_id,
+				$hdr,
+				$taxid
+			;
+			quit_on_q();
+		}
+		$sth_get_seq_id->execute($hdr, $taxid);
+		my $ids = $sth_get_seq_id->fetchall_arrayref();
+		if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
+		if (scalar @$ids == 0) {
+			$seqid = undef;
+		}
+		else {
+			$seqid = $$ids[0][0];
+		}
+		if ($debug) {
+			printf "got id: <%s>\n", $seqid ? $seqid : 'NULL';
+		}
+
+		# get the otherseq id
+		if ($debug) {
+			printf "Query: %s\nExecute with <%s> and <%s>?",
+				$query_get_otherseq_id,
+				$hdr,
+				$taxid
+			;
+			quit_on_q();
+		}
+		$sth_get_otherseq_id->execute($hdr, $taxid);
+		$ids = $sth_get_otherseq_id->fetchall_arrayref();
+		if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
+		if (scalar @$ids == 0) {
+			$otherseqid = undef;
+		}
+		else {
+			$otherseqid = $$ids[0][0];
+		}
+		if ($debug) {
+			printf "got id: <%s>\n", defined $otherseqid ? $otherseqid : 'NULL';
+		}
+
+		# try to insert new sequence pair
+		if ($debug) {
+			printf "Query: %s\nExecute with <%s>, <%s> and <%s>?",
+			$query_insert_seqpair, 
+			$taxid,
+			$seqid      ? $seqid      : 'NULL',
+			$otherseqid ? $otherseqid : 'NULL'
+			;
+			quit_on_q();
+		}
+		$sth_insert_seqpair->execute($taxid, $seqid, $otherseqid);
+
+		# check if any rows were affected (i.e., a new sequence pair was inserted)
+
+		# no rows affected, a pair already present
+		if ($sth_insert_seqpair->rows() == 0) { 
+			print "no rows affected, pair already present\n" if $debug;
+
+			# get extant pair id
+			if ($debug) {
+				printf "Query: %s\nExecute with <%s> and <%s>?",
+				$query_get_seqpair_id, 
+				$seqid      ? $seqid      : '',
+				$otherseqid ? $otherseqid : ''
+				;
+				quit_on_q();
+			}
+			$sth_get_seqpair_id->execute($seqid, $otherseqid);
+			$ids = $sth_get_seqpair_id->fetchall_arrayref();		
+
+			if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
+			elsif (scalar @$ids == 0) {
+				fail_and_exit("No extant sequence pair with $seqcol ID $seqid and $otherseqcol $otherseqid found! Database corrupted?");
+			}
+
+			# there is exactly one sequence pair with these ids present
+			# update it with the new values
+			else {
+				my $seqpairid = $$ids[0][0];
+				if ($debug) {
+					printf "got id: <%s>\n", $seqpairid;
+					printf "Query: %s\nExecute with <%s>, <%s>, <%s>, <%s> and <%s>?",
+					$query_update_seqpair, 
+					$taxid,
+					$ogsid,
+					$seqid      ? $seqid      : '',
+					$otherseqid ? $otherseqid : '',
+					$seqpairid
+					;
+					quit_on_q();
+				}
+				$sth_update_seqpair->execute($taxid, $ogsid, $seqid, $otherseqid, $seqpairid);
+				if ($sth_update_seqpair->rows() == 0) {
+					print "something wrong here!!!\n";
+				}
+				else {
+					print 'OK, updated ', $sth_update_seqpair->rows(), " rows\n" if $debug;
+				}
+
+			}
+
+		}
+		elsif ($sth_insert_seqpair->rows() == 1) {
+			print "OK, inserted new sequence pair\n" if $debug;
+		}
+		else {
+			fail_and_exit('Something went wrong here...');
+		}
+
+
+
+		# skip the rest as this is old code
+		next;
+
 	
 		if ($debug) {
 			print $sth_ins->{Statement};
-			printf "Execute this with <%s>, <%s>, <%s> and <%s>? ", $taxon, $hdr, $taxon, $hdr;
-			<STDIN>;
+			printf "Execute this with <%s>, <%s>, <%s> and <%s>? ", $taxid, $hdr, $taxid, $hdr;
+			quit_on_q();
 		}
-		$sth_ins->execute($taxon, $hdr, $taxon, $hdr);
+		$sth_ins->execute($taxid, $hdr, $taxid, $hdr);
 		# no rows affected, nothing has been inserted
 		if ($sth_ins->rows() == 0) {
 			if ($debug) {
 				print "no rows affected, sequence pair already exists. attempting update...\n";
 				print $sth_sel->{Statement};
-				printf "Execute this with <%s>, and <%s>? ", $hdr, $taxon;
-				<STDIN>;
+				printf "Execute this with <%s>, and <%s>? ", $hdr, $taxid;
+				quit_on_q();
 			}
 			# determine the nt and aa sequence ids
-			$sth_sel->execute($hdr, $taxon);
+			$sth_sel->execute($hdr, $taxid);
 			my $ids = $sth_sel->fetchall_arrayref();
 			if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
 			elsif (scalar @$ids == 0) { fail_and_exit("Could not find amino acid or nucleotide sequence with ID '$hdr'! Make sure the IDs correspond.") }
@@ -2246,17 +2423,17 @@ sub import_ogs_into_database {
 			if ($debug) {
 				print $sth_selp->{Statement};
 				printf "Execute this with <%s> and <%s>? ", @{$$ids[0]};
-				<STDIN>;
+				quit_on_q();
 			}
 			$sth_selp->execute(@{$$ids[0]});
 			my $seqpairid = $dbh->selectcol_arrayref($sth_selp);
 			if ($debug) {
 				print "got sequence pair ID $$seqpairid[0]\n";
 				print $sth_upd->{Statement};
-				printf "Execute this with <%s>, <%s>, <%s>, <%s> and <%s>? ", $taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0];
-				<STDIN>;
+				printf "Execute this with <%s>, <%s>, <%s>, <%s> and <%s>? ", $taxid, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0];
+				quit_on_q();
 			}
-			$sth_upd->execute($taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
+			$sth_upd->execute($taxid, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
 			if ($sth_upd->rows() == 0) {
 				warn "Warning: Sequence already present in database: '$hdr'\n";
 				warn sprintf "These IDs messed up: %d (%s) %d (%s) %d (%s)\n",
@@ -2265,13 +2442,19 @@ sub import_ogs_into_database {
 					$$ids[0][1],
 					$otherseqcol,
 					$$seqpairid[0],
-					$sequence_pair,
+					'sequence pair',
 				;
 			}
 		}
 		
 	}
 	return 1;
+}
+
+sub quit_on_q {
+	my $response = <STDIN>;
+	chomp $response;
+	if ($response =~ /^q$/) { exit }
 }
 
 # progress_bar
@@ -2296,8 +2479,8 @@ sub progress_bar {#{{{
 
 
 sub get_sequence_count_for_taxon {
-	my $taxon = shift;
-	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.taxid = '$taxon'";
+	my $taxid = shift;
+	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.taxid = '$taxid'";
 	my $r = db_get($q);
 	return $$r[0][0];
 }
