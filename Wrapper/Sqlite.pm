@@ -2382,14 +2382,14 @@ sub import_ogs_into_database {
 						$seqpairid;
 				}
 				else {
-					print "Updated sequence pair for $hdr\n" if $verbose;
+					print "\nUpdated sequence pair $seqpairid for $hdr \n" if $verbose;
 				}
 
 			}
 
 		}
 		elsif ($sth_insert_seqpair->rows() == 1) {
-			print "Inserted new sequence pair for $hdr\n" if $verbose;
+			print "\nInserted new sequence pair for $hdr \n" if $verbose;
 		}
 		else {
 			fail_and_exit('Something went wrong here...');
