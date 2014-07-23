@@ -2352,7 +2352,7 @@ sub import_ogs_into_database {
 
 			if (scalar @$ids > 1) { fail_and_exit("Found more than one record with ID '$hdr'! Database corrupted?") }
 			elsif (scalar @$ids == 0) {
-				fail_and_exit("No extant sequence pair with $seqcol ID $seqid and $otherseqcol $otherseqid found! Database corrupted?");
+				fail_and_exit("No extant sequence pair with $seqcol ID $seqid or $otherseqcol $otherseqid found! Database corrupted?");
 			}
 
 			# there is exactly one sequence pair with these ids present
@@ -2373,17 +2373,23 @@ sub import_ogs_into_database {
 				}
 				$sth_update_seqpair->execute($taxid, $ogsid, $seqid, $otherseqid, $seqpairid);
 				if ($sth_update_seqpair->rows() == 0) {
-					print "something wrong here!!!\n";
+					warn "Warning: No sequence pair updated for '%s' and IDs %d (%s) %d (%s) %d (%s), %d (seqpair)\n",
+						$hdr,
+						$seqid,
+						$seqcol,
+						$otherseqid,
+						$otherseqcol,
+						$seqpairid;
 				}
 				else {
-					print 'OK, updated ', $sth_update_seqpair->rows(), " rows\n" if $debug;
+					print "Updated sequence pair for $hdr\n" if $verbose;
 				}
 
 			}
 
 		}
 		elsif ($sth_insert_seqpair->rows() == 1) {
-			print "OK, inserted new sequence pair\n" if $debug;
+			print "Inserted new sequence pair for $hdr\n" if $verbose;
 		}
 		else {
 			fail_and_exit('Something went wrong here...');
