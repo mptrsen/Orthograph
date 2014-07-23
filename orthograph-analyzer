@@ -851,7 +851,7 @@ sub translate_est {#{{{
     return($outfile);
   }
   my @translateline = qq($translateprog $infile > $outfile);
-  system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?';
+  system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?');
   return($outfile);
 }#}}}
 

@@ -484,10 +484,10 @@ sub load_taxon {
 	# the same goes for the columns $seqcol and $otherseqcol.
 	my $seqtable      = $mode ? $t->{'aaseqs'} : $t->{'ntseqs'};
 	my $otherseqtable = $mode ? $t->{'ntseqs'} : $t->{'aaseqs'};
-	my $seqcol        = $mode ? 'aa_seq'     : 'nt_seq';
-	my $otherseqcol   = $mode ? 'nt_seq'     : 'aa_seq';
-	my $type          = $mode ? 2            : 1;  # 1 is 'nt', 2 is 'aa'
-	my $hdrs = [ ];
+	my $seqcol        = $mode ? 'aa_seq'       : 'nt_seq';
+	my $otherseqcol   = $mode ? 'nt_seq'       : 'aa_seq';
+	my $type          = $mode ? 2              : 1;  # 1 is 'nt', 2 is 'aa'
+	my $hdrs          = [ ];
 	my $reference_taxon_id;
 	my $reference_taxon_name;
 

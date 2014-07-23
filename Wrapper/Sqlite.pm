@@ -297,44 +297,44 @@ sub create_tables {
 		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_type`         INT(1),
-			`$db_col_taxid`        INTEGER UNSIGNED NOT NULL UNIQUE,
+			`$db_col_taxid`        INTEGER UNSIGNED NOT NULL,
 			`$db_col_version`      TEXT(255))",
 		
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
 			`$db_col_id`               INTEGER PRIMARY KEY,
 			`$db_col_setid`            INTEGER UNSIGNED NOT NULL,
-			`$db_col_orthoid`          TEXT(10)  NOT NULL,
+			`$db_col_orthoid`          TEXT(10) NOT NULL,
 			`$db_col_seqpair`          INTEGER UNSIGNED NOT NULL,
 			UNIQUE ($db_col_setid, $db_col_orthoid, $db_col_seqpair))",
 
 		# table: sequence_pairs
 		'sequence_pairs' => "CREATE TABLE `$t->{'seqpairs'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
-			`$db_col_taxid`        INTEGER    UNSIGNED,
-			`$db_col_ogsid`       INTEGER    UNSIGNED,
-			`$db_col_aaseq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL,
-			`$db_col_ntseq`       INTEGER    UNSIGNED UNIQUE DEFAULT NULL, 
-			`$db_col_date`         INTEGER    UNSIGNED DEFAULT CURRENT_TIMESTAMP,
-			`$db_col_user`         INTEGER    UNSIGNED)",
+			`$db_col_taxid`        INTEGER UNSIGNED,
+			`$db_col_ogsid`        INTEGER UNSIGNED,
+			`$db_col_aaseq`        INTEGER UNSIGNED UNIQUE DEFAULT NULL,
+			`$db_col_ntseq`        INTEGER UNSIGNED UNIQUE DEFAULT NULL, 
+			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP,
+			`$db_col_user`         INTEGER UNSIGNED)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
-			`$db_col_taxid`        INTEGER      NOT NULL, 
-			`$db_col_header`       TEXT(512)    UNIQUE,
+			`$db_col_taxid`        INTEGER     NOT NULL, 
+			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
-			`$db_col_user`         INTEGER UNSIGNED,
-			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
+			`$db_col_user`         INTEGER     UNSIGNED,
+			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_nt
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
-			`$db_col_id`           INTEGER PRIMARY KEY,
-			`$db_col_taxid`        INTEGER      NOT NULL, 
-			`$db_col_header`       TEXT(512)    UNIQUE,
+			`$db_col_id`           INTEGER     PRIMARY KEY,
+			`$db_col_taxid`        INTEGER     NOT NULL, 
+			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
-			`$db_col_user`         INTEGER UNSIGNED,
-			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
+			`$db_col_user`         INTEGER     UNSIGNED,
+			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: set_details
 		'set_details' => "CREATE TABLE `$t->{'set_details'}` (
@@ -366,7 +366,7 @@ sub create_tables {
 "CREATE INDEX IF NOT EXISTS $t->{'aaseqs'}_$db_col_header  ON $t->{'aaseqs'} ($db_col_header)",
 "CREATE INDEX IF NOT EXISTS $t->{'ntseqs'}_$db_col_header  ON $t->{'ntseqs'} ($db_col_header)",
 "CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_$db_col_aaseq  ON $t->{'seqpairs'} ($db_col_aaseq)",
-"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_$db_col_ntseq  ON $t->{'seqpairs'} ($db_col_aaseq)",
+"CREATE INDEX IF NOT EXISTS $t->{'seqpairs'}_$db_col_ntseq  ON $t->{'seqpairs'} ($db_col_ntseq)",
 	);
 
 	# useful pragmas for performance?
@@ -2200,10 +2200,10 @@ sub import_ogs_into_database {
 	my $ogsid = $dbh->selectall_arrayref("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = $taxon AND $db_col_ogsversion = '$ogsversion'");
 	$ogsid = $$ogsid[0][0];
 	print "Got OGS ID $ogsid for taxon ID $taxon\n" if $debug;
-	my $sth_ins = $dbh->prepare($query_insert_pair) or die;
-	my $sth_sel = $dbh->prepare($query_get_pair_ids) or die;
-	my $sth_selp = $dbh->prepare($query_select_pair) or die;
-	my $sth_upd = $dbh->prepare($query_update_pair) or die;
+	my $sth_ins  = $dbh->prepare( $query_insert_pair  ) or die;
+	my $sth_sel  = $dbh->prepare( $query_get_pair_ids ) or die;
+	my $sth_selp = $dbh->prepare( $query_select_pair  ) or die;
+	my $sth_upd  = $dbh->prepare( $query_update_pair  ) or die;
 	
 
 	# for each header
@@ -2258,8 +2258,15 @@ sub import_ogs_into_database {
 			}
 			$sth_upd->execute($taxon, $ogsid, $$ids[0][0], $$ids[0][1], $$seqpairid[0]);
 			if ($sth_upd->rows() == 0) {
-				warn "Warning: Sequence already present in database: '$hdr': $DBI::errstr\n";
-				warn sprintf "These IDs messed up: %d %d %d\n", $$ids[0][0], $$ids[0][0], $$seqpairid[0];
+				warn "Warning: Sequence already present in database: '$hdr'\n";
+				warn sprintf "These IDs messed up: %d (%s) %d (%s) %d (%s)\n",
+					$$ids[0][0],
+					$seqcol,
+					$$ids[0][1],
+					$otherseqcol,
+					$$seqpairid[0],
+					$sequence_pair,
+				;
 			}
 		}
 		
