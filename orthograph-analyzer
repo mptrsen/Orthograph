@@ -251,10 +251,10 @@ if ($verbose) {
 #-------------------------------------------------- 
 if ($preparedb) {#{{{
 	local $| = 1;
-  print $stdout "Setting database $database to a clean slate... ";
+  print "Setting database $database to a clean slate... ";
 	local $| = 0;
   preparedb();
-  print $stdout "OK\nDatabase now ready to run $program_name.\n";
+  print "OK\nDatabase now ready to run $program_name.\n";
   exit;
 }#}}}
 
