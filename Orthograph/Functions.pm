@@ -60,4 +60,28 @@ sub touch {
 	return 1;
 }
 
+=head2 progress_bar
+
+Prints a self-overwriting, wget-style progress bar.
+This is not written to the log file so it doesn't get cluttered.
+Arguments: scalar int so-far, scalar int total, scalar int width, scalar char "what-to-use-as-char"
+
+=cut
+
+sub progress_bar {#{{{
+	my ($got, $total, $width, $char) = @_;
+	$width ||= 25;
+	$char ||= '=';
+	my $num_width = length($total);
+	local $| = 1;
+	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r",	
+		$char x (($width-1)*$got/$total) . '>',
+		$got,
+		$total,
+		100 * $got / $total
+	);
+	local $| = 0;
+	return 1;
+}#}}}
+
 1;

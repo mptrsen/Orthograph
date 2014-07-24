@@ -2271,7 +2271,7 @@ sub import_ogs_into_database {
 	foreach my $hdr (@$hdrs) {
 		# report progress
 		$c++;
-		progress_bar($c, $n, 25, '-');
+		Orthograph::Functions::progress_bar($c, $n, 25, '-');
 
 		# reset variables
 		my ($seqid, $otherseqid);
@@ -2462,26 +2462,6 @@ sub quit_on_q {
 	chomp $response;
 	if ($response =~ /^q$/) { exit }
 }
-
-# progress_bar
-# Prints a self-overwriting, wget-style progress bar.
-# This is not written to the log file so it doesn't get cluttered.
-# Arguments: scalar int so-far, scalar int total, scalar int width, scalar char "what-to-use-as-char"
-sub progress_bar {#{{{
-	my ($got, $total, $width, $char) = @_;
-	$width ||= 25;
-	$char ||= '=';
-	my $num_width = length($total);
-	local $| = 1;
-	printf("|%-${width}s| Progress: %${num_width}s of %s (%.2f%%)\r",	
-		$char x (($width-1)*$got/$total) . '>',
-		$got,
-		$total,
-		100 * $got / $total
-	);
-	local $| = 0;
-	return 1;
-}#}}}
 
 
 sub get_sequence_count_for_taxon {
