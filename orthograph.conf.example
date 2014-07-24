@@ -37,7 +37,7 @@ sqlite-program     = /usr/bin/sqlite3
 
 #
 # # MySQL connection settings. Only required if you use MySQL and have
-# 'database-engine' set to 'mysql'.
+# 'database-backend' set to 'mysql'.
 #
 #mysql-username     = USERNAME
 #mysql-password     = PASSWORD

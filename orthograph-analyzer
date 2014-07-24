@@ -796,6 +796,7 @@ sub intro {#{{{
 
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;
+	if ($debug) { printf "%s\n", $_ foreach @backup }
 	my $tarfile = create_tarball(@backup);
 	printf($stdout "Old output files backed up in '%s' (%d files).\n", $tarfile, scalar @backup) unless $quiet;
 	undef(@backup);	# not needed anymore
@@ -1132,8 +1133,10 @@ sub hmmbuild {#{{{
 	my $hmmfile = shift;
 	my $alnsuffix = '.aln';
 	my $hmmsuffix = '.hmm';
+	my $threads = 1;
 	my $hmmname = basename($hmmfile, $hmmsuffix);
-	my @hmmbuild_cmd = qq($hmmbuild_program -n $hmmname $hmmfile $alnfile > /dev/null);
+	if ($num_threads > 1) { $threads = "--cpu $num_threads" } else { $threads = '' }
+	my @hmmbuild_cmd = qq($hmmbuild_program $threads -n $hmmname $hmmfile $alnfile > /dev/null);
 	print $stdout "@hmmbuild_cmd\n" if $debug;
 	system("@hmmbuild_cmd") and
 		return 0;
