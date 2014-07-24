@@ -134,6 +134,7 @@ my $max_blast_searches         = $config->{'max-blast-searches'};
 my $makeset                    = $config->{'make-set'};
 my $ntoutdir                   = $config->{'ntoutdir'};
 my $num_threads                = $config->{'num-threads'};
+my $orthoid_list_file          = $config->{'cog-list-file'};
 my $outdir                     = $config->{'output-directory'};
 my $orthoset                   = $config->{'ortholog-set'};
 my $preparedb                  = $config->{'prepare'};
@@ -178,6 +179,7 @@ my $hmmdir               = $EMPTY;
 my $hmmhitcount          = 0;
 my $hmmhitcount_total    = 0;
 my $hmmresultfileref     = $EMPTY;
+my $list_of_wanted_orthoids = $EMPTY;
 my $listspecies          = 0;
 my $logdir               = $EMPTY;
 my $db_col_aaseq         = 'aa_seq';
@@ -285,6 +287,11 @@ else {
 }
 @hmmfiles = hmmlist($hmmdir);
 $num_hmms = scalar(@hmmfiles);
+
+# read the list of orthoids from file
+if ($orthoid_list_file) {
+	$list_of_wanted_orthoids = Orthograph::Functions::file2arrayref($orthoid_list_file);
+}
 
 
 unless ($quiet) {#{{{
@@ -416,13 +423,20 @@ $hmmhitcount = 0;
 
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {#{{{
-	++$hmmcount;
 	$blastcount = 0;	# reset counter
 
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
 	my $hmmobj = Wrapper::Hmmsearch->new($hmmfile); 
 
+	# skip this hmm if it concerns a ortholog group that we didn't want
+	my $orthoid = $hmmobj->hmmname();
+	if ($list_of_wanted_orthoids and not grep { /$orthoid/ } @$list_of_wanted_orthoids) {
+		print $stdout "Skipping $orthoid\n" if $verbose;
+		next;
+	}
+
 	# now do the hmmsearch on the protfile
+	++$hmmcount;
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
