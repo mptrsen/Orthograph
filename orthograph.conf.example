@@ -171,7 +171,7 @@ exonerate-program    = exonerate
 # frameshift errors etc. The resulting ORF must overlap the HMM alignment
 # region by this percentage. Note that the value must be specified as a
 # fraction of 1.
-# 0.5 (50%) is the default; a higher value makes this more conservative.
+# 1 (100%) is the default; lower values make this less conservative.
 #orf-overlap-minimum = 0.5
 
 # HaMStR compatible output. Leave this uncommented if you want to use scripts

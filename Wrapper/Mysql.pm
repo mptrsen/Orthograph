@@ -666,15 +666,16 @@ sub get_transcripts_for_species {
 sub get_hmmresults {#{{{
 	my ($hmmquery, $taxid) = @_ or croak "Usage: Wrapper::Mysql::get_hmmresults(HMMQUERY)";
 	# disable query cache for this one
-	my $query_get_sequences = "SELECT SQL_NO_CACHE $db_table_ests.digest,
-		  $db_table_ests.sequence,
-		  $db_table_hmmsearch.env_start,
-		  $db_table_hmmsearch.env_end
+	my $query_get_sequences = "SELECT SQL_NO_CACHE $db_table_ests.$db_col_digest,
+		  $db_table_ests.$db_col_sequence,
+		  $db_table_hmmsearch.$db_col_env_start,
+		  $db_table_hmmsearch.$db_col_env_end,
+			$db_table_hmmsearch.$db_col_id
 		FROM $db_table_ests 
 		INNER JOIN $db_table_hmmsearch
-		ON $db_table_hmmsearch.target = $db_table_ests.digest
-		WHERE $db_table_hmmsearch.query = ?
-		AND $db_table_hmmsearch.taxid = ?";
+		ON $db_table_hmmsearch.$db_col_target = $db_table_ests.$db_col_digest
+		WHERE $db_table_hmmsearch.$db_col_query = ?
+		AND $db_table_hmmsearch.$db_col_taxid = ?";
 
 	# get the sequences from the database (as array->array reference)
 	my $dbh = get_dbh()
