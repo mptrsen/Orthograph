@@ -86,6 +86,7 @@ my $db_col_env_start        = 'env_start';
 my $db_col_evalue           = 'evalue';
 my $db_col_hmm_end          = 'hmm_end';
 my $db_col_hmm_start        = 'hmm_start';
+my $db_col_hmmsearch_id     = 'hmmsearch_id';
 my $db_col_header           = 'header';
 my $db_col_id               = 'id';
 my $db_col_log_evalue       = 'log_evalue';
@@ -572,7 +573,7 @@ sub preparedb {
 		INDEX (`$db_col_digest`(4)),
 		INDEX (`$db_col_taxid`),
 		INDEX (`$db_col_header`(10))
-		) ENGINE=MYISAM";
+	) ENGINE=MYISAM";
 
 	my $query_create_hmmsearch = "CREATE TABLE $db_table_hmmsearch (
 		`$db_col_id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -594,8 +595,8 @@ sub preparedb {
 		INDEX (`$db_col_target`(4)),
 		INDEX (`$db_col_log_evalue`),
 		INDEX (`$db_col_score`)
-		)";
-	
+	)";
+
 	my $query_create_blast = "CREATE TABLE $db_table_blast (
 		`$db_col_id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, 
 		`$db_col_taxid`         INT UNSIGNED NOT NULL,       
@@ -606,12 +607,14 @@ sub preparedb {
 		`$db_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
 		`$db_col_start`         INT UNSIGNED NOT NULL,
 		`$db_col_end`           INT UNSIGNED NOT NULL,
+		`$db_col_hmmsearch_id`  INT UNSIGNED NOT NULL,
 		PRIMARY KEY (`$db_col_id`),
 		INDEX (`$db_col_taxid`),
 		INDEX (`$db_col_query`(4)),
 		INDEX (`$db_col_target`),
-		INDEX (`$db_col_log_evalue`)
-		)";
+		INDEX (`$db_col_log_evalue`),
+		INDEX (`$db_col_hmmsearch_id`)
+	)";
 
 	# open connection
 	my $dbh = get_dbh()
@@ -1351,6 +1354,143 @@ sub get_results_for_score {
 	scalar keys %$result > 0 ? return $result : return undef;
 }
 
+sub get_hmmresults_for_single_score {
+	my $setid   = shift;
+	my $score   = shift;
+	# generic query
+	my $query = "SELECT DISTINCT
+			$db_table_orthologs.$db_col_orthoid,
+			$db_table_hmmsearch.$db_col_id,
+			$db_table_hmmsearch.$db_col_target,
+			$db_table_hmmsearch.$db_col_evalue,
+			$db_table_hmmsearch.$db_col_hmm_start,
+			$db_table_hmmsearch.$db_col_hmm_end,
+			$db_table_hmmsearch.$db_col_ali_start,
+			$db_table_hmmsearch.$db_col_ali_end,
+			$db_table_hmmsearch.$db_col_env_start,
+			$db_table_hmmsearch.$db_col_env_end,
+			$db_table_ests.$db_col_header
+		FROM $db_table_hmmsearch
+		LEFT JOIN $db_table_ests
+			ON $db_table_hmmsearch.$db_col_target = $db_table_ests.$db_col_digest
+		LEFT JOIN $db_table_orthologs
+			ON $db_table_hmmsearch.$db_col_query = $db_table_orthologs.$db_col_orthoid
+		LEFT JOIN $db_table_taxa
+			ON $db_table_hmmsearch.$db_col_taxid = $db_table_taxa.$db_col_id
+		LEFT JOIN $db_table_set_details
+			ON $db_table_orthologs.$db_col_setid = $db_table_set_details.$db_col_id
+		WHERE $db_table_ests.$db_col_digest          IS NOT NULL
+			AND $db_table_orthologs.$db_col_orthoid    IS NOT NULL
+			AND $db_table_taxa.$db_col_id              IS NOT NULL
+			AND $db_table_set_details.$db_col_id       IS NOT NULL
+			AND $db_table_set_details.$db_col_id       = ?
+			AND $db_table_hmmsearch.$db_col_score      = ?
+	";
+
+	# good for debugging
+	print $query . "\n" if $debug > 1;
+
+	my $dbh = get_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+
+	# single score
+	$sth = execute($sth, $db_timeout, $setid, $score);
+
+	# will hold the result
+	my $result = [ ];
+
+	while (my $line = $sth->fetchrow_arrayref()) {
+		# first key is the hmmsearch score, second key is the orthoid
+		push( @$result, {
+			'orthoid'      => $$line[0],
+			'hmmsearch_id' => $$line[1],
+			'hmmhit'       => $$line[2],
+			'hmm_evalue'   => $$line[3],
+			'hmm_start'    => $$line[4],
+			'hmm_end'      => $$line[5],
+			'ali_start'    => $$line[6],
+			'ali_end'      => $$line[7],
+			'env_start'    => $$line[8],
+			'env_end'      => $$line[9],
+			'header'       => $$line[10],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	return $result;
+}
+
+sub get_blastresults_for_hmmsearch_id {
+	my $setid          = shift;
+	my $hmmsearch_id   = shift;
+	# generic query
+	my $query = "SELECT DISTINCT
+			$db_table_blast.$db_col_target,
+			$db_table_blast.$db_col_score,
+			$db_table_blast.$db_col_evalue,
+			$db_table_blast.$db_col_start,
+			$db_table_blast.$db_col_end,
+			$db_table_hmmsearch.$db_col_target,
+			$db_table_hmmsearch.$db_col_env_start,
+			$db_table_hmmsearch.$db_col_env_end,
+			$db_table_hmmsearch.$db_col_ali_start,
+			$db_table_hmmsearch.$db_col_ali_end,
+			$db_table_hmmsearch.$db_col_hmm_start,
+			$db_table_hmmsearch.$db_col_hmm_end,
+			$db_table_ests.$db_col_header
+		FROM $db_table_hmmsearch
+		LEFT JOIN $db_table_blast
+			ON $db_table_hmmsearch.$db_col_id = $db_table_blast.$db_col_hmmsearch_id
+		LEFT JOIN $db_table_ests
+			ON $db_table_ests.$db_col_digest = $db_table_hmmsearch.$db_col_target
+		WHERE $db_table_hmmsearch.$db_col_id         IS NOT NULL
+			AND $db_table_blast.$db_col_hmmsearch_id   IS NOT NULL
+			AND $db_table_hmmsearch.$db_col_target     IS NOT NULL
+			AND $db_table_hmmsearch.$db_col_id         = ?
+		ORDER BY $db_table_blast.$db_col_score DESC
+	";
+
+	# good for debugging
+	if ($debug > 1) {
+		print $query . "\n";
+		print "Executing this query with $hmmsearch_id\n";
+	}
+
+	my $dbh = get_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+
+	# single score
+	$sth = execute($sth, $db_timeout, $hmmsearch_id);
+
+	# will hold the result
+	my $result = [ ];
+
+	while (my $line = $sth->fetchrow_arrayref()) {
+		# first key is the hmmsearch score, second key is the orthoid
+		push( @$result, {
+			'blast_hit'    => $$line[0],
+			'blast_score'  => $$line[1],
+			'blast_evalue' => $$line[2],
+			'blast_start'  => $$line[3],
+			'blast_end'    => $$line[4],
+			'hmmhit'       => $$line[5],
+			'env_start'    => $$line[6],
+			'env_end'      => $$line[7],
+			'ali_start'    => $$line[8],
+			'ali_end'      => $$line[9],
+			'hmm_start'    => $$line[10],
+			'hmm_end'      => $$line[11],
+			'header'       => $$line[12],
+		});
+	}
+	$sth->finish();
+	$dbh->disconnect();
+	return $result;
+}
+
+
 =head2 get_hit_transcripts($species_id, $set_id)
 
 Returns a list of transcript digests that were hit during the HMM search for
@@ -1468,8 +1608,14 @@ Returns list of scores as present in the scores view
 =cut
 
 sub get_scores_list {
-	my $q = "SELECT `score` FROM $db_table_scores ORDER BY `$db_table_scores`.`$db_col_score` DESC";
-	return map { $_->[0] } @{db_get($q)};
+	my $specid = shift;
+	my $setid = shift;
+	my $r = db_get("SELECT score FROM $db_table_hmmsearch
+		GROUP BY score
+		ORDER BY score DESC");
+	# flatten multidimensional array
+	$r = [ map { @$_ } @$r ];
+	return $r;
 }
 
 =head2 get_hmmresult_for_score(SCORE)
@@ -1597,6 +1743,7 @@ sub load_ests_from_file {
 sub insert_results_into_blast_table {
 	my $hits = shift;
 	my $species_id = shift;
+	my $hmmsearch_id = shift;
 	my $hitcount = 0;
 
 	my $query_insert_result = "INSERT IGNORE INTO $db_table_blast (
@@ -1607,8 +1754,10 @@ sub insert_results_into_blast_table {
 		`$db_col_evalue`,
 		`$db_col_log_evalue`,
 		`$db_col_start`,
-		`$db_col_end`
+		`$db_col_end`,
+		`$db_col_hmmsearch_id`
 		) VALUES (
+		?,
 		?,
 		?,
 		?,
@@ -1621,7 +1770,7 @@ sub insert_results_into_blast_table {
 
 	my $dbh = get_dbh()
 		or print "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-	$dbh->do("START TRANSACTION");
+	$dbh->do("BEGIN");
 	my $sql = $dbh->prepare($query_insert_result);
 
 	# this is a reference to an array of hashes
@@ -1635,6 +1784,7 @@ sub insert_results_into_blast_table {
 			$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,  # natural logarithm only if not 0
 			$hit->{'end'},
 			$hit->{'start'},
+			$hmmsearch_id,
 		) or print "Fatal: Could not push to database!\n" and exit(1);
 		++$hitcount;
 	}
@@ -1642,6 +1792,7 @@ sub insert_results_into_blast_table {
 	$dbh->disconnect;
 	return $hitcount;
 }
+
 
 sub insert_results_into_hmmsearch_table {
 	my $hits = shift;
