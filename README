@@ -176,7 +176,7 @@ now, be happy that you only need to do this once.
 There are options to specify OGS taxon and version so you can easily automate
 the process:
 
-  -ogs-version VERSION
+	-ogs-version VERSION
 	-reference-taxon-shorthand TAXON
 
 The version can be an arbitrary string (but enclose it in quotes if it contains
@@ -266,8 +266,11 @@ report after running orthograph-reporter.
 ## 12. Profit!
 
 
-MySQL PERFORMANCE
-=================
+APPENDIX
+========
+
+MySQL performance
+-----------------
 
 Orthograph makes extensive use of MySQL query caching. For optimal performance,
 make sure that query caching is enabled in your MySQL instance. Also, if you
@@ -277,8 +280,8 @@ and increase the lock wait timeout (`innodb_lock_wait_timeout`) to between 200
 and 600 to make sure that long queries (which may occur) do not block other
 orthograph processes.
 
-REQUIRED PERL MODULES
-=====================
+Required Perl modules
+---------------------
 Orthograph uses only modules that are present in any standard Perl distribution. 
 If you get an error like "Can't locate Some/Thing.pm in @INC" it means that
 Perl can't find one of the required modules. Update your Perl installation if
@@ -314,9 +317,6 @@ Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany
 [2]: <http://forums.mysql.com/read.php?51,389833,389833>
 [3]: <http://cegg.unige.ch/orthodb5>
 
-APPENDIX
-========
-
 ## Set up the database. 
 
 Skip this step if you already have a MySQL account and a database (and know
@@ -351,8 +351,8 @@ working user the necessary permissions on it:
 You may use a different database name, of course. Make a note of your new user
 name, the password and the database name. You will need it later.
 
-COMMON PROBLEMS
-===============
+Common problems
+---------------
 
 "No sequences found. Something went wrong. Check your input file. Exiting." 
 
@@ -360,11 +360,12 @@ Really, check your input file. Is it empty? Is it a valid fasta file? If it
 looks ok, try deleting the translated version so Orthograph is forced to
 recreate it. 
 
-OPTIONS
-=======
+Options
+-------
 
 Orthograph accepts a number of options, both on the command line and in the
-config file. They are listed here.
+config file. In fact, you can customize just about anything. They will be
+listed here.
 
   -cog-list-file LISTFILE
 
@@ -372,4 +373,18 @@ If you are only interested in a few genes from your ortholog set, you can
 provide Orthograph with a list of ortholog IDs in a file. The IDs must be
 in a single line each, and there must be no empty lines in the file. 
 
+	-verbose
 
+Turns on verbose output. Useful if you're not only interested in the progress,
+but also in what Orthograph is thinking during its analyses.
+
+	-quiet
+
+Turns off all non-essential output. Useful if you don't want to be bothered
+during an Orthograph analysis.
+
+	-debug
+
+Turns on debug output. Even more output, including database queries and
+internal workings. Most of the time this isn't helpful, only if you want to
+find errors in the program.
