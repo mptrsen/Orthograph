@@ -84,4 +84,17 @@ sub progress_bar {#{{{
 	return 1;
 }#}}}
 
+# Sub: file_is_empty
+# tests whether a file is empty (i.e., contains nothing or only empty lines)
+# Expects: scalar string path to file
+# Returns: True if file is empty, false otherwise
+sub file_is_empty {
+	my $file = shift;
+	my $fh = IO::File->new($file);
+	while (<$fh>) {
+		/^\s*$/ ? next : return 0;	# skip empty lines
+	}
+	return 1;
+}
+
 1;

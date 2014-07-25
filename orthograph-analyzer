@@ -337,7 +337,7 @@ unless ($continue) {
 
 	# store translated est data into the database:
 	printf $stdout "Storing translated sequences to database '%s' on %s...\n",
-		$attached_db_file,
+		$use_sqlite ? $attached_db_file : $db_dbname,
 		$db_dbserver
 			unless $quiet;
 

@@ -17,6 +17,7 @@
 package Wrapper::Hmmsearch;
 use strict;
 use warnings;
+use autodie;
 use File::Basename; # basename of files
 use IO::File; # object-oriented access to files
 use Carp; # extended dying functions
@@ -261,13 +262,20 @@ sub hits_arrayref {#{{{
 Sets or returns the name of the HMM that was used (may differ from the HMM filename).
 
 =cut
+
 sub hmmname {#{{{
   my $self = shift;
   if ($self->{'hmmname'}) {
     return $self->{'hmmname'};
   }
-	my @line = split(/\s+/, ${$self->result}[0]);
-  $self->{'hmmname'} = $line[3];
+	open my $fh, '<', $self->hmmfile();
+	# the second line contains the HMM name
+	<$fh>;
+	my $line = <$fh>;
+	close $fh;
+	chomp $line;
+	my @fields = split /\s+/, $line;
+  $self->{'hmmname'} = $fields[1];
   return $self->{'hmmname'};
 }#}}}
 
