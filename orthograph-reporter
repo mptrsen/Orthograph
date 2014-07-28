@@ -24,6 +24,7 @@ use autodie;        # die automatically on I/O functions
 # Core modules
 use Carp;           # carp and croak: warn and die with call stack
 use Data::Dumper;   # great for debugging
+use File::Basename;
 use FindBin;        # locate the dir of this script during compile time
 use Getopt::Long;   # command line options
 use IO::File;       # object-oriented access to files
@@ -73,6 +74,7 @@ my $outdir                     = $config->{'output-directory'};
 my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir'});
 my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir'});
 my $logdir                     = File::Spec->catdir($outdir, 'log');
+my $logfile                    = $config->{'logfile'};
 my $hamstr_compatible          = $config->{'hamstr-compatible-output'};
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
@@ -99,18 +101,31 @@ my $no_frameshift_correction   = $config->{'no-frameshift-correction'};
 # make a nice time string
 my @lt                   = localtime time;
 my $timestring           = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
+# this will hold all log messages until the logfile is open
+my $message = '';
 
-# open log and table output files 
-my $logfile = File::Spec->catfile($logdir, 'report-' . $timestring . '.log');
+# set the logfile unless specified
+unless ($logfile) {
+	$logfile = File::Spec->catfile($logdir, 'report-' . $timestring . '.log');
+}
+else {
+	$logdir = dirname($logfile);
+}
+
+# create the log dir if it doesn't exist
+if (-d $logdir) {
+	$message .= "Using log dir '$logdir'.\n" unless $quiet;
+}
+else {
+	$message .= "Log dir '$logdir' does not exist, creating...\n" unless $quiet;
+	Orthograph::Functions::makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
+}
+
+# open log and set table output file
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open report file '$logfile'\: $!\n";
+$logfh->autoflush();
 my $tablefile = File::Spec->catfile($logdir, 'table.txt');
-
-# read the list of orthoids from file
-my $list_of_wanted_orthoids;
-if ($orthoid_list_file) {
-	$list_of_wanted_orthoids = Orthograph::Functions::file2arrayref($orthoid_list_file);
-}
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
@@ -121,6 +136,9 @@ my $stderr = IO::Tee->new(
 	\*STDERR,
 	$logfh,
 );
+# print collected messages to logfile
+print $stdout $message;
+undef $message;
 
 # report configuration
 if ($verbose) {
@@ -129,6 +147,12 @@ if ($verbose) {
 		printf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
 	}
 	print "\n";
+}
+
+# read the list of orthoids from file
+my $list_of_wanted_orthoids;
+if ($orthoid_list_file) {
+	$list_of_wanted_orthoids = Orthograph::Functions::file2arrayref($orthoid_list_file);
 }
 
 # also be verbose if debugging

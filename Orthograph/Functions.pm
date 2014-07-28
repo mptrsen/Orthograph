@@ -97,4 +97,20 @@ sub file_is_empty {
 	return 1;
 }
 
+# Sub: makedir
+# Creates a directory with parent directories if it does not already exist
+# Expects: scalar string dirname
+# Returns: True if successful
+sub makedir {#{{{
+  my $dir = shift;
+  if (-e $dir and not -d $dir) {
+    print "Fatal: $dir exists, but is not a directory! This will most likely lead to problems later. Exiting.\n" and exit(1);
+  }
+  elsif (!make_path($dir, { verbose => 0 })) {
+    warn "Warning: Could not create $dir: $!\n";
+    return 0;
+  }
+  return 1;
+}#}}}
+
 1;
