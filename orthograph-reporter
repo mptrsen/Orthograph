@@ -218,7 +218,7 @@ else { @reftaxa = get_taxa_in_set($set_id) }
 my $aaseqs_in_orthoid = get_orthologs_for_set_hashref($set_id);
 
 # get list of hmmsearch alignment scores
-my $scores = get_scores_list($species_id, $set_id);
+my $scores = get_scores_list($species_id, $set_id, $hmmsearch_score_threshold);
 my $num_scores = scalar @$scores;
 
 # generate a table
@@ -1190,10 +1190,10 @@ sub get_scores_list {
 	my $specid = shift;
 	my $setid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_scores_list($specid, $setid);
+		return Wrapper::Mysql::get_scores_list($specid, $setid, $hmmsearch_score_threshold);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_scores_list($specid, $setid);
+		return Wrapper::Sqlite::get_scores_list($specid, $setid, $hmmsearch_score_threshold);
 	}
 }
 

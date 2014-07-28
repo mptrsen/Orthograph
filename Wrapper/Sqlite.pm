@@ -1808,7 +1808,9 @@ Returns list of scores as present in the scores view
 sub get_scores_list {
 	my $specid = shift;
 	my $setid = shift;
+	my $threshold = shift;
 	my $r = db_get("SELECT score FROM $db_table_hmmsearch
+		WHERE score >= $threshold
 		GROUP BY score
 		ORDER BY score DESC");
 	# flatten multidimensional array
