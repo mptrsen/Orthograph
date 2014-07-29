@@ -1165,7 +1165,7 @@ sub make_blastdb {#{{{
 			or print $stderr "Fatal: Could not write to makeblastdb input file $infh $!\n" and exit(1);
 	}
 	undef $sequences;
-	close($infh);
+	$infh->close();
 	
 
 	# make blast database
@@ -1279,6 +1279,7 @@ sub get_transcripts {#{{{
 		++$nseqs;
 	}
 	print $stdout "Wrote $nseqs translated sequences to $tmpfh\n" unless $quiet;
+	$tmpfh->close();
 	return $tmpfh;
 }#}}}
 
@@ -1327,6 +1328,7 @@ sub write_sequence_to_tempfile {
 	printf($tmpfile ">%s\n%s\n", $result->[0], substr($result->[1], $start, $length));
 	printf($stdout "Wrote sequence (from %d to %d) to tmpfile %s\n", $start, $end, $tmpfile) if $debug;
 
+	$tmpfile->close();
 	return $tmpfile;
 }
 
