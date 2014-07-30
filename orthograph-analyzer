@@ -844,7 +844,7 @@ sub hmmlist {#{{{
 # Returns: scalar string filename (protfile)
 sub translate_est {#{{{
   my ($infile) = shift;
-  (my $outfile = $infile) =~ s/(\.[^.]*$)/_prot$1/;
+  (my $outfile = File::Spec->catfile($outdir, basename($infile))) =~ s/(\.[^.]*$)/_prot$1/;
   print $stdout "Translating $input_file in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
     print $stdout "$outfile exists, using this one.\n" unless $quiet;

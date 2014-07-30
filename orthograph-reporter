@@ -277,7 +277,7 @@ foreach my $score (@$scores) {
 				$orthoid,
 				if $debug;
 
-			# if this orthoid has been hit before, check whether the new cancidate
+			# if this orthoid has been hit before, check whether the new candidate
 			# overlaps on hmm (gene) level with previous hits
 			if (exists $transcripts_mapped_to->{$orthoid}) {
 
@@ -474,18 +474,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					# ok, this can be added to the output sequences
 					push @$output_sequences, $hit;
 
-					# write the ortholog gene id to the table, but only once
-					if ($firsttime) {
-						print $tfh $orthoid;
-						$firsttime = 0;
-					}
-
-					# write the transcripts to the table
-					printf $tfh "\t%s[len %d]",
-						$hit->{'header'},                 # transcript ID
-						length $hit->{'orf_aa_sequence'}, # ORF sequence length
-					;
-
 					# assign (new) reference taxon if blast score higher
 					if (not defined $reftaxon) { 
 						$reftaxon       = $hit->{'reftaxon'};
@@ -500,8 +488,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		}
 	}
 
-	print $tfh "\n";
-
 	# skip the rest since no sequence could be gathered
 	unless (@$output_sequences) {
 		print $stdout "No ORFs found for $orthoid, skipping...\n" unless $quiet;
@@ -509,6 +495,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	}
 
 	# concatenate headers and sequences in order
+	$output_sequences = [ sort { $a->{'orf_aa_start'} <=> $b->{'orf_aa_start'} } @$output_sequences ];
 	($hdr, $seq, $cdnahdr, $cdnaseq) = concatenate_sequences($output_sequences);
 
 	# get the core ortholog sequences for this group
@@ -549,8 +536,18 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	print $stdout "wrote concatenated sequence $cdnahdr to file $fafn\n" if $debug;
 	undef $fafh;
 
+	# print to report table
+	printf $tfh "%s", $orthoid;
+	foreach my $hit (@$output_sequences) {
+		next unless defined $hit->{'orf_aa_sequence'};
+		printf $tfh "\t%s[len %d]", $hit->{'header'}, length $hit->{'orf_aa_sequence'};
+	}
+	print $tfh "\n";
+
 	# one more
 	$n_complete_orthoids++;
+
+	# report
 	printf $stdout "Mapped %d transcripts to %s\n",
 		scalar @$output_sequences,
 		$orthoid
@@ -968,9 +965,6 @@ sub overlaps_previous_hit {
 
 sub concatenate_sequences {
 	my $hits = shift;
-
-	# sort by order on the output sequence
-	$hits = [ sort { $a->{'orf_aa_start'} <=> $b->{'orf_aa_start'} } @$hits ];
 	my $prev_end;
 	my $seq = '';
 	my $cdnaseq = '';
