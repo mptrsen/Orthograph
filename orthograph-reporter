@@ -38,6 +38,10 @@ use Orthograph::Functions;             # functions for all Orthograph tools
 use Wrapper::Exonerate;
 use IO::Tee;
 
+my $program_name = 'Orthograph';
+$0 = $program_name;
+my $version = 'beta3';
+
 my $config = $Orthograph::Config::config;	# copy config variables
 
 #--------------------------------------------------
