@@ -172,7 +172,7 @@ exonerate-program    = exonerate
 # region by this percentage. Note that the value must be specified as a
 # fraction of 1.
 # 1 (100%) is the default; lower values make this less conservative.
-#orf-overlap-minimum = 0.5
+#orf-overlap-minimum = 1
 
 # HaMStR compatible output. Leave this uncommented if you want to use scripts
 # that depend on the sequence header format that the older HaMStR pipeline

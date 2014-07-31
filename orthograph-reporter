@@ -494,7 +494,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		next ORTHOID;
 	}
 
-	# concatenate headers and sequences in order
+	# sort sequences and concatenate 
 	$output_sequences = [ sort { $a->{'orf_aa_start'} <=> $b->{'orf_aa_start'} } @$output_sequences ];
 	($hdr, $seq, $cdnahdr, $cdnaseq) = concatenate_sequences($output_sequences);
 
@@ -725,12 +725,12 @@ sub print_overlap {
 	my $transcript = shift;
 	my $level      = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap on %s level.\n", 
-		$$transcript{'hmmhit'},
+		$$transcript{'header'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
-		$$candidate{'hmmhit'},
+		$$candidate{'header'},
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
@@ -744,12 +744,12 @@ sub print_no_overlap {
 	my $transcript = shift;
 	my $level      = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap on %s level.\n", 
-		$$transcript{'hmmhit'},
+		$$transcript{'header'},
 		$$transcript{'env_start'},
 		$$transcript{'env_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
-		$$candidate{'hmmhit'},
+		$$candidate{'header'},
 		$$candidate{'env_start'},
 		$$candidate{'env_end'},
 		$$candidate{'hmm_start'},
@@ -1015,10 +1015,10 @@ sub join_headers {
 		$hdr .= '-' . length($hits->[0]->{'orf_aa_sequence'});
 	}
 	else {
-		$hdr .= ':[len ' . length($hits->[0]->{'orf_aa_sequence'}) . ']';
+		$hdr .= ':[' . length($hits->[0]->{'orf_aa_sequence'}) . ' aa]';
 	}
-	my $i = 1;
-	while (defined $hits->[$i]->{'orf_aa_sequence'}) {
+	for (my $i = 1; $i < scalar @$hits; $i++) {
+		next unless defined $hits->[$i]->{'orf_aa_sequence'};
 		$hdr .= $concat_sep . $hits->[$i]->{'header'};
 		if ($hamstr_compatible) {
 			# remove translation portion
@@ -1026,9 +1026,8 @@ sub join_headers {
 			$hdr .= '-' . length($hits->[$i]->{'orf_aa_sequence'});
 		}
 		else {
-			$hdr .= ':[len ' . length($hits->[$i]->{'orf_aa_sequence'}) . ']';
+			$hdr .= ':[' . length($hits->[$i]->{'orf_aa_sequence'}) . ' aa]';
 		}
-		$i++;
 	}
 	# join cdna headers
 	$cdnahdr = $hits->[0]->{'header'};
@@ -1037,19 +1036,18 @@ sub join_headers {
 		$cdnahdr .= '-' . length($hits->[0]->{'orf_cdna_sequence'});
 	}
 	else {
-		$cdnahdr .= ':[len ' . length($hits->[0]->{'orf_cdna_sequence'}) . ']';
+		$cdnahdr .= ':[' . length($hits->[0]->{'orf_cdna_sequence'}) . ' nt]';
 	}
-	$i = 1;
-	while (defined $hits->[$i]->{'orf_cdna_sequence'}) {
+	for (my $i = 1; $i < scalar @$hits; $i++) {
+		next unless defined $hits->[$i]->{'orf_aa_sequence'};
 		$cdnahdr .= $concat_sep . $hits->[$i]->{'header'};
 		if ($hamstr_compatible) {
 			$cdnahdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
 			$cdnahdr .= '-' . length($hits->[$i]->{'orf_cdna_sequence'});
 		}
 		else {
-			$cdnahdr .= ':[len ' . length($hits->[$i]->{'orf_cdna_sequence'}) . ']';
+			$cdnahdr .= ':[' . length($hits->[$i]->{'orf_cdna_sequence'}) . ' nt]';
 		}
-		$i++;
 	}
 
 	return($hdr, $cdnahdr);
