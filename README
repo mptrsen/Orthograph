@@ -237,9 +237,11 @@ set, if they don't exist. This may take a long time depending on the size of
 your set, but rest assured, once the pHMMs exist, subsequent analyses will be
 faster by that amount of time. 
 
-After that, your input file is searched using all pHMMs. Candidate orthologs
-are verified with a reciprocal search against the BLAST database of all
-proteomes in your ortholog set. The results are cached in the database.
+After that, your input file is translated into all six possible reading frames.
+The translated file is placed in your output directory. This library is searched
+using all pHMMs. Candidate orthologs are verified with a reciprocal search
+against the BLAST database of all proteomes in your ortholog set. The results
+are cached in the database.
 
 The HMMER and BLAST output tables are placed in the 'hmmsearch' and 'blastp'
 subdirectories in the output directory. The 'aa' and 'nt' directories are
