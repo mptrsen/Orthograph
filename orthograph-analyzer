@@ -722,7 +722,7 @@ sub intro {#{{{
 	if (-d $hmmoutdir) {
 		print $stdout "HMMsearch output dir '$hmmoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			cleardir($hmmoutdir);
+			Orthograph::Functions::cleardir($hmmoutdir);
 			print $stdout "Purged HMMsearch output dir '$hmmoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
@@ -738,7 +738,7 @@ sub intro {#{{{
   if (-d $blastoutdir) {
     print $stdout "BLASTP output dir '$blastoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			cleardir($blastoutdir);
+			Orthograph::Functions::cleardir($blastoutdir);
 			print $stdout "Purged BLAST output dir '$blastoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
@@ -753,7 +753,7 @@ sub intro {#{{{
 	if (-d $aaoutdir) {
 		print $stdout "AA output dir '$aaoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			cleardir($aaoutdir);
+			Orthograph::Functions::cleardir($aaoutdir);
 			print $stdout "Purged AA output dir '$aaoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
@@ -768,7 +768,7 @@ sub intro {#{{{
 	if (-d $ntoutdir) {
 		print $stdout "NT output dir '$ntoutdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			cleardir($ntoutdir);
+			Orthograph::Functions::cleardir($ntoutdir);
 			print $stdout "Purged nt output dir '$ntoutdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
@@ -803,9 +803,9 @@ sub intro {#{{{
 	undef($tarfile);
 	if ($clear_files) {
 		# empty the directories
-		cleardir($hmmoutdir);
-		cleardir($blastoutdir);
-		cleardir($aaoutdir);
+		Orthograph::Functions::cleardir($hmmoutdir);
+		Orthograph::Functions::cleardir($blastoutdir);
+		Orthograph::Functions::cleardir($aaoutdir);
 	}
 
 	# does the set exist?
@@ -889,23 +889,6 @@ sub create_tarball {#{{{
 	$tarball->add_files(@files);
 	$tarball->write($tarfile, COMPRESS_BZIP) or print $stderr "Fatal: Could not create tarball in '$tarfile': $!\n" and exit(1);
 	return $tarfile;
-}#}}}
-
-# Sub: cleardir
-# Empties a directory of non-dotfiles
-# Arguments: scalar string dirname
-sub cleardir {#{{{
-	my $dir = shift;
-	opendir(my $dirh, $dir)
-		or print $stderr "Fatal: Couldn't open dir $dir: $!" and exit(1);
-	foreach (readdir($dirh)) {
-		next if $_ =~ /^\.\.?$/;
-		unlink(File::Spec->catfile($dir, $_))
-			or print $stderr "Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!";
-	}
-	closedir($dirh)
-		or print $stderr "Fatal: Couldn't close dir $dir: $!" and exit(1);
-	return 1;
 }#}}}
 
 # Sub: preparedb

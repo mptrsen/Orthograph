@@ -113,4 +113,21 @@ sub makedir {#{{{
   return 1;
 }#}}}
 
+# Sub: cleardir
+# Empties a directory of non-dotfiles
+# Arguments: scalar string dirname
+sub cleardir {#{{{
+	my $dir = shift;
+	opendir(my $dirh, $dir)
+		or print $stderr "Fatal: Couldn't open dir $dir: $!" and exit(1);
+	foreach (readdir($dirh)) {
+		next if $_ =~ /^\.\.?$/;
+		unlink(File::Spec->catfile($dir, $_))
+			or print $stderr "Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!";
+	}
+	closedir($dirh)
+		or print $stderr "Fatal: Couldn't close dir $dir: $!" and exit(1);
+	return 1;
+}#}}}
+
 1;

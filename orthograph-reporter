@@ -79,6 +79,7 @@ my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir
 my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir'});
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $logfile                    = $config->{'logfile'};
+my $keep_old_output_files      = $config->{'keep-old-output-files'};
 my $hamstr_compatible          = $config->{'hamstr-compatible-output'};
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
@@ -125,12 +126,18 @@ else {
 	Orthograph::Functions::makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
 }
 
+# clear aa and nt output directories unless the user doesn't want to
+unless ($keep_old_output_files) {
+	Orthograph::Functions::cleardir($aaoutdir);
+	Orthograph::Functions::cleardir($ntoutdir);
+}
+
 # open log and set table output file
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open report file '$logfile'\: $!\n";
 $logfh->autoflush();
-my $tablefile = File::Spec->catfile($logdir, 'table.txt');
-my $orthologous_transcripts_file = File::Spec->catfile($logdir, 'orthologous_transcripts.txt');
+my $tablefile = File::Spec->catfile($outdir, 'table.txt');
+my $orthologous_transcripts_file = File::Spec->catfile($outdir, 'orthologous_transcripts.txt');
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
