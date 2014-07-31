@@ -1757,7 +1757,7 @@ sub get_nucleotide_transcript_for {
 		FROM $db_table_ests
 		WHERE $db_col_header = ?";
 	$result = db_get($query, $original_header);
-	return $result->[0]->[0];
+	return ($original_header, $result->[0]->[0]);
 }
 
 =head2 get_nuc_for_pep(scalar int ID)

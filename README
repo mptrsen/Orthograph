@@ -119,6 +119,8 @@ The `-create` switch tells the script to setup the database structure for
 Orthograph.  It will create a number of tables, all of which start with the
 prefix `orthograph_` (or whatever prefix you chose in the config file). 
 
+At this point, if you use the SQLite backend, the SQLite database file is
+created at the location you specified in the config file.
 
 ## 4. Upload your ortholog set into the database:
 
@@ -214,6 +216,9 @@ Make orthograph-analyzer executable and run it with the -prepare option:
 	$ chmod +x orthograph-analyzer
 	$ ./orthograph-analyzer -prepare
 
+At this point, if you use the SQLite backend, a species-specific SQLite database
+file is created in the output directory you specified in the config file.
+
 
 ## 8. Complete your config file if you didn't fill out everything before.
 
@@ -236,6 +241,11 @@ After that, your input file is searched using all pHMMs. Candidate orthologs
 are verified with a reciprocal search against the BLAST database of all
 proteomes in your ortholog set. The results are cached in the database.
 
+The HMMER and BLAST output tables are placed in the 'hmmsearch' and 'blastp'
+subdirectories in the output directory. The 'aa' and 'nt' directories are
+created but left empty. A log file called 'orthograph-DATE.log' is created in
+the 'log' directory. 
+
 ## 11. Start the reporter
 
 Make orthograph-reporter executable and run it:
@@ -243,9 +253,9 @@ Make orthograph-reporter executable and run it:
   $ chmod +x orthograph-reporter
   $ ./orthograph-reporter
 
-Orthograph-reporter fetches the search results from the database and
-assigns ortholog relationships by triangulating reciprocal best hits. 
-After orthograph-reporter is run, the output directory contains five
+Orthograph-reporter fetches the search results from the database and assigns
+ortholog relationships by triangulating reciprocal best hits. After
+orthograph-reporter is finished, the output directory contains five
 subdirectories:
 
 a) hmmsearch. This contains all the HMMsearch output tables. 

@@ -197,8 +197,10 @@ sub search {
   my $outfile = File::Spec->catfile($outdir, $self->{'query'}->{'header'} . '-' . $self->{'target'}->{'header'} . '.exonerateout');
 
 	# roll your own output for exonerate
-	#my $exonerate_ryo = "Score: %s\n%V\n>%qi_%ti_[%tcb:%tce]_cdna\n%tcs//\n>%qi[%qab:%qae]_query\n%qas//\n>%ti[%tab:%tae]_target\n%tas//\n";
-	# just the target coding sequence (tcs)
+	# %tcb/%tce : target coding region beginning/end
+	# %tcs      : target coding sequence
+	# %qab/%qae : query alignment region beginning/end 
+	# %qas      : query alignment sequence
 	my $exonerate_ryo = '>cdna %tcb %tce\n%tcs>aa %qab %qae\n%qas';
 
 	# the complete command line
