@@ -540,7 +540,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	printf $tfh "%s", $orthoid;
 	foreach my $hit (@$output_sequences) {
 		next unless defined $hit->{'orf_aa_sequence'};
-		printf $tfh "\t%s[len %d]", $hit->{'header'}, length $hit->{'orf_aa_sequence'};
+		printf $tfh "\t%s[%d aa]", $hit->{'header'}, length $hit->{'orf_aa_sequence'};
 	}
 	print $tfh "\n";
 
