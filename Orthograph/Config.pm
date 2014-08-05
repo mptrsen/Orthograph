@@ -99,7 +99,7 @@ GetOptions( $config,
 	'strict-search',
   'substitute-u-with=s',
   'verbose|v',
-) or print "Fatal: I don't know what you want me to do. Terminating.\n" and exit(1);
+) or print "Fatal: No suitable option found. I don't know what you want me to do. Terminating.\n" and exit(1);
 
 # if something went wrong
 die "Fatal: Error parsing config" unless $config;
