@@ -119,14 +119,14 @@ sub makedir {#{{{
 sub cleardir {#{{{
 	my $dir = shift;
 	opendir(my $dirh, $dir)
-		or print $stderr "Fatal: Couldn't open dir $dir: $!" and exit(1);
+		or croak "Fatal: Couldn't open dir $dir: $!";
 	foreach (readdir($dirh)) {
 		next if $_ =~ /^\.\.?$/;
 		unlink(File::Spec->catfile($dir, $_))
-			or print $stderr "Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!";
+			or warn "Warning: Could not delete file " . File::Spec->catfile($dir, $_) . ": $!";
 	}
 	closedir($dirh)
-		or print $stderr "Fatal: Couldn't close dir $dir: $!" and exit(1);
+		or warn "Fatal: Couldn't close dir $dir: $!";
 	return 1;
 }#}}}
 
