@@ -1,4 +1,20 @@
 #!/usr/bin/perl
+#--------------------------------------------------
+# This file is part of Orthograph.
+# Copyright 2014 Malte Petersen <mptrsen@uni-bonn.de>
+# 
+# Orthograph is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+# 
+# Orthograph is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along with
+# Orthograph. If not, see http://www.gnu.org/licenses/.
+#-------------------------------------------------- 
 use strict;
 use warnings;
 use autodie;
@@ -7,43 +23,53 @@ use File::Basename;
 use File::Spec;
 use Getopt::Long;
 
-my $skipfirst = 0;
-my $skipall   = 0;
-my $outdir    = '/tmp';
-my $exonerate = 'exonerate';
+my $skipfirst       = 0;
+my $skipall         = 0;
+my $outdir          = '/tmp';
+my $exonerate       = 'exonerate';
 my $score_threshold = 30;
+my $help            = 0;
+
+my $usage  = <<"END_OF_USAGE";
+Usage: $0 [OPTIONS] PEPTIDEFILE CDSFILE
+Generates 100% corresponding amino acid and nucleotide sequences for OGS
+Options:
+  --skipfirst         skip the first sequence that could not be found in both peptide and cds file
+  --skipall           skip all sequences that could not be found in both peptide and cds file
+  --outdir PATH       set output directory to PATH (default: '/tmp')
+  --exonerate PATH    set path to Exonerate executable (default: 'exonerate')
+  --score-threshold N set score threshold for the alignments (default: 30)
+END_OF_USAGE
 
 GetOptions(
 	'skipfirst'         => \$skipfirst,
 	'skipall'           => \$skipall,
 	'outdir=s'          => \$outdir,
 	'exonerate=s'       => \$exonerate,
-	'score-threshold=d' => \$score_threshold,
-);
-
-my $usage = "Usage: $0 OGSFILE TRANSCRIPTOMEFILE\n";
+	'score-threshold=i' => \$score_threshold,
+	'help|h'            => \$help,
+) or die $usage;
 
 scalar @ARGV == 2 or die $usage;
 
-print "Call: $0 @ARGV\n";
+print "# Called: $0 @ARGV\n";
 
-my $ogs = slurp_fasta($ARGV[0]);
-
+my $ogs         = slurp_fasta($ARGV[0]);
 my $transcripts = slurp_fasta($ARGV[1]);
 
 unless (scalar keys %$ogs == scalar keys %$transcripts) {
 	print "Unequal number of sequences!\n";
 }
 
-my %seen    = ();
-my $nupd    = 0;
-my $nunchgd = 0;
-my $n       = 0;
-my $nseqs   = scalar keys %$ogs;
-my $c       = 0;
-
-my $new_ogs_file = File::Spec->catfile($outdir, 'corresp-' . basename($ARGV[0]));
+my %seen                 = ();
+my $nupd                 = 0;
+my $nunchgd              = 0;
+my $n                    = 0;
+my $nseqs                = scalar keys %$ogs;
+my $c                    = 0;
+my $new_ogs_file         = File::Spec->catfile($outdir, 'corresp-' . basename($ARGV[0]));
 my $new_transcripts_file = File::Spec->catfile($outdir, 'corresp-' . basename($ARGV[1]));
+
 open my $new_ogs, '>', $new_ogs_file;
 open my $new_transcripts, '>', $new_transcripts_file;
 
@@ -97,8 +123,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 		--target $ntfn
 		> $outfile"
 	);
-
-	system("@command") and die $?;
+	system("@command") and die "Fatal: Exonerate failed with errcode $?: $!\n";
 
 	# get the alignment results
 	my $res = slurp_fasta($outfile);
@@ -158,17 +183,6 @@ sub slurp_fasta {
 	my $sequences = {};
 	my $infh = Seqload::Fasta->open($infile);
 	while (my ($h, $s) = $infh->next_seq()) {
-		#--------------------------------------------------
-		# # remove possible taxon shorthand
-		# $h =~ s/^[A-Z]{5} //;
-		# # we only need the id field
-		# my @fields = split /\s+/, $h;
-		# $h = $fields[0];
-		# # remove possible -R*/-P* suffixes
-		# $h =~ s/-[RPT][A-H]$//;
-		# # remove pipes
-		# $h =~ s/\|/_/g;
-		#-------------------------------------------------- 
 		# make sure the header is unique
 		die "Non-unique header: $h\n" if $sequences->{$h};
 		# ok you got it

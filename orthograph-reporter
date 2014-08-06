@@ -192,7 +192,6 @@ my $max_mismatches       = $soft_threshold;
 my $results              = undef;
 my ($t0, $t1)            = 0;
 my $stats                = { };
-my $transcripts_skipped  = 0;
 my $starttime            = scalar time;
 my $endtime              = 0;
 my $totaltime            = 0;
@@ -404,6 +403,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	my $firsttime        = 1;
 	my $i                = 0;
 	my $output_sequences = [ ];
+	my $transcripts_skipped = 0;
 
 	++$counter;
 	printf $stdout "Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
@@ -412,7 +412,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	while (my $hit = shift @$list_of_hits) {
 		++$hitcount;
 		++$i;
-		$transcripts_skipped = 0;
 
 		# get the sequences from the database
 		my $proteome_sequence;
