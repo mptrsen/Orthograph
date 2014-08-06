@@ -192,6 +192,7 @@ my $max_mismatches       = $soft_threshold;
 my $results              = undef;
 my ($t0, $t1)            = 0;
 my $stats                = { };
+my $transcripts_skipped  = 0;
 my $starttime            = scalar time;
 my $endtime              = 0;
 my $totaltime            = 0;
@@ -411,6 +412,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	while (my $hit = shift @$list_of_hits) {
 		++$hitcount;
 		++$i;
+		$transcripts_skipped = 0;
 
 		# get the sequences from the database
 		my $proteome_sequence;
@@ -450,8 +452,9 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						$hit->{'ali_end'},
 						$hit->{'blast_hit'},
 					;
-					print $stdout "Skipping this transcript\n";
+					print $stdout "discarding this transcript\n";
 				}
+				++$transcripts_skipped;
 				next HIT;
 			}
 			# exonerate got an alignment
@@ -474,12 +477,13 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 				# this is too little
 				if ($orf_overlap < $orf_overlap_minimum) {
-					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (length %d) only by %.2f %%, skipping this transcript\n", 
+					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (length %d) only by %.2f %%, discarding this transcript\n", 
 						$hit->{'orf_aa_start'},
 						$hit->{'orf_aa_end'},
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 						$orf_overlap * 100,
 							if $verbose;
+					++$transcripts_skipped;
 					next HIT;
 				}
 				# the overlap is sufficient, this is ok
@@ -494,6 +498,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					# check whether this ORF overlaps with any previous hits
 					if (overlaps_previous_hit($output_sequences, $hit)) {
 						print $stdout "Skipping this transcript\n" if $verbose;
+						++$transcripts_skipped;
 						next HIT;
 					}
 
@@ -575,9 +580,10 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	$n_complete_orthoids++;
 
 	# report
-	printf $stdout "Mapped %d transcripts to %s\n",
+	printf $stdout "Mapped %d transcripts to %s (discarded %d transcripts)\n",
 		scalar @$output_sequences,
-		$orthoid
+		$orthoid,
+		$transcripts_skipped
 			unless $quiet;
 }
 undef $tfh;

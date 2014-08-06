@@ -379,24 +379,31 @@ Orthograph accepts a number of options, both on the command line and in the
 config file. In fact, you can customize just about anything. They will be
 listed here.
 
-  -cog-list-file LISTFILE
+  -c, CONFIGFILE
+
+You can specify the path to a different config file than the default
+(orthograph.conf). Orthograph will read its settings from that file. This is
+particularly useful when you have a lot of datasets to run Orthograph on.
+
+  --cog-list-file LISTFILE
 
 If you are only interested in a few genes from your ortholog set, you can 
 provide Orthograph with a list of ortholog IDs in a file. The IDs must be
 in a single line each, and there must be no empty lines in the file. 
 
-	-verbose
+	-v, --verbose
 
 Turns on verbose output. Useful if you're not only interested in the progress,
 but also in what Orthograph is thinking during its analyses.
 
-	-quiet
+	-q, --quiet
 
 Turns off all non-essential output. Useful if you don't want to be bothered
 during an Orthograph analysis.
 
-	-debug
+	-d, --debug
 
 Turns on debug output. Even more output, including database queries and
-internal workings. Most of the time this isn't helpful, only if you want to
-find errors in the program.
+internal workings. This is only helpful if you want to find errors in the
+program. Be aware that the log files can become several gigabytes in size this
+way.
