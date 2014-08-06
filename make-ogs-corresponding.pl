@@ -30,6 +30,8 @@ my $exonerate       = 'exonerate';
 my $score_threshold = 30;
 my $help            = 0;
 
+print "Called: $0 @ARGV\n";
+
 my $usage  = <<"END_OF_USAGE";
 Usage: $0 [OPTIONS] PEPTIDEFILE CDSFILE
 Generates 100% corresponding amino acid and nucleotide sequences for OGS
@@ -48,19 +50,19 @@ GetOptions(
 	'exonerate=s'       => \$exonerate,
 	'score-threshold=i' => \$score_threshold,
 	'help|h'            => \$help,
-) or die $usage;
+) or exit 1;
 
+# need exactly two input files
 scalar @ARGV == 2 or die $usage;
 
-print "# Called: $0 @ARGV\n";
-
+# read input files and check they have equal numbers of sequences
 my $ogs         = slurp_fasta($ARGV[0]);
 my $transcripts = slurp_fasta($ARGV[1]);
-
 unless (scalar keys %$ogs == scalar keys %$transcripts) {
-	print "Unequal number of sequences!\n";
+	warn "Warning: Unequal number of sequences!\n";
 }
 
+# initialize more variables
 my %seen                 = ();
 my $nupd                 = 0;
 my $nunchgd              = 0;
@@ -70,9 +72,11 @@ my $c                    = 0;
 my $new_ogs_file         = File::Spec->catfile($outdir, 'corresp-' . basename($ARGV[0]));
 my $new_transcripts_file = File::Spec->catfile($outdir, 'corresp-' . basename($ARGV[1]));
 
+# open output files
 open my $new_ogs, '>', $new_ogs_file;
 open my $new_transcripts, '>', $new_transcripts_file;
 
+# go through the peptide sequences sorted by header
 foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 
 	++$c;
@@ -95,7 +99,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 		}
 	}
 
-	# print to files 
+	# generate input files 
 	my $aafn    = fastaify($hdr, $ogs->{$hdr});
 	my $ntfn    = fastaify($hdr, $transcripts->{$hdr});
 	my $outfile = File::Temp->new();
@@ -127,6 +131,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 
 	# get the alignment results
 	my $res = slurp_fasta($outfile);
+
 	# no alignment found, something is wrong, skip this pair
 	if (!$res->{'ca'}) {
 		print "done, no alignment found, skipping\n";
@@ -154,7 +159,9 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	# set output buffer back to normal
 	local $| = 1;
 
-	# delete tempfile
+	# delete tempfiles
+	undef $aafn;
+	undef $ntfn;
 	undef $outfile;
 }
 
@@ -168,6 +175,7 @@ printf "Done, updated %d of %d sequences, wrote %d sequences to %s and %s\n",
 
 exit;
 
+# generates a temporary fasta file
 sub fastaify {
 	my $fh = File::Temp->new();
 	printf $fh ">%s\n%s\n", $_[0], $_[1];
@@ -192,19 +200,18 @@ sub slurp_fasta {
 	return $sequences;
 }
 
+# return an array from a whitespace-separated string
 sub QW {
 	my $s = shift;
 	$s =~ s/\n/ /g;
 	return split /\s+/, $s;
 }
 
+# Object-oriented access to Fasta files
 package Seqload::Fasta;
 use strict;
 use warnings;
 use Carp;
-require Exporter;
-our @ISA = qw(Exporter);
-our @EXPORT_OK = qw( fasta2csv check_if_fasta );
 
 # Constructor. Returns a sequence database object.
 sub open {
@@ -258,35 +265,5 @@ sub close {
 sub DESTROY {
   my $self = shift;
   $self->close;
-}
-
-# Convert a fasta file to a csv file the easy way
-# Usage: Seqload::Fasta::fasta2csv($fastafile, $csvfile);
-sub fasta2csv {
-  my $fastafile = shift;
-  my $csvfile = shift;
-
-  my $fastafh = Seqload::Fasta->open($fastafile);
-  CORE::open(my $outfh, '>', $csvfile)
-    or confess "Fatal: Could not open $csvfile\: $!\n";
-  while (my ($hdr, $seq) = $fastafh->next_seq) {
-		$hdr =~ s/,/_/g;	# remove commas from header, they mess up a csv file
-    print $outfh $hdr . ',' . $seq . "\n"
-			or confess "Fatal: Could not write to $csvfile\: $!\n";
-  }
-  CORE::close $outfh;
-  $fastafh->close;
-
-  return 1;
-}
-
-# validates a fasta file by looking at the FIRST (header, sequence) pair
-# arguments: scalar string path to file
-# returns: true on validation, false otherwise
-sub check_if_fasta {
-	my $infile = shift;
-	my $infh = Seqload::Fasta->open($infile);
-	my ($h, $s) = $infh->next_seq() or return 0;
-	return 1;
 }
 
