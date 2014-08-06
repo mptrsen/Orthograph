@@ -36,6 +36,7 @@ my $usage  = <<"END_OF_USAGE";
 Usage: $0 [OPTIONS] PEPTIDEFILE CDSFILE
 Generates 100% corresponding amino acid and nucleotide sequences for OGS
 Options:
+	--help, -h          print this help
   --skipfirst         skip the first sequence that could not be found in both peptide and cds file
   --skipall           skip all sequences that could not be found in both peptide and cds file
   --outdir PATH       set output directory to PATH (default: '/tmp')

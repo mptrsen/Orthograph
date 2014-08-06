@@ -83,10 +83,11 @@ generate 100% corresponding amino acid and nucleotide sequences for the OGS. It
 only requires that the identifiers are unambiguously identical. You can call it
 like this:
 
-	perl make-ogs-corresponding.pl PEPTIDEFILE CDSFILE
+	perl make-ogs-corresponding.pl [OPTIONS] PEPTIDEFILE CDSFILE
 
 Provide the OGS on amino acid level as PEPTIDEFILE and on nucleotide level as
-CDSFILE.
+CDSFILE. A list of options is printed when you call the script without arguments
+or with the -h option.
 
 QUICKSTART
 ==========
