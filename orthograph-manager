@@ -216,7 +216,7 @@ elsif ($ispeptide) {
 }
 
 # otherwise, this must be an orthodb file
-$infile = shift @ARGV or die "Usage: $0 [OPTIONS] INPUTFILE\n";
+$infile = shift @ARGV or die usage();
 die("Fatal: file not found: $infile\n") unless -f $infile;
 
 #--------------------------------------------------
@@ -284,6 +284,17 @@ else {	# something has changed
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
+
+sub usage {
+	my $usage = "Usage: $0 [OPTIONS] INPUTFILE\n";
+	$usage   .= "Options:\n";
+	foreach my $opt (sort { $a cmp $b } keys %$config) {
+		next if $opt =~ /db_/;
+		$usage .= "\t-$opt\n";
+	}
+	$usage .= "See the documentation for a description.\n";
+	return $usage;
+}
 
 sub get_number_of_cogs_for_set {
 	my $setn = shift @_;

@@ -1,0 +1,162 @@
+.TH Orthograph 1 "2014"
+
+.SH NAME
+Orthograph - Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models
+
+.SH SYNOPSIS
+\fBorthograph-manager\fP [ OPTIONS ] \fIFILE\fP
+
+.SH DESCRIPTION
+Orthograph is a pipeline for orthology prediction in transcriptomic datasets. It uses profile hidden Markov models and BLAST to implement a search algorithm that maps transcripts to pre-defined orthologous groups using global best reciprocal hits.
+
+.SH OPTIONS
+
+All options can be specified in the configuration file or on the command line. See the section \fBCONFIGURATION FILE\fP for more information.
+
+.TP
+\fB--h\fP
+Print a short usage message along with a list of options, the description of which is this manpage :-)
+
+.TP
+\fB--aaoutdir\fP DIR
+set the output directory for amino acid sequences to DIR. Will be created if it does not exist.
+
+.TP
+\fB--alignment-program\fP PATH
+set the alignment program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'mafft-linsi --anysymbol'.
+
+.TP
+\fB--backup\fP
+backup old output files before starting a new analysis. This is the default, disable it by saying \fB--nobackup\fP.
+
+.TP
+\fB--blast-evalue-threshold\fP X
+set the e-value threshold for BLAST searches. Can be specified in a floating point or an exponential number. Defaults to 10e-5.
+
+.TP
+\fB--blast-max-hits\fP N
+set the number of BLAST hits for each search. A lower number speeds up searches. Defaults to 100.
+
+.TP
+\fB--blast-program\fP PATH
+set the BLAST program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'blastp'.
+
+.TP
+\fB--blast-score-threshold\fP X
+set the score threshold for BLAST searches. Defaults to 10.
+
+.TP
+\fB--blastoutdir\fP DIR
+set the output directory for BLAST result files. Will be created if it does not exist.
+
+.TP
+\fB--clear-database\fP
+clear the database of old results. This will give you a clean slate before a new analysis. Does not remove any ortholog sets. This is the default, disable it by saying \fB-noclear-database\fP.
+
+.TP
+\fB--clear-files\fP
+clear old output files. This will remove old output files, including the search results. This will give you a clean start, but will cause everything to run again.
+
+.TP
+\fB--cog-list-file\fP FILE
+specify a list file to filter COGs. If you are only interested in a few genes from your ortholog set, you can provide Orthograph with a list of ortholog IDs in a file. The IDs must be in a single line each, and there must be no empty lines in the file. 
+
+.TP
+\fB--concatenation-header-separator\fP S
+set the header separator for concatenated sequences. Defaults to 'PP', enclose it in quotes if it contains whitespace.
+
+.TP
+\fB-c\fP, \fB--configfile\fP FILE
+specify the path to a configuration file, which will be read instead of the default. Defaults to 'orthograph.conf' in the installation directory.
+
+.TP
+\fB--continue\fP
+continue a previously begun analysis. This will skip loading the transcriptomic data into the database and assumes that is there from an earlier run.
+
+.TP
+\fB--create\fP
+create the database structure. Available for \fIorthograph-manager\fP.
+
+.TP
+\fB--database-backend\fP NAME
+set the database backend to NAME. Must be 'sqlite' or 'mysql'. Defaults to 'sqlite'.
+
+.TP
+\fB--db-prefix\fP PREFIX
+set the database table prefix to PREFIX. Defaults to 'orthograph'.
+
+.TP
+\fB-d\fP, \fB--debug\fP
+turn on debug mode, including database queries and internal workings. This is only helpful if you want to find errors in the program. Be aware that the log files can become several gigabytes in size this way.
+
+.TP
+\fB--delete-ogs\fP FILE
+delete the OGS in FILE from the database. You must specify the exact same data that you used to load the OGS into the database, otherwise sequences cannot be correlated.
+
+.TP
+\fB--delete-set\fP SET
+delete the ortholog set SET from the database. Specify the name of the set.
+
+.TP
+\fB--destroy\fP
+delete everything Orthograph from the database.
+
+.TP
+\fB--exonerate-program\fP PATH
+set the Exonerate program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'exonerate'.
+
+.TP
+\fB--fill-with-x\fP
+when concatenating transcripts, fill the gap in amino acid sequences with 'X' characters and in nucleotide sequences with 'N' characters.
+
+.TP
+\fB--hamstr-compatible-output\fP
+produce output in a HaMStR compatible format so that other scripts can parse it.
+
+.TP
+\fB--header-separator\fP S
+set the header field separator for Fasta output files. Enclose in quotes if it contains (or is) whitespace. Defaults to '|'.
+
+.TP
+\fB-h\fP, \fB--help\fP
+print a short synopsis and a list of options.
+
+.TP
+\fB--hmmbuild-program\fP PATH
+set the hmmbuild program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'hmmbuild'.
+
+.TP
+\fB--hmmsearch-evalue-threshold\fP X
+set the e-value threshold for HMM searches. Can be specified in a floating point or an exponential number. Defaults to 10e-5.
+
+\fB--hmmsearch-program\fP
+set the hmmsearch program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'hmmsearch'.
+
+.TP
+\fB--hmmsearch-score-threshold\fP X
+set the score threshold for HMM searches. Defaults to 10.
+
+.TP
+\fB--hmmsearchoutdir\fP DIR
+set the output directory for HMM result files. Will be created if it does not exist.
+
+.TP
+\fB--input-file\fP FILE
+set the input file. Required for \fIorthograph-analyzer\fP.
+
+.TP
+\fB--load-ogs-nucleotide\fP FILE
+load the nucleotide OGS in FILE into the database. Available for \fIorthograph-manager\fP. If called without further options, this action will interactively query the user for information on the OGS to be loaded.
+
+\fB--load-ogs-peptide\fP FILE
+load the peptide OGS in FILE into the database. Available for \fIorthograph-manager\fP. If called without further options, this action will interactively query the user for information on the OGS to be loaded.
+
+\fB--logfile\fP FILE
+set the path to the log file.
+
+.SH FILES
+.nf
+orthograph-manager
+orthograph-analyzer
+orthograph-reporter
+orthograph.conf

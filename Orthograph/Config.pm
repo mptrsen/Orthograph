@@ -36,22 +36,9 @@ our $config = getconfig();
 # # Get command line options. These may override variables set in the config file.
 #-------------------------------------------------- 
 GetOptions( $config,
-	'continue',
-	'create',
-	'delete-ogs=s',
-	'delete-set=s',
-	'destroy',
-	'evalue-bin-size=i',
-	'list-ests|le',
-	'list-ogs|lo',
-	'list-sets|ls',
-	'list-taxa|lt',
-	'load-ogs-nucleotide=s',
-	'load-ogs-peptide=s',
-	'prepare',
 	'aaoutdir=s',
 	'alignment-program=s',
-	'backup',
+	'backup!',
 	'backup-extension=s',
 	'blast-evalue-threshold=f',
 	'blast-max-hits=i',
@@ -63,19 +50,30 @@ GetOptions( $config,
 	'cog-list-file=s',
 	'concatenation-header-separator=s',
 	'configfile|c=s',
+	'continue!',
+	'create',
 	'database-backend=s',
 	'db-prefix=s',
 	'debug|d+',
+	'delete-ogs=s',
+	'delete-set=s',
+	'destroy!',
 	'fill-with-x',
-	'input-file|i=s',
 	'hamstr-compatible-output',
 	'header-separator=s',
+	'help|h',
 	'hmmsearch-evalue-threshold=f',
 	'hmmsearch-output-dir=s',
 	'hmmsearch-score-threshold=i',
 	'hmmsearchprog=s',
+	'input-file|i=s',
+	'list-ests|le',
+	'list-ogs|lo',
+	'list-sets|ls',
+	'list-taxa|lt',
+	'load-ogs-nucleotide=s',
+	'load-ogs-peptide=s',
 	'logfile|log=s',
-	'make-set',
 	'max-blast-searches=i',
 	'mysql-database=s',
 	'mysql-password=s',
@@ -89,6 +87,7 @@ GetOptions( $config,
 	'ortholog-set=s',
 	'output-directory=s',
 	'overwrite|o',
+	'prepare',
 	'preparedb',
 	'quiet|q',
 	'reference-taxa=s',
@@ -155,8 +154,7 @@ undef %C;
 $config->{'aaoutdir'}                   //= 'aa';
 $config->{'alignment-program'}          //= 'mafft-linsi --anysymbol';
 $config->{'backup'}                     //= 1;
-$config->{'backup-extension'}           //= '.bak';
-$config->{'blast-evalue-threshold'}     //= 10;
+$config->{'blast-evalue-threshold'}     //= 1e-5;
 $config->{'blast-max-hits'}             //= 100;
 $config->{'blast-program'}              //= 'blastp';
 $config->{'blast-score-threshold'}      //= 10;
@@ -172,11 +170,11 @@ $config->{'debug'}                      //= 0;
 $config->{'delete-ogs'}                 //= '';
 $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
-$config->{'evalue-bin-size'}            //= 500;
 $config->{'exonerate-program'}          //= 'exonerate';
 $config->{'fill-with-x'}                //= 1;
 $config->{'hamstr-compatible-output'}   //= 0;
 $config->{'header-separator'}           //= '|';
+$config->{'help'}                       //= 0;
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
 $config->{'hmmsearch-program'}          //= 'hmmsearch';
 $config->{'hmmsearch-score-threshold'}  //= 10;
@@ -186,7 +184,6 @@ $config->{'input-file'}                 //= '';
 $config->{'load-ogs-nucleotide'}        //= '';
 $config->{'load-ogs-peptide'}           //= '';
 $config->{'logfile'}                    //= '';
-$config->{'make-set'}                   //= 0;
 $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
 $config->{'no-frameshift-correction'}   //= 0;

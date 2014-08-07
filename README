@@ -89,6 +89,7 @@ Provide the OGS on amino acid level as PEPTIDEFILE and on nucleotide level as
 CDSFILE. A list of options is printed when you call the script without arguments
 or with the -h option.
 
+
 QUICKSTART
 ==========
 
@@ -96,12 +97,21 @@ For a fast start into analysis using Orthograph, follow these steps. They
 assume that all required software packages are installed and work. 
 
 
-## 1. These conventions are used throughout this documentation:
+## 1. Some preliminary remarks
+
+Throughout this manual, the following marks a shell command:
 
 	$ some_command
 
 This means you should enter some_command at the shell prompt. The `$` sigil is
 not part of the command.
+
+All Orthograph tools adhere to the -c option that allows you to specify the path
+to a config file, e.g.:
+
+	$ orthograph-analyzer -c different_species.conf
+
+This is useful if you use different SQLite or MySQL databases, for example.
 
 
 ## 2. Create a config file. 
@@ -131,14 +141,6 @@ prefix `orthograph_` (or whatever prefix you chose in the config file).
 
 At this point, if you use the SQLite backend, the SQLite database file is
 created at the location you specified in the config file.
-
-Note that you can specify the path to a different config file with the -c
-option:
-
-  $ ./orthograph-manager -c other_orthograph.conf -create
-
-This will work with all Orthograph programs and with any operation. It is useful
-if you use different SQLite or MySQL databases, for example.
 
 
 ## 4. Upload your ortholog set into the database:
