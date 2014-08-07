@@ -23,7 +23,6 @@ use File::Basename;
 use File::Spec;
 use Getopt::Long;
 
-my $skipfirst       = 0;
 my $skipall         = 0;
 my $outdir          = '/tmp';
 my $exonerate       = 'exonerate';
@@ -36,8 +35,7 @@ my $usage  = <<"END_OF_USAGE";
 Usage: $0 [OPTIONS] PEPTIDEFILE CDSFILE
 Generates 100% corresponding amino acid and nucleotide sequences for OGS
 Options:
-	--help, -h          print this help
-  --skipfirst         skip the first sequence that could not be found in both peptide and cds file
+  --help, -h          print this help
   --skipall           skip all sequences that could not be found in both peptide and cds file
   --outdir PATH       set output directory to PATH (default: '/tmp')
   --exonerate PATH    set path to Exonerate executable (default: 'exonerate')
@@ -45,7 +43,6 @@ Options:
 END_OF_USAGE
 
 GetOptions(
-	'skipfirst'         => \$skipfirst,
 	'skipall'           => \$skipall,
 	'outdir=s'          => \$outdir,
 	'exonerate=s'       => \$exonerate,
@@ -83,16 +80,11 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	++$c;
 
 	# if the headers aren't identical, the sequences can't be correlated. 
-	# in this case, they may be skipped at the user's discretion (--skipfirst or
-	# --skipall options). otherwise, the program will exit.
+	# in this case, they may be skipped at the user's discretion (--skipall).
+	# otherwise, the program will exit.
 	unless (exists $transcripts->{$hdr}) {
 		if ($skipall) {
 			print "Not found in transcriptome: '$hdr', skipping\n";
-			next;
-		}
-		elsif ($skipfirst) {
-			print "Not found in transcriptome: '$hdr', skipping\n";
-			$skipfirst = 0;
 			next;
 		}
 		else {

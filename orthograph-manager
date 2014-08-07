@@ -82,6 +82,7 @@ my $verbose                   = $config->{'verbose'};
 my $outputdir                 = $config->{'output-directory'};
 my $reference_taxon_shorthand = $config->{'reference-taxon-shorthand'};
 my $ogsversion                = $config->{'ogs-version'};
+my $orthodb5_format           = $config->{'orthodb5-format'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
 my $u_subst                   = $config->{'substitute-u-with'};
@@ -403,11 +404,16 @@ sub create_tables {
 sub make_csv {
 	my $inf = shift @_;
 	my $fh = File::Temp->new(UNLINK=>1);
-
 	my $faobj = Seqload::Fasta->open($inf);
+
+	my $taxon_shorthand = '';
+	my $orthodb_id      = '';
+	my $sequence_id     = '';
+
 	no warnings;	# disable warnings for printing of the NULL column
 	while (my ($hdr, $seq) = $faobj->next_seq()) {
 		$seq =~ s/-//g;	# remove all gaps from the sequence
+		# does the sequence consist of only amino acid symbols?
 		if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
 			# change all Us to X if requested
 			if ($u_subst and $seq =~ s/U/$u_subst/gi) {
@@ -420,28 +426,36 @@ sub make_csv {
 		++$total_seqs;
 		# no commas in the header please, they confuse the csv parser
 		$hdr =~ s/,/_/g;
-		my @headerfields = split(/\s+/, $hdr, 5);	# maximum of five fields, the last one may contain whitespace
-		# no colons either
-		$headerfields[3] =~ s/:/_/g if defined $headerfields[3];
+		my @headerfields = split(/\s+/, $hdr);
+		# for backwards compatibility with orthodb 5 format
+		if ($orthodb5_format) {
+			$taxon_shorthand = $headerfields[0];
+			$orthodb_id      = $headerfields[2];
+			$sequence_id     = $headerfields[3];
+			# only the first 5 characters
+			$taxon_shorthand = substr($taxon_shorthand, 0, 5);
+		}
+		# otherwise, this is recent, i.e., orthodb 7 format
+		else {
+			$taxon_shorthand = $headerfields[-1];
+			$orthodb_id      = $headerfields[-2];
+			$sequence_id     = $headerfields[0];
+		}
 
-		# if the original proteome is missing, this can't work
-		if ($headerfields[1] =~ /^\s*$/) { die("Fatal: Sequence ID missing from '$hdr'! See documentation and double-check your ortholog file.\n") }
-
-		$headerfields[0] =~ s/:.*//;	   # remove everything from the colon
 		printf $fh "%s,%s,%s,%s,%s,%s,%s,%s\n", 
-			$headerfields[0],              # taxon shorthand
-			'',                         # this will later be the full name
+			$taxon_shorthand,              # taxon shorthand
+			'',                            # this will later be the full name
 			$setname,	                     # set name
-			$headerfields[2],              # orthodb id, e.g. EOG500001
+			$orthodb_id,                   # orthodb id, e.g. EOG500001
 			File::Spec->catdir($blastdir), # blast database directory
-			$headerfields[3],              # ogs id
+			$sequence_id,                  # sequence id as it occurs in the ogs
 			$seq,                          # sequence
 			$description;                  # set description
 	}
 	use warnings;	# resume yelling 
-	print "used file '$fh'\n" if $verbose;
-	undef($faobj);
+	undef $faobj;
 	$fh->close();
+	print "used temporary csv file '$fh'\n" if $verbose;
 	return $fh;
 }
 

@@ -132,6 +132,15 @@ prefix `orthograph_` (or whatever prefix you chose in the config file).
 At this point, if you use the SQLite backend, the SQLite database file is
 created at the location you specified in the config file.
 
+Note that you can specify the path to a different config file with the -c
+option:
+
+  $ ./orthograph-manager -c other_orthograph.conf -create
+
+This will work with all Orthograph programs and with any operation. It is useful
+if you use different SQLite or MySQL databases, for example.
+
+
 ## 4. Upload your ortholog set into the database:
 
 	$ ./orthograph-manager FASTAFILE
