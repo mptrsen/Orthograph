@@ -1562,20 +1562,12 @@ sub get_transcript_for {
 }
 
 sub get_nucleotide_transcript_for {
-	my $digest = shift @_ or croak "Usage: get_transcript_for(ID)\n";
-	my $query  = "SELECT $db_col_header
-		FROM $db_table_ests
-		WHERE $db_col_digest = ?";
-	my $result = &db_get($query, $digest);
-	# remove the revcomp/translate portion
-	print "translated header: <$result->[0]->[0]>\n" if $debug;
-	(my $original_header = $result->[0]->[0]) =~ s/ ?(\[revcomp]:)?\[translate\(\d\)\]$//;
-	print "original header: <$original_header>\n" if $debug;
-	$query = "SELECT $db_col_sequence
+	my $original_header = shift @_ or croak "Usage: get_transcript_for(ID)\n";
+	my $query = "SELECT $db_col_sequence
 		FROM $db_table_ests
 		WHERE $db_col_header = ?";
-	$result = &db_get($query, $original_header);
-	return ($original_header, $result->[0]->[0]);
+	my $result = db_get($query, $original_header);
+	return ($result->[0]->[0]);
 }
 
 =head2 get_nuc_for_pep(scalar int ID)

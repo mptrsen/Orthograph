@@ -223,7 +223,7 @@ elsif ($ispeptide) {
 }
 
 # otherwise, this must be an orthodb file
-$infile = shift @ARGV or die Orthograph::Functions::usage($config);
+$infile = shift @ARGV or Orthograph::Functions::print_usage($config) and exit 1;
 die("Fatal: file not found: $infile\n") unless -f $infile;
 
 #--------------------------------------------------

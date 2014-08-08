@@ -423,7 +423,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		# get the sequences from the database
 		my $proteome_sequence;
 		($proteome_sequence, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
-		my ($est_header, $est_sequence) = get_nucleotide_transcript_for($hit->{'hmmhit'});
+		my ($est_header, $est_sequence) = get_nucleotide_transcript_for($hit->{'header'});
 
 		# crop the est sequence to hmm alignment region
 		$est_sequence = crop_to_hmm($est_sequence, $est_header, $hit);
@@ -452,11 +452,12 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			# exonerate didn't get an alignment
 			if (not $hit->{'orf_cdna_sequence'}) {
 				if ($verbose) {
-					printf $stdout "Could not get an ORF for '%s'[%d:%d] and '%s'\n",
-						$hit->{'header'},
+					printf $stdout "Could not get an ORF for '%s'[%d:%d] and reference sequence %d (%s)\n",
+						$est_header,
 						$hit->{'ali_start'},
 						$hit->{'ali_end'},
 						$hit->{'blast_hit'},
+						$hit->{'reftaxon'},
 					;
 					print $stdout "discarding this transcript\n";
 				}
@@ -483,9 +484,9 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 				# this is too little
 				if ($orf_overlap < $orf_overlap_minimum) {
-					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (length %d) only by %.2f %%, discarding this transcript\n", 
-						$hit->{'orf_aa_start'},
-						$hit->{'orf_aa_end'},
+					printf $stdout "ORF (%d-%d nt) overlaps HMM alignment region (length %d aa) only by %.2f %%, discarding this transcript\n", 
+						$hit->{'orf_cdna_start_on_transcript'},
+						$hit->{'orf_cdna_end_on_transcript'},
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 						$orf_overlap * 100,
 							if $verbose;
@@ -494,16 +495,18 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				}
 				# the overlap is sufficient, this is ok
 				else {
-					printf $stdout "ORF (%d-%d) overlaps HMM alignment region (length %d) by %.2f %%\n",
-						$hit->{'orf_aa_start'},
-						$hit->{'orf_aa_end'},
+					printf $stdout "ORF (%d-%d nt) overlaps HMM alignment region (length %d aa) by %.2f %%\n",
+						$hit->{'orf_cdna_start_on_transcript'},
+						$hit->{'orf_cdna_end_on_transcript'},
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 						$orf_overlap * 100,
 							if $verbose;
 
 					# check whether this ORF overlaps with any previous hits
 					if (overlaps_previous_hit($output_sequences, $hit)) {
-						print $stdout "Skipping this transcript\n" if $verbose;
+						if ($verbose) {
+							print $stdout "Skipping this transcript\n";
+						}
 						++$transcripts_skipped;
 						next HIT;
 					}
@@ -533,7 +536,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	}
 
 	# sort sequences and concatenate 
-	$output_sequences = [ sort { $a->{'orf_aa_start'} <=> $b->{'orf_aa_start'} } @$output_sequences ];
+	$output_sequences = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$output_sequences ];
 	($hdr, $seq, $cdnahdr, $cdnaseq) = concatenate_sequences($output_sequences);
 
 	# get the core ortholog sequences for this group
@@ -989,20 +992,28 @@ sub overlaps_previous_hit {
 	foreach my $hit ( grep { defined $_->{'orf_aa_sequence'} } @$other_hits ) {
 		# starts before other hit is over or ends after start of other hit
 		if ((
-			$cand->{'orf_cdna_start_on_transcript'} < $hit->{'orf_cdna_start_on_transcript'}
-				and $cand->{'orf_cdna_end_on_transcript'} > $hit->{'orf_cdna_start_on_transcript'}
+				# starts before begin of another transcript, ends within or after the other transcript
+				$cand->{'orf_cdna_start_on_transcript'} < $hit->{'orf_cdna_start_on_transcript'}
+					and $cand->{'orf_cdna_end_on_transcript'} > $hit->{'orf_cdna_start_on_transcript'}
+				)
+				or (
+				# starts before end of another transcript, ends after the other transcript
+				$cand->{'orf_cdna_start_on_transcript'} < $hit->{'orf_cdna_end_on_transcript'}
+					and $cand->{'orf_cdna_end_on_transcript'} > $hit->{'orf_cdna_end_on_transcript'}
+				)
+				or (
+				# starts and ends within another transcript
+				$cand->{'orf_cdna_start_on_transcript'} > $hit->{'orf_cdna_start_on_transcript'}
+					and $cand->{'orf_cdna_end_on_transcript'} < $hit->{'orf_cdna_end_on_transcript'}
+				)
 			)
-			or (
-			$cand->{'orf_cdna_start_on_transcript'} < $hit->{'orf_cdna_end_on_transcript'}
-				and $cand->{'orf_cdna_end_on_transcript'} > $hit->{'orf_cdna_end_on_transcript'}
-			)
-		) {
-			printf $stdout "ORF (%d-%d) overlaps other ORF (%d-%d)\n",
+		{
+			printf $stdout "ORF (%d-%d nt) overlaps other ORF (%d-%d nt)\n",
 				$cand->{'orf_cdna_start_on_transcript'}, 
 				$cand->{'orf_cdna_end_on_transcript'},
 				$hit->{'orf_cdna_start_on_transcript'},
 				$hit->{'orf_cdna_end_on_transcript'}
-					if $verbose;
+			;
 			return 1;
 		}
 	}
@@ -1215,13 +1226,29 @@ sub get_reference_sequence {
 }
 
 sub get_nucleotide_transcript_for {
-	my $hmmhit = shift;
+	my $header = shift;
+	my $nt_seq = '';
+	# remove the revcomp/translate portion
+	(my $original_header = $header) =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
+	if ($debug) {
+		printf $stdout "translated header: <%s>\noriginal header: <%s>\n", $header, $original_header;
+	}
+	my $revcomp = $2;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_nucleotide_transcript_for($hmmhit);
+		$nt_seq = Wrapper::Mysql::get_nucleotide_transcript_for($original_header);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_nucleotide_transcript_for($hmmhit);
+		$nt_seq = Wrapper::Sqlite::get_nucleotide_transcript_for($original_header);
 	}
+	if ($revcomp) { return($original_header, reverse_complement($nt_seq)) }
+	return($original_header, $nt_seq);
+}
+
+sub reverse_complement {
+	my $seq = shift @_;
+	$seq =~ tr/AGCTYRKMWSagct/TCGARYMKWSTCGA/;
+	$seq = reverse $seq;
+	return $seq;
 }
 
 sub get_scores_list {
@@ -1301,7 +1328,13 @@ sub crop_to_hmm {
 	my $h = shift;
 	my $length = abs($h->{'ali_end'} - $h->{'ali_start'} + 1) * 3;
 	my $start = ( $h->{'ali_start'} - 1 ) * 3;
-	printf $stdout "Cropping sequence %s to HMM alignment region (%d-%d)\n", $hdr, $h->{'ali_start'}, $h->{'ali_end'} if $verbose;
+	printf $stdout "Cropping sequence %s to HMM alignment region (%d-%d aa): %d-%d nt\n",
+		$hdr,
+		$h->{'ali_start'},
+		$h->{'ali_end'},
+		$start + 1,
+		$start + $length + 1,
+			if $verbose;
 	return substr($seq, $start, $length);
 }
 

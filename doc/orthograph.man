@@ -7,6 +7,7 @@ Orthograph - Orthology prediction using a Graph-based, Reciprocal Approach with 
 \fBorthograph-manager\fP [ OPTIONS ] \fIFILE\fP
 
 .SH DESCRIPTION
+.PP
 Orthograph is a pipeline for orthology prediction in transcriptomic datasets. It uses profile hidden Markov models and BLAST to implement a search algorithm that maps transcripts to pre-defined orthologous groups using global best reciprocal hits.
 
 .SH OPTIONS
@@ -145,6 +146,22 @@ set the output directory for HMM result files. Will be created if it does not ex
 set the input file. Required for \fIorthograph-analyzer\fP.
 
 .TP
+\fB-le\fP, \fB--list-ests\fP
+list a summary of all est data present in the database.
+
+.TP
+\fB-lo\fP, \fB--list-ogs\fP
+print a list of all OGS present in the database.
+
+.TP
+\fB-ls\fP, \fB--list-sets\fP
+print a list of ortholog sets present in the database.
+
+.TP
+\fB-lt\fP, \fB--list-taxa\fP
+print a list of taxa present in the database.
+
+.TP
 \fB--load-ogs-nucleotide\fP FILE
 load the nucleotide OGS in FILE into the database. Available for \fIorthograph-manager\fP. If called without further options, this action will interactively query the user for information on the OGS to be loaded.
 
@@ -277,9 +294,23 @@ set the fastatranslate program, which is part of the Exonerate package. Used for
 be verbose. Report more information about what Orthograph is doing. Available for all Orthograph tools.
 
 
+.PP
 .SH FILES
 .nf
 orthograph-manager
 orthograph-analyzer
 orthograph-reporter
 orthograph.conf
+
+.PP
+.SH AUTHOR
+Written by Malte Petersen.
+
+.PP
+.SH "REPORTING BUGS"
+Report bugs to mptrsen at uni-bonn.de
+Orthograph home page: <http://github.com/mptrsen/Orthograph/>
+
+.COPYRIGHT
+Copyright 2014 Malte Petersen
+
