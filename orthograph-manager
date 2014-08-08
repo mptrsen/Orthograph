@@ -40,6 +40,13 @@ use Orthograph::Config;                  # configuration in global hashref $conf
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;
 
+#--------------------------------------------------
+# # The user only wants help
+#-------------------------------------------------- 
+if ($config->{'help'}) {
+	Orthograph::Functions::print_usage($config) and exit;
+}
+
 
 #--------------------------------------------------
 # # These variables can be set in the config file
@@ -205,18 +212,18 @@ elsif ($listtaxa) {
 elsif ($isnucleotide) {
 	$infile = $isnucleotide;
 	# 0 for nucleotide
-	load_taxon($infile, 0) or die("Fatal: Nucleotide loading failed\n");
+	load_taxon($infile, 0) or die "Fatal: Nucleotide loading failed\n";
 	exit;
 }
 elsif ($ispeptide) {
 	$infile = $ispeptide;
 	# 1 for amino-acid
-	load_taxon($infile, 1) or die("Fatal: Peptide loading failed\n");
+	load_taxon($infile, 1) or die "Fatal: Peptide loading failed\n";
 	exit;
 }
 
 # otherwise, this must be an orthodb file
-$infile = shift @ARGV or die usage();
+$infile = shift @ARGV or die Orthograph::Functions::usage($config);
 die("Fatal: file not found: $infile\n") unless -f $infile;
 
 #--------------------------------------------------
@@ -284,17 +291,6 @@ else {	# something has changed
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
-
-sub usage {
-	my $usage = "Usage: $0 [OPTIONS] INPUTFILE\n";
-	$usage   .= "Options:\n";
-	foreach my $opt (sort { $a cmp $b } keys %$config) {
-		next if $opt =~ /db_/;
-		$usage .= "\t-$opt\n";
-	}
-	$usage .= "See the documentation for a description.\n";
-	return $usage;
-}
 
 sub get_number_of_cogs_for_set {
 	my $setn = shift @_;

@@ -80,6 +80,13 @@ else {
 my $config = $Orthograph::Config::config;
 
 #--------------------------------------------------
+# # The user only wants help
+#-------------------------------------------------- 
+if ($config->{'help'}) {
+	Orthograph::Functions::print_usage($config) and exit;
+}
+
+#--------------------------------------------------
 # # Database settings
 #-------------------------------------------------- 
 # which database backend do we use?
@@ -244,7 +251,6 @@ if ($verbose) {
 	}
 	$message .= "\n";
 }
-
 
 #--------------------------------------------------
 # # Special case: Prepare the database by dropping and recreating all
@@ -570,8 +576,19 @@ exit(0);
 
 
 ###################################################
-# # Functions 
+# # Functions follow
 ###################################################
+
+sub usage {
+	my $usage = "Usage: $0 [OPTIONS] INPUTFILE\n";
+	$usage   .= "Options:\n";
+	foreach my $opt (sort { $a cmp $b } keys %$config) {
+		next if $opt =~ /db_/;
+		$usage .= "\t--$opt\n";
+	}
+	$usage .= "See the documentation for a description.\n";
+	return $usage;
+}
 
 sub insert_taxon_into_table {
 	if ($use_mysql) {

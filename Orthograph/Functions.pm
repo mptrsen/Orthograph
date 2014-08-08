@@ -130,4 +130,21 @@ sub cleardir {#{{{
 	return 1;
 }#}}}
 
+# Sub: usage
+# Returns a usage message based on the config hash from the Orthograph::Config
+# module
+# Arguments: hashref
+# Returns: scalar string (usage message)
+sub print_usage {
+	my $config = shift;
+	print "Usage: $0 [OPTIONS] INPUTFILE\n";
+	print "Options:\n";
+	foreach my $opt (sort { $a cmp $b } keys %$config) {
+		next if $opt =~ /db_/;
+		print "\t--$opt\n";
+	}
+	print "See the documentation for a description.\n";
+	return 1;
+}
+
 1;

@@ -45,6 +45,13 @@ my $version = 'beta3';
 my $config = $Orthograph::Config::config;	# copy config variables
 
 #--------------------------------------------------
+# # The user only wants help
+#-------------------------------------------------- 
+if ($config->{'help'}) {
+	Orthograph::Functions::print_usage($config) and exit;
+}
+
+#--------------------------------------------------
 # # Database settings
 #-------------------------------------------------- 
 # which database backend do we use?

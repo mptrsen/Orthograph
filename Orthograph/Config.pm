@@ -203,6 +203,7 @@ $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 5;
 $config->{'species-name'}               //= '';
 $config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
+$config->{'sqlite-database'}            //= 'orthograph.sqlite';
 $config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= 'X';
@@ -235,13 +236,22 @@ if ($config->{'database-backend'} =~ /sqlite/i and not defined $config->{'sqlite
 
 if ($config->{'verbose'} and $config->{'quiet'}) {
 	print STDERR "Fatal: Can't operate in both verbose and quiet mode\n";
-	exit(1);
+	exit 1;
 }
 
-
+#--------------------------------------------------
+# # other option checking
+#-------------------------------------------------- 
+#
 # un-quote the header separator
 $config->{'header-separator'} =~ s/^('|")//;
 $config->{'header-separator'} =~ s/('|")$//;
+
+# make sure the substitution for U is a single character
+if (length $config->{'substitute-u-with'} != 1) {
+	print STDERR "Fatal: substitution character for selenocysteine (U) (--substitute-u-with) must be a single character. You selected '" . $config->{'substitute-u-with'} . "'\n";
+	exit 1;
+}
 
 ###################################################
 # Functions
