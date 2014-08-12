@@ -323,6 +323,7 @@ sub create_tables {
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_taxid`        INTEGER     NOT NULL, 
+			`$db_col_ogsid`        INTEGER     NOT NULL,
 			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
 			`$db_col_user`         INTEGER     UNSIGNED,
@@ -332,6 +333,7 @@ sub create_tables {
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
 			`$db_col_id`           INTEGER     PRIMARY KEY,
 			`$db_col_taxid`        INTEGER     NOT NULL, 
+			`$db_col_ogsid`        INTEGER     NOT NULL,
 			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
 			`$db_col_user`         INTEGER     UNSIGNED,
@@ -921,6 +923,24 @@ sub set_exists {
 	my $result = $sth->fetchrow_arrayref;
 	if ( $$result[0] ) { return 1 }
 	return 0;
+}
+
+=head2 insert_taxon_into_database(TAXON_NAME)
+
+Inserts a core taxon into the database.
+
+Returns the newly generated taxon ID.
+
+=cut
+
+sub insert_taxon_into_database {
+	my $name = shift;
+	my $dbh = get_dbh();
+	$dbh->do("INSERT OR IGNORE INTO $db_table_taxa ($db_col_name) VALUES ($name) LIMIT 1");
+	my $sth = $dbh->prepare("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ?");
+	$sth->execute($name);
+	my $res = $sth->fetchall_arrayref();
+	return $res->[0]->[0];
 }
 
 =head2 insert_taxon_into_table(TAXON_NAME)

@@ -485,6 +485,72 @@ sub get_yn {
 	return 1;
 }
 
+sub upload_ogs {
+	my $inf = shift;
+	my $type = shift;
+	
+	# determine correct table
+	my $seqtable      = $type == 2 ? $t->{'aaseqs'} : $t->{'ntseqs'};
+	my $otherseqtable = $type == 2 ? $t->{'ntseqs'} : $t->{'aaseqs'};
+	my $seqcol        = $type == 2 ? 'aa_seq'       : 'nt_seq';
+	my $otherseqcol   = $type == 2 ? 'nt_seq'       : 'aa_seq';
+
+	# get taxon name
+	if ($taxon_name) {
+		print "Using taxon name '$taxon_name'\n";
+	}
+	else {
+		$taxon_name = get_stdin("Please enter the taxon name for this data file");
+	}
+	# get ogs version
+	if ($ogsversion) {
+		print "Using OGS version number $ogsversion\n";
+	}
+	else {
+		$ogsversion = get_stdin("Please enter the official gene set (OGS) version for this data file");
+	}
+	# insert taxon into table
+	my $taxid = insert_taxon_into_database($taxon_name) or fail_and_exit('Could not insert taxon into database');
+	# update OGS table
+	my $ogsid = insert_ogs_info_into_database($ogsversion, $type) or fail_and_exit('Could not insert OGS info into database');
+	# blindly load the sequences?
+	# upload:
+	# taxid, ogsid, header, seq, user, date
+	upload_ogs_sequences($inf, $taxid, $ogsid, $seqtable) or fail_and_exit('OGS sequence loading failed');
+	#
+	# if nt sequences:
+	# check if aa sequence is present, otherwise crap out
+	
+}
+
+
+
+sub insert_taxon_into_database {
+	my $name = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_taxon_into_database($name);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_taxon_into_database($name);
+	}
+}
+
+sub insert_ogs_info_into_database {
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_ogs_info_into_database(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_ogs_info_into_database(@_);
+	}
+}
+
+sub get_stdin {
+	my $prompt = shift;
+	my $ans    = <STDIN>;
+	chomp $ans;
+	return $ans;
+}
+
 # Sub: load_taxon
 # Loads sequence data into the database.
 # Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
