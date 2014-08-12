@@ -57,8 +57,6 @@ my $database                = $config->{'sqlite-database'};
 my $db_timeout              = 600;
 my $sqlite                  = $config->{'sqlite-program'};
 my $sleep_for               = 1;
-# user name in the following order: set name from config, environment variables $LOGNAME and $USER, uid
-my $db_dbuser               = $config->{'username'} || $ENV{"LOGNAME"} || $ENV{"USER"} || getpwuid $<;
 
 my $db_attached             = 'species_database';
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
@@ -109,7 +107,6 @@ my $db_col_start            = 'start';
 my $db_col_target           = 'target';
 my $db_col_taxid            = 'taxid';
 my $db_col_type             = 'type';
-my $db_col_user             = 'user';
 my $db_col_version          = 'version';
 my $outdir                  = $config->{'output-directory'};
 my $orthoset                = $config->{'ortholog-set'};
@@ -242,12 +239,12 @@ Returns 1 on result, dies otherwise.
 
 sub db_do {#{{{
 	my $query = shift;
-	unless ($query) { croak "Usage: db_do(QUERY)\n" }
-	my @fields = @_;
+	unless ($query) { croak "Usage: db_do(QUERY, ARG, ARG, ...)\n" }
+	my @args = @_;
 	my $dbh = get_dbh()
 		or return undef;
-	my $sth = $dbh->prepare($query);
-	$sth = execute($sth, $db_timeout, @fields);
+	my $sth = $dbh->prepare($query) or return 0;
+	$sth = execute($sth, $db_timeout, @args);
 	$dbh->disconnect();
 	return 1;
 }#}}}
@@ -268,6 +265,20 @@ sub check {#{{{
 	}
 	return 0;
 }#}}}
+
+sub execute {
+	my $sth = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
+	my $timeout = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
+	my @args = @_;
+	my $slept = 0;
+	until ($sth->execute(@args)) {
+		carp "Warning: execution failed, retrying in $sleep_for seconds...\n";
+		if ($slept > $timeout) { croak "Fatal: execution ultimately failed, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
+	return $sth;
+}
 
 sub attached_db_file {
 	return $attached_db_file;
@@ -316,8 +327,7 @@ sub create_tables {
 			`$db_col_ogsid`        INTEGER UNSIGNED,
 			`$db_col_aaseq`        INTEGER UNSIGNED UNIQUE DEFAULT NULL,
 			`$db_col_ntseq`        INTEGER UNSIGNED UNIQUE DEFAULT NULL, 
-			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP,
-			`$db_col_user`         INTEGER UNSIGNED)",
+			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
@@ -326,7 +336,6 @@ sub create_tables {
 			`$db_col_ogsid`        INTEGER     NOT NULL,
 			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
-			`$db_col_user`         INTEGER     UNSIGNED,
 			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_nt
@@ -336,7 +345,6 @@ sub create_tables {
 			`$db_col_ogsid`        INTEGER     NOT NULL,
 			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
-			`$db_col_user`         INTEGER     UNSIGNED,
 			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: set_details
@@ -349,13 +357,8 @@ sub create_tables {
 		'taxa' => "CREATE TABLE `$t->{'taxa'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_name`         TEXT(20)  UNIQUE,
-			`$db_col_longname`     TEXT(255), 
 			`$db_col_core`         TINYINTEGER UNSIGNED NOT NULL)",
 		
-		# table: users
-		'users' => "CREATE TABLE `$t->{'users'}` (
-			`$db_col_id`           INTEGER PRIMARY KEY,
-			`$db_col_name`         TEXT(255) UNIQUE)",
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
@@ -439,8 +442,6 @@ sub fill_tables_from_temp_table {
 	my $t = shift @_;
 	my $temptable = shift @_;
 	my @queries = (
-		# user name
-		"INSERT OR IGNORE INTO $t->{'users'} (name) VALUES ('$db_dbuser')",
 		# taxa (name, longname)
 		"INSERT OR IGNORE INTO $t->{'taxa'} (name, longname, core) 
 			SELECT DISTINCT $temptable.name, $temptable.longname, 1 
@@ -456,13 +457,11 @@ sub fill_tables_from_temp_table {
 			LEFT JOIN $t->{'set_details'} 
 				ON $t->{'set_details'}.name = $temptable.orthoset",
 		# pep sequences
-		"INSERT OR IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, user, date) 
-			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, $t->{'users'}.id, CURRENT_TIMESTAMP
+		"INSERT OR IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, date) 
+			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, CURRENT_TIMESTAMP
 			FROM $temptable
 				LEFT JOIN $t->{'taxa'} 
-			ON $temptable.name  = $t->{'taxa'}.name
-				INNER JOIN $t->{'users'}
-			ON $t->{'users'}.name = '$db_dbuser'",
+			ON $temptable.name  = $t->{'taxa'}.name",
 		# delete everything where header or sequence is NULL or empty
 		"DELETE FROM $t->{'aaseqs'}
 			WHERE $t->{'aaseqs'}.header IS NULL
@@ -470,17 +469,15 @@ sub fill_tables_from_temp_table {
 			OR $t->{'aaseqs'}.header = ''
 			OR $t->{'aaseqs'}.sequence = ''",
 		# sequence pairs (pep-nuc)
-		"INSERT OR IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user)
-			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, CURRENT_TIMESTAMP, $t->{'users'}.id
+		"INSERT OR IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date)
+			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, CURRENT_TIMESTAMP
 			FROM $t->{'taxa'}
 			INNER JOIN $t->{'aaseqs'}
 				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.id
 			LEFT JOIN $t->{'ogs'}
 				ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
 			LEFT JOIN $t->{'ntseqs'}
-				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header
-			INNER JOIN $t->{'users'}
-				ON $t->{'users'}.name = '$db_dbuser'",
+				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header",
 		# orthologous groups
 		"INSERT OR IGNORE INTO $t->{'orthologs'} ($db_col_setid, $db_col_orthoid, $db_col_seqpair) 
 			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
@@ -935,12 +932,110 @@ Returns the newly generated taxon ID.
 
 sub insert_taxon_into_database {
 	my $name = shift;
-	my $dbh = get_dbh();
-	$dbh->do("INSERT OR IGNORE INTO $db_table_taxa ($db_col_name) VALUES ($name) LIMIT 1");
-	my $sth = $dbh->prepare("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ?");
-	$sth->execute($name);
-	my $res = $sth->fetchall_arrayref();
+	my $core = shift;
+	db_do("INSERT OR IGNORE INTO $db_table_taxa ($db_col_name, $db_col_core) VALUES (?, ?)", $name, $core) or croak;
+	my $res = db_get("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ? AND $db_col_core = ?", $name, $core);
 	return $res->[0]->[0];
+}
+
+sub insert_ogs_info_into_database {
+	my $type       = shift;
+	my $taxid      = shift;
+	my $ogsversion = shift;
+	db_do("INSERT OR IGNORE INTO $db_table_ogs ($db_col_type, $db_col_taxid, $db_col_version) VALUES ($type, $taxid, $ogsversion)") or croak;
+	my $res = db_get("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = ? AND $db_col_version = ? AND $db_col_type = ?", $taxid, $ogsversion, $type);
+	return $res->[0]->[0];
+}
+
+sub upload_ogs_sequences {
+	my ($inf, $hdrs, $taxid, $type, $ogsid) = @_;
+
+	# determine correct table and columns
+	my $seqtable      = $type > 1 ? $db_table_aaseqs : $db_table_ntseqs;
+	my $otherseqtable = $type > 1 ? $db_table_ntseqs : $db_table_aaseqs;
+	my $seqcol        = $type > 1 ? $db_col_aaseq    : $db_col_ntseq;
+	my $otherseqcol   = $type > 1 ? $db_col_ntseq    : $db_col_aaseq;
+
+	load_csv_into_temptable($inf, $db_table_temp);
+
+	my $query_insert_sequences = "
+		INSERT OR IGNORE INTO $seqtable ($db_col_taxid, $db_col_ogsid, $db_col_header, $db_col_sequence, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $db_table_temp.$db_col_ogsid, $db_table_temp.$db_col_header, $db_table_temp.$db_col_sequence, CURRENT_TIMESTAMP
+		FROM $db_table_temp 
+		LEFT JOIN $db_table_taxa 
+			ON $db_table_temp.$db_col_taxid = $db_table_taxa.$db_col_id
+	";
+
+	my $query_insert_seqpairs = "
+		INSERT OR IGNORE INTO $db_table_seqpairs ($db_col_taxid, $db_col_ogsid, $seqcol, $otherseqcol, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $seqtable.$db_col_ogsid, $seqtable.$db_col_id, $otherseqtable.$db_col_id, CURRENT_TIMESTAMP
+		FROM $seqtable
+		INNER JOIN $db_table_taxa
+			ON $seqtable.$db_col_taxid = $db_table_taxa.$db_col_id
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		WHERE $seqtable.$db_col_ogsid = $ogsid
+	";
+
+	my $dbh = get_dbh();
+	# if this is amino acid data, just blindly load it into the resp. table
+	if ($type > 1) {
+		$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
+		$dbh->do($query_insert_seqpairs)  or fail_and_exit("OGS loading failed: $DBI::errstr");
+	}
+	# otherwise, this is nucleotide data, need to check for each sequence
+	# whether the corresponding aa seq exists
+	else {
+		upload_sequences_individually($hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol)
+	}
+	$dbh->disconnect();
+	return 1;
+}
+
+sub upload_sequences_individually {
+	my $hdrs          = shift;
+	my $seqtable      = shift;
+	my $otherseqtable = shift;
+	my $seqcol        = shift;
+	my $otherseqcol   = shift;
+	my $dbh = get_dbh();
+	my $sth_select = $dbh->prepare("SELECT $db_col_id FROM $otherseqtable WHERE $db_col_header = ?");
+	my $query_insert = "
+		INSERT OR IGNORE INTO $seqtable ($db_col_taxid, $db_col_ogsid, $db_col_header, $db_col_sequence, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $db_table_temp.$db_col_ogsid, $db_table_temp.$db_col_header, $db_table_temp.$db_col_sequence, CURRENT_TIMESTAMP
+		FROM $db_table_temp 
+		LEFT JOIN $db_table_taxa 
+			ON $db_table_temp.$db_col_taxid = $db_table_taxa.$db_col_id
+		WHERE $db_col_header = ?
+	";
+	my $sth_insert = $dbh->prepare($query_insert);
+	my $query_update = "
+		UPDATE $db_table_seqpairs
+		SET $seqcol = (SELECT $db_col_id FROM $seqtable WHERE $db_col_header = ? LIMIT 1)
+		WHERE $otherseqcol = ?
+	";
+	my $sth_update = $dbh->prepare($query_update);
+
+	my $res = [ ];
+	my $n   = scalar @$hdrs;
+	my $c   = 0;
+	foreach my $hdr (@$hdrs) {
+		# check whether the hdr exists for an aa seq
+		$sth_select->execute($hdr);
+		$res = $sth_select->fetchall_arrayref();
+		if (scalar @$res == 1) {
+			# ok, upload
+			$sth_insert->execute($hdr);
+			# and update seqpairs
+			$sth_update->execute($hdr, $$res[0][0]);
+			$c++;
+			Orthograph::Functions::progress_bar($c, $n, 25, '-');
+		}
+		else {
+			fail_and_exit("Corresponding amino acid sequence not found for nucleotide sequence with ID '$hdr'")
+		}
+	}
+	return 1;
 }
 
 =head2 insert_taxon_into_table(TAXON_NAME)
@@ -1281,20 +1376,6 @@ sub get_scores_count {
 		$num_of_scores->{$$row[0]} = $$row[1];
 	}
 	return $num_of_scores;
-}
-
-sub execute {
-	my $sth = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
-	my $timeout = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
-	my @args = @_;
-	my $slept = 0;
-	until ($sth->execute(@args)) {
-		carp "Warning: execution failed, retrying in $sleep_for seconds...\n";
-		if ($slept > $timeout) { croak "Fatal: execution ultimately failed, failing this transaction\n" }
-		sleep $sleep_for;
-		$slept += $sleep_for;
-	}
-	return $sth;
 }
 
 =head2 get_results_for_logevalue($setid, $taxonid, $min [, $max])
@@ -2090,14 +2171,18 @@ sub get_taxon_shorthands {
 
 sub create_temptable_for_ogs_data {
 	# create the temporary table
-	my $q = "CREATE TABLE $db_table_temp (
-	`taxid`    TEXT(5)      NOT NULL,
+	my $c = "CREATE TABLE $db_table_temp (
+	`taxid`    INTEGER      NOT NULL,
+	`type`     INTEGER      NOT NULL,
+	`ogs_id`    INTEGER      NOT NULL,
 	`header`   TEXT(255) NOT NULL,
 	`sequence` TEXT)";
+	my $i = "CREATE INDEX temp_header ON $db_table_temp (header)";
 	my $dbh = get_dbh();
-	print $stdout $q, "\n" if $debug > 1;
+	print $stdout $c, "\n" if $debug > 1;
 	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
-	$dbh->do($q);
+	$dbh->do($c);
+	$dbh->do($i);
 	$dbh->disconnect();
 }
 
@@ -2480,7 +2565,7 @@ sub quit_on_q {
 
 sub get_sequence_count_for_taxon {
 	my $taxid = shift;
-	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.taxid = '$taxid'";
+	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.$db_col_taxid = '$taxid'";
 	my $r = db_get($q);
 	return $$r[0][0];
 }

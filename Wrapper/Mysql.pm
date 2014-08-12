@@ -74,7 +74,6 @@ my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
-my $db_table_users          = $config->{'db_table_users'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_ali_end          = 'ali_end';
 my $db_col_ali_start        = 'ali_start';
@@ -295,8 +294,7 @@ sub create_tables {
 			`ogs_id`       INT    UNSIGNED,
 			`aa_seq`       INT    UNSIGNED, UNIQUE(aa_seq),
 			`nt_seq`       INT    UNSIGNED, UNIQUE(nt_seq), 
-			`date`         INT    UNSIGNED,
-			`user`         INT    UNSIGNED)",
+			`date`         INT    UNSIGNED)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
@@ -304,7 +302,6 @@ sub create_tables {
 			`taxid`        INT             NOT NULL, INDEX(taxid),
 			`header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
 			`sequence`     MEDIUMBLOB,
-			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
 
 		# table: sequences_nt
@@ -313,7 +310,6 @@ sub create_tables {
 			`taxid`        INT             NOT NULL, INDEX(taxid),
 			`header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
 			`sequence`     MEDIUMBLOB,
-			`user`         INT UNSIGNED,
 			`date`         INT UNSIGNED)",
 
 		# table: set_details
@@ -329,10 +325,6 @@ sub create_tables {
 			`longname`     VARCHAR(255), 
 			`core`         TINYINT UNSIGNED NOT NULL)",
 		
-		# table: users
-		'users' => "CREATE TABLE `$t->{'users'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`name`         VARCHAR(255), UNIQUE(name))",
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -389,8 +381,6 @@ sub fill_tables_from_temp_table {
 	my $t = shift @_;
 	my $temptable = shift @_;
 	my @queries = (
-		# user name
-		"INSERT IGNORE INTO $t->{'users'} (name) VALUES ('$db_dbuser')",
 		# taxa (name, longname)
 		"INSERT IGNORE INTO $t->{'taxa'} (name, longname, core) 
 			SELECT DISTINCT $temptable.name, $temptable.longname, 1 
@@ -406,13 +396,11 @@ sub fill_tables_from_temp_table {
 			LEFT JOIN $t->{'set_details'} 
 				ON $t->{'set_details'}.name = $temptable.orthoset",
 		# pep sequences
-		"INSERT IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, user, date) 
-			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, $t->{'users'}.id, UNIX_TIMESTAMP()
+		"INSERT IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, date) 
+			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, UNIX_TIMESTAMP()
 			FROM $temptable
 				LEFT JOIN $t->{'taxa'} 
-			ON $temptable.name  = $t->{'taxa'}.name
-				INNER JOIN $t->{'users'}
-			ON $t->{'users'}.name = '$db_dbuser'",
+			ON $temptable.name  = $t->{'taxa'}.name",
 		# delete everything where header or sequence is NULL or empty
 		"DELETE FROM $t->{'aaseqs'}
 			WHERE $t->{'aaseqs'}.header IS NULL
@@ -420,17 +408,15 @@ sub fill_tables_from_temp_table {
 			OR $t->{'aaseqs'}.header = ''
 			OR $t->{'aaseqs'}.sequence = ''",
 		# sequence pairs (pep-nuc)
-		"INSERT IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user)
-			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, UNIX_TIMESTAMP(), $t->{'users'}.id
+		"INSERT IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date)
+			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, UNIX_TIMESTAMP()
 			FROM $t->{'taxa'}
 			INNER JOIN $t->{'aaseqs'}
 				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.id
 			LEFT JOIN $t->{'ogs'}
 				ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
 			LEFT JOIN $t->{'ntseqs'}
-				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header
-			INNER JOIN $t->{'users'}
-				ON $t->{'users'}.name = '$db_dbuser'",
+				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header",
 		# orthologous groups
 		"INSERT IGNORE INTO $t->{'orthologs'} (setid, ortholog_gene_id, sequence_pair) 
 			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
@@ -902,11 +888,9 @@ Returns the newly generated taxon ID.
 
 sub insert_taxon_into_database {
 	my $name = shift;
-	my $dbh = get_dbh();
-	$dbh->do("INSERT OR IGNORE INTO $db_table_taxa ($db_col_name) VALUES ($name) LIMIT 1");
-	my $sth = $dbh->prepare("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ?");
-	$sth->execute($name);
-	my $res = $sth->fetchall_arrayref();
+	my $core = shift;
+	db_do("INSERT IGNORE INTO $db_table_taxa ($db_col_name, $db_col_core) VALUES (?, ?)", $name, $core) or croak;
+	my $res = db_get("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ? AND $db_col_core = ?", $name, $core);
 	return $res->[0]->[0];
 }
 
@@ -1947,8 +1931,6 @@ sub create_temptable_for_ogs_data {
 
 sub import_ogs_into_database {
 	my ($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $taxon, $ogsversion) = @_;
-	my $userid = db_get("SELECT $db_col_id FROM $db_table_users WHERE $db_col_name = '$db_dbuser'");
-	$userid = $$userid[0][0];
 	my @q = (
 		# load data into temp table
 		"LOAD DATA LOCAL INFILE '$tmpfh' 
@@ -1964,8 +1946,8 @@ sub import_ogs_into_database {
 		ON $db_table_temp.taxid = $db_table_taxa.id",
 
 		# insert sequence pairs relationships
-		"INSERT INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date, user) 
-		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP(), '$userid'
+		"INSERT INTO $db_table_seqpairs (taxid, ogs_id, $otherseqcol, $seqcol, date) 
+		SELECT $db_table_taxa.id, $db_table_ogs.id, $otherseqtable.id, $seqtable.id, UNIX_TIMESTAMP()
 		FROM $db_table_taxa
 		RIGHT JOIN $seqtable
 		ON $seqtable.taxid = $db_table_taxa.id

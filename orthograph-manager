@@ -58,19 +58,21 @@ my $db_dbpwd                  = $config->{'mysql-password'};
 my $db_dbserver               = $config->{'mysql-server'};
 my $db_dbuser                 = $config->{'mysql-username'};
 my $db_prefix                 = $config->{'db-prefix'};
+my $db_table_aaseqs           = $config->{'db_table_aaseqs'};
+my $db_table_blast            = $config->{'db_table_blast'};
 my $db_table_blastdbs         = $config->{'db_table_blastdbs'};
 my $db_table_ests             = $config->{'db_table_ests'};
 my $db_table_hmmsearch        = $config->{'db_table_hmmsearch'};
-my $db_table_set_details      = $config->{'db_table_set_details'};
-my $db_table_aaseqs           = $config->{'db_table_aaseqs'};
+my $db_table_log_evalues      = $config->{'db_table_log_evalues'};
+my $db_table_scores           = $config->{'db_table_scores'};
 my $db_table_ntseqs           = $config->{'db_table_ntseqs'};
 my $db_table_ogs              = $config->{'db_table_ogs'};
 my $db_table_orthologs        = $config->{'db_table_orthologs'};
 my $db_table_seqpairs         = $config->{'db_table_sequence_pairs'};
 my $db_table_seqtypes         = $config->{'db_table_sequence_types'};
+my $db_table_set_details      = $config->{'db_table_set_details'};
 my $db_table_taxa             = $config->{'db_table_taxa'};
 my $db_table_temp             = $config->{'db_table_temp'};
-my $db_table_users            = $config->{'db_table_users'};
 
 # Actions
 my $create                    = $config->{'create'};
@@ -89,6 +91,7 @@ my $verbose                   = $config->{'verbose'};
 my $outputdir                 = $config->{'output-directory'};
 my $reference_taxon_shorthand = $config->{'reference-taxon-shorthand'};
 my $ogsversion                = $config->{'ogs-version'};
+my $taxon_name                = $config->{'ogs-taxon-name'};
 my $orthodb5_format           = $config->{'orthodb5-format'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
@@ -121,7 +124,6 @@ my $t            = {
 	'set_details'  => $db_table_set_details,
 	'taxa'         => $db_table_taxa,
 	'temp'         => $db_table_temp,
-	'users'        => $db_table_users,
 };
 
 my $blastdir          = '';
@@ -211,14 +213,14 @@ elsif ($listtaxa) {
 
 elsif ($isnucleotide) {
 	$infile = $isnucleotide;
-	# 0 for nucleotide
-	load_taxon($infile, 0) or die "Fatal: Nucleotide loading failed\n";
+	# 1 for nucleotide
+	upload_ogs($infile, 1) or fail_and_exit("Nucleotide loading failed");
 	exit;
 }
 elsif ($ispeptide) {
 	$infile = $ispeptide;
-	# 1 for amino-acid
-	load_taxon($infile, 1) or die "Fatal: Peptide loading failed\n";
+	# 2 for amino-acid
+	upload_ogs($infile, 2) or fail_and_exit("Peptide loading failed");
 	exit;
 }
 
@@ -488,13 +490,8 @@ sub get_yn {
 sub upload_ogs {
 	my $inf = shift;
 	my $type = shift;
+	my $hdrs = [ ];
 	
-	# determine correct table
-	my $seqtable      = $type == 2 ? $t->{'aaseqs'} : $t->{'ntseqs'};
-	my $otherseqtable = $type == 2 ? $t->{'ntseqs'} : $t->{'aaseqs'};
-	my $seqcol        = $type == 2 ? 'aa_seq'       : 'nt_seq';
-	my $otherseqcol   = $type == 2 ? 'nt_seq'       : 'aa_seq';
-
 	# get taxon name
 	if ($taxon_name) {
 		print "Using taxon name '$taxon_name'\n";
@@ -509,18 +506,59 @@ sub upload_ogs {
 	else {
 		$ogsversion = get_stdin("Please enter the official gene set (OGS) version for this data file");
 	}
+
 	# insert taxon into table
 	my $taxid = insert_taxon_into_database($taxon_name) or fail_and_exit('Could not insert taxon into database');
+
 	# update OGS table
-	my $ogsid = insert_ogs_info_into_database($ogsversion, $type) or fail_and_exit('Could not insert OGS info into database');
-	# blindly load the sequences?
+	my $ogsid = insert_ogs_info_into_database($type, $taxid, $ogsversion) or fail_and_exit('Could not insert OGS info into database');
+	print "Got OGS ID $ogsid and taxon ID $taxid for $taxon_name\n" if $verbose;
+
+	# generate a csv file
+	my $tmpfh = File::Temp->new();
+	my $fafh = Seqload::Fasta->open($inf);
+	while (my ($hdr, $seq) = $fafh->next_seq()) {
+		$hdr =~ s/,/_/g; # remove commas from the header as they confuse the csv parser
+		$seq =~ s/-//g;	# remove all gaps from the sequence
+		# check if the sequence consists of valid characters
+		if ($type == 2) {
+			if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
+				# change all Us to X if requested
+				if ($u_subst and $seq =~ s/U/$u_subst/gi) {
+					warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence '$hdr'.\n");
+				}
+				else {
+					warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+				}
+			}
+		}
+		else {
+			if ($seq =~ /([^ATCGN*])/i) {
+				warn("Warning: Sequence $hdr contains nonstandard nucleic acid symbol '$1'!\n");
+			}
+		}
+		# write to csv file
+		printf $tmpfh "%d,%d,%d,%s,%s\n",
+			$taxid,
+			$type,
+			$ogsid,
+			$hdr,
+			$seq,
+		;
+		# add to list of headers
+		push @$hdrs, $hdr;
+	}
+	$tmpfh->close();
+
 	# upload:
-	# taxid, ogsid, header, seq, user, date
-	upload_ogs_sequences($inf, $taxid, $ogsid, $seqtable) or fail_and_exit('OGS sequence loading failed');
-	#
-	# if nt sequences:
-	# check if aa sequence is present, otherwise crap out
-	
+	# create temporary table
+	create_temptable_for_ogs_data();
+	# upload from temporary table
+	upload_ogs_sequences($tmpfh, $hdrs, $taxid, $type, $ogsid) or fail_and_exit('OGS sequence loading failed');
+
+	my $n_seqpairs = get_sequence_count_for_taxon($taxid);
+	printf("\n%d sequences for '%s' in database '%s' on %s.\n", $n_seqpairs, $taxon_name, $database, $db_dbserver);
+	exit;
 }
 
 
@@ -528,10 +566,10 @@ sub upload_ogs {
 sub insert_taxon_into_database {
 	my $name = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::insert_taxon_into_database($name);
+		return Wrapper::Mysql::insert_taxon_into_database($name, 1);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::insert_taxon_into_database($name);
+		return Wrapper::Sqlite::insert_taxon_into_database($name, 1);
 	}
 }
 
@@ -544,8 +582,19 @@ sub insert_ogs_info_into_database {
 	}
 }
 
+
+sub upload_ogs_sequences {
+	if ($use_mysql) {
+		return Wrapper::Mysql::upload_ogs_sequences(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::upload_ogs_sequences(@_);
+	}
+}
+
 sub get_stdin {
 	my $prompt = shift;
+	print "$prompt: ";
 	my $ans    = <STDIN>;
 	chomp $ans;
 	return $ans;
