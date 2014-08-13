@@ -2037,13 +2037,26 @@ sub get_list_of_ogs {
 			$db_table_ogs.$db_col_id,
 			$db_table_taxa.$db_col_name,
 			$db_table_ogs.$db_col_version,
+			$db_table_ogs.$db_col_type,
 			COUNT($db_table_aaseqs.$db_col_id)
 		FROM $db_table_taxa
 		INNER JOIN $db_table_ogs
 			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
 		INNER JOIN $db_table_aaseqs
 			ON $db_table_ogs.$db_col_id = $db_table_aaseqs.$db_col_ogsid
-		WHERE $db_table_ogs.$db_col_type = 2
+		GROUP BY $db_table_ogs.$db_col_id
+		UNION 
+		SELECT
+			$db_table_ogs.$db_col_id,
+			$db_table_taxa.$db_col_name,
+			$db_table_ogs.$db_col_version,
+			$db_table_ogs.$db_col_type,
+			COUNT($db_table_ntseqs.$db_col_id)
+		FROM $db_table_taxa
+		INNER JOIN $db_table_ogs
+			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
+		INNER JOIN $db_table_ntseqs
+			ON $db_table_ogs.$db_col_id = $db_table_ntseqs.$db_col_ogsid
 		GROUP BY $db_table_ogs.$db_col_id
 		ORDER BY $db_table_ogs.$db_col_id
 	";

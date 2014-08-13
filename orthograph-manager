@@ -631,7 +631,7 @@ sub assign_ogsids_to_taxa {
 	my $ogsid_for = shift;
 	my $list_of_ogs = get_list_of_ogs();
 	print "\n";
-	print_ogs_list();
+	print_ogs_list(2);
 	print "\n";
 	foreach (sort { $a cmp $b } keys %$ogsid_for) {
 		$ogsid_for->{$_} = get_ogsid($list_of_ogs, $_, $ogsid_for)
@@ -640,16 +640,23 @@ sub assign_ogsids_to_taxa {
 }
 
 sub print_ogs_list {
+	my $type = shift;
 	my $list_of_ogs = get_list_of_ogs();
 	my $len = 0;
 	foreach (@$list_of_ogs) {
 		if (length $_->[1] > $len) { $len = length $_->[1] };
 	}
 	print "This is a list of present OGS in the database:\n";
-	printf "[%s] %-${len}s  %7s  %s\n", '#', 'Taxon name', 'version', 'sequences';
-	printf "%s%-${len}s%s\n", '-' x (length(scalar @$list_of_ogs) + 2), '-' x $len,   '---------------------';
+	printf "[%s] %-${len}s  %7s  %s  %s\n", '#', 'Taxon name', 'version', 'type', 'sequences';
+	printf "%s%-${len}s%s\n", '-' x (length(scalar @$list_of_ogs) + 2), '-' x $len,   '---------------------------';
 	foreach (@$list_of_ogs) {
-		printf "[%d] %-${len}s  %-7s  %d\n", $_->[0], $_->[1], $_->[2], $_->[3];
+		printf "[%d] %-${len}s  %-7s  %-4s  %d\n",
+			$_->[0],	# ogs id
+			$_->[1],	# taxon name
+			$_->[2],	# ogs version
+			$_->[3] == 1 ? 'nt' : 'aa',	# ogs type, can be nt or aa
+			$_->[4],	# number of sequences
+		;
 	}
 	return 1;
 }
