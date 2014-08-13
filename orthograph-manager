@@ -252,8 +252,7 @@ if (set_exists($setname)) {
 	get_yn() or print "OK, exiting\n" and exit;
 }
 
-print "Enter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)! "; 
-$description = <STDIN>;
+$description = get_answer("Enter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)");
 unless ($description) { print "Caught EOF. Exiting.\n" and exit }
 chomp $description;
 
@@ -342,9 +341,7 @@ sub load_temp_table_with_data {
 	# ask the user for the taxon names that aren't complete
 	foreach (sort(keys %names)) {
 		unless ($names{$_}) {
-			print "Enter complete name for the shorthand '$_' (no commas!): ";
-			$names{$_} = <STDIN>;
-			chomp $names{$_};
+			$names{$_} = get_answer("Enter complete name for the shorthand '$_' (no commas!)");
 		}
 	}
 
@@ -490,21 +487,20 @@ sub get_yn {
 sub upload_ogs {
 	my $inf = shift;
 	my $type = shift;
-	my $hdrs = [ ];
 	
 	# get taxon name
 	if ($taxon_name) {
 		print "Using taxon name '$taxon_name'\n";
 	}
 	else {
-		$taxon_name = get_stdin("Please enter the taxon name for this data file");
+		$taxon_name = get_answer("Please enter the taxon name for this data file");
 	}
 	# get ogs version
 	if ($ogsversion) {
 		print "Using OGS version number $ogsversion\n";
 	}
 	else {
-		$ogsversion = get_stdin("Please enter the official gene set (OGS) version for this data file");
+		$ogsversion = get_answer("Please enter the official gene set (OGS) version for this data file");
 	}
 
 	# insert taxon into table
@@ -514,9 +510,28 @@ sub upload_ogs {
 	my $ogsid = insert_ogs_info_into_database($type, $taxid, $ogsversion) or fail_and_exit('Could not insert OGS info into database');
 	print "Got OGS ID $ogsid and taxon ID $taxid for $taxon_name\n" if $verbose;
 
-	# generate a csv file
+	# generate a csv file and get a list of headers
+	my ($csvf, $hdrs) = make_csv_for_ogs_uploading($inf, $taxid, $type, $ogsid);
+
+	# upload:
+	# create temporary table
+	create_temptable_for_ogs_data();
+	# upload from temporary table
+	upload_ogs_sequences($csvf, $hdrs, $taxid, $type, $ogsid) or fail_and_exit('OGS sequence loading failed');
+
+	my $n_seqpairs = get_sequence_count_for_taxon($taxid);
+	printf("\n%d sequences for '%s' in database '%s' on %s.\n", $n_seqpairs, $taxon_name, $database, $db_dbserver);
+	exit;
+}
+
+sub make_csv_for_ogs_uploading {
+	my $inf   = shift;
+	my $taxid = shift;
+	my $type  = shift;
+	my $ogsid = shift;
+	my $hdrs  = [ ];
 	my $tmpfh = File::Temp->new();
-	my $fafh = Seqload::Fasta->open($inf);
+	my $fafh  = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $fafh->next_seq()) {
 		$hdr =~ s/,/_/g; # remove commas from the header as they confuse the csv parser
 		$seq =~ s/-//g;	# remove all gaps from the sequence
@@ -550,17 +565,8 @@ sub upload_ogs {
 	}
 	$tmpfh->close();
 
-	# upload:
-	# create temporary table
-	create_temptable_for_ogs_data();
-	# upload from temporary table
-	upload_ogs_sequences($tmpfh, $hdrs, $taxid, $type, $ogsid) or fail_and_exit('OGS sequence loading failed');
-
-	my $n_seqpairs = get_sequence_count_for_taxon($taxid);
-	printf("\n%d sequences for '%s' in database '%s' on %s.\n", $n_seqpairs, $taxon_name, $database, $db_dbserver);
-	exit;
+	return ($tmpfh, $hdrs);
 }
-
 
 
 sub insert_taxon_into_database {
@@ -592,7 +598,7 @@ sub upload_ogs_sequences {
 	}
 }
 
-sub get_stdin {
+sub get_answer {
 	my $prompt = shift;
 	print "$prompt: ";
 	my $ans    = <STDIN>;
@@ -643,15 +649,11 @@ sub load_taxon {
 		for (my $i = 0; $i < scalar(@$list); ++$i) {
 			printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
 		}
-		print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
-		my $in = <STDIN>;
-		chomp $in;
+		my $in = get_answer("Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet)");
 
 		# make sure the user doesn't fuck up
 		while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1) or !defined($in)) {
-			print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
-			$in = <STDIN>;
-			chomp $in;
+			$in = get_answer("Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa");
 		}
 		# correlate that number to the list of taxa
 		$reference_taxon_id = $$list[$in-1][0];
@@ -663,9 +665,7 @@ sub load_taxon {
 		print "Using OGS version number $ogsversion\n";
 	}
 	else {
-		print "Please enter the official gene set (OGS) version for this data file: ";
-		$ogsversion = <STDIN>;
-		chomp $ogsversion;
+		$ogsversion = get_answer("Please enter the official gene set (OGS) version for this data file");
 	}
 
 	# create a csv file for rapid uploading into the database
@@ -784,10 +784,8 @@ sub create_blastdb {
 # Arguments: none
 # Returns: scalar string setname
 sub get_setname {
-	print "Enter the set name (required; ASCII only, no commas!): ";
-	$setname = <STDIN>;
-	unless ($setname) { print "Caught EOF. Exiting.\n" and exit }
-	chomp $setname;
+	$setname = get_answer("Enter the set name (required; ASCII only, no commas!)");
+	unless ($setname) { print "Exiting.\n" and exit }
 	if ($setname =~ /[^a-zA-Z0-9_]/) {
 		die "Error: Must be alphanumeric (a-z, 0-9, and underscore).\n";
 	}
@@ -798,9 +796,7 @@ sub getblastdir {
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $bd = Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} LIMIT 1");
 	if (!$bd) {
-		print "Enter the location where the BLAST database directories are located (required): ";
-		$blastdir = <STDIN>;
-		chomp $blastdir;
+		$blastdir = get_answer("Enter the location where the BLAST database directories are located (required)");
 	}
 	else {
 		$blastdir = $$bd[0][0];	# array of arrays, only element
@@ -908,16 +904,12 @@ sub delete_ogs {
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $i+1, $$list[$i][0], $$list[$i][1]);
 	}
-	print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
-	my $in = <STDIN>;
-	chomp $in;
+	my $in = get_answer("Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet)");
 	my $taxid;
 
 	# make sure the user doesn't fuck up
 	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1) or !defined($in)) {
-		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
-		$in = <STDIN>;
-		chomp $in;
+		$in = get_answer("Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa");
 	}
 	
 	# correlate that number to the list of taxa
