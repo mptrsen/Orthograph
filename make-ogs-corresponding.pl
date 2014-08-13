@@ -22,9 +22,11 @@ use File::Temp;
 use File::Basename;
 use File::Spec;
 use Getopt::Long;
+use Data::Dumper;
+use Cwd;
 
 my $skipall         = 0;
-my $outdir          = '/tmp';
+my $outdir          = cwd();
 my $exonerate       = 'exonerate';
 my $score_threshold = 30;
 my $help            = 0;
@@ -61,7 +63,7 @@ unless (scalar keys %$ogs == scalar keys %$transcripts) {
 }
 
 # initialize more variables
-my %seen                 = ();
+my @strange              = ();
 my $nupd                 = 0;
 my $nunchgd              = 0;
 my $n                    = 0;
@@ -98,7 +100,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	my $outfile = File::Temp->new();
 
 	# some settings for exonerate
-	my $exonerate_model = 'protein2genome';
+	my $exonerate_model = 'protein2dna';
 	my $exonerate_ryo   = '>ca\n%tcs>qa\n%qas';
 
 	# set output buffer to flush immediately
@@ -122,12 +124,14 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	);
 	system("@command") and die "Fatal: Exonerate failed with errcode $?: $!\n";
 
+	print 'done';
+
 	# get the alignment results
 	my $res = slurp_fasta($outfile);
 
 	# no alignment found, something is wrong, skip this pair
 	if (!$res->{'ca'}) {
-		print "done, no alignment found, skipping\n";
+		print ", no alignment found, skipping";
 		next;
 	}
 	# the sequence has been updated
@@ -137,7 +141,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 		# count
 		++$nupd;
 		++$n;
-		print "done, updated\n";
+		print ", updated";
 	}
 	# the sequence is the same
 	else {
@@ -146,7 +150,16 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 		# count
 		++$nunchgd;
 		++$n;
-		print "done, unchanged\n";
+		print ", unchanged";
+	}
+
+	# check whether lengths correlate
+	if (length($res->{'ca'}) == length($res->{'qa'}) * 3) {
+		print "\n";
+	}
+	else {
+		print ", lengths differ\n";
+		push @strange, $hdr;
 	}
 
 	# set output buffer back to normal
@@ -158,13 +171,22 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	undef $outfile;
 }
 
-printf "Done, updated %d of %d sequences, wrote %d sequences to %s and %s\n",
+printf "Done, updated %d of %d sequences, wrote %d sequence%s to %s and %s\n",
 	$nupd,
 	$n,
 	$nupd + $nunchgd,
+	$n > 1 ? 's' : '',
 	$new_ogs_file,
 	$new_transcripts_file,
 ;
+
+if (@strange) {
+	print "The following sequences are not of equal length, please double-check these:\n";
+	while (my $hdr = shift @strange) {
+		print $hdr, "\n";
+	}
+	print "The most common reason are ambiguity characters (X) in the amino acid sequence.\nExonerate does not insert a corresponding gap for those in the nucleotide sequence.\nIt is recommended to remove all X from the amino acid sequences.\n";
+}
 
 exit;
 

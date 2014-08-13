@@ -1136,15 +1136,14 @@ sub make_blastdb {#{{{
 	# build the paths for input and output
 	my $dbfile = File::Spec->catfile($blastdir, $orthoset);
 
-	# check whether a database already exists
-	if (-e File::Spec->catfile($dbfile . '.psq')) {
+	# check whether the db needs rebuilding
+	unless (blastdb_needs_rebuilding($dbfile, $setid)) {
 		print $stdout "BLAST DB for set $orthoset exists in '$dbfile'.\n" unless $quiet;
 		return $dbfile;
 	}
 
 	# database not extant, we have to create it
-	print $stdout "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
-		unless $quiet;
+	print $stdout "BLAST DB for set $orthoset needs building, creating in $dbfile...\n" unless $quiet;
 	my $infh = File::Temp->new( UNLINK => 1, DIR => $tmpdir );
 	# don't delete this file if debugging
 	$infh->unlink_on_destroy(0) if $debug;
@@ -1182,6 +1181,24 @@ sub make_blastdb {#{{{
 
 	return $dbfile;
 }#}}}
+
+sub blastdb_needs_rebuilding {
+	my $db = shift;
+	my $setid = shift;
+	my $rebuild = 0;
+	if ($use_mysql) {
+		$rebuild = Wrapper::Mysql::blastdb_needs_rebuilding($setid);
+	}
+	elsif ($use_sqlite) {
+		$rebuild = Wrapper::Sqlite::blastdb_needs_rebuilding($setid);
+	}
+	# rebuild necessary
+	if    ($rebuild)   { return 1 }
+	# doesn't exist, rebuild necessary
+	elsif (not -e File::Spec->catfile($db . '.psq') { return 1 }
+	# exist and rebuild not necessary
+	else               { return 0 }
+}
 
 # Sub: load_data_infile
 # LOAD DATA LOCAL INFILE into a table

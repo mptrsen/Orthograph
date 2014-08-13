@@ -100,6 +100,7 @@ my $db_col_ogsid            = 'ogs_id';
 my $db_col_ogsversion       = 'version';
 my $db_col_orthoid          = 'ortholog_gene_id';
 my $db_col_query            = 'query';
+my $db_col_rebuild          = 'rebuild';
 my $db_col_setid            = 'setid';
 my $db_col_sequence         = 'sequence';
 my $db_col_seqpair          = 'sequence_pair';
@@ -302,7 +303,7 @@ sub create_tables {
 		'blastdbs' => "CREATE TABLE `$t->{'blastdbs'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_setid`        INTEGER UNSIGNED DEFAULT NULL UNIQUE,
-			`$db_col_blastdb_path` TEXT(255) DEFAULT NULL)",
+			`$db_col_rebuild`      INT(1))",
 		
 		# table: ogs
 		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
@@ -1036,30 +1037,6 @@ sub upload_sequences_individually {
 		}
 	}
 	return 1;
-}
-
-=head2 insert_taxon_into_table(TAXON_NAME)
-
-Inserts a (non-core) taxon into the database. The taxon shorthand will be NULL
-and the 'core' switch will be 0.
-
-Returns the newly generated taxon ID.
-
-=cut
-
-sub insert_taxon_into_table {
-	my $species_name = shift(@_);
-	unless ($species_name) { croak("Usage: Wrapper::Sqlite::insert_taxon_into_table(SPECIESNAME)") }
-	if (my $taxid = get_taxid_for_species($species_name)) { return $taxid }
-	my $query = "INSERT OR IGNORE INTO $db_table_taxa (longname, core) VALUES (?, ?)";
-	my $dbh = get_dbh()
-		or return undef;
-	my $sth = $dbh->prepare($query);
-	$sth = execute($sth, $db_timeout, $species_name, 0);
-	$dbh->disconnect();
-
-	$g_species_id = &get_taxid_for_species($species_name) or croak;
-	return $g_species_id;
 }
 
 
