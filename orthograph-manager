@@ -204,7 +204,7 @@ if ($listsets) {
 }
 
 elsif ($listogs) {
-	list_ogs() and exit;
+	print_ogs_list() and exit;
 }
 
 elsif ($listtaxa) {
@@ -252,7 +252,7 @@ if (set_exists($setname)) {
 	get_yn() or print "OK, exiting\n" and exit;
 }
 
-$description = get_answer("Enter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)");
+$description = get_answer("\nEnter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)");
 unless ($description) { print "Caught EOF. Exiting.\n" and exit }
 chomp $description;
 
@@ -264,6 +264,11 @@ unless (defined $setname) {
 #--------------------------------------------------
 # # read the input file and create a CSV file with everything we know 
 #-------------------------------------------------- 
+
+# read the input file and associate the taxon shorthands to existing OGS
+my $ogsid_for = get_all_ogsids($infile);
+exit;
+
 my $tmpfile = make_csv($infile);
 
 load_temp_table_with_data($tmpfile);
@@ -606,6 +611,90 @@ sub get_answer {
 	return $ans;
 }
 
+sub get_all_ogsids {
+	my $inf = shift;
+	my $seen = { };
+	my @fields = ( );
+	open my $fh, '<', $inf;
+	while (my $line = <$fh>) {
+		# skip the first line if it is some orthodb file
+		if ($line =~ /^Group\tGene\tProtein/) { next }
+		@fields = split "\t", $line;
+		next if exists $seen->{$fields[5]};
+		$seen->{$fields[5]} = 0;
+	}
+	$seen = assign_ogsids_to_taxa($seen);
+	return $seen;
+}
+
+sub assign_ogsids_to_taxa {
+	my $ogsid_for = shift;
+	my $list_of_ogs = get_list_of_ogs();
+	print "\n";
+	print_ogs_list();
+	print "\n";
+	foreach (sort { $a cmp $b } keys %$ogsid_for) {
+		$ogsid_for->{$_} = get_ogsid($list_of_ogs, $_, $ogsid_for)
+	}
+	return $ogsid_for;
+}
+
+sub print_ogs_list {
+	my $list_of_ogs = get_list_of_ogs();
+	my $len = 0;
+	foreach (@$list_of_ogs) {
+		if (length $_->[1] > $len) { $len = length $_->[1] };
+	}
+	print "This is a list of present OGS in the database:\n";
+	printf "[%s] %-${len}s  %7s  %s\n", '#', 'Taxon name', 'version', 'sequences';
+	printf "%s%-${len}s%s\n", '-' x (length(scalar @$list_of_ogs) + 2), '-' x $len,   '---------------------';
+	foreach (@$list_of_ogs) {
+		printf "[%d] %-${len}s  %-7s  %d\n", $_->[0], $_->[1], $_->[2], $_->[3];
+	}
+	return 1;
+}
+
+sub get_ogsid {
+	my $list_of_ogs = shift;
+	my $taxon = shift;
+	my $ogsid_for = shift;
+	my $prompt = "Enter the OGS ID for $taxon or 0 if you don't want to use this OGS";
+	my $id = get_integer($prompt);
+	my $ok = 0;
+	while (!$ok) {
+		# 0 is ok, don't use this ogs
+		if ($id == 0) {
+			return $id;
+		}
+		# ogs id doesn't even exist
+		if (not grep {$_->[0] == $id} @$list_of_ogs) {
+			print "Invalid OGS ID $id. ";
+			$id = get_integer($prompt);
+		}
+		# ogs id has been assigned previously
+		elsif (grep { $ogsid_for->{$_} == $id } keys %$ogsid_for) {
+			print "OGS ID $id already taken. ";
+			$id = get_integer($prompt);
+		}
+		# ok
+		else {
+			$ok = 1;
+		}
+	}
+	return $id;
+}
+
+sub get_integer {
+	my $prompt = shift;
+	my $ans = get_answer($prompt);
+	while ($ans !~ /^\d+$/) {
+		print "Not a valid number. ";
+		$ans = get_answer($prompt);
+	}
+	return $ans;
+}
+
+
 # Sub: load_taxon
 # Loads sequence data into the database.
 # Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
@@ -784,7 +873,7 @@ sub create_blastdb {
 # Arguments: none
 # Returns: scalar string setname
 sub get_setname {
-	$setname = get_answer("Enter the set name (required; ASCII only, no commas!)");
+	$setname = get_answer("\nEnter the set name (required; ASCII only, no commas!)");
 	unless ($setname) { print "Exiting.\n" and exit }
 	if ($setname =~ /[^a-zA-Z0-9_]/) {
 		die "Error: Must be alphanumeric (a-z, 0-9, and underscore).\n";
@@ -827,26 +916,6 @@ sub list_sets {
 	return 1;
 }
 
-sub list_ogs {
-	my $list = get_list_of_ogs();
-	my $maxlen_name = 0;
-	my $maxlen_version  = 7;
-	if (not defined $list->[0]) {
-		print "No OGS in database.\n";
-		return 0;
-	}
-	foreach (@$list) {
-		$maxlen_version = length($_->[1]) if (length($_->[1]) > $maxlen_version);
-		$maxlen_name = length($_->[0]) if (length($_->[0]) > $maxlen_name);
-	}
-	print "The following OGS are presently installed:\n";
-	printf("%-${maxlen_name}s  %-${maxlen_version}s %s\n", 'Taxon', 'version', 'sequences');
-	printf("%-${maxlen_name}s--%-${maxlen_version}s-%s\n", '-' x $maxlen_name, '-' x $maxlen_version, '-' x 9);
-	foreach (sort { $a->[0] cmp $b->[0] } @$list) {
-		printf("%-${maxlen_name}s  %-${maxlen_version}s %-9s\n", $_->[0], $_->[1], $_->[2]);
-	}
-	return 1;
-}
 
 sub list_set_details {
 	my %reftaxa_of = get_taxa_in_all_sets();
@@ -974,12 +1043,11 @@ sub get_ortholog_sets {
 }
 
 sub get_list_of_ogs{
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_list_of_ogs($specid);
+		return Wrapper::Mysql::get_list_of_ogs();
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_list_of_ogs($specid);
+		return Wrapper::Sqlite::get_list_of_ogs();
 	}
 }
 
