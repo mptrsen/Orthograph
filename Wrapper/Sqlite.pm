@@ -2631,4 +2631,16 @@ sub get_list_of_ogs {
 	return db_get($query);
 }
 
+sub insert_new_set {
+	my $name = shift;
+	my $descript = shift;
+	my $query = "
+		INSERT OR IGNORE INTO $db_table_set_details ($db_col_name, $db_col_description)
+		VALUES (?, ?)
+	";
+	db_do($query, $name, $descript) or return 0;
+	my $id = db_get("SELECT $db_col_id FROM $db_table_set_details WHERE $db_col_name = ?", $name);
+	return $$id[0][0];
+}
+
 1;

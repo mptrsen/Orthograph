@@ -267,6 +267,11 @@ unless (defined $setname) {
 
 # read the input file and associate the taxon shorthands to existing OGS
 my $ogsid_for = get_all_ogsids($infile);
+
+# insert the new set into database
+my $new_setid = insert_new_set($setname, $description) or fail_and_exit("Failed to insert new set into database");
+
+print Dumper $ogsid_for, $new_setid;
 exit;
 
 my $tmpfile = make_csv($infile);
@@ -526,7 +531,7 @@ sub upload_ogs {
 
 	my $n_seqpairs = get_sequence_count_for_taxon($taxid);
 	printf("\n%d sequences for '%s' in database '%s' on %s.\n", $n_seqpairs, $taxon_name, $database, $db_dbserver);
-	exit;
+	return 1;
 }
 
 sub make_csv_for_ogs_uploading {
@@ -650,6 +655,8 @@ sub print_ogs_list {
 	printf "[%s] %-${len}s  %7s  %s  %s\n", '#', 'Taxon name', 'version', 'type', 'sequences';
 	printf "%s%-${len}s%s\n", '-' x (length(scalar @$list_of_ogs) + 2), '-' x $len,   '---------------------------';
 	foreach (@$list_of_ogs) {
+		# only print if ogs is of requested type
+		if ($type) { next unless $_->[3] == $type }
 		printf "[%d] %-${len}s  %-7s  %-4s  %d\n",
 			$_->[0],	# ogs id
 			$_->[1],	# taxon name
@@ -701,6 +708,17 @@ sub get_integer {
 	return $ans;
 }
 
+
+sub insert_new_set {
+	my $name = shift;
+	my $descript = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_new_set($name, $descript);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_new_set($name, $descript);
+	}
+}
 
 # Sub: load_taxon
 # Loads sequence data into the database.
