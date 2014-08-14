@@ -1089,8 +1089,10 @@ sub join_headers {
 	# join cdna headers
 	$cdnahdr = $hits->[0]->{'header'};
 	if ($hamstr_compatible) {
+		# these do not have the length of the actual sequence,
+		# but the length of the corresponding aa sequence... a relict from hamstr
 		$cdnahdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
-		$cdnahdr .= '-' . length($hits->[0]->{'orf_cdna_sequence'});
+		$cdnahdr .= '-' . length($hits->[0]->{'orf_aa_sequence'});
 	}
 	else {
 		$cdnahdr .= ':[' . length($hits->[0]->{'orf_cdna_sequence'}) . ' nt]';
@@ -1099,8 +1101,10 @@ sub join_headers {
 		next unless defined $hits->[$i]->{'orf_aa_sequence'};
 		$cdnahdr .= $concat_sep . $hits->[$i]->{'header'};
 		if ($hamstr_compatible) {
+			# these do not have the length of the actual sequence,
+			# but the length of the corresponding aa sequence... a relict from hamstr
 			$cdnahdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
-			$cdnahdr .= '-' . length($hits->[$i]->{'orf_cdna_sequence'});
+			$cdnahdr .= '-' . length($hits->[$i]->{'orf_aa_sequence'});
 		}
 		else {
 			$cdnahdr .= ':[' . length($hits->[$i]->{'orf_cdna_sequence'}) . ' nt]';
