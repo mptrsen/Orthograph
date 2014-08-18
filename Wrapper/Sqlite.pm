@@ -72,11 +72,13 @@ my $db_table_orthologs      = $config->{'db_table_orthologs'};
 my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
 my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
+my $db_table_species_info   = $config->{'db_table_species_info'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_ali_end          = 'ali_end';
 my $db_col_ali_start        = 'ali_start';
+my $db_col_blastdb          = 'blastdb';
 my $db_col_blastdb_path     = 'blastdb_path';
 my $db_col_core             = 'core';
 my $db_col_date             = 'date';
@@ -99,6 +101,7 @@ my $db_col_ntseq            = 'nt_seq';
 my $db_col_ogsid            = 'ogs_id';
 my $db_col_ogsversion       = 'version';
 my $db_col_orthoid          = 'ortholog_gene_id';
+my $db_col_orthoset         = 'orthoset';
 my $db_col_query            = 'query';
 my $db_col_rebuild          = 'rebuild';
 my $db_col_setid            = 'setid';
@@ -128,7 +131,7 @@ my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attac
 
 # report that this module is loaded
 print "Using SQLite database file '$database'\n" unless $quiet;
-print "Using file '$attached_db_file' as attached database '$db_attached'\n" unless $quiet;
+print "Using file '$attached_db_file' as attached database '$db_attached'\n" if $verbose;
 unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
 
 
@@ -359,7 +362,7 @@ sub create_tables {
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_name`         TEXT(20)  UNIQUE,
 			`$db_col_core`         TINYINTEGER UNSIGNED NOT NULL)",
-		
+
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
@@ -399,19 +402,19 @@ sub create_tables {
 sub create_temp_table {
 	my $temptable = shift @_;
 	my $create_temp_table_query = "CREATE TABLE $temptable (
-			`name`        TEXT(255),
-			`longname`    TEXT(255),
-			`orthoset`    TEXT(255),
-			`orthoid`     TEXT(255),
-			`blastdb`     TEXT(255),
-			`header`      TEXT(512),
-			`sequence`    MEDIUMBLOB,
-			`description` TEXT(255))";
+			`$db_col_name`        TEXT(255),
+			`$db_col_longname`    TEXT(255),
+			`$db_col_orthoset`    TEXT(255),
+			`$db_col_orthoid`     TEXT(255),
+			`$db_col_blastdb`     TEXT(255),
+			`$db_col_header`      TEXT(512),
+			`$db_col_sequence`    MEDIUMBLOB,
+			`$db_col_description` TEXT(255))";
 	my $create_temp_indices_query = "BEGIN;
-CREATE INDEX IF NOT EXISTS ${temptable}_name ON $temptable (name);
-CREATE INDEX IF NOT EXISTS ${temptable}_orthoset ON $temptable (orthoset);
-CREATE INDEX IF NOT EXISTS ${temptable}_orthoid ON $temptable (orthoid);
-CREATE INDEX IF NOT EXISTS ${temptable}_header ON $temptable (header);
+CREATE INDEX IF NOT EXISTS ${temptable}_name ON $temptable ($db_col_name);
+CREATE INDEX IF NOT EXISTS ${temptable}_orthoset ON $temptable ($db_col_orthoset);
+CREATE INDEX IF NOT EXISTS ${temptable}_orthoid ON $temptable ($db_col_orthoid);
+CREATE INDEX IF NOT EXISTS ${temptable}_header ON $temptable ($db_col_header);
 COMMIT;";
 	my $dbh = get_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
@@ -444,51 +447,51 @@ sub fill_tables_from_temp_table {
 	my $temptable = shift @_;
 	my @queries = (
 		# taxa (name, longname)
-		"INSERT OR IGNORE INTO $t->{'taxa'} (name, longname, core) 
-			SELECT DISTINCT $temptable.name, $temptable.longname, 1 
+		"INSERT OR IGNORE INTO $t->{'taxa'} ($db_col_name, $db_col_longname, $db_col_core) 
+			SELECT DISTINCT $temptable.name, $temptable.$db_col_longname, 1 
 			FROM $temptable",
 		# set name + description
-		"INSERT OR IGNORE INTO $t->{'set_details'} (name, description)
-			SELECT DISTINCT $temptable.orthoset, $temptable.description 
+		"INSERT OR IGNORE INTO $t->{'set_details'} ($db_col_name, $db_col_description)
+			SELECT DISTINCT $temptable.orthoset, $temptable.$db_col_description 
 			FROM $temptable LIMIT 1",
 		# blast databases
-		"INSERT OR IGNORE INTO $t->{'blastdbs'} (setid, blastdb_path) 
-			SELECT DISTINCT $t->{'set_details'}.id, $temptable.blastdb 
+		"INSERT OR IGNORE INTO $t->{'blastdbs'} ($db_col_setid, blastdb_path) 
+			SELECT DISTINCT $t->{'set_details'}.id, $temptable.$db_col_blastdb 
 			FROM $temptable
 			LEFT JOIN $t->{'set_details'} 
-				ON $t->{'set_details'}.name = $temptable.orthoset",
+				ON $t->{'set_details'}.name = $temptable.$db_col_orthoset",
 		# pep sequences
-		"INSERT OR IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, date) 
-			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, CURRENT_TIMESTAMP
+		"INSERT OR IGNORE INTO $t->{'aaseqs'} ($db_col_taxid, $db_col_header, $db_col_sequence, $db_col_date) 
+			SELECT $t->{'taxa'}.id, $temptable.$db_col_header, $temptable.$db_col_sequence, CURRENT_TIMESTAMP
 			FROM $temptable
 				LEFT JOIN $t->{'taxa'} 
-			ON $temptable.name  = $t->{'taxa'}.name",
+			ON $temptable.$db_col_name  = $t->{'taxa'}.$db_col_name",
 		# delete everything where header or sequence is NULL or empty
 		"DELETE FROM $t->{'aaseqs'}
-			WHERE $t->{'aaseqs'}.header IS NULL
-			OR $t->{'aaseqs'}.sequence IS NULL
-			OR $t->{'aaseqs'}.header = ''
-			OR $t->{'aaseqs'}.sequence = ''",
+			WHERE $t->{'aaseqs'}.$db_col_header IS NULL
+			OR $t->{'aaseqs'}.$db_col_sequence IS NULL
+			OR $t->{'aaseqs'}.$db_col_header = ''
+			OR $t->{'aaseqs'}.$db_col_sequence = ''",
 		# sequence pairs (pep-nuc)
-		"INSERT OR IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date)
+		"INSERT OR IGNORE INTO $t->{'seqpairs'} ($db_col_taxid, $db_col_ogsid, $db_col_aaseq, $db_col_ntseq, $db_col_date)
 			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, CURRENT_TIMESTAMP
 			FROM $t->{'taxa'}
 			INNER JOIN $t->{'aaseqs'}
-				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.id
+				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.$db_col_id
 			LEFT JOIN $t->{'ogs'}
-				ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
+				ON $t->{'taxa'}.id = $t->{'ogs'}.$db_col_taxid
 			LEFT JOIN $t->{'ntseqs'}
-				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header",
+				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.$db_col_header",
 		# orthologous groups
 		"INSERT OR IGNORE INTO $t->{'orthologs'} ($db_col_setid, $db_col_orthoid, $db_col_seqpair) 
-			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
+			SELECT $t->{'set_details'}.id, $temptable.$db_col_orthoid, $t->{'seqpairs'}.$db_col_id 
 			FROM $t->{'aaseqs'} 
 			INNER JOIN $temptable 
-				ON $t->{'aaseqs'}.header = $temptable.header 
+				ON $t->{'aaseqs'}.$db_col_header = $temptable.$db_col_header 
 			INNER JOIN $t->{'seqpairs'} 
-				ON $t->{'seqpairs'}.aa_seq = $t->{'aaseqs'}.id 
+				ON $t->{'seqpairs'}.$db_col_aaseq = $t->{'aaseqs'}.$db_col_id 
 			INNER JOIN $t->{'set_details'} 
-				ON $t->{'set_details'}.name = $temptable.orthoset",
+				ON $t->{'set_details'}.$db_col_name = $temptable.$db_col_orthoset",
 	);
 
 	my $dbh = get_dbh();
@@ -609,6 +612,11 @@ sub preparedb {
 		`$db_col_hmmsearch_id`  UNSIGNED INTEGER NOT NULL
 		)";
 
+	my $query_create_species_info = "CREATE TABLE $db_table_species_info (
+		`$db_col_id`           INTEGER PRIMARY KEY,
+		`$db_col_name`         TEXT(255)
+		)",
+
 	# the CREATE INDEX statement does not like the attached db prefix 
 	# generate table names without it
 	(my $simple_table_ests = $db_table_ests)           =~ s/$db_attached\.//;
@@ -645,7 +653,7 @@ sub preparedb {
 	}
 
 	# create all tables
-	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, @query_create_indices) {
+	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, $query_create_species_info, @query_create_indices) {
 		print "$query;\n" if $verbose;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
@@ -856,7 +864,7 @@ sub get_taxid_for_species {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT $db_table_taxa.id FROM $db_table_taxa WHERE core = 0 AND longname = '$species_name'";
+	my $query = "SELECT $db_table_species_info.id FROM $db_table_species_info WHERE $db_col_name = '$species_name'";
 	my $result = db_get($query);
 	if ($result) { 
 		$g_species_id = $$result[0][0];
@@ -919,6 +927,30 @@ sub insert_taxon_into_database {
 	db_do("INSERT OR IGNORE INTO $db_table_taxa ($db_col_name, $db_col_core) VALUES (?, ?)", $name, $core) or croak;
 	my $res = db_get("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ? AND $db_col_core = ?", $name, $core);
 	return $res->[0]->[0];
+}
+
+=head2 insert_species_info(TAXON_NAME)
+
+Inserts a (non-core) taxon into the database. The taxon shorthand will be NULL
+and the 'core' switch will be 0.
+
+Returns the newly generated taxon ID.
+
+=cut
+
+sub insert_species_info {
+	my $species_name = shift(@_);
+	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_species_info(SPECIESNAME)") }
+	if (my $taxid = get_taxid_for_species($species_name)) { return $taxid }
+	my $query = "INSERT OR IGNORE INTO $db_table_species_info ($db_col_name) VALUES (?)";
+	my $dbh = get_dbh()
+		or return undef;
+	my $sth = $dbh->prepare($query);
+	$sth = execute($sth, $db_timeout, $species_name);
+	$dbh->disconnect();
+
+	$g_species_id = get_taxid_for_species($species_name) or croak;
+	return $g_species_id;
 }
 
 sub insert_ogs_info_into_database {
@@ -2154,11 +2186,11 @@ sub get_taxon_shorthands {
 sub create_temptable_for_ogs_data {
 	# create the temporary table
 	my $c = "CREATE TABLE $db_table_temp (
-	`taxid`    INTEGER      NOT NULL,
-	`type`     INTEGER      NOT NULL,
-	`ogs_id`    INTEGER      NOT NULL,
-	`header`   TEXT(255) NOT NULL,
-	`sequence` TEXT)";
+	`$db_col_taxid`    INTEGER      NOT NULL,
+	`$db_col_type`     INTEGER      NOT NULL,
+	`$db_col_ogsid`    INTEGER      NOT NULL,
+	`$db_col_header`   TEXT(255) NOT NULL,
+	`$db_col_sequence` TEXT)";
 	my $i = "CREATE INDEX temp_header ON $db_table_temp (header)";
 	my $dbh = get_dbh();
 	print $stdout $c, "\n" if $debug > 1;
@@ -2553,7 +2585,7 @@ sub get_sequence_count_for_taxon {
 }
 
 sub get_list_of_taxa {
-	my $q = "SELECT name, longname FROM $db_table_taxa WHERE core = '1'";
+	my $q = "SELECT name, $db_col_longname FROM $db_table_taxa WHERE $db_col_core = '1'";
 	my $r = db_get($q);
 	return $r;
 }
@@ -2702,6 +2734,12 @@ sub load_set_into_temptable {
 		system("@cmd") and fail_and_exit("Could not import CSV file '$csvfile' into temporary table $db_table_temp\n");
 	}
 	return 1;
+}
+
+sub delete_set {
+	my $setid = shift;
+	db_do("DELETE FROM $db_table_orthologs WHERE $db_col_setid = ?", $setid);
+	return db_do("DELETE FROM $db_table_set_details WHERE $db_col_id = ?", $setid);
 }
 
 1;

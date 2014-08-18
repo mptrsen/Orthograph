@@ -72,6 +72,7 @@ my $db_table_orthologs      = $config->{'db_table_orthologs'};
 my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
 my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
+my $db_table_species_info   = $config->{'db_table_species_info'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
@@ -2082,6 +2083,11 @@ sub insert_new_set {
 	db_do($query, $name, $descript) or return 0;
 	my $id = db_get("SELECT $db_col_id FROM $db_table_set_details WHERE $db_col_name = ?", $name);
 	return $$id[0][0];
+}
+
+sub delete_set {
+	my $setid = shift;
+	return db_do("DELETE FROM $db_table_set_details WHERE $db_col_id = ?", $setid);
 }
 
 1;

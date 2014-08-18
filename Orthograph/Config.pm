@@ -131,6 +131,7 @@ $config->{'db_table_orthologs'}      //= 'orthologs';
 $config->{'db_table_sequence_pairs'} //= 'sequence_pairs';
 $config->{'db_table_sequence_types'} //= 'sequence_types';
 $config->{'db_table_set_details'}    //= 'set_details';
+$config->{'db_table_species_info'}   //= 'species_info';
 $config->{'db_table_temp'}           //= 'temp';
 $config->{'db_table_taxa'}           //= 'taxa';
 $config->{'db_table_users'}          //= 'users';

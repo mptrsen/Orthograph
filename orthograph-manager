@@ -283,7 +283,7 @@ insert_orthologs() or fail_and_exit("Failed to establish ortholog relationships 
 my $n = get_number_of_orthologs_for_set($new_setid);
 my $n_cogs = get_number_of_cogs_for_set($new_setid);
 
-printf "%d orthologous relationships (%d COGs) for set %s\n", $n, $n_cogs, $setname;
+printf "Done: %d orthologous relationships (%d COGs) for set %s\n", $n, $n_cogs, $setname;
 
 exit;
 
@@ -291,16 +291,6 @@ exit;
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
-
-sub get_number_of_cogs_for_set {
-	my $setn = shift @_;
-	if ($use_mysql) {
-		return Wrapper::Mysql::get_number_of_cogs_for_set($setn);
-	}
-	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_number_of_cogs_for_set($setn);
-	}
-}
 
 sub fill_tables_from_temp_table {
 	if ($use_mysql) {
@@ -519,7 +509,7 @@ sub upload_ogs {
 	}
 	# get ogs version
 	if ($ogsversion) {
-		print "Using OGS version number $ogsversion\n";
+		print "Using OGS version '$ogsversion'\n";
 	}
 	else {
 		$ogsversion = get_answer("Please enter the official gene set (OGS) version for this data file");
@@ -974,28 +964,20 @@ sub list_set_details {
 # Returns: true if successful, false otherwise
 sub delete_set {
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
-	my $this_set_dir = File::Spec->catdir($setdir, $setname);
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $data = Wrapper::Mysql::db_get("SELECT * FROM $t->{'set_details'} WHERE name = '$setname'");
-	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
-	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
-	my $setid = $$data[0][0];
-	my @queries = (
-		"DELETE FROM $t->{'set_details'} WHERE $t->{'set_details'}.`id`  = '$setid'",
-		"DELETE FROM $t->{'orthologs'}   WHERE $t->{'orthologs'}.`setid` = '$setid'",
-		"DELETE FROM $t->{'blastdbs'}    WHERE $t->{'blastdbs'}.`setid`  = '$setid'",
-	);
-	
-	my $dbh = get_dbh();
-	foreach (@queries) {
-		print $_, "\n";
-		$dbh->do($_) or die();
+	# get set id
+	my $setid = get_set_id($setname) or print "No set with name '$setname' in database, none deleted\n" and exit;
+	# delete the set
+	if ($use_mysql) {
+		Wrapper::Mysql::delete_set($setid);
 	}
-	$dbh->disconnect();
-
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::delete_set($setid);
+	}
+	# also delete the set dir completely
+	my $this_set_dir = File::Spec->catdir($setdir, $setname);
 	if (-e $this_set_dir) {
 		File::Path->remove_tree($this_set_dir);
-		printf "Directory $this_set_dir unlinked.\n"; 
+		printf "Removed $this_set_dir\n"; 
 	}
 	return 1;
 }
@@ -1136,6 +1118,15 @@ sub get_number_of_orthologs_for_set {
 	}
 	elsif ($use_sqlite) {
 		return Wrapper::Sqlite::get_number_of_orthologs_for_set(@_);
+	}
+}
+
+sub get_set_id {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_set_id(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_set_id(@_);
 	}
 }
 
