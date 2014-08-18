@@ -57,8 +57,6 @@ my $database                = $config->{'sqlite-database'};
 my $db_timeout              = 600;
 my $sqlite                  = $config->{'sqlite-program'};
 my $sleep_for               = 1;
-# user name in the following order: set name from config, environment variables $LOGNAME and $USER, uid
-my $db_dbuser               = $config->{'username'} || $ENV{"LOGNAME"} || $ENV{"USER"} || getpwuid $<;
 
 my $db_attached             = 'species_database';
 my $db_table_aaseqs         = $config->{'db_table_aaseqs'};
@@ -74,11 +72,13 @@ my $db_table_orthologs      = $config->{'db_table_orthologs'};
 my $db_table_seqpairs       = $config->{'db_table_sequence_pairs'};
 my $db_table_seqtypes       = $config->{'db_table_sequence_types'};
 my $db_table_set_details    = $config->{'db_table_set_details'};
+my $db_table_species_info   = $config->{'db_table_species_info'};
 my $db_table_taxa           = $config->{'db_table_taxa'};
 my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_ali_end          = 'ali_end';
 my $db_col_ali_start        = 'ali_start';
+my $db_col_blastdb          = 'blastdb';
 my $db_col_blastdb_path     = 'blastdb_path';
 my $db_col_core             = 'core';
 my $db_col_date             = 'date';
@@ -101,7 +101,9 @@ my $db_col_ntseq            = 'nt_seq';
 my $db_col_ogsid            = 'ogs_id';
 my $db_col_ogsversion       = 'version';
 my $db_col_orthoid          = 'ortholog_gene_id';
+my $db_col_orthoset         = 'orthoset';
 my $db_col_query            = 'query';
+my $db_col_rebuild          = 'rebuild';
 my $db_col_setid            = 'setid';
 my $db_col_sequence         = 'sequence';
 my $db_col_seqpair          = 'sequence_pair';
@@ -109,7 +111,6 @@ my $db_col_start            = 'start';
 my $db_col_target           = 'target';
 my $db_col_taxid            = 'taxid';
 my $db_col_type             = 'type';
-my $db_col_user             = 'user';
 my $db_col_version          = 'version';
 my $outdir                  = $config->{'output-directory'};
 my $orthoset                = $config->{'ortholog-set'};
@@ -130,7 +131,7 @@ my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attac
 
 # report that this module is loaded
 print "Using SQLite database file '$database'\n" unless $quiet;
-print "Using file '$attached_db_file' as attached database '$db_attached'\n" unless $quiet;
+print "Using file '$attached_db_file' as attached database '$db_attached'\n" if $verbose;
 unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
 
 
@@ -219,7 +220,7 @@ sub db_get {#{{{
   # connect and fetch stuff
 	my $dbh = get_dbh()
 		or return undef;
-	my $sth = $dbh->prepare($query) or return undef;
+	my $sth = $dbh->prepare($query) or croak;
 	$sth = execute($sth, $db_timeout, @args);
 	while (my @result = $sth->fetchrow_array() ) {
 		push(@$results, \@result);
@@ -242,12 +243,12 @@ Returns 1 on result, dies otherwise.
 
 sub db_do {#{{{
 	my $query = shift;
-	unless ($query) { croak "Usage: db_do(QUERY)\n" }
-	my @fields = @_;
+	unless ($query) { croak "Usage: db_do(QUERY, ARG, ARG, ...)\n" }
+	my @args = @_;
 	my $dbh = get_dbh()
 		or return undef;
-	my $sth = $dbh->prepare($query);
-	$sth = execute($sth, $db_timeout, @fields);
+	my $sth = $dbh->prepare($query) or return 0;
+	$sth = execute($sth, $db_timeout, @args);
 	$dbh->disconnect();
 	return 1;
 }#}}}
@@ -262,12 +263,26 @@ sub check {#{{{
 	my @results;
 	my $dbh = get_dbh();
 	my $sql = $dbh->prepare($query);
-	$sql->execute();
+	$sql->execute(@_);
 	if ($sql->fetchrow_array()) {
 		return 1;
 	}
 	return 0;
 }#}}}
+
+sub execute {
+	my $sth = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
+	my $timeout = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
+	my @args = @_;
+	my $slept = 0;
+	until ($sth->execute(@args)) {
+		warn "Warning: execution failed ($DBI::errstr), retrying in $sleep_for seconds...\n";
+		if ($slept > $timeout) { croak "Fatal: execution ultimately failed, failing this transaction\n" }
+		sleep $sleep_for;
+		$slept += $sleep_for;
+	}
+	return $sth;
+}
 
 sub attached_db_file {
 	return $attached_db_file;
@@ -291,7 +306,7 @@ sub create_tables {
 		'blastdbs' => "CREATE TABLE `$t->{'blastdbs'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_setid`        INTEGER UNSIGNED DEFAULT NULL UNIQUE,
-			`$db_col_blastdb_path` TEXT(255) DEFAULT NULL)",
+			`$db_col_rebuild`      INT(1))",
 		
 		# table: ogs
 		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
@@ -299,7 +314,7 @@ sub create_tables {
 			`$db_col_type`         INT(1),
 			`$db_col_taxid`        INTEGER UNSIGNED NOT NULL,
 			`$db_col_version`      TEXT(255),
-			UNIQUE ($db_col_type, $db_col_version))",
+			UNIQUE ($db_col_type, $db_col_taxid, $db_col_version))",
 		
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
@@ -316,25 +331,24 @@ sub create_tables {
 			`$db_col_ogsid`        INTEGER UNSIGNED,
 			`$db_col_aaseq`        INTEGER UNSIGNED UNIQUE DEFAULT NULL,
 			`$db_col_ntseq`        INTEGER UNSIGNED UNIQUE DEFAULT NULL, 
-			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP,
-			`$db_col_user`         INTEGER UNSIGNED)",
+			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_taxid`        INTEGER     NOT NULL, 
+			`$db_col_ogsid`        INTEGER     NOT NULL,
 			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
-			`$db_col_user`         INTEGER     UNSIGNED,
 			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_nt
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
 			`$db_col_id`           INTEGER     PRIMARY KEY,
 			`$db_col_taxid`        INTEGER     NOT NULL, 
+			`$db_col_ogsid`        INTEGER     NOT NULL,
 			`$db_col_header`       TEXT(512)   UNIQUE,
 			`$db_col_sequence`     MEDIUMBLOB,
-			`$db_col_user`         INTEGER     UNSIGNED,
 			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: set_details
@@ -347,13 +361,8 @@ sub create_tables {
 		'taxa' => "CREATE TABLE `$t->{'taxa'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_name`         TEXT(20)  UNIQUE,
-			`$db_col_longname`     TEXT(255), 
 			`$db_col_core`         TINYINTEGER UNSIGNED NOT NULL)",
-		
-		# table: users
-		'users' => "CREATE TABLE `$t->{'users'}` (
-			`$db_col_id`           INTEGER PRIMARY KEY,
-			`$db_col_name`         TEXT(255) UNIQUE)",
+
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
@@ -393,19 +402,19 @@ sub create_tables {
 sub create_temp_table {
 	my $temptable = shift @_;
 	my $create_temp_table_query = "CREATE TABLE $temptable (
-			`name`        TEXT(255),
-			`longname`    TEXT(255),
-			`orthoset`    TEXT(255),
-			`orthoid`     TEXT(255),
-			`blastdb`     TEXT(255),
-			`header`      TEXT(512),
-			`sequence`    MEDIUMBLOB,
-			`description` TEXT(255))";
+			`$db_col_name`        TEXT(255),
+			`$db_col_longname`    TEXT(255),
+			`$db_col_orthoset`    TEXT(255),
+			`$db_col_orthoid`     TEXT(255),
+			`$db_col_blastdb`     TEXT(255),
+			`$db_col_header`      TEXT(512),
+			`$db_col_sequence`    MEDIUMBLOB,
+			`$db_col_description` TEXT(255))";
 	my $create_temp_indices_query = "BEGIN;
-CREATE INDEX IF NOT EXISTS ${temptable}_name ON $temptable (name);
-CREATE INDEX IF NOT EXISTS ${temptable}_orthoset ON $temptable (orthoset);
-CREATE INDEX IF NOT EXISTS ${temptable}_orthoid ON $temptable (orthoid);
-CREATE INDEX IF NOT EXISTS ${temptable}_header ON $temptable (header);
+CREATE INDEX IF NOT EXISTS ${temptable}_name ON $temptable ($db_col_name);
+CREATE INDEX IF NOT EXISTS ${temptable}_orthoset ON $temptable ($db_col_orthoset);
+CREATE INDEX IF NOT EXISTS ${temptable}_orthoid ON $temptable ($db_col_orthoid);
+CREATE INDEX IF NOT EXISTS ${temptable}_header ON $temptable ($db_col_header);
 COMMIT;";
 	my $dbh = get_dbh();
 	$dbh->do("DROP TABLE IF EXISTS $temptable") or die "Fatal: Could not DROP TABLE $temptable\n";
@@ -437,58 +446,52 @@ sub fill_tables_from_temp_table {
 	my $t = shift @_;
 	my $temptable = shift @_;
 	my @queries = (
-		# user name
-		"INSERT OR IGNORE INTO $t->{'users'} (name) VALUES ('$db_dbuser')",
 		# taxa (name, longname)
-		"INSERT OR IGNORE INTO $t->{'taxa'} (name, longname, core) 
-			SELECT DISTINCT $temptable.name, $temptable.longname, 1 
+		"INSERT OR IGNORE INTO $t->{'taxa'} ($db_col_name, $db_col_longname, $db_col_core) 
+			SELECT DISTINCT $temptable.name, $temptable.$db_col_longname, 1 
 			FROM $temptable",
 		# set name + description
-		"INSERT OR IGNORE INTO $t->{'set_details'} (name, description)
-			SELECT DISTINCT $temptable.orthoset, $temptable.description 
+		"INSERT OR IGNORE INTO $t->{'set_details'} ($db_col_name, $db_col_description)
+			SELECT DISTINCT $temptable.orthoset, $temptable.$db_col_description 
 			FROM $temptable LIMIT 1",
 		# blast databases
-		"INSERT OR IGNORE INTO $t->{'blastdbs'} (setid, blastdb_path) 
-			SELECT DISTINCT $t->{'set_details'}.id, $temptable.blastdb 
+		"INSERT OR IGNORE INTO $t->{'blastdbs'} ($db_col_setid, blastdb_path) 
+			SELECT DISTINCT $t->{'set_details'}.id, $temptable.$db_col_blastdb 
 			FROM $temptable
 			LEFT JOIN $t->{'set_details'} 
-				ON $t->{'set_details'}.name = $temptable.orthoset",
+				ON $t->{'set_details'}.name = $temptable.$db_col_orthoset",
 		# pep sequences
-		"INSERT OR IGNORE INTO $t->{'aaseqs'} (taxid, header, sequence, user, date) 
-			SELECT $t->{'taxa'}.id, $temptable.header, $temptable.sequence, $t->{'users'}.id, CURRENT_TIMESTAMP
+		"INSERT OR IGNORE INTO $t->{'aaseqs'} ($db_col_taxid, $db_col_header, $db_col_sequence, $db_col_date) 
+			SELECT $t->{'taxa'}.id, $temptable.$db_col_header, $temptable.$db_col_sequence, CURRENT_TIMESTAMP
 			FROM $temptable
 				LEFT JOIN $t->{'taxa'} 
-			ON $temptable.name  = $t->{'taxa'}.name
-				INNER JOIN $t->{'users'}
-			ON $t->{'users'}.name = '$db_dbuser'",
+			ON $temptable.$db_col_name  = $t->{'taxa'}.$db_col_name",
 		# delete everything where header or sequence is NULL or empty
 		"DELETE FROM $t->{'aaseqs'}
-			WHERE $t->{'aaseqs'}.header IS NULL
-			OR $t->{'aaseqs'}.sequence IS NULL
-			OR $t->{'aaseqs'}.header = ''
-			OR $t->{'aaseqs'}.sequence = ''",
+			WHERE $t->{'aaseqs'}.$db_col_header IS NULL
+			OR $t->{'aaseqs'}.$db_col_sequence IS NULL
+			OR $t->{'aaseqs'}.$db_col_header = ''
+			OR $t->{'aaseqs'}.$db_col_sequence = ''",
 		# sequence pairs (pep-nuc)
-		"INSERT OR IGNORE INTO $t->{'seqpairs'} (taxid, ogs_id, aa_seq, nt_seq, date, user)
-			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, CURRENT_TIMESTAMP, $t->{'users'}.id
+		"INSERT OR IGNORE INTO $t->{'seqpairs'} ($db_col_taxid, $db_col_ogsid, $db_col_aaseq, $db_col_ntseq, $db_col_date)
+			SELECT $t->{'taxa'}.id, $t->{'ogs'}.id, $t->{'aaseqs'}.id, $t->{'ntseqs'}.id, CURRENT_TIMESTAMP
 			FROM $t->{'taxa'}
 			INNER JOIN $t->{'aaseqs'}
-				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.id
+				ON $t->{'aaseqs'}.taxid = $t->{'taxa'}.$db_col_id
 			LEFT JOIN $t->{'ogs'}
-				ON $t->{'taxa'}.id = $t->{'ogs'}.taxid
+				ON $t->{'taxa'}.id = $t->{'ogs'}.$db_col_taxid
 			LEFT JOIN $t->{'ntseqs'}
-				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.header
-			INNER JOIN $t->{'users'}
-				ON $t->{'users'}.name = '$db_dbuser'",
+				ON $t->{'aaseqs'}.header = $t->{'ntseqs'}.$db_col_header",
 		# orthologous groups
 		"INSERT OR IGNORE INTO $t->{'orthologs'} ($db_col_setid, $db_col_orthoid, $db_col_seqpair) 
-			SELECT $t->{'set_details'}.id, $temptable.orthoid, $t->{'seqpairs'}.id 
+			SELECT $t->{'set_details'}.id, $temptable.$db_col_orthoid, $t->{'seqpairs'}.$db_col_id 
 			FROM $t->{'aaseqs'} 
 			INNER JOIN $temptable 
-				ON $t->{'aaseqs'}.header = $temptable.header 
+				ON $t->{'aaseqs'}.$db_col_header = $temptable.$db_col_header 
 			INNER JOIN $t->{'seqpairs'} 
-				ON $t->{'seqpairs'}.aa_seq = $t->{'aaseqs'}.id 
+				ON $t->{'seqpairs'}.$db_col_aaseq = $t->{'aaseqs'}.$db_col_id 
 			INNER JOIN $t->{'set_details'} 
-				ON $t->{'set_details'}.name = $temptable.orthoset",
+				ON $t->{'set_details'}.$db_col_name = $temptable.$db_col_orthoset",
 	);
 
 	my $dbh = get_dbh();
@@ -506,7 +509,12 @@ sub fill_tables_from_temp_table {
 
 sub get_number_of_cogs_for_set {
 	my $setn = shift @_;
-	my $q = "SELECT COUNT(DISTINCT $db_table_orthologs.ortholog_gene_id) FROM $db_table_orthologs INNER JOIN $db_table_set_details ON $db_table_orthologs.setid = $db_table_set_details.id WHERE $db_table_set_details.name = ?";
+	my $q = "
+		SELECT COUNT(DISTINCT $db_table_orthologs.ortholog_gene_id)
+		FROM $db_table_orthologs
+		INNER JOIN $db_table_set_details
+			ON $db_table_orthologs.setid = $db_table_set_details.id
+		WHERE $db_table_set_details.$db_col_id = ?";
 	my $r = db_get($q, $setn);
 	return $$r[0][0];
 }
@@ -529,29 +537,6 @@ sub get_ortholog_sets {#{{{
 		$sets{$$item[1]} = $$item[2];
 	}
 	return(\%sets);
-}#}}}
-
-=head2 list_ogs
-
-Get list of OGS in the database
-
-Arguments: none
-
-Returns: array reference (list of OGS)
-
-=cut
-
-sub get_list_of_ogs {#{{{
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT DISTINCT $db_table_taxa.name , $db_table_ogs.version, COUNT($db_table_aaseqs.id)
-		FROM $db_table_taxa
-		INNER JOIN $db_table_ogs
-			ON $db_table_taxa.id = $db_table_ogs.taxid
-		INNER JOIN $db_table_aaseqs
-			ON $db_table_aaseqs.$db_col_taxid = $db_table_taxa.id
-		GROUP BY $db_table_aaseqs.$db_col_taxid"
-	;
-	return(db_get($query));
 }#}}}
 
 
@@ -588,44 +573,49 @@ sub get_ortholog_groups_for_set {
 }
 
 sub preparedb {
-	my $query_create_ests = "CREATE TABLE $db_table_ests ( 
-		`$db_col_id`        INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_digest`    TEXT(32)     NOT NULL,           
-		`$db_col_taxid`     UNSIGNED INTEGER NOT NULL,       
-		`$db_col_type`      UNSIGNED TINYINT(4) NOT NULL,
-		`$db_col_date`      UNSIGNED INT,
-		`$db_col_header`    TEXT      NOT NULL,       
-		`$db_col_sequence`  MEDIUMBLOB DEFAULT NULL
+	my $query_create_ests = "CREATE TABLE $db_attached.$db_table_ests ( 
+		'$db_col_id'        INTEGER NOT NULL PRIMARY KEY,
+		'$db_col_digest'    TEXT(32)     NOT NULL,           
+		'$db_col_taxid'     UNSIGNED INTEGER NOT NULL,       
+		'$db_col_type'      UNSIGNED TINYINT(4) NOT NULL,
+		'$db_col_date'      UNSIGNED INT,
+		'$db_col_header'    TEXT      NOT NULL,       
+		'$db_col_sequence'  MEDIUMBLOB DEFAULT NULL
 		)";
 
-	my $query_create_hmmsearch = "CREATE TABLE $db_table_hmmsearch (
-		`$db_col_id`         INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_taxid`      UNSIGNED INTEGER NOT NULL,       
-		`$db_col_query`      TEXT(255) NOT NULL,       
-		`$db_col_target`     TEXT(32)     NOT NULL,       
-		`$db_col_score`      DOUBLE       NOT NULL,
-		`$db_col_evalue`     TEXT(8)      NOT NULL,
-		`$db_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
-		`$db_col_env_start`  UNSIGNED INTEGER NOT NULL,
-		`$db_col_env_end`    UNSIGNED INTEGER NOT NULL,
-		`$db_col_ali_start`  UNSIGNED INTEGER NOT NULL,
-		`$db_col_ali_end`    UNSIGNED INTEGER NOT NULL,
-		`$db_col_hmm_start`  UNSIGNED INTEGER NOT NULL,
-		`$db_col_hmm_end`    UNSIGNED INTEGER NOT NULL
+	my $query_create_hmmsearch = "CREATE TABLE $db_attached.$db_table_hmmsearch (
+		'$db_col_id'         INTEGER NOT NULL PRIMARY KEY,
+		'$db_col_taxid'      UNSIGNED INTEGER NOT NULL,       
+		'$db_col_query'      TEXT(255) NOT NULL,       
+		'$db_col_target'     TEXT(32)     NOT NULL,       
+		'$db_col_score'      DOUBLE       NOT NULL,
+		'$db_col_evalue'     TEXT(8)      NOT NULL,
+		'$db_col_log_evalue' DOUBLE       NOT NULL DEFAULT '-999',
+		'$db_col_env_start'  UNSIGNED INTEGER NOT NULL,
+		'$db_col_env_end'    UNSIGNED INTEGER NOT NULL,
+		'$db_col_ali_start'  UNSIGNED INTEGER NOT NULL,
+		'$db_col_ali_end'    UNSIGNED INTEGER NOT NULL,
+		'$db_col_hmm_start'  UNSIGNED INTEGER NOT NULL,
+		'$db_col_hmm_end'    UNSIGNED INTEGER NOT NULL
 		)";
 
-	my $query_create_blast = "CREATE TABLE $db_table_blast (
-		`$db_col_id`            INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_taxid`         UNSIGNED INTEGER NOT NULL,       
-		`$db_col_query`         TEXT(32)     NOT NULL,       
-		`$db_col_target`        UNSIGNED INTEGER NOT NULL,       
-		`$db_col_score`         DOUBLE       NOT NULL,
-		`$db_col_evalue`        TEXT(8)      NOT NULL,
-		`$db_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
-		`$db_col_start`         UNSIGNED INTEGER NOT NULL,
-		`$db_col_end`           UNSIGNED INTEGER NOT NULL,
-		`$db_col_hmmsearch_id`  UNSIGNED INTEGER NOT NULL
+	my $query_create_blast = "CREATE TABLE $db_attached.$db_table_blast (
+		'$db_col_id'            INTEGER NOT NULL PRIMARY KEY,
+		'$db_col_taxid'         UNSIGNED INTEGER NOT NULL,       
+		'$db_col_query'         TEXT(32)     NOT NULL,       
+		'$db_col_target'        UNSIGNED INTEGER NOT NULL,       
+		'$db_col_score'         DOUBLE       NOT NULL,
+		'$db_col_evalue'        TEXT(8)      NOT NULL,
+		'$db_col_log_evalue'    DOUBLE       NOT NULL DEFAULT '-999',
+		'$db_col_start'         UNSIGNED INTEGER NOT NULL,
+		'$db_col_end'           UNSIGNED INTEGER NOT NULL,
+		'$db_col_hmmsearch_id'  UNSIGNED INTEGER NOT NULL
 		)";
+
+	my $query_create_species_info = "CREATE TABLE $db_attached.$db_table_species_info (
+		'$db_col_id'           INTEGER PRIMARY KEY,
+		'$db_col_name'         TEXT(255)
+		)",
 
 	# the CREATE INDEX statement does not like the attached db prefix 
 	# generate table names without it
@@ -633,37 +623,31 @@ sub preparedb {
 	(my $simple_table_hmmsearch = $db_table_hmmsearch) =~ s/$db_attached\.//;
 	(my $simple_table_blast = $db_table_blast)         =~ s/$db_attached\.//;
 	my @query_create_indices = (
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $simple_table_ests (header)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_digest ON $simple_table_ests ($db_col_digest)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_taxid ON $simple_table_ests ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_taxid ON $simple_table_hmmsearch ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_query ON $simple_table_hmmsearch ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_target ON $simple_table_hmmsearch ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_evalue ON $simple_table_hmmsearch ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_score ON $simple_table_hmmsearch ($db_col_score)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_taxid ON $simple_table_blast ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_query ON $simple_table_blast ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_target ON $simple_table_blast ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue ON $simple_table_blast ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_hmmsearch_id ON $simple_table_blast ($db_col_hmmsearch_id)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_digest ON $simple_table_ests ($db_col_digest)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_taxid ON $simple_table_ests ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_taxid ON $simple_table_hmmsearch ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_query ON $simple_table_hmmsearch ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_target ON $simple_table_hmmsearch ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_evalue ON $simple_table_hmmsearch ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_score ON $simple_table_hmmsearch ($db_col_score)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_taxid ON $simple_table_blast ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_query ON $simple_table_blast ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_target ON $simple_table_blast ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_evalue ON $simple_table_blast ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_hmmsearch_id ON $simple_table_blast ($db_col_hmmsearch_id)",
 	);
+
+	# drop all tables (just delete the database file)
+	unlink $attached_db_file or fail_and_exit("Could not delete database file '$attached_db_file': $!");
 
 	# open connection
 	my $dbh = get_dbh()
 		or croak "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
 
-	# drop all tables
-	foreach ($db_table_ests, $db_table_hmmsearch, $db_table_blast) {
-		my $query_drop = "DROP TABLE IF EXISTS $_";
-		print "$query_drop;\n" if $verbose;
-		my $sql = $dbh->prepare($query_drop);
-		$sql->execute()
-		  or croak "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
-	}
-
 	# create all tables
-	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, @query_create_indices) {
+	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, $query_create_species_info, @query_create_indices) {
 		print "$query;\n" if $verbose;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
@@ -874,7 +858,7 @@ sub get_taxid_for_species {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT $db_table_taxa.id FROM $db_table_taxa WHERE core = 0 AND longname = '$species_name'";
+	my $query = "SELECT $db_table_species_info.$db_col_id FROM $db_table_species_info WHERE $db_col_name = '$species_name'";
 	my $result = db_get($query);
 	if ($result) { 
 		$g_species_id = $$result[0][0];
@@ -896,7 +880,7 @@ sub get_set_id {
 	my $setname = shift(@_);
 	unless ($setname) { croak("Usage: get_set_id(SETNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT id FROM $db_table_set_details WHERE name = '$setname'";
+	my $query = "SELECT $db_col_id FROM $db_table_set_details WHERE name = '$setname'";
 	my $result = db_get($query);
 	if ( scalar(@$result) > 1 ) { 
 		warn("Warning: Multiple sets of the same name!\n");
@@ -923,7 +907,23 @@ sub set_exists {
 	return 0;
 }
 
-=head2 insert_taxon_into_table(TAXON_NAME)
+=head2 insert_taxon_into_database(TAXON_NAME)
+
+Inserts a core taxon into the database.
+
+Returns the newly generated taxon ID.
+
+=cut
+
+sub insert_taxon_into_database {
+	my $name = shift;
+	my $core = shift;
+	db_do("INSERT OR IGNORE INTO $db_table_taxa ($db_col_name, $db_col_core) VALUES (?, ?)", $name, $core) or croak;
+	my $res = db_get("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ? AND $db_col_core = ?", $name, $core);
+	return $res->[0]->[0];
+}
+
+=head2 insert_species_info(TAXON_NAME)
 
 Inserts a (non-core) taxon into the database. The taxon shorthand will be NULL
 and the 'core' switch will be 0.
@@ -932,21 +932,140 @@ Returns the newly generated taxon ID.
 
 =cut
 
-sub insert_taxon_into_table {
+sub insert_species_info {
 	my $species_name = shift(@_);
-	unless ($species_name) { croak("Usage: Wrapper::Sqlite::insert_taxon_into_table(SPECIESNAME)") }
+	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_species_info(SPECIESNAME)") }
 	if (my $taxid = get_taxid_for_species($species_name)) { return $taxid }
-	my $query = "INSERT OR IGNORE INTO $db_table_taxa (longname, core) VALUES (?, ?)";
-	my $dbh = get_dbh()
-		or return undef;
-	my $sth = $dbh->prepare($query);
-	$sth = execute($sth, $db_timeout, $species_name, 0);
-	$dbh->disconnect();
+	my $query = "INSERT OR IGNORE INTO $db_table_species_info ($db_col_name) VALUES (?)";
+	db_do($query, $species_name);
 
-	$g_species_id = &get_taxid_for_species($species_name) or croak;
+	$g_species_id = get_taxid_for_species($species_name) or croak;
 	return $g_species_id;
 }
 
+sub insert_ogs_info_into_database {
+	my $type       = shift;
+	my $taxid      = shift;
+	my $ogsversion = shift;
+	db_do("INSERT OR IGNORE INTO $db_table_ogs ($db_col_type, $db_col_taxid, $db_col_version) VALUES ($type, $taxid, $ogsversion)") or croak;
+	my $res = db_get("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = ? AND $db_col_version = ? AND $db_col_type = ?", $taxid, $ogsversion, $type);
+	return $res->[0]->[0];
+}
+
+sub upload_ogs_sequences {
+	my ($inf, $hdrs, $taxid, $type, $ogsid) = @_;
+
+	# determine correct table and columns
+	my $seqtable      = $type > 1 ? $db_table_aaseqs : $db_table_ntseqs;
+	my $otherseqtable = $type > 1 ? $db_table_ntseqs : $db_table_aaseqs;
+	my $seqcol        = $type > 1 ? $db_col_aaseq    : $db_col_ntseq;
+	my $otherseqcol   = $type > 1 ? $db_col_ntseq    : $db_col_aaseq;
+
+	load_csv_into_temptable($inf, $db_table_temp);
+
+	my $query_insert_sequences = "
+		INSERT OR IGNORE INTO $seqtable ($db_col_taxid, $db_col_ogsid, $db_col_header, $db_col_sequence, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $db_table_temp.$db_col_ogsid, $db_table_temp.$db_col_header, $db_table_temp.$db_col_sequence, CURRENT_TIMESTAMP
+		FROM $db_table_temp 
+		LEFT JOIN $db_table_taxa 
+			ON $db_table_temp.$db_col_taxid = $db_table_taxa.$db_col_id
+	";
+
+	my $query_insert_seqpairs = "
+		INSERT OR IGNORE INTO $db_table_seqpairs ($db_col_taxid, $db_col_ogsid, $seqcol, $otherseqcol, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $seqtable.$db_col_ogsid, $seqtable.$db_col_id, $otherseqtable.$db_col_id, CURRENT_TIMESTAMP
+		FROM $seqtable
+		INNER JOIN $db_table_taxa
+			ON $seqtable.$db_col_taxid = $db_table_taxa.$db_col_id
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		WHERE $seqtable.$db_col_ogsid = $ogsid
+	";
+
+	my $dbh = get_dbh();
+	# if this is amino acid data, just blindly load it into the resp. table
+	if ($type > 1) {
+		$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
+		$dbh->do($query_insert_seqpairs)  or fail_and_exit("OGS loading failed: $DBI::errstr");
+	}
+	# otherwise, this is nucleotide data, need to check for each sequence
+	# whether the corresponding aa seq exists
+	else {
+		upload_sequences_individually($hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol)
+	}
+	$dbh->disconnect();
+	return 1;
+}
+
+sub upload_sequences_individually {
+	my $hdrs          = shift;
+	my $seqtable      = shift;
+	my $otherseqtable = shift;
+	my $seqcol        = shift;
+	my $otherseqcol   = shift;
+	my $dbh = get_dbh();
+	my $sth_select = $dbh->prepare("SELECT $db_col_id FROM $otherseqtable WHERE $db_col_header = ?");
+	my $query_insert = "
+		INSERT OR IGNORE INTO $seqtable ($db_col_taxid, $db_col_ogsid, $db_col_header, $db_col_sequence, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $db_table_temp.$db_col_ogsid, $db_table_temp.$db_col_header, $db_table_temp.$db_col_sequence, CURRENT_TIMESTAMP
+		FROM $db_table_temp 
+		LEFT JOIN $db_table_taxa 
+			ON $db_table_temp.$db_col_taxid = $db_table_taxa.$db_col_id
+		WHERE $db_col_header = ?
+	";
+	my $sth_insert = $dbh->prepare($query_insert);
+	my $query_update = "
+		UPDATE $db_table_seqpairs
+		SET $seqcol = (SELECT $db_col_id FROM $seqtable WHERE $db_col_header = ? LIMIT 1)
+		WHERE $otherseqcol = ?
+	";
+	my $sth_update = $dbh->prepare($query_update);
+
+	my $res = [ ];
+	my $n   = scalar @$hdrs;
+	my $c   = 0;
+	foreach my $hdr (@$hdrs) {
+		# check whether the hdr exists for an aa seq
+		$sth_select->execute($hdr);
+		$res = $sth_select->fetchall_arrayref();
+		if (scalar @$res == 1) {
+			# ok, upload
+			$sth_insert->execute($hdr);
+			# and update seqpairs
+			$sth_update->execute($hdr, $$res[0][0]);
+			$c++;
+			Orthograph::Functions::progress_bar($c, $n, 25, '-');
+		}
+		else {
+			fail_and_exit("Corresponding amino acid sequence not found for nucleotide sequence with ID '$hdr'")
+		}
+	}
+	return 1;
+}
+
+sub insert_orthologs {
+	my $query = "
+		INSERT INTO $db_table_orthologs ($db_col_setid, $db_col_orthoid, $db_col_seqpair)
+		SELECT
+			$db_table_temp.$db_col_setid,
+			$db_table_temp.$db_col_orthoid,
+			$db_table_seqpairs.$db_col_id
+		FROM $db_table_temp
+		INNER JOIN $db_table_aaseqs
+			ON $db_table_temp.$db_col_header = $db_table_aaseqs.$db_col_header
+		INNER JOIN $db_table_seqpairs 
+			ON $db_table_aaseqs.$db_col_id = $db_table_seqpairs.$db_col_aaseq
+	";
+	db_do($query) or return 0;
+	return 1;
+}
+
+sub get_number_of_orthologs_for_set {
+	my $setid = shift;
+	my $query = "SELECT COUNT($db_col_id) FROM $db_table_orthologs WHERE $db_col_setid = ?";
+	my $res = db_get($query, $setid);
+	return $res->[0]->[0];
+}
 
 sub load_ests_from_file {
 	my $csvfile = shift;
@@ -956,9 +1075,8 @@ sub load_ests_from_file {
 	# load data from csv file into database
 	# create temporary table first
 
-	my $simple_table_temp = $config->{'db_table_temp'} . '_' . $specid;
-	my $q_drop_temp   = "DROP TABLE IF EXISTS $simple_table_temp";
-	my $q_create_temp = "CREATE TABLE $simple_table_temp (
+	my $q_drop_temp   = "DROP TABLE IF EXISTS $db_table_temp";
+	my $q_create_temp = "CREATE TABLE $db_table_temp (
 	  '$db_col_digest' TEXT,
 		'$db_col_taxid'  INT,
 		'$db_col_type'   INT,
@@ -975,7 +1093,7 @@ sub load_ests_from_file {
 		".mode csv",
 		$q_drop_temp,
 		$q_create_temp,
-		".import $csvfile $simple_table_temp",
+		".import $csvfile $db_table_temp",
 		".mode list",
 	);
 	foreach (@loadqueries) {
@@ -985,25 +1103,25 @@ sub load_ests_from_file {
 			print "execute? "; 
 			<STDIN>;
 		}
-		system("@cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $simple_table_temp\n";
+		system("@cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $db_table_temp\n";
 	}
 
 	# transfer data from temptable into main table
-	my $q_transfer = "INSERT INTO $db_table_ests (
-		'$db_col_digest',
-  	'$db_col_taxid',
-  	'$db_col_type',
-  	'$db_col_date',
-  	'$db_col_header',
-  	'$db_col_sequence')
+	my $q_transfer = "INSERT INTO $db_attached.$db_table_ests (
+		$db_col_digest,
+  	$db_col_taxid,
+  	$db_col_type,
+  	$db_col_date,
+  	$db_col_header,
+  	$db_col_sequence)
   	SELECT 
-    $db_table_temp.'$db_col_digest',
-  	$db_table_temp.'$db_col_taxid',
-  	$db_table_temp.'$db_col_type',
-  	$db_table_temp.'$db_col_date',
-  	$db_table_temp.'$db_col_header',
-  	$db_table_temp.'$db_col_sequence'
-		FROM $db_table_temp
+    $db_col_digest,
+  	$db_col_taxid,
+  	$db_col_type,
+  	$db_col_date,
+  	$db_col_header,
+  	$db_col_sequence
+		FROM $db_attached.$db_table_temp
 	";
 	my $dbh = get_dbh();
 	print $q_transfer, "\n" if $debug > 1;
@@ -1261,20 +1379,6 @@ sub get_scores_count {
 		$num_of_scores->{$$row[0]} = $$row[1];
 	}
 	return $num_of_scores;
-}
-
-sub execute {
-	my $sth = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
-	my $timeout = shift or croak "Usage: execute(STH, TIMEOUT, ARGS)\n";
-	my @args = @_;
-	my $slept = 0;
-	until ($sth->execute(@args)) {
-		carp "Warning: execution failed, retrying in $sleep_for seconds...\n";
-		if ($slept > $timeout) { croak "Fatal: execution ultimately failed, failing this transaction\n" }
-		sleep $sleep_for;
-		$slept += $sleep_for;
-	}
-	return $sth;
 }
 
 =head2 get_results_for_logevalue($setid, $taxonid, $min [, $max])
@@ -1778,16 +1882,20 @@ Renames the table names according to ID. Returns a list of the three table names
 =cut
 
 sub get_real_table_names {
-	my $specid = shift @_;
-	my $real_table_ests      = $db_attached . '.' . $db_table_ests      . '_' . $specid;
-	my $real_table_hmmsearch = $db_attached . '.' . $db_table_hmmsearch . '_' . $specid;
-	my $real_table_blast     = $db_attached . '.' . $db_table_blast     . '_' . $specid;
-	my $real_table_temp      = $db_attached . '.' . $db_table_temp      . '_' . $specid;
-	$db_table_ests        = $real_table_ests;
-	$db_table_hmmsearch   = $real_table_hmmsearch;
-	$db_table_blast       = $real_table_blast;
-	$db_table_temp        = $real_table_temp;
-	return ($db_table_ests, $db_table_hmmsearch, $db_table_blast, $db_table_temp);
+	#--------------------------------------------------
+	# my $specid = shift @_;
+	# my $real_table_ests      = $db_attached . '.' . $db_table_ests         . '_' . $specid;
+	# my $real_table_hmmsearch = $db_attached . '.' . $db_table_hmmsearch    . '_' . $specid;
+	# my $real_table_blast     = $db_attached . '.' . $db_table_blast        . '_' . $specid;
+	# my $real_table_temp      = $db_attached . '.' . $db_table_temp         . '_' . $specid;
+	# my $real_table_species   = $db_attached . '.' . $db_table_species_info . '_' . $specid;
+	# $db_table_ests           = $real_table_ests;
+	# $db_table_hmmsearch      = $real_table_hmmsearch;
+	# $db_table_blast          = $real_table_blast;
+	# $db_table_temp           = $real_table_temp;
+	# $db_table_species_info   = $real_table_temp;
+	#-------------------------------------------------- 
+	return ($db_table_ests, $db_table_hmmsearch, $db_table_blast, $db_table_temp, $db_table_species_info);
 }
 
 
@@ -2070,14 +2178,18 @@ sub get_taxon_shorthands {
 
 sub create_temptable_for_ogs_data {
 	# create the temporary table
-	my $q = "CREATE TABLE $db_table_temp (
-	`taxid`    TEXT(5)      NOT NULL,
-	`header`   TEXT(255) NOT NULL,
-	`sequence` TEXT)";
+	my $c = "CREATE TABLE $db_table_temp (
+	`$db_col_taxid`    INTEGER      NOT NULL,
+	`$db_col_type`     INTEGER      NOT NULL,
+	`$db_col_ogsid`    INTEGER      NOT NULL,
+	`$db_col_header`   TEXT(255) NOT NULL,
+	`$db_col_sequence` TEXT)";
+	my $i = "CREATE INDEX temp_header ON $db_table_temp (header)";
 	my $dbh = get_dbh();
-	print $stdout $q, "\n" if $debug > 1;
+	print $stdout $c, "\n" if $debug > 1;
 	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
-	$dbh->do($q);
+	$dbh->do($c);
+	$dbh->do($i);
 	$dbh->disconnect();
 }
 
@@ -2460,13 +2572,13 @@ sub quit_on_q {
 
 sub get_sequence_count_for_taxon {
 	my $taxid = shift;
-	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.taxid = '$taxid'";
+	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.$db_col_taxid = '$taxid'";
 	my $r = db_get($q);
 	return $$r[0][0];
 }
 
 sub get_list_of_taxa {
-	my $q = "SELECT name, longname FROM $db_table_taxa WHERE core = '1'";
+	my $q = "SELECT name, $db_col_longname FROM $db_table_taxa WHERE $db_col_core = '1'";
 	my $r = db_get($q);
 	return $r;
 }
@@ -2538,6 +2650,105 @@ sub species_tables_present {
 	my $r = get_list_of_tables();
 	unless (grep /$db_table_blast/, @$r) { return 0 }
 	else    { return 1 }
+}
+
+sub get_list_of_ogs {
+	my $query = "
+		SELECT
+			$db_table_ogs.$db_col_id,
+			$db_table_taxa.$db_col_name,
+			$db_table_ogs.$db_col_version,
+			$db_table_ogs.$db_col_type,
+			COUNT($db_table_aaseqs.$db_col_id)
+		FROM $db_table_taxa
+		INNER JOIN $db_table_ogs
+			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
+		INNER JOIN $db_table_aaseqs
+			ON $db_table_ogs.$db_col_id = $db_table_aaseqs.$db_col_ogsid
+		GROUP BY $db_table_aaseqs.$db_col_id
+		UNION
+		SELECT
+			$db_table_ogs.$db_col_id,
+			$db_table_taxa.$db_col_name,
+			$db_table_ogs.$db_col_version,
+			$db_table_ogs.$db_col_type,
+			COUNT($db_table_ntseqs.$db_col_id)
+		FROM $db_table_taxa
+		INNER JOIN $db_table_ogs
+			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
+		INNER JOIN $db_table_ntseqs
+			ON $db_table_ogs.$db_col_id = $db_table_ntseqs.$db_col_ogsid
+		GROUP BY $db_table_ntseqs.$db_col_id
+		ORDER BY $db_table_ogs.$db_col_id
+	";
+	return db_get($query);
+}
+
+sub insert_new_set {
+	my $name = shift;
+	my $descript = shift;
+	my $query = "
+		INSERT OR IGNORE INTO $db_table_set_details ($db_col_name, $db_col_description)
+		VALUES (?, ?)
+	";
+	db_do($query, $name, $descript) or return 0;
+	my $id = db_get("SELECT $db_col_id FROM $db_table_set_details WHERE $db_col_name = ?", $name);
+	return $$id[0][0];
+}
+
+sub load_set_into_temptable {
+	my $csvfile = shift;
+
+	my $q_drop_temp = "DROP TABLE IF EXISTS $db_table_temp";
+	my $q_create_temp = "CREATE TABLE $db_table_temp (
+	  '$db_col_orthoid' INT,
+		'$db_col_header'  INT,
+		'$db_col_ogsid'   INT,
+		'$db_col_setid'   INT
+	)
+	";
+
+	# load data into temptable
+	# needs to work directly on the species database since apparently
+	# sqlite cannot use .import on attached databases. if anyone has an idea 
+	# or a solution on how to mitigate this, please let me know!
+	my @loadqueries = (
+		".mode csv",
+		$q_drop_temp,
+		$q_create_temp,
+		".import $csvfile $db_table_temp",
+		".mode list",
+	);
+	foreach (@loadqueries) {
+		my @cmd = qq{$sqlite -separator "," "$database" "$_"};
+		if ($debug) {
+			print "@cmd\n";
+		}
+		system("@cmd") and fail_and_exit("Could not import CSV file '$csvfile' into temporary table $db_table_temp\n");
+	}
+	return 1;
+}
+
+sub delete_set {
+	my $setid = shift;
+	db_do("DELETE FROM $db_table_orthologs WHERE $db_col_setid = ?", $setid);
+	return db_do("DELETE FROM $db_table_set_details WHERE $db_col_id = ?", $setid);
+}
+
+sub insert_blastdb {
+	my $setid = shift;
+	return db_do("INSERT INTO $db_table_blastdbs ($db_col_setid, $db_col_rebuild) VALUES (?, ?)", $setid, 1);
+}
+
+sub set_blastdb_to_rebuild {
+	my $setid = shift;
+	my $flag  = shift;
+	return db_do("UPDATE $db_table_blastdbs SET $db_col_rebuild = ? WHERE $db_col_setid = ?", $flag, $setid);
+}
+
+sub blastdb_needs_rebuilding {
+	my $setid = shift;
+	return check("SELECT * from o_blastdbs where setid = ? and rebuild = 1", $setid);
 }
 
 1;

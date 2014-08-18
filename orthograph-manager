@@ -58,19 +58,21 @@ my $db_dbpwd                  = $config->{'mysql-password'};
 my $db_dbserver               = $config->{'mysql-server'};
 my $db_dbuser                 = $config->{'mysql-username'};
 my $db_prefix                 = $config->{'db-prefix'};
+my $db_table_aaseqs           = $config->{'db_table_aaseqs'};
+my $db_table_blast            = $config->{'db_table_blast'};
 my $db_table_blastdbs         = $config->{'db_table_blastdbs'};
 my $db_table_ests             = $config->{'db_table_ests'};
 my $db_table_hmmsearch        = $config->{'db_table_hmmsearch'};
-my $db_table_set_details      = $config->{'db_table_set_details'};
-my $db_table_aaseqs           = $config->{'db_table_aaseqs'};
+my $db_table_log_evalues      = $config->{'db_table_log_evalues'};
+my $db_table_scores           = $config->{'db_table_scores'};
 my $db_table_ntseqs           = $config->{'db_table_ntseqs'};
 my $db_table_ogs              = $config->{'db_table_ogs'};
 my $db_table_orthologs        = $config->{'db_table_orthologs'};
 my $db_table_seqpairs         = $config->{'db_table_sequence_pairs'};
 my $db_table_seqtypes         = $config->{'db_table_sequence_types'};
+my $db_table_set_details      = $config->{'db_table_set_details'};
 my $db_table_taxa             = $config->{'db_table_taxa'};
 my $db_table_temp             = $config->{'db_table_temp'};
-my $db_table_users            = $config->{'db_table_users'};
 
 # Actions
 my $create                    = $config->{'create'};
@@ -89,6 +91,7 @@ my $verbose                   = $config->{'verbose'};
 my $outputdir                 = $config->{'output-directory'};
 my $reference_taxon_shorthand = $config->{'reference-taxon-shorthand'};
 my $ogsversion                = $config->{'ogs-version'};
+my $taxon_name                = $config->{'ogs-taxon-name'};
 my $orthodb5_format           = $config->{'orthodb5-format'};
 
 # substitution character for selenocysteine, which normally leads to blast freaking out
@@ -121,7 +124,6 @@ my $t            = {
 	'set_details'  => $db_table_set_details,
 	'taxa'         => $db_table_taxa,
 	'temp'         => $db_table_temp,
-	'users'        => $db_table_users,
 };
 
 my $blastdir          = '';
@@ -202,7 +204,7 @@ if ($listsets) {
 }
 
 elsif ($listogs) {
-	list_ogs() and exit;
+	print_ogs_list() and exit;
 }
 
 elsif ($listtaxa) {
@@ -211,14 +213,14 @@ elsif ($listtaxa) {
 
 elsif ($isnucleotide) {
 	$infile = $isnucleotide;
-	# 0 for nucleotide
-	load_taxon($infile, 0) or die "Fatal: Nucleotide loading failed\n";
+	# 1 for nucleotide
+	upload_ogs($infile, 1) or fail_and_exit("Nucleotide loading failed");
 	exit;
 }
 elsif ($ispeptide) {
 	$infile = $ispeptide;
-	# 1 for amino-acid
-	load_taxon($infile, 1) or die "Fatal: Peptide loading failed\n";
+	# 2 for amino-acid
+	upload_ogs($infile, 2) or fail_and_exit("Peptide loading failed");
 	exit;
 }
 
@@ -250,8 +252,7 @@ if (set_exists($setname)) {
 	get_yn() or print "OK, exiting\n" and exit;
 }
 
-print "Enter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)! "; 
-$description = <STDIN>;
+$description = get_answer("\nEnter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)");
 unless ($description) { print "Caught EOF. Exiting.\n" and exit }
 chomp $description;
 
@@ -263,44 +264,36 @@ unless (defined $setname) {
 #--------------------------------------------------
 # # read the input file and create a CSV file with everything we know 
 #-------------------------------------------------- 
-my $tmpfile = make_csv($infile);
 
-load_temp_table_with_data($tmpfile);
+# read the input file and associate the taxon shorthands to existing OGS
+my $ogsid_for = get_all_ogsids($infile);
 
-my $nrows = fill_tables_from_temp_table($t);
+# insert the new set into database
+my $new_setid = insert_new_set($setname, $description) or fail_and_exit("Failed to insert new set into database");
 
+# make a csv file with everything we need
+my $csvf = make_csv_for_set_uploading($infile, $new_setid, $ogsid_for);
 
-#--------------------------------------------------
-# # temptable is now complete. going to insert the data into the main table 
-#-------------------------------------------------- 
-# TODO check whether the proteome header format is right (protein id only)!
-# TODO import the proteome data via a second temptable
-# TODO rewrite this part using parametrized queries to protect from SQL injections?
+# load the file content into temp table
+load_set_into_temptable($csvf) or fail_and_exit("Failed to upload set file");
 
-if ($nrows == 0) {	# the last one 
-	print "No new orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for or you overwrote existing data.\n";
-	print "Done.\n";
-	exit; 
-}
-else {	# something has changed
-	my $n_cogs = get_number_of_cogs_for_set($setname);
-	printf("Successfully loaded ortholog set %s (%d orthologous groups, %d new sequences) into database.\n", $setname, $n_cogs, $nrows);
-	exit;
-}
+# set up orthologous relationships in the database
+insert_orthologs() or fail_and_exit("Failed to establish ortholog relationships in database");
+
+my $n = get_number_of_orthologs_for_set($new_setid);
+my $n_cogs = get_number_of_cogs_for_set($new_setid);
+
+# insert the blast db info
+insert_blastdb($new_setid);
+
+printf "Done: %d orthologous relationships (%d COGs) for set %s\n", $n, $n_cogs, $setname;
+
+exit;
+
 
 #--------------------------------------------------
 # # Functions follow 
 #-------------------------------------------------- 
-
-sub get_number_of_cogs_for_set {
-	my $setn = shift @_;
-	if ($use_mysql) {
-		return Wrapper::Mysql::get_number_of_cogs_for_set($setn);
-	}
-	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_number_of_cogs_for_set($setn);
-	}
-}
 
 sub fill_tables_from_temp_table {
 	if ($use_mysql) {
@@ -340,9 +333,7 @@ sub load_temp_table_with_data {
 	# ask the user for the taxon names that aren't complete
 	foreach (sort(keys %names)) {
 		unless ($names{$_}) {
-			print "Enter complete name for the shorthand '$_' (no commas!): ";
-			$names{$_} = <STDIN>;
-			chomp $names{$_};
+			$names{$_} = get_answer("Enter complete name for the shorthand '$_' (no commas!)");
 		}
 	}
 
@@ -404,6 +395,29 @@ sub create_tables {
 	elsif ($use_sqlite) {
 		Wrapper::Sqlite::create_tables($t);
 	}
+}
+
+sub make_csv_for_set_uploading {
+	my $infile    = shift;
+	my $setid     = shift;
+	my $ogsid_for = shift;
+	my @f = ( );
+	my $csvfh = File::Temp->new();
+	open my $fh, '<', $infile;
+	while (my $l = <$fh>) {
+		next if $l =~ /^\s*$/;	# skip empty lines
+		@f = split "\t", $l;
+		# skip those that should not be included
+		next if $ogsid_for->{$f[5]} == 0;
+		printf $csvfh "%s,%s,%d,%d\n", 
+			$f[0],								# cog id
+			$f[2],								# protein id
+			$ogsid_for->{$f[5]},	# ogs id for this shorthand
+			$setid,								# well... setid
+		;
+	}
+	$csvfh->close();
+	return $csvfh;
 }
 
 # sub: make_csv
@@ -485,6 +499,233 @@ sub get_yn {
 	return 1;
 }
 
+sub upload_ogs {
+	my $inf = shift;
+	my $type = shift;
+	
+	# get taxon name
+	if ($taxon_name) {
+		print "Using taxon name '$taxon_name'\n";
+	}
+	else {
+		$taxon_name = get_answer("Please enter the taxon name for this data file");
+	}
+	# get ogs version
+	if ($ogsversion) {
+		print "Using OGS version '$ogsversion'\n";
+	}
+	else {
+		$ogsversion = get_answer("Please enter the official gene set (OGS) version for this data file");
+	}
+
+	# insert taxon into table
+	my $taxid = insert_taxon_into_database($taxon_name) or fail_and_exit('Could not insert taxon into database');
+
+	# update OGS table
+	my $ogsid = insert_ogs_info_into_database($type, $taxid, $ogsversion) or fail_and_exit('Could not insert OGS info into database');
+	print "Got OGS ID $ogsid and taxon ID $taxid for $taxon_name\n" if $verbose;
+
+	# generate a csv file and get a list of headers
+	my ($csvf, $hdrs) = make_csv_for_ogs_uploading($inf, $taxid, $type, $ogsid);
+
+	# upload:
+	# create temporary table
+	create_temptable_for_ogs_data();
+	# upload from temporary table
+	upload_ogs_sequences($csvf, $hdrs, $taxid, $type, $ogsid) or fail_and_exit('OGS sequence loading failed');
+
+	my $n_seqpairs = get_sequence_count_for_taxon($taxid);
+	printf("\n%d sequences for '%s' in database '%s' on %s.\n", $n_seqpairs, $taxon_name, $database, $db_dbserver);
+	return 1;
+}
+
+sub make_csv_for_ogs_uploading {
+	my $inf   = shift;
+	my $taxid = shift;
+	my $type  = shift;
+	my $ogsid = shift;
+	my $hdrs  = [ ];
+	my $tmpfh = File::Temp->new();
+	unless (-e $inf) { fail_and_exit("No such file: $inf") }
+	my $fafh  = Seqload::Fasta->open($inf);
+	while (my ($hdr, $seq) = $fafh->next_seq()) {
+		$hdr =~ s/,/_/g; # remove commas from the header as they confuse the csv parser
+		$seq =~ s/-//g;	# remove all gaps from the sequence
+		# check if the sequence consists of valid characters
+		if ($type == 2) {
+			if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
+				# change all Us to X if requested
+				if ($u_subst and $seq =~ s/U/$u_subst/gi) {
+					warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence '$hdr'.\n");
+				}
+				else {
+					warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
+				}
+			}
+		}
+		else {
+			if ($seq =~ /([^ATCGN*])/i) {
+				warn("Warning: Sequence $hdr contains nonstandard nucleic acid symbol '$1'!\n");
+			}
+		}
+		# write to csv file
+		printf $tmpfh "%d,%d,%d,%s,%s\n",
+			$taxid,
+			$type,
+			$ogsid,
+			$hdr,
+			$seq,
+		;
+		# add to list of headers
+		push @$hdrs, $hdr;
+	}
+	$tmpfh->close();
+
+	return ($tmpfh, $hdrs);
+}
+
+
+sub insert_taxon_into_database {
+	my $name = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_taxon_into_database($name, 1);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_taxon_into_database($name, 1);
+	}
+}
+
+sub insert_ogs_info_into_database {
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_ogs_info_into_database(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_ogs_info_into_database(@_);
+	}
+}
+
+
+sub upload_ogs_sequences {
+	if ($use_mysql) {
+		return Wrapper::Mysql::upload_ogs_sequences(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::upload_ogs_sequences(@_);
+	}
+}
+
+sub get_answer {
+	my $prompt = shift;
+	print "$prompt: ";
+	my $ans    = <STDIN>;
+	chomp $ans;
+	return $ans;
+}
+
+sub get_all_ogsids {
+	my $inf = shift;
+	my $seen = { };
+	my @fields = ( );
+	open my $fh, '<', $inf;
+	while (my $line = <$fh>) {
+		# skip the first line if it is some orthodb file
+		if ($line =~ /^Group\tGene\tProtein/) { next }
+		@fields = split "\t", $line;
+		next if exists $seen->{$fields[5]};
+		$seen->{$fields[5]} = 0;
+	}
+	$seen = assign_ogsids_to_taxa($seen);
+	return $seen;
+}
+
+sub assign_ogsids_to_taxa {
+	my $ogsid_for = shift;
+	my $list_of_ogs = get_list_of_ogs();
+	print "\n";
+	print_ogs_list(2);
+	print "\n";
+	foreach (sort { $a cmp $b } keys %$ogsid_for) {
+		$ogsid_for->{$_} = get_ogsid($list_of_ogs, $_, $ogsid_for)
+	}
+	return $ogsid_for;
+}
+
+sub print_ogs_list {
+	my $type = shift;
+	my $list_of_ogs = get_list_of_ogs();
+	my $len = 0;
+	foreach (@$list_of_ogs) {
+		if (length $_->[1] > $len) { $len = length $_->[1] };
+	}
+	print "This is a list of present OGS in the database:\n";
+	printf "[%s] %-${len}s  %7s  %s  %s\n", '#', 'Taxon name', 'version', 'type', 'sequences';
+	printf "%s%-${len}s%s\n", '-' x (length(scalar @$list_of_ogs) + 2), '-' x $len,   '---------------------------';
+	foreach (@$list_of_ogs) {
+		# only print if ogs is of requested type
+		if ($type) { next unless $_->[3] == $type }
+		printf "[%d] %-${len}s  %-7s  %-4s  %d\n",
+			$_->[0],	# ogs id
+			$_->[1],	# taxon name
+			$_->[2],	# ogs version
+			$_->[3] == 1 ? 'nt' : 'aa',	# ogs type, can be nt or aa
+			$_->[4],	# number of sequences
+		;
+	}
+	return 1;
+}
+
+sub get_ogsid {
+	my $list_of_ogs = shift;
+	my $taxon = shift;
+	my $ogsid_for = shift;
+	my $prompt = "Enter the OGS ID for $taxon or 0 if you don't want to use this OGS";
+	my $id = get_integer($prompt);
+	my $ok = 0;
+	while (!$ok) {
+		# 0 is ok, don't use this ogs
+		if ($id == 0) {
+			return $id;
+		}
+		# ogs id doesn't even exist
+		if (not grep {$_->[0] == $id} @$list_of_ogs) {
+			print "Invalid OGS ID $id. ";
+			$id = get_integer($prompt);
+		}
+		# ogs id has been assigned previously
+		elsif (grep { $ogsid_for->{$_} == $id } keys %$ogsid_for) {
+			print "OGS ID $id already taken. ";
+			$id = get_integer($prompt);
+		}
+		# ok
+		else {
+			$ok = 1;
+		}
+	}
+	return $id;
+}
+
+sub get_integer {
+	my $prompt = shift;
+	my $ans = get_answer($prompt);
+	while ($ans !~ /^\d+$/) {
+		print "Not a valid number. ";
+		$ans = get_answer($prompt);
+	}
+	return $ans;
+}
+
+
+sub insert_new_set {
+	my $name = shift;
+	my $descript = shift;
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_new_set($name, $descript);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_new_set($name, $descript);
+	}
+}
+
 # Sub: load_taxon
 # Loads sequence data into the database.
 # Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
@@ -528,15 +769,11 @@ sub load_taxon {
 		for (my $i = 0; $i < scalar(@$list); ++$i) {
 			printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
 		}
-		print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
-		my $in = <STDIN>;
-		chomp $in;
+		my $in = get_answer("Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet)");
 
 		# make sure the user doesn't fuck up
 		while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1) or !defined($in)) {
-			print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
-			$in = <STDIN>;
-			chomp $in;
+			$in = get_answer("Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa");
 		}
 		# correlate that number to the list of taxa
 		$reference_taxon_id = $$list[$in-1][0];
@@ -548,9 +785,7 @@ sub load_taxon {
 		print "Using OGS version number $ogsversion\n";
 	}
 	else {
-		print "Please enter the official gene set (OGS) version for this data file: ";
-		$ogsversion = <STDIN>;
-		chomp $ogsversion;
+		$ogsversion = get_answer("Please enter the official gene set (OGS) version for this data file");
 	}
 
 	# create a csv file for rapid uploading into the database
@@ -669,10 +904,8 @@ sub create_blastdb {
 # Arguments: none
 # Returns: scalar string setname
 sub get_setname {
-	print "Enter the set name (required; ASCII only, no commas!): ";
-	$setname = <STDIN>;
-	unless ($setname) { print "Caught EOF. Exiting.\n" and exit }
-	chomp $setname;
+	$setname = get_answer("\nEnter the set name (required; ASCII only, no commas!)");
+	unless ($setname) { print "Exiting.\n" and exit }
 	if ($setname =~ /[^a-zA-Z0-9_]/) {
 		die "Error: Must be alphanumeric (a-z, 0-9, and underscore).\n";
 	}
@@ -683,9 +916,7 @@ sub getblastdir {
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $bd = Wrapper::Mysql::mysql_get("SELECT blastdb_path FROM $t->{'blastdbs'} LIMIT 1");
 	if (!$bd) {
-		print "Enter the location where the BLAST database directories are located (required): ";
-		$blastdir = <STDIN>;
-		chomp $blastdir;
+		$blastdir = get_answer("Enter the location where the BLAST database directories are located (required)");
 	}
 	else {
 		$blastdir = $$bd[0][0];	# array of arrays, only element
@@ -716,26 +947,6 @@ sub list_sets {
 	return 1;
 }
 
-sub list_ogs {
-	my $list = get_list_of_ogs();
-	my $maxlen_name = 0;
-	my $maxlen_version  = 7;
-	if (not defined $list->[0]) {
-		print "No OGS in database.\n";
-		return 0;
-	}
-	foreach (@$list) {
-		$maxlen_version = length($_->[1]) if (length($_->[1]) > $maxlen_version);
-		$maxlen_name = length($_->[0]) if (length($_->[0]) > $maxlen_name);
-	}
-	print "The following OGS are presently installed:\n";
-	printf("%-${maxlen_name}s  %-${maxlen_version}s %s\n", 'Taxon', 'version', 'sequences');
-	printf("%-${maxlen_name}s--%-${maxlen_version}s-%s\n", '-' x $maxlen_name, '-' x $maxlen_version, '-' x 9);
-	foreach (sort { $a->[0] cmp $b->[0] } @$list) {
-		printf("%-${maxlen_name}s  %-${maxlen_version}s %-9s\n", $_->[0], $_->[1], $_->[2]);
-	}
-	return 1;
-}
 
 sub list_set_details {
 	my %reftaxa_of = get_taxa_in_all_sets();
@@ -757,28 +968,20 @@ sub list_set_details {
 # Returns: true if successful, false otherwise
 sub delete_set {
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
-	my $this_set_dir = File::Spec->catdir($setdir, $setname);
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $data = Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'set_details'} WHERE name = '$setname'");
-	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
-	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
-	my $setid = $$data[0][0];
-	my @queries = (
-		"DELETE FROM $t->{'set_details'} WHERE $t->{'set_details'}.`id`  = '$setid'",
-		"DELETE FROM $t->{'orthologs'}   WHERE $t->{'orthologs'}.`setid` = '$setid'",
-		"DELETE FROM $t->{'blastdbs'}    WHERE $t->{'blastdbs'}.`setid`  = '$setid'",
-	);
-	
-	my $dbh = get_dbh();
-	foreach (@queries) {
-		print $_, "\n";
-		$dbh->do($_) or die();
+	# get set id
+	my $setid = get_set_id($setname) or print "No set with name '$setname' in database, none deleted\n" and exit;
+	# delete the set
+	if ($use_mysql) {
+		Wrapper::Mysql::delete_set($setid);
 	}
-	$dbh->disconnect();
-
+	elsif ($use_sqlite) {
+		Wrapper::Sqlite::delete_set($setid);
+	}
+	# also delete the set dir completely
+	my $this_set_dir = File::Spec->catdir($setdir, $setname);
 	if (-e $this_set_dir) {
 		File::Path->remove_tree($this_set_dir);
-		printf "Directory $this_set_dir unlinked.\n"; 
+		printf "Removed $this_set_dir\n"; 
 	}
 	return 1;
 }
@@ -793,16 +996,12 @@ sub delete_ogs {
 	for (my $i = 0; $i < scalar(@$list); ++$i) {
 		printf("%2d. %s %s\n", $i+1, $$list[$i][0], $$list[$i][1]);
 	}
-	print "Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet): ";
-	my $in = <STDIN>;
-	chomp $in;
+	my $in = get_answer("Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet)");
 	my $taxid;
 
 	# make sure the user doesn't fuck up
 	while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1) or !defined($in)) {
-		print "Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa: ";
-		$in = <STDIN>;
-		chomp $in;
+		$in = get_answer("Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa");
 	}
 	
 	# correlate that number to the list of taxa
@@ -828,32 +1027,29 @@ sub get_headers_from_fasta {
 }
 
 sub delete_sequences_with_headers {
-	my $headers = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::delete_sequences_with_headers($headers);
+		return Wrapper::Mysql::delete_sequences_with_headers(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::delete_sequences_with_headers($headers);
+		return Wrapper::Sqlite::delete_sequences_with_headers(@_);
 	}
 }
 
 sub delete_taxon {
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::delete_taxon($specid);
+		return Wrapper::Mysql::delete_taxon(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::delete_taxon($specid);
+		return Wrapper::Sqlite::delete_taxon(@_);
 	}
 }
 
 sub get_taxa_in_all_sets{
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_taxa_in_all_sets($specid);
+		return Wrapper::Mysql::get_taxa_in_all_sets(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_taxa_in_all_sets($specid);
+		return Wrapper::Sqlite::get_taxa_in_all_sets(@_);
 	}
 }
 
@@ -867,22 +1063,20 @@ sub get_ortholog_sets {
 }
 
 sub get_list_of_ogs{
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_list_of_ogs($specid);
+		return Wrapper::Mysql::get_list_of_ogs();
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_list_of_ogs($specid);
+		return Wrapper::Sqlite::get_list_of_ogs();
 	}
 }
 
 sub get_list_of_taxa {
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_list_of_taxa($specid);
+		return Wrapper::Mysql::get_list_of_taxa(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_list_of_taxa($specid);
+		return Wrapper::Sqlite::get_list_of_taxa(@_);
 	}
 }
 
@@ -892,6 +1086,60 @@ sub db_structure_present {
 	}
 	elsif ($use_sqlite) {
 		return Wrapper::Sqlite::db_structure_present();
+	}
+}
+
+sub load_set_into_temptable {
+	if ($use_mysql) {
+		return Wrapper::Mysql::load_set_into_temptable(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::load_set_into_temptable(@_);
+	}
+}
+
+sub insert_orthologs {
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_orthologs(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_orthologs(@_);
+	}
+}
+
+sub get_number_of_cogs_for_set {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_number_of_cogs_for_set(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_number_of_cogs_for_set(@_);
+	}
+}
+
+sub get_number_of_orthologs_for_set {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_number_of_orthologs_for_set(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_number_of_orthologs_for_set(@_);
+	}
+}
+
+sub get_set_id {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_set_id(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_set_id(@_);
+	}
+}
+
+sub insert_blastdb {
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_blastdb(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_blastdb(@_);
 	}
 }
 
