@@ -321,6 +321,14 @@ $protfile = translate_est(File::Spec->catfile($input_file));#{{{
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
 	preparedb() or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
+	# re-insert the taxon into the species table
+	$species_id = insert_species_info($species_name)
+		or fail_and_exit("Warning: Failed to get species id: $DBI::errstr");
+	print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
+
+	# have the wrapper modules use the real table names
+	get_real_table_names($species_id);
+
 }
 
 unless ($continue) {
@@ -798,14 +806,6 @@ sub intro {#{{{
 	}
 
 
-	# get the taxon id. create a new entry in the taxa table or return existing one
-	$species_id = insert_species_info($species_name)
-		or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
-	print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
-
-	# have the wrapper modules use the real table names
-	get_real_table_names($species_id);
-
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;
 	if ($debug) { printf "%s\n", $_ foreach @backup }
@@ -1174,6 +1174,9 @@ sub make_blastdb {
 	# make sure the tempfile is deleted
 	undef $infh;
 
+	# set the db to no-rebuild
+	set_blastdb_to_rebuild($setid, 0);
+
 	return $dbfile;
 }
 
@@ -1194,6 +1197,16 @@ sub blastdb_needs_rebuilding {
 	# exist and rebuild not necessary
 	else               { return 0 }
 }
+
+sub set_blastdb_to_rebuild {
+	if ($use_mysql) {
+		return Wrapper::Mysql::set_blastdb_to_rebuild(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::set_blastdb_to_rebuild(@_);
+	}
+}
+
 
 # Sub: load_data_infile
 # LOAD DATA LOCAL INFILE into a table

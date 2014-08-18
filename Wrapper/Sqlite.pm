@@ -220,7 +220,7 @@ sub db_get {#{{{
   # connect and fetch stuff
 	my $dbh = get_dbh()
 		or return undef;
-	my $sth = $dbh->prepare($query) or return undef;
+	my $sth = $dbh->prepare($query) or croak;
 	$sth = execute($sth, $db_timeout, @args);
 	while (my @result = $sth->fetchrow_array() ) {
 		push(@$results, \@result);
@@ -263,7 +263,7 @@ sub check {#{{{
 	my @results;
 	my $dbh = get_dbh();
 	my $sql = $dbh->prepare($query);
-	$sql->execute();
+	$sql->execute(@_);
 	if ($sql->fetchrow_array()) {
 		return 1;
 	}
@@ -573,48 +573,48 @@ sub get_ortholog_groups_for_set {
 }
 
 sub preparedb {
-	my $query_create_ests = "CREATE TABLE $db_table_ests ( 
-		`$db_col_id`        INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_digest`    TEXT(32)     NOT NULL,           
-		`$db_col_taxid`     UNSIGNED INTEGER NOT NULL,       
-		`$db_col_type`      UNSIGNED TINYINT(4) NOT NULL,
-		`$db_col_date`      UNSIGNED INT,
-		`$db_col_header`    TEXT      NOT NULL,       
-		`$db_col_sequence`  MEDIUMBLOB DEFAULT NULL
+	my $query_create_ests = "CREATE TABLE $db_attached.$db_table_ests ( 
+		'$db_col_id'        INTEGER NOT NULL PRIMARY KEY,
+		'$db_col_digest'    TEXT(32)     NOT NULL,           
+		'$db_col_taxid'     UNSIGNED INTEGER NOT NULL,       
+		'$db_col_type'      UNSIGNED TINYINT(4) NOT NULL,
+		'$db_col_date'      UNSIGNED INT,
+		'$db_col_header'    TEXT      NOT NULL,       
+		'$db_col_sequence'  MEDIUMBLOB DEFAULT NULL
 		)";
 
-	my $query_create_hmmsearch = "CREATE TABLE $db_table_hmmsearch (
-		`$db_col_id`         INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_taxid`      UNSIGNED INTEGER NOT NULL,       
-		`$db_col_query`      TEXT(255) NOT NULL,       
-		`$db_col_target`     TEXT(32)     NOT NULL,       
-		`$db_col_score`      DOUBLE       NOT NULL,
-		`$db_col_evalue`     TEXT(8)      NOT NULL,
-		`$db_col_log_evalue` DOUBLE       NOT NULL DEFAULT '-999',
-		`$db_col_env_start`  UNSIGNED INTEGER NOT NULL,
-		`$db_col_env_end`    UNSIGNED INTEGER NOT NULL,
-		`$db_col_ali_start`  UNSIGNED INTEGER NOT NULL,
-		`$db_col_ali_end`    UNSIGNED INTEGER NOT NULL,
-		`$db_col_hmm_start`  UNSIGNED INTEGER NOT NULL,
-		`$db_col_hmm_end`    UNSIGNED INTEGER NOT NULL
+	my $query_create_hmmsearch = "CREATE TABLE $db_attached.$db_table_hmmsearch (
+		'$db_col_id'         INTEGER NOT NULL PRIMARY KEY,
+		'$db_col_taxid'      UNSIGNED INTEGER NOT NULL,       
+		'$db_col_query'      TEXT(255) NOT NULL,       
+		'$db_col_target'     TEXT(32)     NOT NULL,       
+		'$db_col_score'      DOUBLE       NOT NULL,
+		'$db_col_evalue'     TEXT(8)      NOT NULL,
+		'$db_col_log_evalue' DOUBLE       NOT NULL DEFAULT '-999',
+		'$db_col_env_start'  UNSIGNED INTEGER NOT NULL,
+		'$db_col_env_end'    UNSIGNED INTEGER NOT NULL,
+		'$db_col_ali_start'  UNSIGNED INTEGER NOT NULL,
+		'$db_col_ali_end'    UNSIGNED INTEGER NOT NULL,
+		'$db_col_hmm_start'  UNSIGNED INTEGER NOT NULL,
+		'$db_col_hmm_end'    UNSIGNED INTEGER NOT NULL
 		)";
 
-	my $query_create_blast = "CREATE TABLE $db_table_blast (
-		`$db_col_id`            INTEGER NOT NULL PRIMARY KEY,
-		`$db_col_taxid`         UNSIGNED INTEGER NOT NULL,       
-		`$db_col_query`         TEXT(32)     NOT NULL,       
-		`$db_col_target`        UNSIGNED INTEGER NOT NULL,       
-		`$db_col_score`         DOUBLE       NOT NULL,
-		`$db_col_evalue`        TEXT(8)      NOT NULL,
-		`$db_col_log_evalue`    DOUBLE       NOT NULL DEFAULT '-999',
-		`$db_col_start`         UNSIGNED INTEGER NOT NULL,
-		`$db_col_end`           UNSIGNED INTEGER NOT NULL,
-		`$db_col_hmmsearch_id`  UNSIGNED INTEGER NOT NULL
+	my $query_create_blast = "CREATE TABLE $db_attached.$db_table_blast (
+		'$db_col_id'            INTEGER NOT NULL PRIMARY KEY,
+		'$db_col_taxid'         UNSIGNED INTEGER NOT NULL,       
+		'$db_col_query'         TEXT(32)     NOT NULL,       
+		'$db_col_target'        UNSIGNED INTEGER NOT NULL,       
+		'$db_col_score'         DOUBLE       NOT NULL,
+		'$db_col_evalue'        TEXT(8)      NOT NULL,
+		'$db_col_log_evalue'    DOUBLE       NOT NULL DEFAULT '-999',
+		'$db_col_start'         UNSIGNED INTEGER NOT NULL,
+		'$db_col_end'           UNSIGNED INTEGER NOT NULL,
+		'$db_col_hmmsearch_id'  UNSIGNED INTEGER NOT NULL
 		)";
 
-	my $query_create_species_info = "CREATE TABLE $db_table_species_info (
-		`$db_col_id`           INTEGER PRIMARY KEY,
-		`$db_col_name`         TEXT(255)
+	my $query_create_species_info = "CREATE TABLE $db_attached.$db_table_species_info (
+		'$db_col_id'           INTEGER PRIMARY KEY,
+		'$db_col_name'         TEXT(255)
 		)",
 
 	# the CREATE INDEX statement does not like the attached db prefix 
@@ -623,34 +623,28 @@ sub preparedb {
 	(my $simple_table_hmmsearch = $db_table_hmmsearch) =~ s/$db_attached\.//;
 	(my $simple_table_blast = $db_table_blast)         =~ s/$db_attached\.//;
 	my @query_create_indices = (
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $simple_table_ests (header)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_digest ON $simple_table_ests ($db_col_digest)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_taxid ON $simple_table_ests ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_taxid ON $simple_table_hmmsearch ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_query ON $simple_table_hmmsearch ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_target ON $simple_table_hmmsearch ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_evalue ON $simple_table_hmmsearch ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS ${db_table_hmmsearch}_score ON $simple_table_hmmsearch ($db_col_score)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_taxid ON $simple_table_blast ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_query ON $simple_table_blast ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_target ON $simple_table_blast ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_evalue ON $simple_table_blast ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS ${db_table_blast}_hmmsearch_id ON $simple_table_blast ($db_col_hmmsearch_id)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_digest ON $simple_table_ests ($db_col_digest)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_taxid ON $simple_table_ests ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_taxid ON $simple_table_hmmsearch ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_query ON $simple_table_hmmsearch ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_target ON $simple_table_hmmsearch ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_evalue ON $simple_table_hmmsearch ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_score ON $simple_table_hmmsearch ($db_col_score)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_taxid ON $simple_table_blast ($db_col_taxid)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_query ON $simple_table_blast ($db_col_query)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_target ON $simple_table_blast ($db_col_target)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_evalue ON $simple_table_blast ($db_col_log_evalue)",
+"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_hmmsearch_id ON $simple_table_blast ($db_col_hmmsearch_id)",
 	);
+
+	# drop all tables (just delete the database file)
+	unlink $attached_db_file or fail_and_exit("Could not delete database file '$attached_db_file': $!");
 
 	# open connection
 	my $dbh = get_dbh()
 		or croak "Fatal: Could not connect to database: $DBI::errstr\n" and exit 1;
-
-	# drop all tables
-	foreach ($db_table_ests, $db_table_hmmsearch, $db_table_blast) {
-		my $query_drop = "DROP TABLE IF EXISTS $_";
-		print "$query_drop;\n" if $verbose;
-		my $sql = $dbh->prepare($query_drop);
-		$sql->execute()
-		  or croak "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
-	}
 
 	# create all tables
 	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, $query_create_species_info, @query_create_indices) {
@@ -864,7 +858,7 @@ sub get_taxid_for_species {
 	my $species_name = shift(@_);
 	unless ($species_name) { croak("Usage: get_taxid_for_species(SPECIESNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT $db_table_species_info.id FROM $db_table_species_info WHERE $db_col_name = '$species_name'";
+	my $query = "SELECT $db_table_species_info.$db_col_id FROM $db_table_species_info WHERE $db_col_name = '$species_name'";
 	my $result = db_get($query);
 	if ($result) { 
 		$g_species_id = $$result[0][0];
@@ -886,7 +880,7 @@ sub get_set_id {
 	my $setname = shift(@_);
 	unless ($setname) { croak("Usage: get_set_id(SETNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT id FROM $db_table_set_details WHERE name = '$setname'";
+	my $query = "SELECT $db_col_id FROM $db_table_set_details WHERE name = '$setname'";
 	my $result = db_get($query);
 	if ( scalar(@$result) > 1 ) { 
 		warn("Warning: Multiple sets of the same name!\n");
@@ -943,11 +937,7 @@ sub insert_species_info {
 	unless ($species_name) { croak("Usage: Wrapper::Mysql::insert_species_info(SPECIESNAME)") }
 	if (my $taxid = get_taxid_for_species($species_name)) { return $taxid }
 	my $query = "INSERT OR IGNORE INTO $db_table_species_info ($db_col_name) VALUES (?)";
-	my $dbh = get_dbh()
-		or return undef;
-	my $sth = $dbh->prepare($query);
-	$sth = execute($sth, $db_timeout, $species_name);
-	$dbh->disconnect();
+	db_do($query, $species_name);
 
 	$g_species_id = get_taxid_for_species($species_name) or croak;
 	return $g_species_id;
@@ -1085,9 +1075,8 @@ sub load_ests_from_file {
 	# load data from csv file into database
 	# create temporary table first
 
-	my $simple_table_temp = $config->{'db_table_temp'} . '_' . $specid;
-	my $q_drop_temp   = "DROP TABLE IF EXISTS $simple_table_temp";
-	my $q_create_temp = "CREATE TABLE $simple_table_temp (
+	my $q_drop_temp   = "DROP TABLE IF EXISTS $db_table_temp";
+	my $q_create_temp = "CREATE TABLE $db_table_temp (
 	  '$db_col_digest' TEXT,
 		'$db_col_taxid'  INT,
 		'$db_col_type'   INT,
@@ -1104,7 +1093,7 @@ sub load_ests_from_file {
 		".mode csv",
 		$q_drop_temp,
 		$q_create_temp,
-		".import $csvfile $simple_table_temp",
+		".import $csvfile $db_table_temp",
 		".mode list",
 	);
 	foreach (@loadqueries) {
@@ -1114,25 +1103,25 @@ sub load_ests_from_file {
 			print "execute? "; 
 			<STDIN>;
 		}
-		system("@cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $simple_table_temp\n";
+		system("@cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $db_table_temp\n";
 	}
 
 	# transfer data from temptable into main table
-	my $q_transfer = "INSERT INTO $db_table_ests (
-		'$db_col_digest',
-  	'$db_col_taxid',
-  	'$db_col_type',
-  	'$db_col_date',
-  	'$db_col_header',
-  	'$db_col_sequence')
+	my $q_transfer = "INSERT INTO $db_attached.$db_table_ests (
+		$db_col_digest,
+  	$db_col_taxid,
+  	$db_col_type,
+  	$db_col_date,
+  	$db_col_header,
+  	$db_col_sequence)
   	SELECT 
-    $db_table_temp.'$db_col_digest',
-  	$db_table_temp.'$db_col_taxid',
-  	$db_table_temp.'$db_col_type',
-  	$db_table_temp.'$db_col_date',
-  	$db_table_temp.'$db_col_header',
-  	$db_table_temp.'$db_col_sequence'
-		FROM $db_table_temp
+    $db_col_digest,
+  	$db_col_taxid,
+  	$db_col_type,
+  	$db_col_date,
+  	$db_col_header,
+  	$db_col_sequence
+		FROM $db_attached.$db_table_temp
 	";
 	my $dbh = get_dbh();
 	print $q_transfer, "\n" if $debug > 1;
@@ -1893,16 +1882,20 @@ Renames the table names according to ID. Returns a list of the three table names
 =cut
 
 sub get_real_table_names {
-	my $specid = shift @_;
-	my $real_table_ests      = $db_attached . '.' . $db_table_ests      . '_' . $specid;
-	my $real_table_hmmsearch = $db_attached . '.' . $db_table_hmmsearch . '_' . $specid;
-	my $real_table_blast     = $db_attached . '.' . $db_table_blast     . '_' . $specid;
-	my $real_table_temp      = $db_attached . '.' . $db_table_temp      . '_' . $specid;
-	$db_table_ests        = $real_table_ests;
-	$db_table_hmmsearch   = $real_table_hmmsearch;
-	$db_table_blast       = $real_table_blast;
-	$db_table_temp        = $real_table_temp;
-	return ($db_table_ests, $db_table_hmmsearch, $db_table_blast, $db_table_temp);
+	#--------------------------------------------------
+	# my $specid = shift @_;
+	# my $real_table_ests      = $db_attached . '.' . $db_table_ests         . '_' . $specid;
+	# my $real_table_hmmsearch = $db_attached . '.' . $db_table_hmmsearch    . '_' . $specid;
+	# my $real_table_blast     = $db_attached . '.' . $db_table_blast        . '_' . $specid;
+	# my $real_table_temp      = $db_attached . '.' . $db_table_temp         . '_' . $specid;
+	# my $real_table_species   = $db_attached . '.' . $db_table_species_info . '_' . $specid;
+	# $db_table_ests           = $real_table_ests;
+	# $db_table_hmmsearch      = $real_table_hmmsearch;
+	# $db_table_blast          = $real_table_blast;
+	# $db_table_temp           = $real_table_temp;
+	# $db_table_species_info   = $real_table_temp;
+	#-------------------------------------------------- 
+	return ($db_table_ests, $db_table_hmmsearch, $db_table_blast, $db_table_temp, $db_table_species_info);
 }
 
 
@@ -2740,6 +2733,22 @@ sub delete_set {
 	my $setid = shift;
 	db_do("DELETE FROM $db_table_orthologs WHERE $db_col_setid = ?", $setid);
 	return db_do("DELETE FROM $db_table_set_details WHERE $db_col_id = ?", $setid);
+}
+
+sub insert_blastdb {
+	my $setid = shift;
+	return db_do("INSERT INTO $db_table_blastdbs ($db_col_setid, $db_col_rebuild) VALUES (?, ?)", $setid, 1);
+}
+
+sub set_blastdb_to_rebuild {
+	my $setid = shift;
+	my $flag  = shift;
+	return db_do("UPDATE $db_table_blastdbs SET $db_col_rebuild = ? WHERE $db_col_setid = ?", $flag, $setid);
+}
+
+sub blastdb_needs_rebuilding {
+	my $setid = shift;
+	return check("SELECT * from o_blastdbs where setid = ? and rebuild = 1", $setid);
 }
 
 1;

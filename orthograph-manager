@@ -283,6 +283,9 @@ insert_orthologs() or fail_and_exit("Failed to establish ortholog relationships 
 my $n = get_number_of_orthologs_for_set($new_setid);
 my $n_cogs = get_number_of_cogs_for_set($new_setid);
 
+# insert the blast db info
+insert_blastdb($new_setid);
+
 printf "Done: %d orthologous relationships (%d COGs) for set %s\n", $n, $n_cogs, $setname;
 
 exit;
@@ -543,6 +546,7 @@ sub make_csv_for_ogs_uploading {
 	my $ogsid = shift;
 	my $hdrs  = [ ];
 	my $tmpfh = File::Temp->new();
+	unless (-e $inf) { fail_and_exit("No such file: $inf") }
 	my $fafh  = Seqload::Fasta->open($inf);
 	while (my ($hdr, $seq) = $fafh->next_seq()) {
 		$hdr =~ s/,/_/g; # remove commas from the header as they confuse the csv parser
@@ -1127,6 +1131,15 @@ sub get_set_id {
 	}
 	elsif ($use_sqlite) {
 		return Wrapper::Sqlite::get_set_id(@_);
+	}
+}
+
+sub insert_blastdb {
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_blastdb(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_blastdb(@_);
 	}
 }
 
