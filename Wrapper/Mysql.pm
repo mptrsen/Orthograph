@@ -276,8 +276,9 @@ sub create_tables {
 		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
 			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			`type`         INT(1),
-			`taxid`        INT UNSIGNED NOT NULL, UNIQUE(taxid),
-			`version`      VARCHAR(255))",
+			`taxid`        INT UNSIGNED NOT NULL,
+			`version`      VARCHAR(255),
+			UNIQUE(taxid, version))",
 
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
@@ -447,11 +448,12 @@ sub fill_tables_from_temp_table {
 
 sub get_number_of_cogs_for_set {
 	my $setn = shift @_;
-	my $q = "SELECT COUNT(DISTINCT $db_table_orthologs.ortholog_gene_id)
+	my $q = "
+		SELECT COUNT(DISTINCT $db_table_orthologs.ortholog_gene_id)
 		FROM $db_table_orthologs
 		INNER JOIN $db_table_set_details
-		ON $db_table_orthologs.setid = $db_table_set_details.id
-		WHERE $db_table_set_details.name = ?";
+			ON $db_table_orthologs.setid = $db_table_set_details.id
+		WHERE $db_table_set_details.$db_col_id = ?";
 	my $r = db_get($q, $setn);
 	return $$r[0][0];
 }
@@ -1721,6 +1723,13 @@ sub get_real_header {
 	return $d->[0]->[0];
 }
 
+sub get_number_of_orthologs_for_set {
+	my $setid = shift;
+	my $query = "SELECT COUNT($db_col_id) FROM $db_table_orthologs WHERE $db_col_setid = ?";
+	my $res = db_get($query, $setid);
+	return $res->[0]->[0];
+}
+
 sub load_ests_from_file {
 	my $f = shift;
 	my $list = shift;
@@ -2061,6 +2070,18 @@ sub get_list_of_ogs {
 		ORDER BY $db_table_ogs.$db_col_id
 	";
 	return db_get($query);
+}
+
+sub insert_new_set {
+	my $name = shift;
+	my $descript = shift;
+	my $query = "
+		INSERT OR IGNORE INTO $db_table_set_details ($db_col_name, $db_col_description)
+		VALUES (?, ?)
+	";
+	db_do($query, $name, $descript) or return 0;
+	my $id = db_get("SELECT $db_col_id FROM $db_table_set_details WHERE $db_col_name = ?", $name);
+	return $$id[0][0];
 }
 
 1;

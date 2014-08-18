@@ -81,6 +81,7 @@ GetOptions( $config,
 	'mysql-username=s',
 	'no-frameshift-correction',
 	'num-threads=i',
+	'ogs-taxon-name=s',
 	'ogs-version=s',
 	'orf-overlap-minimum=f',
 	'orthodb5-format',
@@ -189,6 +190,7 @@ $config->{'max-blast-searches'}         //= 100;
 $config->{'no-frameshift-correction'}   //= 0;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
+$config->{'ogs-taxon-name'}             //= '';
 $config->{'ogs-version'}                //= '';
 $config->{'orf-overlap-minimum'}        //= 1;
 $config->{'orthodb5-format'}            //= 0;

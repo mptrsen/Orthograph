@@ -273,7 +273,7 @@ sub execute {
 	my @args = @_;
 	my $slept = 0;
 	until ($sth->execute(@args)) {
-		carp "Warning: execution failed, retrying in $sleep_for seconds...\n";
+		warn "Warning: execution failed ($DBI::errstr), retrying in $sleep_for seconds...\n";
 		if ($slept > $timeout) { croak "Fatal: execution ultimately failed, failing this transaction\n" }
 		sleep $sleep_for;
 		$slept += $sleep_for;
@@ -311,7 +311,7 @@ sub create_tables {
 			`$db_col_type`         INT(1),
 			`$db_col_taxid`        INTEGER UNSIGNED NOT NULL,
 			`$db_col_version`      TEXT(255),
-			UNIQUE ($db_col_type, $db_col_version))",
+			UNIQUE ($db_col_type, $db_col_taxid, $db_col_version))",
 		
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
@@ -506,7 +506,12 @@ sub fill_tables_from_temp_table {
 
 sub get_number_of_cogs_for_set {
 	my $setn = shift @_;
-	my $q = "SELECT COUNT(DISTINCT $db_table_orthologs.ortholog_gene_id) FROM $db_table_orthologs INNER JOIN $db_table_set_details ON $db_table_orthologs.setid = $db_table_set_details.id WHERE $db_table_set_details.name = ?";
+	my $q = "
+		SELECT COUNT(DISTINCT $db_table_orthologs.ortholog_gene_id)
+		FROM $db_table_orthologs
+		INNER JOIN $db_table_set_details
+			ON $db_table_orthologs.setid = $db_table_set_details.id
+		WHERE $db_table_set_details.$db_col_id = ?";
 	my $r = db_get($q, $setn);
 	return $$r[0][0];
 }
@@ -1016,6 +1021,29 @@ sub upload_sequences_individually {
 	return 1;
 }
 
+sub insert_orthologs {
+	my $query = "
+		INSERT INTO $db_table_orthologs ($db_col_setid, $db_col_orthoid, $db_col_seqpair)
+		SELECT
+			$db_table_temp.$db_col_setid,
+			$db_table_temp.$db_col_orthoid,
+			$db_table_seqpairs.$db_col_id
+		FROM $db_table_temp
+		INNER JOIN $db_table_aaseqs
+			ON $db_table_temp.$db_col_header = $db_table_aaseqs.$db_col_header
+		INNER JOIN $db_table_seqpairs 
+			ON $db_table_aaseqs.$db_col_id = $db_table_seqpairs.$db_col_aaseq
+	";
+	db_do($query) or return 0;
+	return 1;
+}
+
+sub get_number_of_orthologs_for_set {
+	my $setid = shift;
+	my $query = "SELECT COUNT($db_col_id) FROM $db_table_orthologs WHERE $db_col_setid = ?";
+	my $res = db_get($query, $setid);
+	return $res->[0]->[0];
+}
 
 sub load_ests_from_file {
 	my $csvfile = shift;
@@ -2641,6 +2669,39 @@ sub insert_new_set {
 	db_do($query, $name, $descript) or return 0;
 	my $id = db_get("SELECT $db_col_id FROM $db_table_set_details WHERE $db_col_name = ?", $name);
 	return $$id[0][0];
+}
+
+sub load_set_into_temptable {
+	my $csvfile = shift;
+
+	my $q_drop_temp = "DROP TABLE IF EXISTS $db_table_temp";
+	my $q_create_temp = "CREATE TABLE $db_table_temp (
+	  '$db_col_orthoid' INT,
+		'$db_col_header'  INT,
+		'$db_col_ogsid'   INT,
+		'$db_col_setid'   INT
+	)
+	";
+
+	# load data into temptable
+	# needs to work directly on the species database since apparently
+	# sqlite cannot use .import on attached databases. if anyone has an idea 
+	# or a solution on how to mitigate this, please let me know!
+	my @loadqueries = (
+		".mode csv",
+		$q_drop_temp,
+		$q_create_temp,
+		".import $csvfile $db_table_temp",
+		".mode list",
+	);
+	foreach (@loadqueries) {
+		my @cmd = qq{$sqlite -separator "," "$database" "$_"};
+		if ($debug) {
+			print "@cmd\n";
+		}
+		system("@cmd") and fail_and_exit("Could not import CSV file '$csvfile' into temporary table $db_table_temp\n");
+	}
+	return 1;
 }
 
 1;

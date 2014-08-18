@@ -271,33 +271,22 @@ my $ogsid_for = get_all_ogsids($infile);
 # insert the new set into database
 my $new_setid = insert_new_set($setname, $description) or fail_and_exit("Failed to insert new set into database");
 
-print Dumper $ogsid_for, $new_setid;
+# make a csv file with everything we need
+my $csvf = make_csv_for_set_uploading($infile, $new_setid, $ogsid_for);
+
+# load the file content into temp table
+load_set_into_temptable($csvf) or fail_and_exit("Failed to upload set file");
+
+# set up orthologous relationships in the database
+insert_orthologs() or fail_and_exit("Failed to establish ortholog relationships in database");
+
+my $n = get_number_of_orthologs_for_set($new_setid);
+my $n_cogs = get_number_of_cogs_for_set($new_setid);
+
+printf "%d orthologous relationships (%d COGs) for set %s\n", $n, $n_cogs, $setname;
+
 exit;
 
-my $tmpfile = make_csv($infile);
-
-load_temp_table_with_data($tmpfile);
-
-my $nrows = fill_tables_from_temp_table($t);
-
-
-#--------------------------------------------------
-# # temptable is now complete. going to insert the data into the main table 
-#-------------------------------------------------- 
-# TODO check whether the proteome header format is right (protein id only)!
-# TODO import the proteome data via a second temptable
-# TODO rewrite this part using parametrized queries to protect from SQL injections?
-
-if ($nrows == 0) {	# the last one 
-	print "No new orthology relationships have been established. This is most likely the case if nucleotide data is unavailable for any of the taxa you uploaded peptide sequences for or you overwrote existing data.\n";
-	print "Done.\n";
-	exit; 
-}
-else {	# something has changed
-	my $n_cogs = get_number_of_cogs_for_set($setname);
-	printf("Successfully loaded ortholog set %s (%d orthologous groups, %d new sequences) into database.\n", $setname, $n_cogs, $nrows);
-	exit;
-}
 
 #--------------------------------------------------
 # # Functions follow 
@@ -413,6 +402,29 @@ sub create_tables {
 	elsif ($use_sqlite) {
 		Wrapper::Sqlite::create_tables($t);
 	}
+}
+
+sub make_csv_for_set_uploading {
+	my $infile    = shift;
+	my $setid     = shift;
+	my $ogsid_for = shift;
+	my @f = ( );
+	my $csvfh = File::Temp->new();
+	open my $fh, '<', $infile;
+	while (my $l = <$fh>) {
+		next if $l =~ /^\s*$/;	# skip empty lines
+		@f = split "\t", $l;
+		# skip those that should not be included
+		next if $ogsid_for->{$f[5]} == 0;
+		printf $csvfh "%s,%s,%d,%d\n", 
+			$f[0],								# cog id
+			$f[2],								# protein id
+			$ogsid_for->{$f[5]},	# ogs id for this shorthand
+			$setid,								# well... setid
+		;
+	}
+	$csvfh->close();
+	return $csvfh;
 }
 
 # sub: make_csv
@@ -964,7 +976,7 @@ sub delete_set {
 	my $setname = shift or confess('Usage: delete_set($SETNAME)');
 	my $this_set_dir = File::Spec->catdir($setdir, $setname);
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $data = Wrapper::Mysql::mysql_get("SELECT * FROM $t->{'set_details'} WHERE name = '$setname'");
+	my $data = Wrapper::Mysql::db_get("SELECT * FROM $t->{'set_details'} WHERE name = '$setname'");
 	if (scalar @{$data} > 1) { die("Oops: Set name not unique. Double-check your database setup!\n") }
 	elsif (scalar @{$data} == 0) { die("Oops: Set '$setname' does not exist in the database!\n") }
 	my $setid = $$data[0][0];
@@ -1029,32 +1041,29 @@ sub get_headers_from_fasta {
 }
 
 sub delete_sequences_with_headers {
-	my $headers = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::delete_sequences_with_headers($headers);
+		return Wrapper::Mysql::delete_sequences_with_headers(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::delete_sequences_with_headers($headers);
+		return Wrapper::Sqlite::delete_sequences_with_headers(@_);
 	}
 }
 
 sub delete_taxon {
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::delete_taxon($specid);
+		return Wrapper::Mysql::delete_taxon(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::delete_taxon($specid);
+		return Wrapper::Sqlite::delete_taxon(@_);
 	}
 }
 
 sub get_taxa_in_all_sets{
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_taxa_in_all_sets($specid);
+		return Wrapper::Mysql::get_taxa_in_all_sets(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_taxa_in_all_sets($specid);
+		return Wrapper::Sqlite::get_taxa_in_all_sets(@_);
 	}
 }
 
@@ -1077,12 +1086,11 @@ sub get_list_of_ogs{
 }
 
 sub get_list_of_taxa {
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_list_of_taxa($specid);
+		return Wrapper::Mysql::get_list_of_taxa(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_list_of_taxa($specid);
+		return Wrapper::Sqlite::get_list_of_taxa(@_);
 	}
 }
 
@@ -1092,6 +1100,42 @@ sub db_structure_present {
 	}
 	elsif ($use_sqlite) {
 		return Wrapper::Sqlite::db_structure_present();
+	}
+}
+
+sub load_set_into_temptable {
+	if ($use_mysql) {
+		return Wrapper::Mysql::load_set_into_temptable(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::load_set_into_temptable(@_);
+	}
+}
+
+sub insert_orthologs {
+	if ($use_mysql) {
+		return Wrapper::Mysql::insert_orthologs(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::insert_orthologs(@_);
+	}
+}
+
+sub get_number_of_cogs_for_set {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_number_of_cogs_for_set(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_number_of_cogs_for_set(@_);
+	}
+}
+
+sub get_number_of_orthologs_for_set {
+	if ($use_mysql) {
+		return Wrapper::Mysql::get_number_of_orthologs_for_set(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::get_number_of_orthologs_for_set(@_);
 	}
 }
 
