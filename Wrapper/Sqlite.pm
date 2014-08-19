@@ -2665,7 +2665,7 @@ sub get_list_of_ogs {
 			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
 		INNER JOIN $db_table_aaseqs
 			ON $db_table_ogs.$db_col_id = $db_table_aaseqs.$db_col_ogsid
-		GROUP BY $db_table_aaseqs.$db_col_id
+		GROUP BY $db_table_aaseqs.$db_col_taxid
 		UNION
 		SELECT
 			$db_table_ogs.$db_col_id,
@@ -2678,7 +2678,7 @@ sub get_list_of_ogs {
 			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
 		INNER JOIN $db_table_ntseqs
 			ON $db_table_ogs.$db_col_id = $db_table_ntseqs.$db_col_ogsid
-		GROUP BY $db_table_ntseqs.$db_col_id
+		GROUP BY $db_table_ntseqs.$db_col_taxid
 		ORDER BY $db_table_ogs.$db_col_id
 	";
 	return db_get($query);
