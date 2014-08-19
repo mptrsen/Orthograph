@@ -320,11 +320,15 @@ $protfile = translate_est(File::Spec->catfile($input_file));#{{{
 # clear database of data from the same species
 if ($clear_database) {
 	print $stdout "Clearing database of previous results from '$species_name'...\n" unless $quiet;
-	$t0 = scalar time;
-	#my $n_deleted = clear_db($species_name);
 	preparedb() or print $stderr "Warning: Failed to clear database for species $species_name: $DBI::errstr\n";
-	$t1 = scalar time;
-	#printf $stdout "Deleted %d records from database.\nTransaction took %.1f seconds.\n", $n_deleted, $t1 - $t0 unless $quiet;
+	# re-insert the taxon into the species table
+	$species_id = insert_species_info($species_name)
+		or fail_and_exit("Warning: Failed to get species id: $DBI::errstr");
+	print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
+
+	# have the wrapper modules use the real table names
+	get_real_table_names($species_id);
+
 }
 
 unless ($continue) {
@@ -590,21 +594,21 @@ sub usage {
 	return $usage;
 }
 
-sub insert_taxon_into_table {
+sub insert_species_info {
 	if ($use_mysql) {
-		return Wrapper::Mysql::insert_taxon_into_table($species_name)
+		return Wrapper::Mysql::insert_species_info(@_)
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::insert_taxon_into_table($species_name)
+		return Wrapper::Sqlite::insert_species_info(@_)
 	}
 }
 
 sub get_real_table_names {
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_real_table_names($species_id);
+		return Wrapper::Mysql::get_real_table_names(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_real_table_names($species_id);
+		return Wrapper::Sqlite::get_real_table_names(@_);
 	}
 }
 
@@ -802,14 +806,6 @@ sub intro {#{{{
 	}
 
 
-	# get the taxon id. create a new entry in the taxa table or return existing one
-	$species_id = insert_taxon_into_table($species_name)
-		or print $stderr "Warning: Failed to get species id: $DBI::errstr\n";
-	print $stdout "Got taxon id $species_id for '$species_name'\n" unless $quiet;
-
-	# have the wrapper modules use the real table names
-	get_real_table_names($species_id);
-
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;
 	if ($debug) { printf "%s\n", $_ foreach @backup }
@@ -910,15 +906,14 @@ sub create_tarball {#{{{
 # Sub: preparedb
 # Generate a clean database, deleting all existing tables and starting from scratch
 # Returns: True on success
-sub preparedb {#{{{
+sub preparedb {
 	if ($use_mysql) {
-		Wrapper::Mysql::preparedb() or return 0;
+		return Wrapper::Mysql::preparedb();
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::preparedb() or return 0;
+		return Wrapper::Sqlite::preparedb();
 	}
-	return 1;
-} #}}}
+}
 
 
 # Sub: clear_db
@@ -1090,7 +1085,7 @@ sub align {#{{{
 # Converts a fasta file into a stockholm file. Warning: Does no validity checking whatsoever!
 # Arguments: Scalar string filename
 # Returns: Scalar string filename
-sub fasta2stockholm {#{{{
+sub fasta2stockholm {
 	my $fafile = shift;
 	my $orthoid = shift;
 	my $fh = Seqload::Fasta->open($fafile);
@@ -1105,13 +1100,13 @@ sub fasta2stockholm {#{{{
 	print $stockhfh "//";
 	close($stockhfh);
 	return $stockhf;
-}#}}}
+}
 
 # Sub: hmmbuild
 # Generates a hidden Markov model (HMM) file from an alignment (fasta) file.
 # Arguments: Scalar string filename, scalar string hmmfilename
 # Returns: True on success, false otherwise
-sub hmmbuild {#{{{
+sub hmmbuild {
 	my $alnfile = shift;
 	my $hmmfile = shift;
 	my $alnsuffix = '.aln';
@@ -1124,27 +1119,26 @@ sub hmmbuild {#{{{
 	system("@hmmbuild_cmd") and
 		return 0;
 	return $hmmfile;
-}#}}}
+}
 
 # Sub: make_blastdb 
 # Create a BLAST database from a file. Pulls everything from the database.
 # Arguments: Scalar string ortholog set name
 # Returns: Scalar string path_to_blastdbfile
-sub make_blastdb {#{{{
+sub make_blastdb {
 	my $setid = shift or croak('Usage: make_blastdb(SETID)');
 
 	# build the paths for input and output
 	my $dbfile = File::Spec->catfile($blastdir, $orthoset);
 
-	# check whether a database already exists
-	if (-e File::Spec->catfile($dbfile . '.psq')) {
+	# check whether the db needs rebuilding
+	unless (blastdb_needs_rebuilding($dbfile, $setid)) {
 		print $stdout "BLAST DB for set $orthoset exists in '$dbfile'.\n" unless $quiet;
 		return $dbfile;
 	}
 
 	# database not extant, we have to create it
-	print $stdout "BLAST DB for set $orthoset does not exist, creating in $dbfile...\n"
-		unless $quiet;
+	print $stdout "BLAST DB for set $orthoset needs building, creating in $dbfile...\n" unless $quiet;
 	my $infh = File::Temp->new( UNLINK => 1, DIR => $tmpdir );
 	# don't delete this file if debugging
 	$infh->unlink_on_destroy(0) if $debug;
@@ -1180,14 +1174,45 @@ sub make_blastdb {#{{{
 	# make sure the tempfile is deleted
 	undef $infh;
 
+	# set the db to no-rebuild
+	set_blastdb_to_rebuild($setid, 0);
+
 	return $dbfile;
-}#}}}
+}
+
+sub blastdb_needs_rebuilding {
+	my $db = shift;
+	my $setid = shift;
+	my $rebuild = 0;
+	if ($use_mysql) {
+		$rebuild = Wrapper::Mysql::blastdb_needs_rebuilding($setid);
+	}
+	elsif ($use_sqlite) {
+		$rebuild = Wrapper::Sqlite::blastdb_needs_rebuilding($setid);
+	}
+	# rebuild necessary
+	if    ($rebuild)   { return 1 }
+	# doesn't exist, rebuild necessary
+	elsif (not -e File::Spec->catfile($db . '.psq')) { return 1 }
+	# exist and rebuild not necessary
+	else               { return 0 }
+}
+
+sub set_blastdb_to_rebuild {
+	if ($use_mysql) {
+		return Wrapper::Mysql::set_blastdb_to_rebuild(@_);
+	}
+	elsif ($use_sqlite) {
+		return Wrapper::Sqlite::set_blastdb_to_rebuild(@_);
+	}
+}
+
 
 # Sub: load_data_infile
 # LOAD DATA LOCAL INFILE into a table
 # Arguments: scalar string filename, scalar string tablename, reference to list of columns
 # Returns: scalar int number of loaded rows
-sub load_data_infile {#{{{
+sub load_data_infile {
 	my $infile = shift(@_);
 	my $table_ests = shift(@_) or croak 'Usage: load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
 	my $type = shift(@_) or croak 'Usage: load_data_infile($infile, $db_table_ests, $type [, $columns_reference])';
@@ -1244,16 +1269,14 @@ sub load_data_infile {#{{{
 	undef $tmpfh;
 
 	return 1;
-}#}}}
+}
 
 sub load_ests_from_file {
-	my $f = shift;
-	my $list = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::load_ests_from_file($f, $list, $species_id);
+		return Wrapper::Mysql::load_ests_from_file(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::load_ests_from_file($f, $list, $species_id);
+		return Wrapper::Sqlite::load_ests_from_file(@_);
 	}
 }
 
@@ -1261,7 +1284,7 @@ sub load_ests_from_file {
 # Get transcript sequences from the database, using their ID as header
 # Arguments: None
 # Returns: Filehandle
-sub get_transcripts {#{{{
+sub get_transcripts {
 	my $species_id = shift;
 	my $type = shift;
 	my $tmpfh = File::Temp->new(
@@ -1280,16 +1303,14 @@ sub get_transcripts {#{{{
 	print $stdout "Wrote $nseqs translated sequences to $tmpfh\n" unless $quiet;
 	$tmpfh->close();
 	return $tmpfh;
-}#}}}
+}
 
 sub get_transcripts_for_species {
-	my $specid = shift;
-	my $type = shift;
 	if ($use_mysql) {
-		Wrapper::Mysql::get_transcripts_for_species($specid, $type);
+		return Wrapper::Mysql::get_transcripts_for_species(@_);
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::get_transcripts_for_species($specid, $type);
+		return Wrapper::Sqlite::get_transcripts_for_species(@_);
 	}
 }
 
@@ -1297,17 +1318,14 @@ sub get_transcripts_for_species {
 # Get orthologous sequences from the database, the final result handler
 # Arguments: ortholog id
 # Returns: filename
-sub get_orthologs {#{{{
-	my $orthoid = shift;
-	my $estdigest = shift;
-
+sub get_orthologs {
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_orthologs($orthoid, $estdigest);
+		return Wrapper::Mysql::get_orthologs(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_orthologs($orthoid, $estdigest);
+		return Wrapper::Sqlite::get_orthologs(@_);
 	}
-}#}}}
+}
 
 sub write_sequence_to_tempfile {
 	my $result = shift @_;
@@ -1354,73 +1372,66 @@ sub get_hmmresults {
 }
 
 sub pass_stderr {
-	my $fh = shift;
 	if ($use_mysql) {
-		Wrapper::Mysql::pass_stderr($fh);
+		return Wrapper::Mysql::pass_stderr(@_);
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::pass_stderr($fh);
+		return Wrapper::Sqlite::pass_stderr(@_);
 	}
 }
 
 sub pass_stdout {
-	my $fh = shift;
 	if ($use_mysql) {
-		Wrapper::Mysql::pass_stdout($fh);
+		return Wrapper::Mysql::pass_stdout(@_);
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::pass_stdout($fh);
+		return Wrapper::Sqlite::pass_stdout(@_);
 	}
 }
 
 sub get_number_of_ests_for_specid {
-	my $specid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_number_of_ests_for_specid($specid);
+		return Wrapper::Mysql::get_number_of_ests_for_specid(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_number_of_ests_for_specid($specid);
+		return Wrapper::Sqlite::get_number_of_ests_for_specid(@_);
 	}
 }
 
 
 sub get_set_id {
-	my $setn = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_set_id($setn);
+		return Wrapper::Mysql::get_set_id(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_set_id($setn);
+		return Wrapper::Sqlite::get_set_id(@_);
 	}
 }
 
 sub get_taxa_in_set {
-	my $setid = shift;
 	if ($use_mysql) {
-		Wrapper::Mysql::get_taxa_in_set($setid);
+		Wrapper::Mysql::get_taxa_in_set(@_);
 	}
 	elsif ($use_sqlite) {
-		Wrapper::Sqlite::get_taxa_in_set($setid);
+		Wrapper::Sqlite::get_taxa_in_set(@_);
 	}
 }
 
 sub set_exists {
-	my $set = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::set_exists($set);
+		return Wrapper::Mysql::set_exists(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::set_exists($set);
+		return Wrapper::Sqlite::set_exists(@_);
 	}
 }
 
 sub get_aaseqs_for_set {
-	my $sid = shift;
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_aaseqs_for_set($sid);
+		return Wrapper::Mysql::get_aaseqs_for_set(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_aaseqs_for_set($sid);
+		return Wrapper::Sqlite::get_aaseqs_for_set(@_);
 	}
 }
 
