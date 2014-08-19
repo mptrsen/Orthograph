@@ -51,39 +51,33 @@ novo among genomes or transcriptomes, but relies on the orthology information in
 pre-defined sets. Because of this requirement, it is essential that your input
 data conforms to some data standards as listed below.
 
-a) The clusters of orthologous groups (COGs). It consists of a Fasta file that
-contains at least one sequence per selected COG. If you get your COGs from
-OrthoDB [1] (recommended), this is the case. In an OrthoDB file, each sequence
-header contains a COG ID, in the case of OrthoDB version 7, it is something
-like:
+a) The clusters of orthologous groups (COGs). It consists of a tab-delimited
+file that contains at least one line per COG. If you get your COGs from OrthoDB
+[3] (recommended), this is the case. In an OrthoDB file, each line has a number
+of tab-delimited fields like this:
 
-	>TC011441 GLEAN_11441 D6X4N1 Putative uncharacterized protein IPR007588 EOG72GCP9 TCAST
+EOG7M10DZ       AECH19093       AECH19093-PA    Acromyrmex echinatior   Panamanian leafcutter ant       AECHI   1282                    IPR006121,IPR008250,IPR005834,IPR023214 
 
-The 'EOG72GCP9' field is the COG ID. The sequence header must also contain an
-unambiguous sequence ID. For OrthoDB version 7, it is always in the first field,
-i.e., 'TC011441'. The last field is the taxon shorthand. 
+The 'EOG7M10DZ' field is the COG ID. The line must also contain an unambiguous
+sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
+'AECH19093-PA'. The sixth field is the taxon shorthand (I know this is odd, but
+it's the way OrthoDB 7 outputs. In the future you'll be able to specify the
+field). 
 
-If you want to create these files yourself, make sure that the sequence ID is in
-the first whitespace-separated field, the COG ID in the second-to-last field,
-and the taxon shorthand in the last field. Any fields in between are irrelevant
-to Orthograph and can also be omitted.
-
-In the case of OrthoDB version 5, the header fields are in a different order:
-
-	>APISU:gmsk09 ACYPI007477 EOG500005 ACYPI007477-PA origin:RefSeq
-
-Here, the sequence ID is in the fourth field, the COG ID in the third field, and
-the taxon shorthand in the first 5 characters of the first field.
+If you want to create these files yourself, make sure that the COG ID is in
+the first tab-separated field, the sequence ID in the third field, and the taxon
+shorthand in the sixth field. Any fields in between are irrelevant to Orthograph
+but must not be omitted since it relies on their order.
 
 b) The official gene set (OGS) for each of the taxa that are present in the
 ortholog set, i.e., contributed sequences to the COGs. The sequences for a
 single taxon must be in Fasta format, and all (!) sequences of this taxon that
 occur in the COGs must be in the OGS database as well. Their sequence identifier
-must be unambiguously identical to the sequence ID in the Fasta file from
-OrthoDB. For example, this would be the related sequence for Acyrthosiphon pisum
-from the OGS:
+must be unambiguously identical to the sequence ID in the file from OrthoDB. For
+example, this would be the related sequence for Acromyrmex echinatior from the
+OGS:
 
-	>TC011441
+	>AECH19093-PA
 
 The OGS must be present as amino acid sequences, and may be present as
 nucleotide sequences. If the latter is missing, no nucleotide sequences can be
@@ -145,7 +139,7 @@ interaction. Without these settings none of the programs will work.
 ## 3. Create the tables. Make the orthograph_manager script executable and use it:
 
 	$ chmod +x orthograph-manager
-	$ ./orthograph-manager -create
+	$ ./orthograph-manager --create
 
 The `-create` switch tells the script to setup the database structure for
 Orthograph.  It will create a number of tables, all of which start with the
@@ -155,72 +149,38 @@ At this point, if you use the SQLite backend, the SQLite database file is
 created at the location you specified in the config file.
 
 
-## 4. Upload your ortholog set into the database:
+## 4. Load OGS sequences into the database :
 
-	$ ./orthograph-manager FASTAFILE
-
-You will be asked for information about the ortholog set you are loading. If you
-made a mistake during input of the information, you may cancel the process at
-any time using `Ctrl+C`. I'm sorry if you mistyped the last taxon name and have
-to start over :)
-
-The fasta file must have an OrthoDB version 7 style header format as described
-in the DATA REQUIREMENTS section. This is output by [OrthoDB 7] [3] by default,
-so you don't have to worry about that if you downloaded your ortholog set from
-OrthoDB version 7. If you want to upload an ortholog set from OrthoDB version 5,
-use the --orthodb5-format switch.
-
-Dependent on your OrthoDB query, you may need to filter your file so that it
-contains only the taxa you want in the ortholog set. A filter script is provided
-upon request.
-
-Make a note of your ortholog set name. You will need it later.
-
-To check what sets have been uploaded so far, call `orthograph-manager -ls`. 
-
-
-## 5. Load proteome sequences into the database :
-
-	$ ./orthograph-manager -load-ogs-peptide FASTAFILE
+	$ ./orthograph-manager --load-ogs-peptide FASTAFILE
 
 You need to load data for every taxon separately (this may change in the
 future), and you should load data for as many taxa in the orthologs file as
-possible. You will be asked for information about the file you are loading.
-These sequences are used for the reciprocal BLAST databases. If you don't load
-any peptide data, your analysis will be flawed. 
+possible (preferably all). You will be asked for information about the file you
+are loading.  These sequences are used for the reciprocal BLAST databases. If
+you don't load any peptide data, your analysis will be flawed. 
 
 Some of the protein IDs (in the first header field of the OGS file) must
-correspond to the fourth header field in the OrthoDB file. This is important,
-as these are regarded as part of the ortholog groups. Repeat this step for as
-many taxa in your ortholog set as you have peptide sequences for.
+correspond to the third field in the OrthoDB file. This is important, as these
+are regarded as part of ortholog groups. Repeat this step for as many taxa in
+your ortholog set as you have peptide sequences for.
 
 If you made a mistake during input of the information, you may cancel the
 process at any time using `Ctrl+C`. To check what OGS are present in the
 database, call `orthograph-manager -lo`.
 
-If you had attempted this step previously and canceled it mid-process, it may
-be that there are remnants of those attempts in the database when you try it
-again. You will be notified of this with "Sequence already present in database"
-messages.
-
-Yes, I know. OGS loading is slow. I'm working on improving that performance. For
-now, be happy that you only need to do this once.
-
 There are options to specify OGS taxon and version so you can easily automate
 the process:
 
-	-ogs-version VERSION
-	-reference-taxon-shorthand TAXON
+	--ogs-version VERSION
+	--ogs-taxon-name TAXON
 
-The version can be an arbitrary string (but enclose it in quotes if it contains
-spaces). The shorthand must be a shorthand that is present in the ortholog set
-file (and therefore in the database), just like you would enter it at the
-prompt; otherwise, the taxon cannot be correlated.
+Both version and name can be an arbitrary string (but enclose it in quotes if it
+contains spaces!). 
 
 
 ## 6. Optional: Load nucleotide sequence data into the database:
 
-	$ ./orthograph-manager -load-ogs-nucleotide FASTAFILE
+	$ ./orthograph-manager --load-ogs-nucleotide FASTAFILE
 
 The nucleotide sequences are expected to be the coding sequences for the
 peptide sequences you loaded earlier. The headers have to correspond EXACTLY,
@@ -233,11 +193,32 @@ example, these two headers are not identical, even though they look similar:
 Make sure the nucleotide sequences can be correlated to the proteome sequences
 by giving identical names to corresponding sequences.
 
-And again, I know. OGS loading is slow. I'm working on improving that
-performance. For now, be happy that you only need to do this once.
-
 The same options for specifying OGS taxon and version number (see step 5) are
 available for nucleotide data, as well.
+
+I know. Nucleotide OGS loading is slow. I'm working on improving that
+performance. For now, be happy that you only need to do this once.
+
+## 6. Upload your ortholog set into the database:
+
+	$ ./orthograph-manager FILE
+
+You will be asked for information about the ortholog set you are loading. If you
+made a mistake during input of the information, you may cancel the process at
+any time using `Ctrl+C`. I'm sorry if you mistyped the last taxon name and have
+to start over :)
+
+The file must have an OrthoDB version 7 style tab-delimited format as described
+in the DATA REQUIREMENTS section. This is output by OrthoDB 7 [3] by default,
+so you don't have to worry about that if you downloaded your ortholog set from
+OrthoDB version 7. 
+
+Dependent on your OrthoDB query, you may need to filter your file so that it
+contains only the taxa you want in the ortholog set. 
+
+Make a note of your ortholog set name. You will need it later.
+
+To check what sets have been uploaded so far, call `orthograph-manager -ls`. 
 
 
 ## 7. Create the required database structure for the Orthograph search program.
@@ -245,7 +226,7 @@ available for nucleotide data, as well.
 Make orthograph-analyzer executable and run it with the -prepare option:
 
 	$ chmod +x orthograph-analyzer
-	$ ./orthograph-analyzer -prepare
+	$ ./orthograph-analyzer --prepare
 
 At this point, if you use the SQLite backend, a species-specific SQLite database
 file is created in the output directory you specified in the config file.
@@ -366,7 +347,7 @@ Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany
 
 [1]: <http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems>
 [2]: <http://forums.mysql.com/read.php?51,389833,389833>
-[3]: <http://cegg.unige.ch/orthodb>
+[3]: <http://orthodb.org/>
 
 ## Set up the database. 
 
