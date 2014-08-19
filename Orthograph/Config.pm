@@ -81,6 +81,7 @@ GetOptions( $config,
 	'mysql-username=s',
 	'no-frameshift-correction',
 	'num-threads=i',
+	'ogs-taxon-name=s',
 	'ogs-version=s',
 	'orf-overlap-minimum=f',
 	'orthodb5-format',
@@ -130,6 +131,7 @@ $config->{'db_table_orthologs'}      //= 'orthologs';
 $config->{'db_table_sequence_pairs'} //= 'sequence_pairs';
 $config->{'db_table_sequence_types'} //= 'sequence_types';
 $config->{'db_table_set_details'}    //= 'set_details';
+$config->{'db_table_species_info'}   //= 'species_info';
 $config->{'db_table_temp'}           //= 'temp';
 $config->{'db_table_taxa'}           //= 'taxa';
 $config->{'db_table_users'}          //= 'users';
@@ -189,6 +191,7 @@ $config->{'max-blast-searches'}         //= 100;
 $config->{'no-frameshift-correction'}   //= 0;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
+$config->{'ogs-taxon-name'}             //= '';
 $config->{'ogs-version'}                //= '';
 $config->{'orf-overlap-minimum'}        //= 1;
 $config->{'orthodb5-format'}            //= 0;
