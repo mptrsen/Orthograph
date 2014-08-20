@@ -286,7 +286,7 @@ my $n_cogs = get_number_of_cogs_for_set($new_setid);
 # insert the blast db info
 insert_blastdb($new_setid);
 
-printf "Done: %d orthologous relationships (%d COGs) for set %s\n", $n, $n_cogs, $setname;
+printf "Done: %d orthologous sequence relationships (%d COGs) for set %s\n", $n, $n_cogs, $setname;
 
 exit;
 
