@@ -528,6 +528,8 @@ sub upload_ogs {
 	# generate a csv file and get a list of headers
 	my ($csvf, $hdrs) = make_csv_for_ogs_uploading($inf, $taxid, $type, $ogsid);
 
+	print "Data look OK, uploading...\n";
+
 	# upload:
 	# create temporary table
 	create_temptable_for_ogs_data();
@@ -726,109 +728,6 @@ sub insert_new_set {
 	}
 }
 
-# Sub: load_taxon
-# Loads sequence data into the database.
-# Arguments: scalar string filename to nucleotide fasta file, scalar TRUE or FALSE. If TRUE, also:
-#		scalar string BLAST directory for creating the BLAST database
-# Returns: 1 on success, 0 otherwise
-sub load_taxon {
-	croak("Usage: load_taxon(INFILE, [1|0] [,BLAST_DIR])\n") unless scalar @_ == 2;
-	my $inf = shift(@_);
-	my $mode = shift(@_);
-	# make sure the file exists
-	unless (-f $inf) {
-		print "File not found: '$inf'\n";
-		return 0;
-	}
-	# the two sequence tables are 'aaseqs' and 'ntseqs'
-	# $seqtable and $otherseqtable assume opposing values, respectively,
-	# depending on the mode in which the function is called.
-	# the same goes for the columns $seqcol and $otherseqcol.
-	my $seqtable      = $mode ? $t->{'aaseqs'} : $t->{'ntseqs'};
-	my $otherseqtable = $mode ? $t->{'ntseqs'} : $t->{'aaseqs'};
-	my $seqcol        = $mode ? 'aa_seq'       : 'nt_seq';
-	my $otherseqcol   = $mode ? 'nt_seq'       : 'aa_seq';
-	my $type          = $mode ? 2              : 1;  # 1 is 'nt', 2 is 'aa'
-	my $hdrs          = [ ];
-	my $reference_taxon_id;
-	my $reference_taxon_name;
-
-	# get taxon shorthand
-	my $list = get_taxon_shorthands();
-
-	# report input file
-	print "Using input file $inf\n";
-
-	# the user provided a reference taxon name
-	if ($reference_taxon_shorthand) {
-		$reference_taxon_id = get_reftaxon_id($reference_taxon_shorthand) or fail_and_exit("Reference taxon '$reference_taxon_shorthand' not found in database");
-		print "Using reference taxon $reference_taxon_shorthand (id $reference_taxon_id)\n";
-	}
-	else {
-		print "This is a list of present taxa in the database:\n";
-		for (my $i = 0; $i < scalar(@$list); ++$i) {
-			printf("%2d. %s %s\n", $i+1, $$list[$i][1], $$list[$i][2]);
-		}
-		my $in = get_answer("Please enter a number to select one of the taxa (don't fuck with this, no error-catching has been implemented yet)");
-
-		# make sure the user doesn't fuck up
-		while (($in !~ /^\d+$/) or ($in > scalar(@$list)) or ($in < 1) or !defined($in)) {
-			$in = get_answer("Not understood: '$in'. DO NOT FUCK WITH THIS. Enter one of the numbers to select one of the taxa");
-		}
-		# correlate that number to the list of taxa
-		$reference_taxon_id = $$list[$in-1][0];
-		$reference_taxon_name = $$list[$in-1][1];
-		printf("You picked %d: %s (%s).\n", $reference_taxon_id, $$list[$in-1][2], $reference_taxon_name);
-	}
-
-	if ($ogsversion) {
-		print "Using OGS version number $ogsversion\n";
-	}
-	else {
-		$ogsversion = get_answer("Please enter the official gene set (OGS) version for this data file");
-	}
-
-	# create a csv file for rapid uploading into the database
-	my $tmpfh = File::Temp->new(UNLINK => 1);
-	my $infh = Seqload::Fasta->open($inf);
-	while (my ($hdr, $seq) = $infh->next_seq()) {
-		$hdr =~ s/,/_/g; # remove commas from the header as they confuse the csv parser
-		$seq =~ s/-//g;	# remove all gaps from the sequence
-
-		# check if the sequence consists of valid characters
-		if ($mode) {
-			if ($seq =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/) {
-				# change all Us to X if requested
-				if ($u_subst and $seq =~ s/U/$u_subst/gi) {
-					warn("Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence '$hdr'.\n");
-				}
-				else {
-					warn("Warning: Sequence $hdr contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n");
-				}
-			}
-		}
-		else {
-			if ($seq =~ /([^ATCGN*])/i) {
-				warn("Warning: Sequence $hdr contains nonstandard nucleic acid symbol '$1'!\n");
-			}
-		}
-
-		# everything seems ok, write to csv file
-		printf $tmpfh "%d,%s,%s\n", $reference_taxon_id, $hdr, $seq;
-		# add to list of headers
-		push @$hdrs, $hdr;
-	}
-	$tmpfh->close();
-
-	print "Data look OK, uploading...\n";
-
-	create_temptable_for_ogs_data();
-	import_ogs_into_database($tmpfh, $hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol, $type, $reference_taxon_id, $ogsversion) or fail_and_exit('Failed to import OGS into database');
-	my $n_seqpairs = get_sequence_count_for_taxon($reference_taxon_id);
-
-	printf("\n%d sequences for %s in database %s on %s.\n", $n_seqpairs, $reference_taxon_shorthand, $database, $db_dbserver);
-	return 1;
-}
 
 sub get_reftaxon_id {
 	my $shorthand = shift @_;
@@ -1062,7 +961,7 @@ sub get_ortholog_sets {
 	}
 }
 
-sub get_list_of_ogs{
+sub get_list_of_ogs {
 	if ($use_mysql) {
 		return Wrapper::Mysql::get_list_of_ogs();
 	}

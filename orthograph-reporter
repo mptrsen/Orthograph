@@ -280,7 +280,7 @@ foreach my $score (@$scores) {
 
 		print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
 
-		printf $stdout "Fetching BLAST results for %s (HMMsearch id %d, alignment score %7.1f)...\n",
+		printf $stdout "Fetching BLAST results for %s (HMMsearch id %d, alignment score %.1f)...\n",
 			$result->{'header'},
 			$result->{'hmmsearch_id'},
 			$score,
@@ -291,7 +291,7 @@ foreach my $score (@$scores) {
 		# so, was this a reciprocal match?
 		if (my $this_match = is_reciprocal_match($orthoid, $blastresults)) {
 
-			# yeah - here should be the part where the actual sequences are output
+			# yeah
 			printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
 				$orthoid,
 				$this_match->{'hmmhit'},
