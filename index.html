@@ -41,6 +41,12 @@ versions should be no problem. Downwards compatibility (i.e., older versions)
 has not been tested. Should be fine, too, but be wary with MAFFT, its developers
 change or drop features frequently across versions.</p>
 
+<p>You need a database backend, either SQLite (the default) or MySQL. If you
+don't know which one to pick, use SQLite. It's easier to install and use, but
+doesn't have the capabilities for a centralized server-client setup. In grid
+computing environments, this is an advantage since no network connections are
+required, but the database is a flat file on the hard drive.</p>
+
 <table>
 <thead><tr>
 <th align="left">Package</th>
@@ -48,6 +54,21 @@ change or drop features frequently across versions.</p>
 <th align="left">Download from</th>
 </tr></thead>
 <tbody>
+<tr>
+<td align="left">Perl</td>
+<td align="left">5.14</td>
+<td align="left"><a href="http://www.perl.org">http://www.perl.org</a></td>
+</tr>
+<tr>
+<td align="left">SQLite</td>
+<td align="left">3.8.2</td>
+<td align="left"><a href="http://sqlite.org/download.html">http://sqlite.org/download.html</a></td>
+</tr>
+<tr>
+<td align="left">MySQL</td>
+<td align="left">5.6.17</td>
+<td align="left"><a href="http://dev.mysql.com/downloads/mysql/">http://dev.mysql.com/downloads/mysql/</a></td>
+</tr>
 <tr>
 <td align="left">MAFFT</td>
 <td align="left">6.951</td>
@@ -109,6 +130,10 @@ trying to install the required packages on a Windows system under Cygwin (or
 natively, for that matter). You might run into problems getting the MySQL
 driver, HMMer3 and Exonerate to work. Really, don't use Windows. </p>
 
+<p>Make sure you have the database interface module DBI for your Perl version as
+well as the proper database driver for your database engine of choice
+(DBD::mysql or DBD::SQLite)</p>
+
 <p>If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see <a href="#required-perl-modules">REQUIRED PERL MODULES</a> for more information.</p>
 
@@ -121,29 +146,49 @@ novo among genomes or transcriptomes, but relies on the orthology information in
 pre-defined sets. Because of this requirement, it is essential that your input
 data conforms to some data standards as listed below.</p>
 
-<p>a) The clusters of orthologous groups (COGs). It consists of a Fasta file that
-contains at least one sequence per selected COG. If you get your COGs from
-OrthoDB <a href="recommended">1</a>, this is the case. In an OrthoDB file, each sequence
-header contains a COG ID, in the case of OrthoDB version 5, it is something
-like:</p>
+<p>a) The clusters of orthologous groups (COGs). It consists of a tab-delimited
+file that contains at least one line per COG. If you get your COGs from <a
+href"http://orthodb.org/">OrthoDB</a> (recommended), this is the case. In an
+OrthoDB file, each line has a number of tab-delimited fields like this:</p>
 
-<pre><code>&gt;APISU:gmsk09 ACYPI007477 EOG500005 ACYPI007477-PA origin:RefSeq
-</code></pre>
+<pre><code>EOG7M10DZ       AECH19093       AECH19093-PA    Acromyrmex echinatior   Panamanian leafcutter ant       AECHI   1282                    IPR006121,IPR008250,IPR005834,IPR023214</code></pre>
 
-<p>The 'EOG500005' field is the COG ID. The sequence header must also contain an
-unambiguous sequence ID. In the above example, it is the fourth field, i.e.,
-'ACYPI007477-PA'. </p>
+<p>The 'EOG7M10DZ' field is the COG ID. The line must also contain an unambiguous
+sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
+'AECH19093-PA'. The sixth field is the taxon shorthand (I know this is odd, but
+it's the way OrthoDB 7 outputs. In the future you'll be able to specify the
+field).</p>
+
+<p>If you want to create these files yourself, make sure that the COG ID is in
+the first tab-separated field, the sequence ID in the third field, and the taxon
+shorthand in the sixth field. Any fields in between are irrelevant to Orthograph
+but must not be omitted since it relies on their order.</p>
 
 <p>b) The official gene set (OGS) for each of the taxa that are present in the
 ortholog set, i.e., contributed sequences to the COGs. The sequences for a
 single taxon must be in Fasta format, and all (!) sequences of this taxon that
 occur in the COGs must be in the OGS database as well. Their sequence identifier
-must be unambiguously identical to the sequence ID in the Fasta file from
-OrthoDB. For example, this would be the related sequence for Acyrthosiphon pisum
-from the OGS:</p>
+must be unambiguously identical to the sequence ID in the file from OrthoDB. For
+example, this would be the related sequence for Acromyrmex echinatior from the
+OGS:</p>
 
-<pre><code>&gt;ACYPI007477-PA origin:RefSeq
-</code></pre>
+<pre><code>&gt;AECH19093-PA</code></pre>
+
+<p>The OGS must be present as amino acid sequences, and may be present as
+nucleotide sequences. If the latter is missing, no nucleotide sequences can be
+output for the reference taxa. The sequence identifiers of corresponding
+nucleotide and amino acid sequences must be identical.</p>
+
+<p>The helper script <pre>make-ogs-corresponding.pl</pre> is provided that uses
+Exonerate to generate 100% corresponding amino acid and nucleotide sequences
+for the OGS. It only requires that the identifiers are unambiguously identical.
+You can call it like this:</p>
+
+<pre><code>perl make-ogs-corresponding.pl [OPTIONS] PEPTIDEFILE CDSFILE</code></pre>
+
+<p>Provide the OGS on amino acid level as PEPTIDEFILE and on nucleotide level as
+CDSFILE. A list of options is printed when you call the script without arguments
+or with the <pre>-h</pre> option.</p>
 
 <p>The OGS must be present as amino acid sequences, and may be present as
 nucleotide sequences. If the latter is missing, no nucleotide sequences can be
