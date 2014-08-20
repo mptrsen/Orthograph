@@ -97,31 +97,6 @@ required, but the database is a flat file on the hard drive.</p>
 <p>Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).</p>
 
-<p>You have the choice between two different database systems: MySQL and SQLite. The former is a full-blown server-client database management system with superior performance and many features, the latter is a small, file-based database library that is intended to be simple and requires zero configuration. Depending on your choice, you need one of these packages:</p>
-
-
-<table>
-<thead><tr>
-<th align="left">Package</th>
-<th align="left">Version</th>
-<th align="left">Download from</th>
-</tr></thead>
-<tbody>
-<tr>
-<td align="left">MySQL</td>
-<td align="left">5.1</td>
-<td align="left"><a href="http://www.mysql.com">http://www.mysql.com</a></td>
-</tr>
-<tr>
-<td align="left">SQLite</td>
-<td align="left">3</td>
-<td align="left"><a href="http://www.mysql.com">http://www.sqlite.org/download.html</a></td>
-</tr>
-</tbody>
-</table>
-
-<p></p>
-
 <p>If you use some flavor of Linux, these packages are most likely present in your software repositories. It is recommended to install them using <code>apt-get</code>, <code>yum</code>, or whatever package manager your system uses. Additionally, you need the Perl modules <b>DBI</b> and <b>DBD::mysql</b> or <b>DBD::SQLite</b>, depending on your database choice.</p>
 
 <p>Don't worry about your Perl version if you run a reasonably recent Linux or
