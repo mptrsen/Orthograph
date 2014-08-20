@@ -2748,7 +2748,7 @@ sub set_blastdb_to_rebuild {
 
 sub blastdb_needs_rebuilding {
 	my $setid = shift;
-	return check("SELECT * from o_blastdbs where setid = ? and rebuild = 1", $setid);
+	return check("SELECT * from $db_table_blastdbs where setid = ? and rebuild = 1", $setid);
 }
 
 1;

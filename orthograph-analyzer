@@ -333,9 +333,9 @@ if ($clear_database) {
 
 unless ($continue) {
 	# store est data into the database:
-	printf $stdout "Storing nucleotide sequences to database '%s' on %s...\n",
+	printf $stdout "Storing nucleotide sequences to database '%s'%s...\n",
 		$use_sqlite ? $attached_db_file : $db_dbname,
-		$db_dbserver
+		$use_sqlite ? '' : " on $db_dbserver"
 			unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
@@ -345,9 +345,9 @@ unless ($continue) {
 	printf $stdout "Transaction took %.1f seconds.\n", $t1 - $t0 unless $quiet;
 
 	# store translated est data into the database:
-	printf $stdout "Storing translated sequences to database '%s' on %s...\n",
+	printf $stdout "Storing translated sequences to database '%s'%s...\n",
 		$use_sqlite ? $attached_db_file : $db_dbname,
-		$db_dbserver
+		$use_sqlite ? '' : " on $db_dbserver"
 			unless $quiet;
 
 	# LOAD DATA INFILE; third arg must be ref to array of column names
