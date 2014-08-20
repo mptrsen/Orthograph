@@ -32,8 +32,7 @@
 
         <section id="main_content">
 
-<h1>
-<a name="system-requirements" class="anchor" href="#system-requirements"><span class="octicon octicon-link"></span></a>SYSTEM REQUIREMENTS</h1>
+<h1><a name="system-requirements" class="anchor" href="#system-requirements"><span class="octicon octicon-link"></span></a>SYSTEM REQUIREMENTS</h1>
 
 <p>Orthograph requires the following software packages to be installed on the
 system. The whole package was tested and works with these versions, and newer
@@ -121,10 +120,11 @@ novo among genomes or transcriptomes, but relies on the orthology information in
 pre-defined sets. Because of this requirement, it is essential that your input
 data conforms to some data standards as listed below.</p>
 
-<p>a) The clusters of orthologous groups (COGs). It consists of a tab-delimited
-file that contains at least one line per COG. If you get your COGs from <a
-href"http://orthodb.org/">OrthoDB</a> (recommended), this is the case. In an
-OrthoDB file, each line has a number of tab-delimited fields like this:</p>
+<p><strong>a) The clusters of orthologous groups (COGs).</strong> It consists
+of a tab-delimited file that contains at least one line per COG. If you get
+your COGs from <a href"http://orthodb.org/">OrthoDB</a> (recommended), this is
+the case. In an OrthoDB file, each line has a number of tab-delimited fields
+like this:</p>
 
 <pre><code>EOG7M10DZ       AECH19093       AECH19093-PA    Acromyrmex echinatior   Panamanian leafcutter ant       AECHI   1282                    IPR006121,IPR008250,IPR005834,IPR023214</code></pre>
 
@@ -139,13 +139,13 @@ the first tab-separated field, the sequence ID in the third field, and the taxon
 shorthand in the sixth field. Any fields in between are irrelevant to Orthograph
 but must not be omitted since it relies on their order.</p>
 
-<p>b) The official gene set (OGS) for each of the taxa that are present in the
-ortholog set, i.e., contributed sequences to the COGs. The sequences for a
-single taxon must be in Fasta format, and all (!) sequences of this taxon that
-occur in the COGs must be in the OGS database as well. Their sequence identifier
-must be unambiguously identical to the sequence ID in the file from OrthoDB. For
-example, this would be the related sequence for Acromyrmex echinatior from the
-OGS:</p>
+<p><strong>b) The official gene set (OGS)</strong> for each of the taxa that
+are present in the ortholog set, i.e., contributed sequences to the COGs. The
+sequences for a single taxon must be in Fasta format, and all (!) sequences of
+this taxon that occur in the COGs must be in the OGS database as well. Their
+sequence identifier must be unambiguously identical to the sequence ID in the
+file from OrthoDB. For example, this would be the related sequence for
+Acromyrmex echinatior from the OGS:</p>
 
 <pre><code>&gt;AECH19093-PA</code></pre>
 
@@ -154,7 +154,7 @@ nucleotide sequences. If the latter is missing, no nucleotide sequences can be
 output for the reference taxa. The sequence identifiers of corresponding
 nucleotide and amino acid sequences must be identical.</p>
 
-<p>The helper script <pre>make-ogs-corresponding.pl</pre> is provided that uses
+<p>The helper script <code>make-ogs-corresponding.pl</code> is provided that uses
 Exonerate to generate 100% corresponding amino acid and nucleotide sequences
 for the OGS. It only requires that the identifiers are unambiguously identical.
 You can call it like this:</p>
@@ -163,7 +163,7 @@ You can call it like this:</p>
 
 <p>Provide the OGS on amino acid level as PEPTIDEFILE and on nucleotide level as
 CDSFILE. A list of options is printed when you call the script without arguments
-or with the <pre>-h</pre> option.</p>
+or with the <code>-h</code> option.</p>
 
 <p>The OGS must be present as amino acid sequences, and may be present as
 nucleotide sequences. If the latter is missing, no nucleotide sequences can be
@@ -177,8 +177,9 @@ sequences must be identical.</p>
 
 <hr>
 
-<p>Orthograph was developed as part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
-(c) 2011-2014 Malte Petersen <a href="mailto:mptrsen@uni-bonn.de">mptrsen@uni-bonn.de</a></p>
+<p>Orthograph was developed as part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany.<br> 
+&copy; 2011-2014 Malte Petersen <a href="mailto:mptrsen@uni-bonn.de">mptrsen@uni-bonn.de</a></p>
+
         </section>
 
         <footer>
