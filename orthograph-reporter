@@ -660,14 +660,26 @@ sub join_transcript_headers {
 			push @hdrs, sprintf '%s-%d', $this_hdr, length $hit->{'orf_aa_sequence'};
 		}
 		else {
-			push @hdrs, 
-				format_transcript_header(
-					$this_hdr,
-					$hit->{'orf_cdna_start_on_transcript'},
-					$hit->{'orf_cdna_end_on_transcript'},
-					$rf,
-				)
-			;
+			# amino acid sequences have reading frame info
+			if ($type eq 'aa') {
+				push @hdrs, 
+					format_transcript_header(
+						$this_hdr,
+						$hit->{'orf_aa_start'},
+						$hit->{'orf_aa_end'},
+						$rf,
+					);
+			}
+			# nucleotide sequences do not
+			else {
+				push @hdrs, 
+					format_transcript_header(
+						$this_hdr,
+						$hit->{'orf_cdna_start_on_transcript'},
+						$hit->{'orf_cdna_end_on_transcript'},
+						'.'
+					);
+			}
 		}
 	}
 	return join $concat_sep, @hdrs;
