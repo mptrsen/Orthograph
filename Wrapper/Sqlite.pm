@@ -248,6 +248,7 @@ sub db_do {#{{{
 	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query) or return 0;
+	print $sth->{Statement}, "\n" if $debug;
 	$sth = execute($sth, $db_timeout, @args);
 	$dbh->disconnect();
 	return 1;
