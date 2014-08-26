@@ -195,7 +195,7 @@ sub get_dbh {#{{{
 		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
 	}
-	return undef;
+	fail_and_exit("Could not get a database connection: $DBI::errstr");
 }#}}}
 
 =head2 db_get($query)
@@ -248,6 +248,7 @@ sub db_do {#{{{
 	my $dbh = get_dbh()
 		or return undef;
 	my $sth = $dbh->prepare($query) or return 0;
+	print $sth->{Statement}, "\n" if $debug;
 	$sth = execute($sth, $db_timeout, @args);
 	$dbh->disconnect();
 	return 1;
@@ -262,9 +263,9 @@ sub check {#{{{
 	unless ($query) { croak "Usage: check(QUERY)\n"; }
 	my @results;
 	my $dbh = get_dbh();
-	my $sql = $dbh->prepare($query);
-	$sql->execute(@_);
-	if ($sql->fetchrow_array()) {
+	my $sth = $dbh->prepare($query) or fail_and_exit("Could not prepare query: $DBI::errstr");
+	$sth->execute(@_);
+	if ($sth->fetchrow_array()) {
 		return 1;
 	}
 	return 0;
@@ -303,13 +304,13 @@ sub create_tables {
 	# the queries for the individual tables
 	my %create_table = (#{{{
 		# table: blastdbs
-		'blastdbs' => "CREATE TABLE `$t->{'blastdbs'}` (
+		'blastdbs' => "CREATE TABLE `$db_table_blastdbs` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_setid`        INTEGER UNSIGNED DEFAULT NULL UNIQUE,
 			`$db_col_rebuild`      INT(1))",
 		
 		# table: ogs
-		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
+		'ogs' => "CREATE TABLE `$db_table_ogs` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_type`         INT(1),
 			`$db_col_taxid`        INTEGER UNSIGNED NOT NULL,
@@ -317,7 +318,7 @@ sub create_tables {
 			UNIQUE ($db_col_type, $db_col_taxid, $db_col_version))",
 		
 		# table: ortholog_set
-		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
+		'ortholog_set' => "CREATE TABLE `$db_table_orthologs` (
 			`$db_col_id`               INTEGER PRIMARY KEY,
 			`$db_col_setid`            INTEGER UNSIGNED NOT NULL,
 			`$db_col_orthoid`          TEXT(10) NOT NULL,
@@ -325,7 +326,7 @@ sub create_tables {
 			UNIQUE ($db_col_setid, $db_col_orthoid, $db_col_seqpair))",
 
 		# table: sequence_pairs
-		'sequence_pairs' => "CREATE TABLE `$t->{'seqpairs'}` (
+		'sequence_pairs' => "CREATE TABLE `$db_table_seqpairs` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_taxid`        INTEGER UNSIGNED,
 			`$db_col_ogsid`        INTEGER UNSIGNED,
@@ -334,7 +335,7 @@ sub create_tables {
 			`$db_col_date`         INTEGER UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_aa
-		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
+		'aa_sequences' => "CREATE TABLE `$db_table_aaseqs` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_taxid`        INTEGER     NOT NULL, 
 			`$db_col_ogsid`        INTEGER     NOT NULL,
@@ -343,7 +344,7 @@ sub create_tables {
 			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: sequences_nt
-		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
+		'nt_sequences' => "CREATE TABLE `$db_table_ntseqs` (
 			`$db_col_id`           INTEGER     PRIMARY KEY,
 			`$db_col_taxid`        INTEGER     NOT NULL, 
 			`$db_col_ogsid`        INTEGER     NOT NULL,
@@ -352,19 +353,19 @@ sub create_tables {
 			`$db_col_date`         INTEGER     UNSIGNED DEFAULT CURRENT_TIMESTAMP)",
 
 		# table: set_details
-		'set_details' => "CREATE TABLE `$t->{'set_details'}` (
+		'set_details' => "CREATE TABLE `$db_table_set_details` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_name`         TEXT(255) UNIQUE,
 			`$db_col_description`  BLOB)",
 
 		# table: taxa
-		'taxa' => "CREATE TABLE `$t->{'taxa'}` (
+		'taxa' => "CREATE TABLE `$db_table_taxa` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_name`         TEXT(20)  UNIQUE,
 			`$db_col_core`         TINYINTEGER UNSIGNED NOT NULL)",
 
 		# table: seqtypes
-		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
+		'seqtypes' => "CREATE TABLE `$db_table_seqtypes` (
 			`$db_col_id`           INTEGER PRIMARY KEY,
 			`$db_col_type`         TEXT(3)     UNIQUE)",
 	);#}}}

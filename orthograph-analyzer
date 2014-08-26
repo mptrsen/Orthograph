@@ -1177,6 +1177,8 @@ sub make_blastdb {
 	# set the db to no-rebuild
 	set_blastdb_to_rebuild($setid, 0);
 
+	print $stdout "Using BLAST database $dbfile\n";
+
 	return $dbfile;
 }
 
@@ -1191,11 +1193,11 @@ sub blastdb_needs_rebuilding {
 		$rebuild = Wrapper::Sqlite::blastdb_needs_rebuilding($setid);
 	}
 	# rebuild necessary
-	if    ($rebuild)   { return 1 }
+	if ($rebuild)                                    { return 1 }
 	# doesn't exist, rebuild necessary
 	elsif (not -e File::Spec->catfile($db . '.psq')) { return 1 }
 	# exist and rebuild not necessary
-	else               { return 0 }
+	else                                             { return 0 }
 }
 
 sub set_blastdb_to_rebuild {

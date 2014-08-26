@@ -78,7 +78,9 @@ my $db_table_temp           = $config->{'db_table_temp'};
 my $db_col_aaseq            = 'aa_seq';
 my $db_col_ali_end          = 'ali_end';
 my $db_col_ali_start        = 'ali_start';
+my $db_col_core             = 'core';
 my $db_col_date             = 'date';
+my $db_col_description      = 'description';
 my $db_col_digest           = 'digest';
 my $db_col_end              = 'end';
 my $db_col_env_end          = 'env_end';
@@ -90,9 +92,11 @@ my $db_col_hmmsearch_id     = 'hmmsearch_id';
 my $db_col_header           = 'header';
 my $db_col_id               = 'id';
 my $db_col_log_evalue       = 'log_evalue';
+my $db_col_longname         = 'longname';
 my $db_col_score            = 'score';
 my $db_col_name             = 'name';
 my $db_col_ntseq            = 'nt_seq';
+my $db_col_ogsid            = 'ogs_id';
 my $db_col_orthoid          = 'ortholog_gene_id';
 my $db_col_query            = 'query';
 my $db_col_setid            = 'setid';
@@ -102,6 +106,7 @@ my $db_col_start            = 'start';
 my $db_col_target           = 'target';
 my $db_col_taxid            = 'taxid';
 my $db_col_type             = 'type';
+my $db_col_version          = 'version';
 my $outdir                     = $config->{'output-directory'};
 my $orthoset                   = $config->{'ortholog-set'};
 my $quiet                      = $config->{'quiet'};
@@ -269,68 +274,69 @@ sub create_tables {
 	my %create_table = (#{{{
 		# table: blastdbs
 		'blastdbs' => "CREATE TABLE `$t->{'blastdbs'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid),
-			`blastdb_path` VARCHAR(255) DEFAULT NULL)",
+			`$db_col_id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_setid`        INT UNSIGNED DEFAULT NULL, UNIQUE(setid))",
 
 		# table: ogs
 		'ogs' => "CREATE TABLE `$t->{'ogs'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`type`         INT(1),
-			`taxid`        INT UNSIGNED NOT NULL,
-			`version`      VARCHAR(255),
+			`$db_col_id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_type`         INT(1),
+			`$db_col_taxid`        INT UNSIGNED NOT NULL,
+			`$db_col_version`      VARCHAR(255),
 			UNIQUE(taxid, version))",
 
 		# table: ortholog_set
 		'ortholog_set' => "CREATE TABLE `$t->{'orthologs'}` (
-			`id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`setid`            INT UNSIGNED NOT NULL,
-			`ortholog_gene_id` VARCHAR(10)  NOT NULL,
-			`sequence_pair`    INT UNSIGNED NOT NULL,
+			`$db_col_id`               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_setid`            INT UNSIGNED NOT NULL,
+			`$db_col_orthoid`          VARCHAR(10)  NOT NULL,
+			`$db_col_seqpair`          INT UNSIGNED NOT NULL,
 			UNIQUE INDEX (setid, ortholog_gene_id, sequence_pair))",
 
 		# table: sequence_pairs
 		'sequence_pairs' => "CREATE TABLE `$t->{'seqpairs'}` (
-			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`taxid`        INT    UNSIGNED,
-			`ogs_id`       INT    UNSIGNED,
-			`aa_seq`       INT    UNSIGNED, UNIQUE(aa_seq),
-			`nt_seq`       INT    UNSIGNED, UNIQUE(nt_seq), 
-			`date`         INT    UNSIGNED)",
+			`$db_col_id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_taxid`        INT    UNSIGNED,
+			`$db_col_ogsid`       INT    UNSIGNED,
+			`$db_col_aaseq`       INT    UNSIGNED, UNIQUE(aa_seq),
+			`$db_col_ntseq`       INT    UNSIGNED, UNIQUE(nt_seq), 
+			`$db_col_date`         INT    UNSIGNED)",
 
 		# table: sequences_aa
 		'aa_sequences' => "CREATE TABLE `$t->{'aaseqs'}` (
-			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
-			`sequence`     MEDIUMBLOB,
-			`date`         INT UNSIGNED)",
+			`$db_col_id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_taxid`        INT             NOT NULL, INDEX(taxid),
+			`$db_col_ogsid`        INT             NOT NULL,
+			`$db_col_header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
+			`$db_col_sequence`     MEDIUMBLOB,
+			`$db_col_date`         INT UNSIGNED)",
 
 		# table: sequences_nt
 		'nt_sequences' => "CREATE TABLE `$t->{'ntseqs'}` (
-			`id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`taxid`        INT             NOT NULL, INDEX(taxid),
-			`header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
-			`sequence`     MEDIUMBLOB,
-			`date`         INT UNSIGNED)",
+			`$db_col_id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_taxid`        INT             NOT NULL, INDEX(taxid),
+			`$db_col_ogsid`        INT             NOT NULL,
+			`$db_col_header`       VARCHAR(4096),            INDEX(header(24)), UNIQUE(header(24)),
+			`$db_col_sequence`     MEDIUMBLOB,
+			`$db_col_date`         INT UNSIGNED)",
 
 		# table: set_details
 		'set_details' => "CREATE TABLE `$t->{'set_details'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`name`         VARCHAR(255), UNIQUE(name),
-			`description`  BLOB)",
+			`$db_col_id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_name`         VARCHAR(255), UNIQUE(name),
+			`$db_col_description`  BLOB)",
 
 		# table: taxa
 		'taxa' => "CREATE TABLE `$t->{'taxa'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`name`         VARCHAR(20),  UNIQUE(name),
-			`longname`     VARCHAR(255), 
-			`core`         TINYINT UNSIGNED NOT NULL)",
+			`$db_col_id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_name`         VARCHAR(255),  UNIQUE(name),
+			`$db_col_longname`     VARCHAR(255), 
+			`$db_col_core`         TINYINT UNSIGNED NOT NULL)",
 		
 		# table: seqtypes
 		'seqtypes' => "CREATE TABLE `$t->{'seqtypes'}` (
-			`id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			`type`         CHAR(3),     UNIQUE(type))",
+			`$db_col_id`           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			`$db_col_type`         CHAR(3),     UNIQUE(type))",
 	);#}}}
 
 	# to start off with nt and aa sequence types
@@ -365,15 +371,14 @@ sub load_csv_into_temptable {
 	my $csvfile   = shift @_;
 	my $temptable = shift @_;
 	my $loadquery = "LOAD DATA LOCAL INFILE '$csvfile' 
-		INTO TABLE $temptable FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' (
-			name,
-			longname,
-			orthoset,
-			orthoid,
-			blastdb,
-			header,
-			sequence,
-			description)";
+		INTO TABLE $temptable FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+		(
+			$db_col_taxid,
+			$db_col_type,
+			$db_col_ogsid,
+			$db_col_header,
+			$db_col_sequence
+		)";
 	my $dbh = get_dbh();
 	$dbh->do($loadquery) or die "Fatal: Could not LOAD DATA into temporary table $temptable\n";
 	$dbh->disconnect;
@@ -479,7 +484,7 @@ sub get_ortholog_sets {#{{{
 	return(\%sets);
 }#}}}
 
-=head2 list_ogs
+=head2 get_list_of_ogs
 
 Get list of OGS in the database
 
@@ -489,19 +494,38 @@ Returns: array reference (list of OGS)
 
 =cut
 
-sub get_list_of_ogs {#{{{
-	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT DISTINCT $db_table_taxa.name , $db_table_ogs.version
-		FROM $db_table_aaseqs
-		INNER JOIN $db_table_seqpairs
-			ON $db_table_aaseqs.id  = $db_table_seqpairs.aa_seq
-		INNER JOIN $db_table_taxa
-			ON $db_table_seqpairs.taxid = $db_table_taxa.id
+sub get_list_of_ogs {
+	my $query = "
+		SELECT
+			$db_table_ogs.$db_col_id,
+			$db_table_taxa.$db_col_name,
+			$db_table_ogs.$db_col_version,
+			$db_table_ogs.$db_col_type,
+			COUNT($db_table_aaseqs.$db_col_id)
+		FROM $db_table_taxa
 		INNER JOIN $db_table_ogs
-			ON $db_table_taxa.id = $db_table_ogs.taxid"
-	;
+			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
+		INNER JOIN $db_table_aaseqs
+			ON $db_table_ogs.$db_col_id = $db_table_aaseqs.$db_col_ogsid
+		GROUP BY $db_table_aaseqs.$db_col_taxid
+		UNION
+		SELECT
+			$db_table_ogs.$db_col_id,
+			$db_table_taxa.$db_col_name,
+			$db_table_ogs.$db_col_version,
+			$db_table_ogs.$db_col_type,
+			COUNT($db_table_ntseqs.$db_col_id)
+		FROM $db_table_taxa
+		INNER JOIN $db_table_ogs
+			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
+		INNER JOIN $db_table_ntseqs
+			ON $db_table_ogs.$db_col_id = $db_table_ntseqs.$db_col_ogsid
+		GROUP BY $db_table_ntseqs.$db_col_taxid
+		ORDER BY $db_table_ogs.$db_col_id
+	";
 	return db_get($query);
-}#}}}
+}
+
 
 sub get_list_of_taxa {
 	my $q = "SELECT `name`, `longname` FROM $db_table_taxa WHERE `core` = '1'";
@@ -510,9 +534,9 @@ sub get_list_of_taxa {
 }
 
 sub get_sequence_count_for_taxon {
-	my $taxon = shift;
-	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.taxid = '$taxon'";
-	my $r = db_get($q);
+	my $taxid = shift;
+	my $q = "SELECT COUNT(*) FROM $db_table_aaseqs WHERE $db_table_aaseqs.$db_col_taxid = ?";
+	my $r = db_get($q, $taxid);
 	return $$r[0][0];
 }
 
@@ -896,6 +920,61 @@ sub insert_taxon_into_database {
 	my $res = db_get("SELECT $db_col_id FROM $db_table_taxa WHERE $db_col_name = ? AND $db_col_core = ?", $name, $core);
 	return $res->[0]->[0];
 }
+
+sub insert_ogs_info_into_database {
+	my $type       = shift;
+	my $taxid      = shift;
+	my $ogsversion = shift;
+	db_do("INSERT IGNORE INTO $db_table_ogs ($db_col_type, $db_col_taxid, $db_col_version) VALUES ($type, $taxid, $ogsversion)") or croak;
+	my $res = db_get("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = ? AND $db_col_version = ? AND $db_col_type = ?", $taxid, $ogsversion, $type);
+	return $res->[0]->[0];
+}
+
+sub upload_ogs_sequences {
+	my ($inf, $hdrs, $taxid, $type, $ogsid) = @_;
+
+	# determine correct table and columns
+	my $seqtable      = $type > 1 ? $db_table_aaseqs : $db_table_ntseqs;
+	my $otherseqtable = $type > 1 ? $db_table_ntseqs : $db_table_aaseqs;
+	my $seqcol        = $type > 1 ? $db_col_aaseq    : $db_col_ntseq;
+	my $otherseqcol   = $type > 1 ? $db_col_ntseq    : $db_col_aaseq;
+
+	load_csv_into_temptable($inf, $db_table_temp);
+
+	my $query_insert_sequences = "
+		INSERT IGNORE INTO $seqtable ($db_col_taxid, $db_col_ogsid, $db_col_header, $db_col_sequence, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $db_table_temp.$db_col_ogsid, $db_table_temp.$db_col_header, $db_table_temp.$db_col_sequence, CURRENT_TIMESTAMP
+		FROM $db_table_temp 
+		LEFT JOIN $db_table_taxa 
+			ON $db_table_temp.$db_col_taxid = $db_table_taxa.$db_col_id
+	";
+
+	my $query_insert_seqpairs = "
+		INSERT IGNORE INTO $db_table_seqpairs ($db_col_taxid, $db_col_ogsid, $seqcol, $otherseqcol, $db_col_date)
+		SELECT $db_table_taxa.$db_col_id, $seqtable.$db_col_ogsid, $seqtable.$db_col_id, $otherseqtable.$db_col_id, CURRENT_TIMESTAMP
+		FROM $seqtable
+		INNER JOIN $db_table_taxa
+			ON $seqtable.$db_col_taxid = $db_table_taxa.$db_col_id
+		LEFT JOIN $otherseqtable
+			ON $seqtable.$db_col_header = $otherseqtable.$db_col_header
+		WHERE $seqtable.$db_col_ogsid = $ogsid
+	";
+
+	my $dbh = get_dbh();
+	# if this is amino acid data, just blindly load it into the resp. table
+	if ($type > 1) {
+		$dbh->do($query_insert_sequences) or fail_and_exit("OGS loading failed: $DBI::errstr");
+		$dbh->do($query_insert_seqpairs)  or fail_and_exit("OGS loading failed: $DBI::errstr");
+	}
+	# otherwise, this is nucleotide data, need to check for each sequence
+	# whether the corresponding aa seq exists
+	else {
+		upload_sequences_individually($hdrs, $seqtable, $otherseqtable, $seqcol, $otherseqcol)
+	}
+	$dbh->disconnect();
+	return 1;
+}
+
 
 =head2 insert_taxon_into_table(TAXON_NAME)
 
@@ -1926,17 +2005,19 @@ sub get_taxon_shorthands {
 
 sub create_temptable_for_ogs_data {
 	# create the temporary table
-	my $q = "CREATE TABLE $db_table_temp (
-	`id`       INT          NOT NULL PRIMARY KEY AUTO_INCREMENT,
-	`taxid`    CHAR(5)      NOT NULL,
-	`header`   VARCHAR(255) NOT NULL,
-	`sequence` MEDIUMBLOB)";
+	my $c = "CREATE TABLE $db_table_temp (
+	`$db_col_taxid`    INTEGER      NOT NULL,
+	`$db_col_type`     INTEGER      NOT NULL,
+	`$db_col_ogsid`    INTEGER      NOT NULL,
+	`$db_col_header`   TEXT(255)    NOT NULL,
+	`$db_col_sequence` TEXT)";
+	my $i = "CREATE INDEX temp_header ON $db_table_temp (header(8))";
 	my $dbh = get_dbh();
-	print $stdout $q, "\n" if $debug;
+	print $stdout $c, "\n" if $debug > 1;
 	$dbh->do("DROP TABLE IF EXISTS $db_table_temp");
-	$dbh->do($q);
+	$dbh->do($c);
+	$dbh->do($i);
 	$dbh->disconnect();
-	return 1;
 }
 
 sub import_ogs_into_database {
@@ -2039,38 +2120,6 @@ sub get_reftaxon_shorthand {
 	my $id = shift;
 	my $result = db_get("SELECT $db_table_taxa.$db_col_name FROM $db_table_taxa INNER JOIN $db_table_aaseqs ON $db_table_taxa.$db_col_id = $db_table_aaseqs.$db_col_taxid WHERE $db_table_aaseqs.$db_col_id = ?", $id);
 	return $$result[0][0];
-}
-
-sub get_list_of_ogs {
-	my $query = "
-		SELECT
-			$db_table_ogs.$db_col_id,
-			$db_table_taxa.$db_col_name,
-			$db_table_ogs.$db_col_version,
-			$db_table_ogs.$db_col_type,
-			COUNT($db_table_aaseqs.$db_col_id)
-		FROM $db_table_taxa
-		INNER JOIN $db_table_ogs
-			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
-		INNER JOIN $db_table_aaseqs
-			ON $db_table_ogs.$db_col_id = $db_table_aaseqs.$db_col_ogsid
-		GROUP BY $db_table_ogs.$db_col_id
-		UNION 
-		SELECT
-			$db_table_ogs.$db_col_id,
-			$db_table_taxa.$db_col_name,
-			$db_table_ogs.$db_col_version,
-			$db_table_ogs.$db_col_type,
-			COUNT($db_table_ntseqs.$db_col_id)
-		FROM $db_table_taxa
-		INNER JOIN $db_table_ogs
-			ON $db_table_taxa.$db_col_id = $db_table_ogs.$db_col_taxid
-		INNER JOIN $db_table_ntseqs
-			ON $db_table_ogs.$db_col_id = $db_table_ntseqs.$db_col_ogsid
-		GROUP BY $db_table_ogs.$db_col_id
-		ORDER BY $db_table_ogs.$db_col_id
-	";
-	return db_get($query);
 }
 
 sub insert_new_set {

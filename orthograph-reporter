@@ -106,7 +106,7 @@ my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
-my $speciesname                = $config->{'species-name'};
+my $species_name                = $config->{'species-name'};
 my $strict_search              = $config->{'strict-search'};
 my $no_frameshift_correction   = $config->{'no-frameshift-correction'};
 
@@ -209,9 +209,9 @@ Wrapper::Exonerate->translateprog($translate_program);
 Wrapper::Exonerate->outdir($logdir);
 
 # get the species id from the database
-$species_id = get_taxid_for_species($speciesname);
+$species_id = get_taxid_for_species($species_name);
 unless ($species_id) {
-	print $stderr "Fatal: No such species in database: '$speciesname'\n";
+	print $stderr "Fatal: No such species in database: '$species_name'\n";
 	exit(1);
 }
 
@@ -280,7 +280,7 @@ foreach my $score (@$scores) {
 
 		print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
 
-		printf $stdout "Fetching BLAST results for %s (HMMsearch id %d, alignment score %7.1f)...\n",
+		printf $stdout "Fetching BLAST results for %s (HMMsearch id %d, alignment score %.1f)...\n",
 			$result->{'header'},
 			$result->{'hmmsearch_id'},
 			$score,
@@ -291,7 +291,7 @@ foreach my $score (@$scores) {
 		# so, was this a reciprocal match?
 		if (my $this_match = is_reciprocal_match($orthoid, $blastresults)) {
 
-			# yeah - here should be the part where the actual sequences are output
+			# yeah
 			printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
 				$orthoid,
 				$this_match->{'hmmhit'},
@@ -537,7 +537,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 	# sort sequences and concatenate 
 	$output_sequences = [ sort { $a->{'hmm_start'} <=> $b->{'hmm_start'} } @$output_sequences ];
-	($hdr, $seq, $cdnahdr, $cdnaseq) = concatenate_sequences($output_sequences);
+	($hdr, $seq, $cdnahdr, $cdnaseq) = concatenate_sequences($output_sequences, $orthoid);
 
 	# get the core ortholog sequences for this group
 	my $core_sequences = get_ortholog_group($set_id, $orthoid);
@@ -545,14 +545,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	my $fafn = File::Spec->catfile($aaoutdir, $orthoid . '.aa.fa');
 	my $fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
-	printf $fafh ">%s|%s|%s\n%s\n",
-		$orthoid, # ortholog id
-		$$_[0],   # reftaxon name
-		$$_[1],   # header
-		$$_[2]    # sequence
-			foreach (sort @$core_sequences);
-	# prepend orthoid, reference taxon, and taxon name
-	$hdr = join $sep, ($orthoid, $reftaxon, $speciesname, $hdr);
+	print_core_sequences($orthoid, $core_sequences, $fafh);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $hdr, $seq;
 	print $stdout "wrote concatenated sequence $hdr to file $fafn\n" if $debug;
@@ -564,14 +557,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	$fafn = File::Spec->catfile($ntoutdir, $orthoid . '.nt.fa');
 	$fafh = IO::File->new($fafn, 'w');
 	# print the core orthologs
-	printf $fafh ">%s|%s|%s\n%s\n",
-		$orthoid, # ortholog id
-		$$_[0],   # reftaxon name
-		$$_[1],   # header
-		$$_[2]    # sequence
-			foreach (sort @$core_sequences_nt);
-	# prepend orthoid, reference taxon, and taxon name
-	$cdnahdr = join $sep, ($orthoid, $reftaxon, $speciesname, $cdnahdr);
+	print_core_sequences($orthoid, $core_sequences_nt, $fafh);
 	# print the concatenated sequence
 	printf $fafh ">%s\n%s\n", $cdnahdr, $cdnaseq;
 	print $stdout "wrote concatenated sequence $cdnahdr to file $fafn\n" if $debug;
@@ -599,11 +585,121 @@ undef $tfh;
 
 # yay
 $endtime = scalar time;
-printf $stdout "## Orthograph report for %s completed in %.2f total seconds\n", $speciesname, $endtime - $starttime;
+printf $stdout "## Orthograph report for %s completed in %.2f total seconds\n", $species_name, $endtime - $starttime;
 printf $stdout "## Found %d putative orthologs\n", $n_complete_orthoids unless $quiet;
 exit;
 
+sub print_core_sequences {
+	my $orthoid = shift;
+	my $core    = shift;
+	my $fafh    = shift;
 
+	foreach (sort { $a->[0] cmp $b->[0] } @$core) {
+		printf $fafh ">%s\n%s\n",
+			format_header(
+				$orthoid,
+				'.',          # reftaxon (not applicable -> .)
+				$$_[0],       # taxon (this reftaxon)
+				format_transcript_header(
+					$$_[1],        # header
+					1,             # start (1)
+					length $$_[2], # end (length)
+					'.',           # rf (not applicable -> .)
+					'.',          # reftaxon (not applicable -> .)
+				),
+			),
+			$$_[2]          # sequence
+		;
+	}
+	return 1;
+}
+
+# format_header
+# formats the header line
+# arguments: 
+#   cog id,
+#   reftaxon name
+#   this taxon name
+#   header
+
+sub format_header {
+	my $orthoid  = shift;
+	my $reftaxon = shift;
+	my $taxon    = shift;
+	my $header   = shift;
+
+	if ($hamstr_compatible) {
+		return join '|',
+			$orthoid,  # cog id
+			$reftaxon, # reftaxon name
+			$header    # header
+		;
+	}
+
+	else {
+		return join $sep,
+			$orthoid,  # cog id
+			$taxon,    # this taxon name
+			$header,   # the rest of the header
+		;
+	}
+
+}
+
+sub join_transcript_headers {
+	my $hits = shift;
+	my $type = shift;
+	my $this_hdr = '';
+	my $rf = '';
+	my @hdrs = ( );
+
+	foreach my $hit (@$hits) {
+		next unless defined $hit->{'orf_aa_sequence'};
+		($this_hdr, $rf) = get_rf($hit->{'header'});
+		if ($hamstr_compatible) {
+			push @hdrs, sprintf '%s-%d', $this_hdr, length $hit->{'orf_aa_sequence'};
+		}
+		else {
+			# amino acid sequences have reading frame info
+			if ($type eq 'aa') {
+				push @hdrs, 
+					format_transcript_header(
+						$this_hdr,
+						$hit->{'orf_aa_start'},
+						$hit->{'orf_aa_end'},
+						$rf,
+						$hit->{'reftaxon'},
+					);
+			}
+			# nucleotide sequences do not
+			else {
+				push @hdrs, 
+					format_transcript_header(
+						$this_hdr,
+						$hit->{'orf_cdna_start_on_transcript'},
+						$hit->{'orf_cdna_end_on_transcript'},
+						'.',
+						$hit->{'reftaxon'},
+					);
+			}
+		}
+	}
+	return join $concat_sep, @hdrs;
+}
+
+sub format_transcript_header {
+	my $hdr    = shift;
+	my $start  = shift;
+	my $end    = shift;
+	my $rf     = shift;
+	my $reftax = shift;
+	return join $sep,
+		$hdr,
+		sprintf('%d-%d', $start, $end),
+		$rf,
+		$reftax,
+	;
+}
 =head2 binify(BIN_SIZE, VALUE_COUNT)
 
 binifies a value->count hashref, i.e. generates an arrayref of bins (order
@@ -1023,6 +1119,7 @@ sub overlaps_previous_hit {
 
 sub concatenate_sequences {
 	my $hits = shift;
+	my $orthoid = shift;
 	my $prev_end;
 	my $seq = '';
 	my $cdnaseq = '';
@@ -1054,64 +1151,46 @@ sub concatenate_sequences {
 			length($cdnaseq) - length($hit->{'orf_cdna_sequence'})
 				if $debug;
 	}
-	# join aa headers
-	($hdr, $cdnahdr) = join_headers($hits);
+	# join headers
+	($hdr, $cdnahdr) = join_headers($hits, $orthoid);
 
 	return ($hdr, $seq, $cdnahdr, $cdnaseq);
 }
 
 sub join_headers {
 	my $hits = shift;
+	my $orthoid = shift;
 	my $hdr = '';
+	my $this_hdr = '';
 	my $cdnahdr = '';
+	my $rf;
 	# join aa headers
-	$hdr = $hits->[0]->{'header'};
-	if ($hamstr_compatible) {
-		# remove translation portion
-		$hdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
-		$hdr .= '-' . length($hits->[0]->{'orf_aa_sequence'});
-	}
-	else {
-		$hdr .= ':[' . length($hits->[0]->{'orf_aa_sequence'}) . ' aa]';
-	}
-	for (my $i = 1; $i < scalar @$hits; $i++) {
-		next unless defined $hits->[$i]->{'orf_aa_sequence'};
-		$hdr .= $concat_sep . $hits->[$i]->{'header'};
-		if ($hamstr_compatible) {
-			# remove translation portion
-			$hdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
-			$hdr .= '-' . length($hits->[$i]->{'orf_aa_sequence'});
-		}
-		else {
-			$hdr .= ':[' . length($hits->[$i]->{'orf_aa_sequence'}) . ' aa]';
-		}
-	}
-	# join cdna headers
-	$cdnahdr = $hits->[0]->{'header'};
-	if ($hamstr_compatible) {
-		# these do not have the length of the actual sequence,
-		# but the length of the corresponding aa sequence... a relict from hamstr
-		$cdnahdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
-		$cdnahdr .= '-' . length($hits->[0]->{'orf_aa_sequence'});
-	}
-	else {
-		$cdnahdr .= ':[' . length($hits->[0]->{'orf_cdna_sequence'}) . ' nt]';
-	}
-	for (my $i = 1; $i < scalar @$hits; $i++) {
-		next unless defined $hits->[$i]->{'orf_aa_sequence'};
-		$cdnahdr .= $concat_sep . $hits->[$i]->{'header'};
-		if ($hamstr_compatible) {
-			# these do not have the length of the actual sequence,
-			# but the length of the corresponding aa sequence... a relict from hamstr
-			$cdnahdr =~ s/( |_|:)?(\[revcomp]:)?\[translate\(\d\)\]$//;
-			$cdnahdr .= '-' . length($hits->[$i]->{'orf_aa_sequence'});
-		}
-		else {
-			$cdnahdr .= ':[' . length($hits->[$i]->{'orf_cdna_sequence'}) . ' nt]';
-		}
-	}
 
+	# format the header according to output format
+	$hdr = format_header(
+		$orthoid,
+		$hits->[0]->{'reftaxon'},
+		$species_name,
+		join_transcript_headers($hits, 'aa')
+	);
+
+	# join cdna headers
+
+	# format the header according to output format
+	$cdnahdr = format_header(
+		$orthoid,
+		$hits->[0]->{'reftaxon'},
+		$species_name,
+		join_transcript_headers($hits, 'nt')
+	);
 	return($hdr, $cdnahdr);
+}
+
+sub get_rf {
+	my $s = shift;
+	$s =~ s/\s*$//;
+	$s =~ s/( |_|:)?((\[revcomp]:)?(\[translate\(\d\)\]))$//;
+	return $s, $2;
 }
 
 sub get_ortholog_group {
