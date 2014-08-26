@@ -278,7 +278,7 @@ b) blastp. This contains all the BLASTP output tables.
 
 c) aa. This contains the actual result of your analysis. The hit sequences are
 output along with the core-ortholog sequences from your ortholog set, grouped
-by ortholog groups.
+by ortholog groups. See the appendix for information on Fasta header structure.
 
 d) nt. This contains the actual results on nucleotide level.
 
@@ -300,6 +300,27 @@ report tables after running orthograph-reporter:
 
 APPENDIX
 ========
+
+In the output Fasta files, the headers are structured like this:
+
+  >COG_ID|Taxon_name|Sequence_ID|Start-End|Reading_frame|Reference_taxon
+
+For example:
+
+  >EOG7VQW3C|Nasonia_vitripennis|NV15365-RA|4-604|[translate(1)]|Tribolium castaneum
+
+This would mean: For the ortholog group EOG7VQW3C and the analyzed taxon with
+the name Nasonia_vitripennis, the transcript with the ID NV15365-RA, translated
+in reading frame 1 from coordinates 4 to 604 was assigned, and the reference
+taxon (the one with the best reciprocal hit) was Tribolium castaneum.
+
+If multiple transcripts were concatenated, the last four fields are repeated
+for each transcript, separated by '&&':
+
+  >EOG7096NB|Nasonia_vitripennis|NV50397-RA|128-553|[translate(1)]|Nasonia vitripennis&&NV50397-RA|578-1309|[translate(1)]|Nasonia vitripennis
+
+The separators can be specified via the options "header-separator" and
+"concatenation-header-separator", respectively.
 
 MySQL performance
 -----------------
