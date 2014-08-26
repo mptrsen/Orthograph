@@ -195,7 +195,7 @@ sub get_dbh {#{{{
 		$dbh->do($query_attach_file) or die "Fatal: Could not ATTACH DATABASE: $DBI::errstr";
 		return $dbh;
 	}
-	return undef;
+	fail_and_exit("Could not get a database connection: $DBI::errstr");
 }#}}}
 
 =head2 db_get($query)
@@ -263,9 +263,9 @@ sub check {#{{{
 	unless ($query) { croak "Usage: check(QUERY)\n"; }
 	my @results;
 	my $dbh = get_dbh();
-	my $sql = $dbh->prepare($query);
-	$sql->execute(@_);
-	if ($sql->fetchrow_array()) {
+	my $sth = $dbh->prepare($query) or fail_and_exit("Could not prepare query: $DBI::errstr");
+	$sth->execute(@_);
+	if ($sth->fetchrow_array()) {
 		return 1;
 	}
 	return 0;
@@ -2749,7 +2749,7 @@ sub set_blastdb_to_rebuild {
 
 sub blastdb_needs_rebuilding {
 	my $setid = shift;
-	return check("SELECT * from o_blastdbs where setid = ? and rebuild = 1", $setid);
+	return check("SELECT * from $db_table_blastdbs where setid = ? and rebuild = 1", $setid);
 }
 
 1;

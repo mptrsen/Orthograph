@@ -605,6 +605,7 @@ sub print_core_sequences {
 					1,             # start (1)
 					length $$_[2], # end (length)
 					'.',           # rf (not applicable -> .)
+					'.',          # reftaxon (not applicable -> .)
 				),
 			),
 			$$_[2]          # sequence
@@ -640,7 +641,6 @@ sub format_header {
 			$orthoid,  # cog id
 			$taxon,    # this taxon name
 			$header,   # the rest of the header
-			$reftaxon, # reftaxon name
 		;
 	}
 
@@ -668,6 +668,7 @@ sub join_transcript_headers {
 						$hit->{'orf_aa_start'},
 						$hit->{'orf_aa_end'},
 						$rf,
+						$hit->{'reftaxon'},
 					);
 			}
 			# nucleotide sequences do not
@@ -677,7 +678,8 @@ sub join_transcript_headers {
 						$this_hdr,
 						$hit->{'orf_cdna_start_on_transcript'},
 						$hit->{'orf_cdna_end_on_transcript'},
-						'.'
+						'.',
+						$hit->{'reftaxon'},
 					);
 			}
 		}
@@ -690,10 +692,12 @@ sub format_transcript_header {
 	my $start  = shift;
 	my $end    = shift;
 	my $rf     = shift;
+	my $reftax = shift;
 	return join $sep,
 		$hdr,
 		sprintf('%d-%d', $start, $end),
 		$rf,
+		$reftax,
 	;
 }
 =head2 binify(BIN_SIZE, VALUE_COUNT)
