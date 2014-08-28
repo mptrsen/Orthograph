@@ -64,7 +64,7 @@ specify a list file to filter COGs. If you are only interested in a few genes fr
 
 .TP
 \fB--concatenation-header-separator\fP S
-set the header separator for concatenated sequences. Defaults to 'PP', enclose it in quotes if it contains whitespace.
+set the header separator for concatenated sequences. Defaults to '&&', enclose it in quotes if it contains whitespace.
 
 .TP
 \fB-c\fP, \fB--configfile\fP FILE
@@ -218,12 +218,12 @@ set the number of parallel threads for the programs that support this (hmmbuild,
 set the version for the OGS you are loading with --load-ogs-nucleotide or --load-ogs-peptide. May be an arbitrary string or number, enclose in quotes if it contains whitespace.
 
 .TP
-\fB--orf-overlap-minimum\fP F
-set the ORF overlap percentage to F. May be a floating-point number between 0 and 1. This is the minimum percentage of the orthologous window that an ORF must cover. Defaults to 1, set this to a lower value to make searches more relaxed.
+\fB--ogs-taxon-name\fP NAME
+set the version for the OGS you are loading with --load-ogs-nucleotide or --load-ogs-peptide. May be an arbitrary string, enclose in quotes if it contains whitespace.
 
 .TP
-\fB--orthodb5-format\fP
-switch to OrthoDB format version 5, where the header fields in the Fasta output files are ordered differently. This has been added for backwards compatibility.
+\fB--orf-overlap-minimum\fP F
+set the ORF overlap percentage to F. May be a floating-point number between 0 and 1. This is the minimum percentage of the orthologous window that an ORF must cover. Defaults to 0.5, set this to a lower value to make searches more relaxed.
 
 .TP
 \fB--ortholog-set\fP SET
@@ -248,10 +248,6 @@ be quiet. Orthograph will not report anything but the most important information
 .TP
 \fB--reference-taxa\fP LIST,OF,REFTAXA
 specify a comma-separated list of reference taxon \fIshorthands\fP that are considered for the reciprocal search. In the config file, there may be whitespace, but not on the command line, for obvious reasons. Defaults to all taxa in your ortholog set.
-
-.TP
-\fB--reference-taxon-shorthand\fP NAME
-set the reference taxon shorthand to NAME when loading an OGS with --load-ogs-nucleotide or --load-ogs-peptide. 
 
 .TP
 \fB--sets-dir\fP DIR
