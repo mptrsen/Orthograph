@@ -16,14 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Please contact: o.niehuis@zfmk.de
-#
-# The program summarizes the ouput of orthograph, Status: 2014-08-24
-# The program work only with genuine Orthograph headers
-# The program will fail summaring Orthograph output with HaMStR headers
-# usage: perl summarize_orthograph_results.pl -id PATH -sd PATH
-#	-i input directory: output directories of orthograph: aa, nt, log
-#	-o -> provide output/summarize directory, must be outside out of the input directory.
-# 	-> provide the absolute path for both!
+# Version: 2014-08-28
 
 use strict;
 use warnings;
@@ -33,26 +26,73 @@ use Getopt::Long;
 use Tie::File;
 use Carp;
 
+
+my $header_sector_separator = '&&';
+
 # Get options from command line
 my %options;
-GetOptions( \%options, 'i=s', 'o=s', 'help', 'h' );
+GetOptions( \%options, 'i=s', 'o=s' , 'c', 'm', 'd=s', 'help', 'h' );
+
+my $usage =
+	"\nUSAGE: summarize_orthograph_results.pl -i INPUTFOLDER -o OUTPUTFOLDER\n\n"
+   ."Mandatory parameters: -i FOLDER with Orthograph result folders\n"
+    ."                      -o existing FOLDER for summary files to be stored\n"
+   ."\nOptional parameters:  -c Make corresponding AA and NT headers identical\n"
+   ."                      -d FILENAME of file with a list of species you want\n"
+   ."                         to exclude. Sequences of these species will not\n"
+   ."                         be in the output. Species names have to be in\n"
+   ."                         separate lines.\n"
+   ."                      -m Mask stop symbols (*) with X\n\n";
+;
 
 # Check user input
 if (    $options{ 'help' }
      or $options{ 'h' } 
      or !exists $options{ 'i' }
-     or !exists $options{ 'o' } ) {
+     or !exists $options{ 'o' }
+    ) {
 
-    print "USAGE: summarize_orthograph_results.pl -i INPUTDIRECTORY -o SUMMARYDIRECTORY\n";
+    print $usage;
     exit;
 
 }
+
 if ( $options{ 'i' } eq $options{ 'o' } ) {
 
-    print "INPUTDIRECTORY and SUMMARYDIRECTORY must be different\n";
+    print "INPUTFOLDER and OUTPUTFOLDER must be different!\n";
     exit;
 
 }
+
+if( ! -e $options{ 'i' } ) {
+	print "INPUTFOLDER \"$options{ 'i' }\" does not exist!\n";
+	exit;
+}
+
+
+if( ! -e $options{ 'o' } ) {
+	print "OUTPUTFOLDER \"$options{ 'o' }\" does not exist!\n";
+	exit;
+}
+
+
+my %is_to_discard;
+if ( exists $options{ 'd' } ) {
+
+    print $usage if !defined $options{ 'd' }; 
+
+	open( my $fh, '<', $options{ 'd' } )
+		or die "Could not open file \"$options{ 'd' }\": $!\n";
+
+	while( my $line = <$fh> ) {
+		chomp $line;
+		next if $line =~ m/^\s*$/;
+		$is_to_discard{$line} = 1;
+	}
+}
+
+my $corresponding = exists $options{ 'c' } ? 1 : 0;
+my $mask_stop_symbols = exists $options{ 'm' } ? 1 : 0;
 
 # Names for summary directories
 my $aa_sum_dir = 'aa_summarized';
@@ -82,91 +122,171 @@ foreach my $dir ( @dir ) {
 	my @nt_file_names = &read_dir( catdir( $options{ 'i' }, $dir, $nt ), {'hide' => 1} );
 
     # Process all aa files of current taxon
+	print "Processing amino acids\n";
+
 	foreach my $aa_file_name ( @aa_file_names ) {
 
 	    # Name of the summary file
-	    my $summary_filename_aa;
-	    $aa_file_name =~ m/^(.+)(\.aa\.fa)$/i;
-	    $summary_filename_aa = $1.'.summarized'.$2;
+	    $aa_file_name =~ m/^(.+)\.fa$/i;
+	    my $summary_filename_aa = $1.'.summarized.fa';
 
 	    # Full path for inputfile and outputfile without coreorthologs
 	    my $input_file  = catfile( $options{ 'i' }, $dir, $aa, $aa_file_name );
 	    my $output_file = catfile( $options{ 'o' }, $aa_sum_dir, $summary_filename_aa );
 
-	    # File does not exist
-	    if ( ! -e "$output_file" ) {
-		    # Save each line of the inputfile in the outpufile
-		    &move_fasta_file( $input_file, $output_file );
-	    }
-
-	    # File does already exist
-	    else {
-	    
-	    	&append_non_reference_sequences_from_to( $input_file, $output_file );	
-	    
-	    }
+	    &summarize( $input_file, $output_file, $header_sector_separator, $corresponding,
+	                \%is_to_discard, $mask_stop_symbols, 
+	               )
+	    ;	
     }
-    
+        
     # Process all nt files of current taxon
+	print "Processing nucleotides\n";
+	
     foreach my $nt_file_name ( @nt_file_names ) {
 
 		# Name of summary file
-		$nt_file_name =~ m/^(.*)(\.nt\.fa)$/i;
-		my $summary_filename_nt = $1.'.summarized'.$2;
+		$nt_file_name =~ m/^(.+)\.fa$/i;
+		my $summary_filename_nt = $1.'.summarized.fa';
 			
 		# Full path for input and outputfile
 		my $input_file  = catfile( $options{ 'i' }, $dir, $nt, $nt_file_name );
 		my $output_file = catfile( $options{ 'o' }, $nt_sum_dir, $summary_filename_nt );
 
-		# File does not exist
-	    if ( ! -e "$output_file" ) {
-		    # Save each line of the inputfile in the outpufile
-		    &move_fasta_file( $input_file, $output_file );
-	    }
-
-	    # File does already exist
-	    else {   
-	    	
-	    	&append_non_reference_sequences_from_to( $input_file, $output_file );
-	    }
-	}
+	    &summarize( $input_file, $output_file, $header_sector_separator, $corresponding,
+	                \%is_to_discard, $mask_stop_symbols, 
+	               )
+	    ;	
+	}	
 }
 
 ##########################################################################################
 
-sub append_non_reference_sequences_from_to {
+sub summarize {
 	
 	# Unpack @_
-	my ( $input_file, $output_file ) = @_;
-	
+	my ( $input_file, $output_file, $header_sector_separator, $corresponding,
+	     $is_to_discard_REF, $mask_stop_symbols                                 ) = @_;
+		
 	open( my $input_file_fh, '<', $input_file )
 		or die "Could not open file\"$input_file\": $!\n";
 	
-	open ( my $output_file_fh, '>>', $output_file )
+	my $file_exists = ( -e "$output_file" ) ?  1  :  0;
+
+	open( my $output_file_fh, '>>', $output_file )
 		or die "Couldn't open file \" $output_file\": $!\n";
 
+	my $print_sequences = 1;
 	
-	my $is_reference_taxon = 0;
 	while( my $line = <$input_file_fh> ) {
 		chomp $line;
+		
+		next if $line =~ m/^\s+$/;
+		
+		# Headers
 		if( $line =~ m/^>/ ) {
-			my @columns = split( '\|', $line );
-			if( $columns[1] eq '.' or scalar @columns == 3 ) {
-				$is_reference_taxon = 1;
-				next;
+			my @header_sectors       = split( $header_sector_separator, $line );
+			my @columns_first_sector = split( '\|', $header_sectors[0] );
+			
+			# Subsequent file of a given ortholog group
+			if( $file_exists ) {
+
+				# Orthograph header of reference taxon 
+				if(     scalar @columns_first_sector == 6 
+				    and $columns_first_sector[5] eq '.' ) {
+				    
+					$print_sequences = 0;
+				
+				}
+				# HaMStR header of reference taxon 
+				elsif ( scalar @columns_first_sector == 3 ) {
+				
+					$print_sequences = 0;
+
+				}				
+				# Header of non-reference taxon
+				else {
+					
+					$line = &erase_range_and_translation_information(
+					        $header_sector_separator, @header_sectors )
+						if $corresponding;
+					print { $output_file_fh } $line, "\n";
+					$print_sequences = 1;
+					
+				}
 			}
-			else{
-				$is_reference_taxon = 0;
-				print {$output_file_fh} $line, "\n";
+			# First file of a given ortholog group
+			else {
+				# Orthograph header of reference taxon 
+				if(     scalar @columns_first_sector == 6
+				    and $columns_first_sector[5] eq '.' ) {
+				    
+					my $taxon = $columns_first_sector[1];
+					
+					if( exists ${$is_to_discard_REF}{$taxon} ) {
+						$print_sequences = 0;
+						next;
+					}
+					
+					$line = &erase_range_and_translation_information(
+					        $header_sector_separator, @header_sectors )
+						if $corresponding;
+					print { $output_file_fh } $line, "\n";
+					$print_sequences = 1;
+					
+				}
+				# HaMStR header of reference taxon 
+				elsif ( scalar @columns_first_sector == 3 ) {
+					my $taxon = $columns_first_sector[1];
+					if( exists ${$is_to_discard_REF}{$taxon} ) {
+						$print_sequences = 0;
+						next;
+					}
+					print { $output_file_fh } $line, "\n";
+					$print_sequences = 1;
+				}
+				# Header of non-reference taxon
+				else {
+					$line = &erase_range_and_translation_information(
+					        $header_sector_separator, @header_sectors )
+						if $corresponding;
+					print { $output_file_fh } $line, "\n";
+					$print_sequences = 1;
+				}
 			}
 		}
+		
+		# Sequences
 		else{
-				print {$output_file_fh} $line, "\n" if !$is_reference_taxon;
+			$line =~ tr/*/X/ if $mask_stop_symbols;
+			print { $output_file_fh } $line, "\n" if $print_sequences;
 		
 		}
 	}
-	close $input_file_fh or die "Could not close file\"$input_file\": $!\n";
+	close $input_file_fh  or die "Could not close file\"$input_file\": $!\n";
 	close $output_file_fh or die "Couldn't close file \" $output_file\": $!\n";
+}
+
+
+sub erase_range_and_translation_information {
+
+	my ( $header_sector_separator, @header_sectors ) = @_;
+
+	my @new_header_sectors;
+	my $first = 1;
+	while( my $header_sector = shift @header_sectors ) {
+		my @columns = split( '\|', $header_sector );
+		if ( $first ) {
+			( $columns[3], $columns[4] ) = ('.', '.');
+			$first = 0;
+		}
+		else {
+			( $columns[1], $columns[2] ) = ('.', '.');
+		}
+		push( @new_header_sectors, join( '|',  @columns ) );
+	}
+	return join( $header_sector_separator, @new_header_sectors ); 
+
 }
 
 
