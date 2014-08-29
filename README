@@ -64,6 +64,21 @@ sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
 it's the way OrthoDB 7 outputs. In the future you'll be able to specify the
 field). 
 
+You may need to filter the OrthoDB file to contain only those taxa you want.
+Probably the easiest way is to do this using grep:
+
+	- create a file containing the taxon shorthands you want. The shorthands must
+		be unambiguously identical to the ones found in the OrthoDB file, and must
+		be in a single line each, with no extra whitespace anywhere in the file (no
+		trailing empty lines!).
+	
+	- use `grep -f LISTFILE ORTHODBFILE > OUTPUTFILE` to filter the ORTHODBFILE
+		according to the shorthand list in LISTFILE. The output will be written to
+		OUTPUTFILE. 
+	
+	- double-check the resulting file. Is it empty? Does it contain the right
+		number of lines (number of taxa * number of COGs)?
+
 If you want to create these files yourself, make sure that the COG ID is in
 the first tab-separated field, the sequence ID in the third field, and the taxon
 shorthand in the sixth field. Any fields in between are irrelevant to Orthograph
@@ -157,7 +172,7 @@ You need to load data for every taxon separately (this may change in the
 future), and you should load data for as many taxa in the orthologs file as
 possible (preferably all). You will be asked for information about the file you
 are loading.  These sequences are used for the reciprocal BLAST databases. If
-you don't load any peptide data, your analysis will be flawed. 
+you don't load any peptide data, Orthograph will not run properly.
 
 Some of the protein IDs (in the first header field of the OGS file) must
 correspond to the third field in the OrthoDB file. This is important, as these
@@ -296,6 +311,21 @@ report tables after running orthograph-reporter:
 ## 11. ???
 
 ## 12. Profit!
+
+## 13. Optional: Summarize output
+
+For further analyses, it may be required to summarize the sequences from
+multiple Orthograph output directories. This can be accomplished using
+summarize_orthograph_results.pl by O. Niehuis, which can be run like this:
+
+  $ ./summarize_orthograph_results.pl -i INPUT_DIRECTORY -o OUTPUT_DIRECTORY [OPTIONS]
+
+The program generates an amino acid resp. nucleotide sequence file in the
+OUTPUT_DIRECTORY for each COG containing the sequences from all taxa, including
+reference taxa. The INPUT_DIRECTORY must be a directory containing Orthograph
+output directories. For further information, read the usage instructions
+that are printed when calling the program with the -h flag.
+
 
 
 APPENDIX
