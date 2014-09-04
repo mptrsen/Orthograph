@@ -247,8 +247,8 @@ sub db_do {#{{{
 	my @args = @_;
 	my $dbh = get_dbh()
 		or return undef;
+	print $query, "\n" if $debug;
 	my $sth = $dbh->prepare($query) or return 0;
-	print $sth->{Statement}, "\n" if $debug;
 	$sth = execute($sth, $db_timeout, @args);
 	$dbh->disconnect();
 	return 1;
@@ -948,7 +948,7 @@ sub insert_ogs_info_into_database {
 	my $type       = shift;
 	my $taxid      = shift;
 	my $ogsversion = shift;
-	db_do("INSERT OR IGNORE INTO $db_table_ogs ($db_col_type, $db_col_taxid, $db_col_version) VALUES ($type, $taxid, $ogsversion)") or croak;
+	db_do("INSERT OR IGNORE INTO $db_table_ogs ($db_col_type, $db_col_taxid, $db_col_version) VALUES (?, ?, ?)", $type, $taxid, $ogsversion) or croak;
 	my $res = db_get("SELECT $db_col_id FROM $db_table_ogs WHERE $db_col_taxid = ? AND $db_col_version = ? AND $db_col_type = ?", $taxid, $ogsversion, $type);
 	return $res->[0]->[0];
 }
