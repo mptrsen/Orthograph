@@ -656,16 +656,18 @@ sub print_ogs_list {
 	my $type = shift;
 	my $list_of_ogs = get_list_of_ogs();
 	my $len = 0;
+	my $len_ver = 7;
 	foreach (@$list_of_ogs) {
 		if (length $_->[1] > $len) { $len = length $_->[1] };
+		if (length $_->[2] > $len_ver) { $len_ver = length $_->[1] };
 	}
 	print "This is a list of present OGS in the database:\n";
-	printf "[%s] %-${len}s  %7s  %s  %s\n", '#', 'Taxon name', 'version', 'type', 'sequences';
+	printf "[%s] %-${len}s  %${len_ver}s  %s  %s\n", '#', 'Taxon name', 'version', 'type', 'sequences';
 	printf "%s%-${len}s%s\n", '-' x (length(scalar @$list_of_ogs) + 2), '-' x $len,   '---------------------------';
 	foreach (@$list_of_ogs) {
 		# only print if ogs is of requested type
 		if ($type) { next unless $_->[3] == $type }
-		printf "[%d] %-${len}s  %-7s  %-4s  %d\n",
+		printf "[%d] %-${len}s  %-${len_ver}s  %-4s  %d\n",
 			$_->[0],	# ogs id
 			$_->[1],	# taxon name
 			$_->[2],	# ogs version

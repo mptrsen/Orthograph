@@ -881,8 +881,8 @@ sub get_set_id {
 	my $setname = shift(@_);
 	unless ($setname) { croak("Usage: get_set_id(SETNAME)") }
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
-	my $query = "SELECT $db_col_id FROM $db_table_set_details WHERE name = '$setname'";
-	my $result = db_get($query);
+	my $query = "SELECT $db_col_id FROM $db_table_set_details WHERE name = ?";
+	my $result = db_get($query,  $setname);
 	if ( scalar(@$result) > 1 ) { 
 		warn("Warning: Multiple sets of the same name!\n");
 		return $$result[0][0];
@@ -2732,7 +2732,8 @@ sub load_set_into_temptable {
 
 sub delete_set {
 	my $setid = shift;
-	db_do("DELETE FROM $db_table_orthologs WHERE $db_col_setid = ?", $setid);
+	db_do("DELETE FROM $db_table_orthologs WHERE $db_col_setid = ?", $setid) or croak;
+	db_do("DELETE FROM $db_table_blastdbs WHERE $db_col_setid = ?", $setid) or croak;
 	return db_do("DELETE FROM $db_table_set_details WHERE $db_col_id = ?", $setid);
 }
 
