@@ -835,15 +835,15 @@ sub list_sets {
 		return 1;
 	}
 	# determine maximum length of set names for the table
-	foreach (keys(%$sets)) {
-		$maxlen_set = length($_) if (length($_) > $maxlen_set);
-		$maxlen_desc = length($$sets{$_}) if (length($$sets{$_}) > $maxlen_desc);
+	foreach my $set (@$sets) {
+		$maxlen_set = length($set->[0]) if (length($set->[0]) > $maxlen_set);
+		$maxlen_desc = length($set->[1]) if (length($set->[1]) > $maxlen_desc);
 	}
 	print "The following ortholog sets are presently installed:\n";
-	printf("%-${maxlen_set}s   %-${maxlen_desc}s\n", 'Set name', 'description');
-	printf("%-${maxlen_set}s---%-${maxlen_desc}s\n", '-' x $maxlen_set, '-' x $maxlen_desc);
-	foreach (sort keys(%$sets)) {
-		printf("%-${maxlen_set}s   %s\n", $_, $$sets{$_});
+	printf("%-${maxlen_set}s   %-${maxlen_desc}s   %9s %5s\n", 'Set name', 'description', 'orthologs', 'COGs');
+	printf("%-${maxlen_set}s---%-${maxlen_desc}s---%9s-%-5s\n", '-' x $maxlen_set, '-' x $maxlen_desc, '-' x 9, '-' x 5);
+	foreach my $set (@$sets) {
+		printf("%-${maxlen_set}s   %-${maxlen_desc}s   %9s %5s\n", $set->[0], $set->[1], $set->[2], $set->[3]);
 	}
 	return 1;
 }
