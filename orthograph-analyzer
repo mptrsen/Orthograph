@@ -809,10 +809,13 @@ sub intro {#{{{
 	# do the backup; create a tarball if desired
 	print $stdout "Backing up old output files...\n" unless $quiet;
 	if ($debug) { printf "%s\n", $_ foreach @backup }
-	my $tarfile = create_tarball(@backup);
-	printf($stdout "Old output files backed up in '%s' (%d files).\n", $tarfile, scalar @backup) unless $quiet;
-	undef(@backup);	# not needed anymore
-	undef($tarfile);
+	# don't create an empty tarball
+	if (@backup) {
+		my $tarfile = create_tarball(@backup);
+		printf($stdout "Old output files backed up in '%s' (%d files).\n", $tarfile, scalar @backup) unless $quiet;
+		undef(@backup);	# not needed anymore
+		undef($tarfile);
+	}
 	if ($clear_files) {
 		# empty the directories
 		Orthograph::Functions::cleardir($hmmoutdir);
