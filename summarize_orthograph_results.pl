@@ -337,15 +337,15 @@ sub read_dir {
 	my $hide = exists $arg_ref->{'hide'}  ?  $arg_ref->{'hide'}  :  $DEFAULT_OF{'hide'};
 
 	# Open directory handle
-	opendir ( my $dir, $path ) or 
-		die "Couldn't find path \"$path\": $!";
+	opendir( my $dir, $path ) or 
+		die "Could not open directory \"$path\": $!";
 
 	# Read file names
 	my @files = readdir( $dir ) or
 		die "Couldn't read directory \"$path\": $!";
 
 	# Close directory handle
-	closedir ( $dir ) or
+	closedir( $dir ) or
 		die "Couldn't close directory \"$path\": $!";
 
 	# Filter hidden system files out
