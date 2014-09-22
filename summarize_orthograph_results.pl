@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Please contact: o.niehuis@zfmk.de
-# Version: 2014-08-28
+# Version: 2014-09-20
 
 use strict;
 use warnings;
@@ -35,8 +35,8 @@ GetOptions( \%options, 'i=s', 'o=s' , 'c', 'm', 'd=s', 'help', 'h' );
 
 my $usage =
 	"\nUSAGE: summarize_orthograph_results.pl -i INPUTFOLDER -o OUTPUTFOLDER\n\n"
-   ."Mandatory parameters: -i FOLDER with Orthograph result folders\n"
-    ."                      -o existing FOLDER for summary files to be stored\n"
+   ."Mandatory parameters: -i FOLDER containing exclusively Orthograph result folders\n"
+   ."                      -o existing FOLDER for summary files to be stored\n"
    ."\nOptional parameters:  -c Make corresponding AA and NT headers identical\n"
    ."                      -d FILENAME of file with a list of species you want\n"
    ."                         to exclude. Sequences of these species will not\n"
@@ -102,17 +102,15 @@ my $nt_sum_dir = 'nt_summarized';
 &check_summary_directory( catdir( $options{ 'o' }, $aa_sum_dir ) );
 &check_summary_directory( catdir( $options{ 'o' }, $nt_sum_dir ) );
 
-# Read all directories and files in input directory into an array
+# Read all directories into array
 my @dir = &read_dir( $options{ 'i' }, { 'hide' => 1 } );
+@dir = grep { -d "$options{ 'i' }/$_" } @dir;
 
 # Process files of each directory
 foreach my $dir ( @dir ) {
 
 	print "Processing directory: $dir\n";
 	
-	# Get all files from the species directory
-	my @items = &read_dir( catfile( $options{ 'i' }, $dir ), { 'hide' => 1 } );
-
     # Names of subfolders for amino acids and nucleotides
     my $aa = 'aa';
     my $nt = 'nt';
