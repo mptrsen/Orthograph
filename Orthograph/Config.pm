@@ -58,6 +58,7 @@ GetOptions( $config,
 	'delete-ogs=s',
 	'delete-set=s',
 	'destroy!',
+	'extend-orf',
 	'fill-with-x',
 	'hamstr-compatible-output',
 	'header-separator=s',
@@ -172,6 +173,7 @@ $config->{'debug'}                      //= 0;
 $config->{'delete-ogs'}                 //= '';
 $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
+$config->{'extend-orf'}                 //= 0;
 $config->{'exonerate-program'}          //= 'exonerate';
 $config->{'fill-with-x'}                //= 1;
 $config->{'hamstr-compatible-output'}   //= 0;

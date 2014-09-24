@@ -102,6 +102,7 @@ my $fill_with_x                = $config->{'fill-with-x'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $orthoid_list_file          = $config->{'cog-list-file'};
+my $extend_orf                 = $config->{'extend-orf'};
 my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
@@ -425,8 +426,10 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		($proteome_sequence, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
 		my ($est_header, $est_sequence) = get_nucleotide_transcript_for($hit->{'header'});
 
-		# crop the est sequence to hmm alignment region
-		$est_sequence = crop_to_hmm($est_sequence, $est_header, $hit);
+		# crop the est sequence to hmm alignment region unless we want to extend it
+		unless ($extend_orf) {
+			$est_sequence = crop_to_hmm($est_sequence, $est_header, $hit);
+		}
 
 		# if you don't want me to correct for frameshift errors...
 		if ($no_frameshift_correction) {
@@ -480,7 +483,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				}
 
 				# check whether the overlap to the hmm alignment is sufficient
-				my $orf_overlap = orf_percentage($hit);
+				my $orf_overlap = orf_overlaps_hmm($hit);
 
 				# this is too little
 				if ($orf_overlap < $orf_overlap_minimum) {
@@ -1024,6 +1027,8 @@ sub orf_overlaps_hmm {
 	my $cand        = shift;
 	my $orf_overlap = 0;
 	my $orf_length  = $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'};
+	printf "ORF [%d:%d] overlaps HMM [%d:%d]\n", $cand->{'orf_aa_start'}, $cand->{'orf_aa_end'}, $cand->{'hmm_start'}, $cand->{'hmm_end'}
+		if $verbose;
 	# if the orf is somewhere else, there is no overlap
 	if    ($cand->{'orf_aa_end'} < $cand->{'ali_start'})    { return 0 }
 	elsif ($cand->{'ali_end'}    < $cand->{'orf_aa_start'}) { return 0 }
@@ -1324,7 +1329,7 @@ sub get_nucleotide_transcript_for {
 		$nt_seq = Wrapper::Sqlite::get_nucleotide_transcript_for($original_header);
 	}
 	if ($revcomp) { return($original_header, reverse_complement($nt_seq)) }
-	return($original_header, $nt_seq);
+	else { return($original_header, $nt_seq) }
 }
 
 sub reverse_complement {
