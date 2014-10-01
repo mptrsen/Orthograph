@@ -30,6 +30,7 @@ use Seqload::Fasta;	# object-oriented access to fasta files
 my $verbose          = 0;
 my $debug            = 0;
 my $exhaustive       = 0;
+my $genetic_code     = 1;
 my $outdir           = File::Spec->catdir('.');
 my $searchprog       = 'exonerate';
 my $translateprog    = 'fastatranslate';
@@ -224,7 +225,7 @@ sub search {
 		--bestn 1
 		--score $score_threshold
 		--ryo '$exonerate_ryo'
-		--geneticcode $geneticcode
+		--geneticcode $genetic_code
 		--model $exonerate_model
 		--querytype protein
 		--targettype dna
