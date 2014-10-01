@@ -221,21 +221,7 @@ sub search {
 	my $exonerate_ryo = '>cdna %tcb %tce\n%tcs>aa %qab %qae\n%qas';
 
 	# the complete command line
-	my $exonerate_cmd = qq($searchprog
-		--bestn 1
-		--score $score_threshold
-		--ryo '$exonerate_ryo'
-		--geneticcode $genetic_code
-		--model $exonerate_model
-		--querytype protein
-		--targettype dna
-		--verbose 0
-		--showalignment no
-		--showvulgar no
-		$exhaustive
-		--query $queryfile
-		--target $targetfile
-		> $outfile);
+	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --geneticcode $genetic_code --model $exonerate_model --querytype protein --targettype dna --verbose 0 --showalignment no --showvulgar no $exhaustive --query $queryfile --target $targetfile > $outfile);
 	print "$exonerate_cmd\n" if $debug;
 
 	# run the beast now
@@ -254,7 +240,7 @@ sub translate_cdna {
 	my $self = shift;
 	my $outfile = File::Spec->catfile($outdir, 'translatethis.fa');
 	my $translatefile = fastaify('cdna', $self->{'cdna_sequence'});
-	my $translate_cmd = qq($translateprog -F 1 $translatefile);
+	my $translate_cmd = qq($translateprog --geneticcode $genetic_code -F 1 $translatefile);
 	if ($debug) {
 		print 'Translating CDNA...', "\n";
 		print $translate_cmd, "\n";

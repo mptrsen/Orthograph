@@ -103,6 +103,7 @@ my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $orthoid_list_file          = $config->{'cog-list-file'};
 my $extend_orf                 = $config->{'extend-orf'};
+my $genetic_code               = $config->{'genetic-code'};
 my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
@@ -208,6 +209,7 @@ my $totaltime            = 0;
 Wrapper::Exonerate->searchprog($exonerate_program);
 Wrapper::Exonerate->translateprog($translate_program);
 Wrapper::Exonerate->outdir($logdir);
+Wrapper::Exonerate->genetic_code($genetic_code);
 
 # get the species id from the database
 $species_id = get_taxid_for_species($species_name);
@@ -483,7 +485,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				}
 
 				# check whether the overlap to the hmm alignment is sufficient
-				print Dumper $hit; exit;
 				my $orf_overlap = orf_percentage($hit);
 
 				# this is too little
