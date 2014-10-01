@@ -131,6 +131,7 @@ my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
 my $input_file                 = $config->{'input-file'};
+my $genetic_code                = $config->{'genetic-code'};
 my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
@@ -865,7 +866,7 @@ sub translate_est {#{{{
     print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
   }
-  my @translateline = qq($translateprog $infile > $outfile);
+  my @translateline = qq($translateprog --geneticcode $genetic_code $infile > $outfile);
   system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?');
   return($outfile);
 }#}}}

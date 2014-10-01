@@ -138,6 +138,22 @@ sub translateprog {
   $translateprog = shift;
 }
 
+=head2 genetic_code
+
+Sets or returns the genetic code to use for the exonerate search. Defaults to
+1 (standard genetic code). 
+
+=cut
+
+sub genetic_code {
+	my $class = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $genetic_code }
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Exonerate->score_threshold(N)\n") }
+	$genetic_code = shift(@_);
+	unless ($genetic_code =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $genetic_code\n") }
+}
+
 =head2 score_threshold
 
 Sets or returns the score threshold to use for the exonerate search. Defaults to
@@ -204,7 +220,21 @@ sub search {
 	my $exonerate_ryo = '>cdna %tcb %tce\n%tcs>aa %qab %qae\n%qas';
 
 	# the complete command line
-	my $exonerate_cmd = qq($searchprog --bestn 1 --score $score_threshold --ryo '$exonerate_ryo' --model $exonerate_model --querytype protein --targettype dna --verbose 0 --showalignment no --showvulgar no $exhaustive --query $queryfile --target $targetfile > $outfile);
+	my $exonerate_cmd = qq($searchprog
+		--bestn 1
+		--score $score_threshold
+		--ryo '$exonerate_ryo'
+		--geneticcode $geneticcode
+		--model $exonerate_model
+		--querytype protein
+		--targettype dna
+		--verbose 0
+		--showalignment no
+		--showvulgar no
+		$exhaustive
+		--query $queryfile
+		--target $targetfile
+		> $outfile);
 	print "$exonerate_cmd\n" if $debug;
 
 	# run the beast now
