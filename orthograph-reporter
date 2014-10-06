@@ -491,10 +491,12 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 				# this is too little
 				if ($orf_overlap < $orf_overlap_minimum) {
-					printf $stdout "ORF (%d-%d nt) overlaps only %.2f %% of the HMM alignment region (length %d aa), discarding this transcript\n", 
+					printf $stdout "ORF (%d-%d nt) overlaps only %.2f %% of the HMM alignment region (%d-%d, length %d aa), discarding this transcript\n", 
 						$hit->{'orf_cdna_start_on_transcript'},
 						$hit->{'orf_cdna_end_on_transcript'},
 						$orf_overlap * 100,
+						$hit->{'ali_start'},
+						$hit->{'ali_end'},
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 							if $verbose;
 					++$transcripts_skipped;
@@ -502,10 +504,12 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				}
 				# the overlap is sufficient, this is ok
 				else {
-					printf $stdout "ORF (%d-%d nt) overlaps %.2f %% of the HMM alignment region (length %d aa)\n",
+					printf $stdout "ORF (%d-%d nt) overlaps %.2f %% of the HMM alignment region (%d-%d, %d aa)\n",
 						$hit->{'orf_cdna_start_on_transcript'},
 						$hit->{'orf_cdna_end_on_transcript'},
 						$orf_overlap * 100,
+						$hit->{'ali_start'},
+						$hit->{'ali_end'},
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 							if $verbose;
 
