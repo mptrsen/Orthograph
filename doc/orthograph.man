@@ -107,6 +107,10 @@ delete everything Orthograph from the database.
 set the Exonerate program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'exonerate'.
 
 .TP
+\fB--extend-orf\fP
+try to extend ORFs beyond the region that the reciprocal search determined as orthologous. Without this setting, the ORF can only get smaller if Exonerate trims the sequences.
+
+.TP
 \fB--fill-with-x\fP
 when concatenating transcripts, fill the gap in amino acid sequences with 'X' characters and in nucleotide sequences with 'N' characters.
 
@@ -227,7 +231,7 @@ set the version for the OGS you are loading with --load-ogs-nucleotide or --load
 
 .TP
 \fB--orf-overlap-minimum\fP F
-set the ORF overlap percentage to F. May be a floating-point number between 0 and 1. This is the minimum percentage of the orthologous window that an ORF must cover. Defaults to 0.5, set this to a lower value to make searches more relaxed.
+set the ORF overlap percentage threshold to F. May be a floating-point number between 0 and 1. This is the minimum percentage of the orthologous region that an ORF must cover. Defaults to 0.5, set this to a lower value to make searches more relaxed.
 
 .TP
 \fB--ortholog-set\fP SET
