@@ -426,21 +426,19 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		# get the sequences from the database
 		my $proteome_sequence;
 		($proteome_sequence, $hit->{'reftaxon'}) = get_reference_sequence($hit->{'blast_hit'});
-		my ($est_header, $est_sequence) = get_nucleotide_transcript_for($hit->{'header'});
+		my ($est_header, $est_sequence_complete) = get_nucleotide_transcript_for($hit->{'header'});
 
-		# crop the est sequence to hmm alignment region unless we want to extend it
-		unless ($extend_orf) {
-			$est_sequence = crop_to_hmm($est_sequence, $est_header, $hit);
-		}
+		# crop the est sequence to hmm alignment region
+		my $est_sequence_hmm_region = crop_to_hmm($est_sequence_complete, $est_header, $hit);
 
-		# if you don't want me to correct for frameshift errors...
+		# if you don't want me to correct for frameshift errors or extend the orf...
 		if ($no_frameshift_correction) {
 			( $hit->{'orf_aa_sequence'},
 				$hit->{'orf_cdna_sequence'},
 				$hit->{'orf_cdna_start'},
 				$hit->{'orf_cdna_end'},
 				$hit->{'orf_aa_start'},
-				$hit->{'orf_aa_end'} ) = hmm_to_orf($hit, $est_sequence, $proteome_sequence);
+				$hit->{'orf_aa_end'} ) = hmm_to_orf($hit, $est_sequence_hmm_region, $proteome_sequence);
 			# this can be added to the output sequences
 			push @$output_sequences, $hit;
 			next HIT;
@@ -452,10 +450,10 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				$hit->{'orf_cdna_start'},
 				$hit->{'orf_cdna_end'},
 				$hit->{'orf_aa_start'},
-				$hit->{'orf_aa_end'} ) = get_orf($proteome_sequence, $est_sequence);
+				$hit->{'orf_aa_end'} ) = get_orf($proteome_sequence, $est_sequence_hmm_region);
 
 			# exonerate didn't get an alignment
-			if (not $hit->{'orf_cdna_sequence'}) {
+			unless ($hit->{'orf_cdna_sequence'}) {
 				if ($verbose) {
 					printf $stdout "Could not get an ORF for '%s'[%d:%d] and reference sequence %d (%s)\n",
 						$est_header,
@@ -471,19 +469,41 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			}
 			# exonerate got an alignment
 			else {
-				$hit->{'orf_cdna_start_on_transcript'} = $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 2;
-				$hit->{'orf_cdna_end_on_transcript'}   = $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 2;
-				printf $stdout "Got an ORF for '%s'[%d-%d] (ORF coords %d-%d)\n",
+				# calculate orf coordinates with respect to transcript
+				$hit->{'orf_cdna_start_on_transcript'} = $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 3;
+				$hit->{'orf_cdna_end_on_transcript'}   = $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 3;
+				printf $stdout "Got an ORF for '%s'[%d-%d aa] (ORF coords %d-%d nt)\n",
 					$hit->{'hmmhit'},
 					$hit->{'ali_start'},
 					$hit->{'ali_end'},
 					$hit->{'orf_cdna_start_on_transcript'},
 					$hit->{'orf_cdna_end_on_transcript'}
-						if $debug;
+						if $verbose;
 				if ($debug > 1) {
 					print $hit->{'orf_cdna_sequence'}, "\n";
 				}
 
+				if ($extend_orf) {
+					# get the orf a second time, using the full transcript sequence.
+					# this alignment must include 100% of the previous one.
+					( $hit->{'extended_orf_aa_sequence'},
+					$hit->{'extended_orf_cdna_sequence'},
+					$hit->{'extended_orf_cdna_start'},
+					$hit->{'extended_orf_cdna_end'},
+					$hit->{'extended_orf_aa_start'},
+					$hit->{'extended_orf_aa_end'} ) = try_to_extend_orf($hit, $proteome_sequence, $est_sequence_complete);
+					if ($hit->{'extended_orf_cdna_start'} > $hit->{'orf_cdna_start_on_transcript'} or $hit->{'extended_orf_cdna_end'} < $hit->{'orf_cdna_end_on_transcript'}) {
+						printf "Extended ORF (%d-%d) does not cover original ORF (%d-%d)\n",
+							$hit->{'extended_orf_cdna_start'},
+							$hit->{'extended_orf_cdna_end'},
+							$hit->{'orf_cdna_start_on_transcript'},
+							$hit->{'orf_cdna_end_on_transcript'},
+								if $verbose;
+						print Dumper $hit; exit;
+						++$transcripts_skipped;
+						next HIT;
+					}
+				}
 				# check whether the overlap to the hmm alignment is sufficient
 				# the area where the orf overlaps the hmm alignment must cover
 				# at least $orf_overlap_minimum percent of the hmm alignment
@@ -1454,5 +1474,50 @@ sub crop_to_hmm {
 sub hmm_to_orf {
 	my $h = shift;
 	return (
+	);
+}
+
+sub try_to_extend_orf {
+	my $hit = shift;
+	my $prot_seq = shift;
+	my $est_seq = shift;
+	printf "Trying to extend ORF using complete transcript sequence (%d nt)\n", length($est_seq) if $verbose;
+	( $hit->{'extended_orf_aa_sequence'},
+		 $hit->{'extended_orf_cdna_sequence'},
+		 $hit->{'extended_orf_cdna_start'},
+		 $hit->{'extended_orf_cdna_end'},
+		 $hit->{'extended_orf_aa_start'},
+		 $hit->{'extended_orf_aa_end'} ) = get_orf($prot_seq, $est_seq);
+	# does the large orf cover all of the small orf?
+	if ($hit->{'extended_orf_cdna_start'} <= $hit->{'orf_cdna_start_on_transcript'}
+		and $hit->{'extended_orf_cdna_end'} >= $hit->{'orf_cdna_end_on_transcript'}) {
+		# this is ok!
+		if ($verbose) {
+			printf $stdout "Extended ORF (%d-%d) by %d nt to %d-%d\n", 
+				$hit->{'orf_cdna_start_on_transcript'},
+				$hit->{'orf_cdna_end_on_transcript'},
+				abs($hit->{'extended_orf_cdna_end'} - $hit->{'extended_orf_cdna_start'}) - abs($hit->{'orf_cdna_end_on_transcript'} - $hit->{'orf_cdna_start_on_transcript'}),
+				$hit->{'extended_orf_cdna_start'},
+				$hit->{'extended_orf_cdna_end'},
+			;
+		}
+	}
+	else {
+		if ($verbose) {
+			printf $stdout "Extended ORF (%d-%d) does not contain 100%% of orthologous region (%d-%d)\n", 
+				$hit->{'extended_orf_cdna_start'},
+				$hit->{'extended_orf_cdna_end'},
+				$hit->{'orf_cdna_start_on_transcript'},
+				$hit->{'orf_cdna_end_on_transcript'},
+			;
+		}
+	}
+	return (
+	 $hit->{'extended_orf_aa_sequence'},
+	 $hit->{'extended_orf_cdna_sequence'},
+	 $hit->{'extended_orf_cdna_start'},
+	 $hit->{'extended_orf_cdna_end'},
+	 $hit->{'extended_orf_aa_start'},
+	 $hit->{'extended_orf_aa_end'}
 	);
 }

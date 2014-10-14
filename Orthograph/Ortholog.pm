@@ -18,7 +18,7 @@ package Orthograph::Ortholog;
 
 use strict;
 use warnings;
-use Wrapper::Mysql;
+use Wrapper::Exonerate;
 
 =head2 new
 
@@ -27,8 +27,8 @@ Constructor. Returns blessed hashref.
 =cut
 
 sub new {
-	my ($class, $hmmhit) = @_;
-	my $self = $hmmhit;
+	my ($class, $hit) = @_;
+	my $self = $hit;
 	return bless ($self, $class);
 }
 
