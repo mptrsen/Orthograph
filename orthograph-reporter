@@ -493,13 +493,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					$hit->{'extended_orf_aa_start'},
 					$hit->{'extended_orf_aa_end'} ) = try_to_extend_orf($hit, $proteome_sequence, $est_sequence_complete);
 					if ($hit->{'extended_orf_cdna_start'} > $hit->{'orf_cdna_start_on_transcript'} or $hit->{'extended_orf_cdna_end'} < $hit->{'orf_cdna_end_on_transcript'}) {
-						printf "Extended ORF (%d-%d) does not cover original ORF (%d-%d)\n",
-							$hit->{'extended_orf_cdna_start'},
-							$hit->{'extended_orf_cdna_end'},
-							$hit->{'orf_cdna_start_on_transcript'},
-							$hit->{'orf_cdna_end_on_transcript'},
-								if $verbose;
-						print Dumper $hit; exit;
 						++$transcripts_skipped;
 						next HIT;
 					}
@@ -1504,7 +1497,7 @@ sub try_to_extend_orf {
 	}
 	else {
 		if ($verbose) {
-			printf $stdout "Extended ORF (%d-%d) does not contain 100%% of orthologous region (%d-%d)\n", 
+			printf "Extended ORF (%d-%d) does not cover original ORF (%d-%d)\n",
 				$hit->{'extended_orf_cdna_start'},
 				$hit->{'extended_orf_cdna_end'},
 				$hit->{'orf_cdna_start_on_transcript'},
