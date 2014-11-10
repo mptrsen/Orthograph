@@ -476,12 +476,18 @@ Returns: hash reference of set names => description
 
 sub get_ortholog_sets {#{{{
 	my %sets = ();
-	my $query = "SELECT * FROM $db_table_set_details";
+	my $query = "
+		SELECT
+			$db_table_set_details.$db_col_name,
+			$db_table_set_details.$db_col_description,
+			COUNT($db_table_orthologs.$db_col_id),
+			COUNT(distinct $db_table_orthologs.$db_col_orthoid)
+		FROM $db_table_set_details
+		INNER JOIN $db_table_orthologs
+			ON $db_table_set_details.$db_col_id = $db_table_orthologs.$db_col_setid
+		GROUP BY $db_table_set_details.$db_col_id";
 	my $data = db_get($query);
-	foreach my $item (@$data) {
-		$sets{$$item[1]} = $$item[2];
-	}
-	return(\%sets);
+	return($data);
 }#}}}
 
 =head2 get_list_of_ogs
