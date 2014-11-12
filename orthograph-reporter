@@ -163,11 +163,11 @@ undef $message;
 
 # report configuration
 if ($verbose) {
-	print "Using the following configuration settings:\n";
+	print $stdout "Using the following configuration settings:\n";
 	foreach (sort keys %$config) {
-		printf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
+		printf $stdout "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
 	}
-	print "\n";
+	print $stdout "\n";
 }
 
 # read the list of orthoids from file
@@ -283,7 +283,7 @@ foreach my $score (@$scores) {
 
 		print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
 
-		printf $stdout "Fetching BLAST results for %s (HMMsearch id %d, alignment score %.1f)...\n",
+		printf $stdout "Fetching BLAST results for '%s' (HMMsearch id %d, alignment score %.1f)...\n",
 			$result->{'header'},
 			$result->{'hmmsearch_id'},
 			$score,
@@ -512,6 +512,15 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 							if $verbose;
 
+				# check whether this ORF overlaps with any previous hits
+				if (overlaps_previous_hit($output_sequences, $hit)) {
+					if ($verbose) {
+						print $stdout "Skipping this transcript\n";
+					}
+					++$transcripts_skipped;
+					next HIT;
+				}
+
 
 				if ($extend_orf) {
 					# get the orf a second time, using the full transcript sequence.
@@ -523,13 +532,13 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					$hit->{'extended_orf_aa_start'},
 					$hit->{'extended_orf_aa_end'} ) = try_to_extend_orf($hit, $proteome_sequence, $est_sequence_complete);
 					if ($hit->{'extended_orf_cdna_start'} > $hit->{'orf_cdna_start_on_transcript'} or $hit->{'extended_orf_cdna_end'} < $hit->{'orf_cdna_end_on_transcript'}) {
-						printf "Extended ORF (%d-%d) outside of original ORF, using original ORF\n" if $verbose;
+						printf $stdout "Extended ORF (%d-%d) outside of original ORF, using original ORF\n" if $verbose;
 						remove_extended_orf($hit);
 						next HIT;
 					}
 				}
 
-				# check whether this ORF overlaps with any previous hits
+				# check whether the extended ORF overlaps with any previous hits
 				if (overlaps_previous_hit($output_sequences, $hit)) {
 					if ($verbose) {
 						print $stdout "Skipping this transcript\n";
@@ -540,6 +549,14 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 					# ok, this can be added to the output sequences
 					push @$output_sequences, $hit;
+					if ($verbose) {
+						printf $stdout "Added '%s' (%d-%d aa) to %s\n",
+							$hit->{'header'},
+							$hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start_on_transcript'},
+							$hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end_on_transcript'},
+							$orthoid,
+						;
+					}
 
 					# assign (new) reference taxon if blast score higher
 					if (not defined $reftaxon) { 
@@ -810,8 +827,8 @@ sub is_reciprocal_match {
 					$reftaxon_count->{$reftaxon} = 1;
 				}
 				if ($debug) {
-					print "These taxa have been hit yet: \n";
-					printf "  %s: %d\n", $_, $reftaxon_count->{$_} foreach keys %$reftaxon_count;
+					print $stdout "These taxa have been hit yet: \n";
+					printf $stdout "  %s: %d\n", $_, $reftaxon_count->{$_} foreach keys %$reftaxon_count;
 				}
 				# all reftaxa have been hit,
 				# even under strict conditions this is a reciprocal match
@@ -1565,7 +1582,7 @@ sub try_to_extend_orf {
 	my $hit = shift;
 	my $prot_seq = shift;
 	my $est_seq = shift;
-	printf "Trying to extend ORF using complete transcript sequence (%d nt)\n", length($est_seq) if $verbose;
+	printf $stdout "Trying to extend ORF using complete transcript sequence (%d nt)\n", length($est_seq) if $verbose;
 	( $hit->{'extended_orf_aa_sequence'},
 		 $hit->{'extended_orf_cdna_sequence'},
 		 $hit->{'extended_orf_cdna_start'},
@@ -1588,7 +1605,7 @@ sub try_to_extend_orf {
 	}
 	else {
 		if ($verbose) {
-			printf "Extended ORF (%d-%d) does not cover original ORF (%d-%d)\n",
+			printf $stdout "Extended ORF (%d-%d) does not cover original ORF (%d-%d)\n",
 				$hit->{'extended_orf_cdna_start'},
 				$hit->{'extended_orf_cdna_end'},
 				$hit->{'orf_cdna_start_on_transcript'},
