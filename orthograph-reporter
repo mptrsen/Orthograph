@@ -297,7 +297,7 @@ foreach my $score (@$scores) {
 			# yeah
 			printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
 				$orthoid,
-				$this_match->{'hmmhit'},
+				$this_match->{'header'},
 				$this_match->{'hmm_start'},
 				$this_match->{'hmm_end'},
 				$orthoid,
@@ -320,7 +320,7 @@ foreach my $score (@$scores) {
 					# e-values have precedence. just go to the next one
 					printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n",
 						$orthoid,
-						$this_match->{'hmmhit'}
+						$this_match->{'header'}
 							if $verbose;
 					next RESULT;
 				}
@@ -329,7 +329,7 @@ foreach my $score (@$scores) {
 				elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 					printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n",
 						$orthoid,
-						$this_match->{'hmmhit'}
+						$this_match->{'header'}
 							if $verbose;
 					next RESULT;
 				}
@@ -444,7 +444,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 			next HIT;
 		}
 		else {
-			# exonerate the orf (produce corresponding nucleotide sequence)
+			# exonerate the orf (also produce corresponding nucleotide sequence)
 			( $hit->{'orf_aa_sequence'},
 				$hit->{'orf_cdna_sequence'},
 				$hit->{'orf_cdna_start'},
@@ -473,7 +473,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				$hit->{'orf_cdna_start_on_transcript'} = $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 3;
 				$hit->{'orf_cdna_end_on_transcript'}   = $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 3;
 				printf $stdout "Got an ORF for '%s'[%d-%d aa] (ORF coords %d-%d nt)\n",
-					$hit->{'hmmhit'},
+					$hit->{'header'},
 					$hit->{'ali_start'},
 					$hit->{'ali_end'},
 					$hit->{'orf_cdna_start_on_transcript'},
@@ -483,19 +483,13 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					print $hit->{'orf_cdna_sequence'}, "\n";
 				}
 
-				if ($extend_orf) {
-					# get the orf a second time, using the full transcript sequence.
-					# this alignment must include 100% of the previous one.
-					( $hit->{'extended_orf_aa_sequence'},
-					$hit->{'extended_orf_cdna_sequence'},
-					$hit->{'extended_orf_cdna_start'},
-					$hit->{'extended_orf_cdna_end'},
-					$hit->{'extended_orf_aa_start'},
-					$hit->{'extended_orf_aa_end'} ) = try_to_extend_orf($hit, $proteome_sequence, $est_sequence_complete);
-					if ($hit->{'extended_orf_cdna_start'} > $hit->{'orf_cdna_start_on_transcript'} or $hit->{'extended_orf_cdna_end'} < $hit->{'orf_cdna_end_on_transcript'}) {
-						++$transcripts_skipped;
-						next HIT;
+				# check whether this ORF overlaps with any previous hits
+				if (orf_overlaps_previous_hit($output_sequences, $hit)) {
+					if ($verbose) {
+						print $stdout "Skipping this transcript\n";
 					}
+					++$transcripts_skipped;
+					next HIT;
 				}
 				# check whether the overlap to the hmm alignment is sufficient
 				# the area where the orf overlaps the hmm alignment must cover
@@ -526,15 +520,29 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 							if $verbose;
 
-					# check whether this ORF overlaps with any previous hits
-					if (overlaps_previous_hit($output_sequences, $hit)) {
-						if ($verbose) {
-							print $stdout "Skipping this transcript\n";
-						}
+
+				if ($extend_orf) {
+					# get the orf a second time, using the full transcript sequence.
+					# this alignment must include 100% of the previous one.
+					( $hit->{'extended_orf_aa_sequence'},
+					$hit->{'extended_orf_cdna_sequence'},
+					$hit->{'extended_orf_cdna_start'},
+					$hit->{'extended_orf_cdna_end'},
+					$hit->{'extended_orf_aa_start'},
+					$hit->{'extended_orf_aa_end'} ) = try_to_extend_orf($hit, $proteome_sequence, $est_sequence_complete);
+					if ($hit->{'extended_orf_cdna_start'} > $hit->{'orf_cdna_start_on_transcript'} or $hit->{'extended_orf_cdna_end'} < $hit->{'orf_cdna_end_on_transcript'}) {
 						++$transcripts_skipped;
 						next HIT;
 					}
-
+					# does the extended ORF overlap with any other extended ORF? 
+					# if so, fall back to the non-extended ORF
+					if (extended_orf_overlaps_previous_hit($output_sequences, $hit)) {
+						if ($verbose) {
+							print $stdout "Using original ORF\n";
+						}
+						remove_extended_orf($hit);
+					}
+				}
 
 					# ok, this can be added to the output sequences
 					push @$output_sequences, $hit;
@@ -689,8 +697,8 @@ sub join_transcript_headers {
 				push @hdrs, 
 					format_transcript_header(
 						$this_hdr,
-						$hit->{'orf_aa_start'},
-						$hit->{'orf_aa_end'},
+						defined $hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start_on_transcript'},
+						defined $hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end_on_transcript'},
 						$rf,
 						$hit->{'reftaxon'},
 					);
@@ -700,8 +708,8 @@ sub join_transcript_headers {
 				push @hdrs, 
 					format_transcript_header(
 						$this_hdr,
-						$hit->{'orf_cdna_start_on_transcript'},
-						$hit->{'orf_cdna_end_on_transcript'},
+						defined $hit->{'extended_orf_cdna_start'} ? $hit->{'extended_orf_cdna_start'} : $hit->{'orf_cdna_start_on_transcript'},
+						defined $hit->{'extended_orf_cdna_end'} ? $hit->{'extended_orf_cdna_end'} : $hit->{'orf_cdna_end_on_transcript'},
 						'.',
 						$hit->{'reftaxon'},
 					);
@@ -717,12 +725,13 @@ sub format_transcript_header {
 	my $end    = shift;
 	my $rf     = shift;
 	my $reftax = shift;
-	return join $sep,
+	my $joined_hdr = join $sep,
 		$hdr,
 		sprintf('%d-%d', $start, $end),
 		$rf,
 		$reftax,
 	;
+	return $joined_hdr;
 }
 =head2 binify(BIN_SIZE, VALUE_COUNT)
 
@@ -942,12 +951,12 @@ sub overlap {
 			# the transcript coords do not overlap
 			if ($$candidate{'env_end'} <= $$already_assigned[$i]{'env_start'} or $$candidate{'env_start'} >= $$already_assigned[$i]{'env_end'}) {
 				printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
-					$$already_assigned[$i]{'hmmhit'},
+					$$already_assigned[$i]{'header'},
 					$$already_assigned[$i]{'env_start'},
 					$$already_assigned[$i]{'env_end'},
 					$$already_assigned[$i]{'hmm_start'},
 					$$already_assigned[$i]{'hmm_end'},
-					$$candidate{'hmmhit'},
+					$$candidate{'header'},
 					$$candidate[$i]{'env_start'},
 					$$candidate[$i]{'env_end'},
 					$$candidate{'hmm_start'},
@@ -958,12 +967,12 @@ sub overlap {
 			# the transcript coords overlap
 			elsif ($$candidate{'env_end'} >= $$already_assigned[$i]{'env_start'} or $$candidate{'env_start'} <= $$already_assigned[$i]{'env_end'}) {
 				printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do overlap.\n", 
-					$$already_assigned[$i]{'hmmhit'},
+					$$already_assigned[$i]{'header'},
 					$$already_assigned[$i]{'env_start'},
 					$$already_assigned[$i]{'env_end'},
 					$$already_assigned[$i]{'hmm_start'},
 					$$already_assigned[$i]{'hmm_end'},
-					$$candidate{'hmmhit'},
+					$$candidate{'header'},
 					$$candidate[$i]{'env_start'},
 					$$candidate[$i]{'env_end'},
 					$$candidate{'hmm_start'},
@@ -976,12 +985,12 @@ sub overlap {
 		else {
 			# this is totally not ok
 			printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap.\n", 
-				$$already_assigned[$i]{'hmmhit'},
+				$$already_assigned[$i]{'header'},
 				$$already_assigned[$i]{'env_start'},
 				$$already_assigned[$i]{'env_end'},
 				$$already_assigned[$i]{'hmm_start'},
 				$$already_assigned[$i]{'hmm_end'},
-				$$candidate{'hmmhit'},
+				$$candidate{'header'},
 				$$candidate[$i]{'env_start'},
 				$$candidate[$i]{'env_end'},
 				$$candidate{'hmm_start'},
@@ -1003,12 +1012,12 @@ sub transcripts_overlap {
 		# this is ok
 		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
 			printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
-				$$already_matched{'hmmhit'},
+				$$already_matched{'header'},
 				$$already_matched{'env_start'},
 				$$already_matched{'env_end'},
 				$$already_matched{'hmm_start'},
 				$$already_matched{'hmm_end'},
-				$$candidate{'hmmhit'},
+				$$candidate{'header'},
 				$$candidate{'env_start'},
 				$$candidate{'env_end'},
 				$$candidate{'hmm_start'},
@@ -1125,7 +1134,7 @@ sub orf_percentage {
 	return length( $h->{'orf_aa_sequence'} ) / ( abs( $h->{'ali_end'} - $h->{'ali_start'} ) + 1 );
 }
 
-sub overlaps_previous_hit {
+sub orf_overlaps_previous_hit {
 	my $other_hits = shift;
 	my $cand       = shift;
 	foreach my $hit ( grep { defined $_->{'orf_aa_sequence'} } @$other_hits ) {
@@ -1160,6 +1169,49 @@ sub overlaps_previous_hit {
 	return 0;
 }
 
+sub extended_orf_overlaps_previous_hit {
+	my $other_hits = shift;
+	my $cand       = shift;
+	foreach my $hit ( grep { defined $_->{'extended_orf_aa_sequence'} } @$other_hits ) {
+		# starts before other hit is over or ends after start of other hit
+		if ((
+				# starts before begin of another transcript, ends within or after the other transcript
+				$cand->{'extended_orf_cdna_start'} < $hit->{'extended_orf_cdna_start'}
+					and $cand->{'extended_orf_cdna_end'} > $hit->{'extended_orf_cdna_start'}
+				)
+				or (
+				# starts before end of another transcript, ends after the other transcript
+				$cand->{'extended_orf_cdna_start'} < $hit->{'extended_orf_cdna_end'}
+					and $cand->{'extended_orf_cdna_end'} > $hit->{'extended_orf_cdna_end'}
+				)
+				or (
+				# starts and ends within another transcript
+				$cand->{'extended_orf_cdna_start'} > $hit->{'extended_orf_cdna_start'}
+					and $cand->{'extended_orf_cdna_end'} < $hit->{'extended_orf_cdna_end'}
+				)
+			)
+		{
+			printf $stdout "extended ORF (%d-%d nt) overlaps other extended ORF (%d-%d nt)\n",
+				$cand->{'extended_orf_cdna_start'}, 
+				$cand->{'extended_orf_cdna_end'},
+				$hit->{'extended_orf_cdna_start'},
+				$hit->{'extended_orf_cdna_end'}
+			;
+			return 1;
+		}
+	}
+	# otherwise, it's fine, no overlap
+	return 0;
+}
+
+sub remove_extended_orf {
+	my $hit = shift;
+	my @elems = qw( extended_orf_aa_sequence extended_orf_aa_start extended_orf_aa_end extended_orf_cdna_sequence extended_orf_cdna_start extended_orf_cdna_end );
+	foreach my $key (@elems) {
+		delete $hit->{$key};
+	}
+}
+
 sub concatenate_sequences {
 	my $hits = shift;
 	my $orthoid = shift;
@@ -1185,8 +1237,8 @@ sub concatenate_sequences {
 		}
 
 		# concatenate sequences
-		$seq     .= $hit->{'orf_aa_sequence'};
-		$cdnaseq .= $hit->{'orf_cdna_sequence'};
+		$seq     .= defined $hit->{'extended_orf_aa_sequence'}   ? $hit->{'extended_orf_aa_sequence'}   : $hit->{'orf_aa_sequence'};
+		$cdnaseq .= defined $hit->{'extended_orf_cdna_sequence'} ? $hit->{'extended_orf_cdna_sequence'} : $hit->{'orf_cdna_sequence'};
 		printf $stdout "Appended sequence (%d/%d sites) to existing sequence (%d/%d sites)\n",
 			length $seq,
 			length $cdnaseq,
