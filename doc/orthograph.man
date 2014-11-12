@@ -4,7 +4,11 @@
 Orthograph - Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models
 
 .SH SYNOPSIS
-\fBorthograph-manager\fP [ OPTIONS ] \fIFILE\fP
+\fBorthograph-manager\fP [ OPTIONS ] [\fIFILE\fP]
+
+\fBorthograph-analyzer\fP [ OPTIONS ]
+
+\fBorthograph-reporter\fP [ OPTIONS ]
 
 .SH DESCRIPTION
 .PP
