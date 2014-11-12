@@ -483,14 +483,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					print $hit->{'orf_cdna_sequence'}, "\n";
 				}
 
-				# check whether this ORF overlaps with any previous hits
-				if (orf_overlaps_previous_hit($output_sequences, $hit)) {
-					if ($verbose) {
-						print $stdout "Skipping this transcript\n";
-					}
-					++$transcripts_skipped;
-					next HIT;
-				}
 				# check whether the overlap to the hmm alignment is sufficient
 				# the area where the orf overlaps the hmm alignment must cover
 				# at least $orf_overlap_minimum percent of the hmm alignment
@@ -531,17 +523,19 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					$hit->{'extended_orf_aa_start'},
 					$hit->{'extended_orf_aa_end'} ) = try_to_extend_orf($hit, $proteome_sequence, $est_sequence_complete);
 					if ($hit->{'extended_orf_cdna_start'} > $hit->{'orf_cdna_start_on_transcript'} or $hit->{'extended_orf_cdna_end'} < $hit->{'orf_cdna_end_on_transcript'}) {
-						++$transcripts_skipped;
+						printf "Extended ORF (%d-%d) outside of original ORF, using original ORF\n" if $verbose;
+						remove_extended_orf($hit);
 						next HIT;
 					}
-					# does the extended ORF overlap with any other extended ORF? 
-					# if so, fall back to the non-extended ORF
-					if (extended_orf_overlaps_previous_hit($output_sequences, $hit)) {
-						if ($verbose) {
-							print $stdout "Using original ORF\n";
-						}
-						remove_extended_orf($hit);
+				}
+
+				# check whether this ORF overlaps with any previous hits
+				if (overlaps_previous_hit($output_sequences, $hit)) {
+					if ($verbose) {
+						print $stdout "Skipping this transcript\n";
 					}
+					++$transcripts_skipped;
+					next HIT;
 				}
 
 					# ok, this can be added to the output sequences
@@ -1134,38 +1128,83 @@ sub orf_percentage {
 	return length( $h->{'orf_aa_sequence'} ) / ( abs( $h->{'ali_end'} - $h->{'ali_start'} ) + 1 );
 }
 
-sub orf_overlaps_previous_hit {
+sub overlaps_previous_hit {
 	my $other_hits = shift;
 	my $cand       = shift;
-	foreach my $hit ( grep { defined $_->{'orf_aa_sequence'} } @$other_hits ) {
-		# starts before other hit is over or ends after start of other hit
-		if ((
-				# starts before begin of another transcript, ends within or after the other transcript
-				$cand->{'orf_cdna_start_on_transcript'} < $hit->{'orf_cdna_start_on_transcript'}
-					and $cand->{'orf_cdna_end_on_transcript'} > $hit->{'orf_cdna_start_on_transcript'}
-				)
-				or (
-				# starts before end of another transcript, ends after the other transcript
-				$cand->{'orf_cdna_start_on_transcript'} < $hit->{'orf_cdna_end_on_transcript'}
-					and $cand->{'orf_cdna_end_on_transcript'} > $hit->{'orf_cdna_end_on_transcript'}
-				)
-				or (
-				# starts and ends within another transcript
-				$cand->{'orf_cdna_start_on_transcript'} > $hit->{'orf_cdna_start_on_transcript'}
-					and $cand->{'orf_cdna_end_on_transcript'} < $hit->{'orf_cdna_end_on_transcript'}
-				)
-			)
-		{
-			printf $stdout "ORF (%d-%d nt) overlaps other ORF (%d-%d nt)\n",
-				$cand->{'orf_cdna_start_on_transcript'}, 
-				$cand->{'orf_cdna_end_on_transcript'},
-				$hit->{'orf_cdna_start_on_transcript'},
-				$hit->{'orf_cdna_end_on_transcript'}
+	# test for original ORF coordinates
+	if ( coordinate_overlap($other_hits, $cand, 'orf_cdna_start_on_transcript', 'orf_cdna_end_on_transcript', 'orf_cdna_start_on_transcript', 'orf_cdna_end_on_transcript') ) {
+		printf $stdout "ORF (%d-%d nt) overlaps other ORF (%d-%d nt)\n",
+			$cand->{'orf_cdna_start_on_transcript'}, 
+			$cand->{'orf_cdna_end_on_transcript'},
+			$cand->{'orf_cdna_start_on_transcript'},
+			$cand->{'orf_cdna_end_on_transcript'}
+		;
+		return 1;
+	}
+	# test whether the original orf overlaps with any extended ORFs
+	elsif ( coordinate_overlap($other_hits, $cand, 'orf_cdna_start_on_transcript', 'orf_cdna_end_on_transcript', 'extended_orf_cdna_start', 'extended_orf_cdna_end') ) {
+		printf $stdout "ORF (%d-%d nt) overlaps other extended ORF (%d-%d nt)\n",
+			$cand->{'orf_cdna_start_on_transcript'}, 
+			$cand->{'orf_cdna_end_on_transcript'},
+			$cand->{'extended_orf_cdna_start'},
+			$cand->{'extended_orf_cdna_end'}
+		;
+		return 1;
+	}
+	# if the candidate has an extended ORF, test that too
+	if ($cand->{'extended_orf_cdna_start'}) {
+		# oops, got an overlap. remove the ORF extension and try again
+		if (coordinate_overlap($other_hits, $cand, 'extended_orf_cdna_start', 'extended_orf_cdna_end', 'extended_orf_cdna_start', 'extended_orf_cdna_end')) {
+			printf $stdout "Extended ORF (%d-%d nt) overlaps other extended ORF (%d-%d nt)\n",
+				$cand->{'extended_orf_cdna_start'}, 
+				$cand->{'extended_orf_cdna_end'},
+				$cand->{'extended_orf_cdna_start'},
+				$cand->{'extended_orf_cdna_end'}
+			;
+			remove_extended_orf($cand);
+		}
+		# even the original ORF overlaps with the other extended ORF: not ok
+		if (coordinate_overlap($other_hits, $cand, 'extended_orf_cdna_start', 'extended_orf_cdna_end', 'orf_cdna_start_on_transcript', 'orf_cdna_end_on_transcript')) {
+			printf $stdout "Extended ORF (%d-%d nt) overlaps other non-extended ORF (%d-%d nt)\n",
+				$cand->{'extended_orf_cdna_start'}, 
+				$cand->{'extended_orf_cdna_end'},
+				$cand->{'orf_cdna_start_on_transcript'},
+				$cand->{'orf_cdna_end_on_transcript'}
 			;
 			return 1;
 		}
 	}
+	
 	# otherwise, it's fine, no overlap
+	return 0;
+}
+
+sub coordinate_overlap {
+	my $other_hits = shift;
+	my $cand = shift;
+	my $q_start_name = shift;
+	my $q_end_name = shift;
+	my $t_start_name = shift;
+	my $t_end_name = shift;
+	foreach my $hit ( grep { defined $_->{$q_start_name} } @$other_hits ) {
+		# starts before other hit is over or ends after start of other hit
+		if ((
+				# starts before begin of another transcript, ends within or after the other transcript
+				$cand->{$q_start_name} < $hit->{$t_start_name}
+					and $cand->{$q_end_name} > $hit->{$t_start_name}
+				)
+				or (
+				# starts before end of another transcript, ends after the other transcript
+				$cand->{$q_start_name} < $hit->{$t_end_name}
+					and $cand->{$q_end_name} > $hit->{$t_end_name}
+				)
+				or (
+				# starts and ends within another transcript
+				$cand->{$q_start_name} > $hit->{$t_start_name}
+					and $cand->{$q_end_name} < $hit->{$t_end_name}
+				)
+			) { return 1 }
+	}
 	return 0;
 }
 
