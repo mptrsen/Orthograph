@@ -552,8 +552,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					if ($verbose) {
 						printf $stdout "Added '%s' (%d-%d aa) to %s\n",
 							$hit->{'header'},
-							$hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start_on_transcript'},
-							$hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end_on_transcript'},
+							$hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start'},
+							$hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end'},
 							$orthoid,
 						;
 					}
@@ -708,8 +708,8 @@ sub join_transcript_headers {
 				push @hdrs, 
 					format_transcript_header(
 						$this_hdr,
-						defined $hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start_on_transcript'},
-						defined $hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end_on_transcript'},
+						defined $hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start'},
+						defined $hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end'},
 						$rf,
 						$hit->{'reftaxon'},
 					);
@@ -1315,6 +1315,7 @@ sub join_headers {
 	my $this_hdr = '';
 	my $cdnahdr = '';
 	my $rf;
+	print Dumper $hits; exit;
 	# join aa headers
 
 	# format the header according to output format
