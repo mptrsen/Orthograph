@@ -174,10 +174,16 @@ exonerate-program    = exonerate
 # 0.5 (50%) is the default; lower values make this less conservative.
 #orf-overlap-minimum = 0.5
 
-# HaMStR compatible output. Leave this uncommented if you want to use scripts
+# ORF extension. Try to extend the ORF while retaining the orthologous region.
+# This makes Exonerate run an additional time with the full transcript
+# sequence, and the resulting ORF must contain the original ORF. Defaults to 0
+# (off), uncomment this to turn it on.
+#extend-orf = 1
+
+# HaMStR compatible output. Uncomment this if you want to use scripts
 # that depend on the sequence header format that the older HaMStR pipeline
 # used. The default is a more human-readable format, hence this extra option.
-hamstr-compatible-output = 1
+#hamstr-compatible-output = 1
 
 # If you are only interested in a few genes from your ortholog set, you can 
 # provide Orthograph with a list of ortholog IDs in a file. The IDs must be
