@@ -1,5 +1,5 @@
-ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with
-Profile Hidden Markov models
+ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models
+===========================================================================================================
 
 SYSTEM REQUIREMENTS
 ===================
@@ -16,21 +16,21 @@ have the capabilities for a centralized server-client setup. In grid computing
 environments, this is an advantage since no network connections are required,
 but the database is a flat file on the hard drive.
 
-Package      | Version | Download from
-:------------|:--------|:-----------------------------------------------------------
-Perl         | 5.14    | http://www.perl.org
-SQLite       | 3.8.2   | http://sqlite.org/download.html
-MySQL        | 5.6.17  | http://dev.mysql.com/downloads/mysql/
-MAFFT        | 7.023b  | http://mafft.cbrc.jp/alignment/software/
-HMMer        | 3.1b1   | http://hmmer.janelia.org/software/
-NCBI BLAST+  | 2.2.28+ | ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-Exonerate    | 2.2.0   | http://www.ebi.ac.uk/~guy/exonerate/
+Package        Version   Download from
+-------------- --------- -------------------------------------------------------------
+Perl           5.14      <http://www.perl.org>
+SQLite         3.8.2     <http://sqlite.org/download.html>
+MySQL          5.6.17    <http://dev.mysql.com/downloads/mysql/>
+MAFFT          7.023b    <http://mafft.cbrc.jp/alignment/software/>
+HMMer          3.1b1     <http://hmmer.janelia.org/software/>
+NCBI BLAST+    2.2.28+   <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
+Exonerate      2.2.0     <http://www.ebi.ac.uk/~guy/exonerate/>
 
 Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
 
 Don't worry about your Perl version if you run a reasonably recent Linux or
-UNIX system, such as Mac OS X, but see [here] [1] and [there] [2] if you are
+UNIX system, such as Mac OS X, but see [here][1] and [there][2] if you are
 trying to install the required packages on a Windows system under Cygwin (or
 natively, for that matter). You might run into problems getting the MySQL
 driver, HMMer3 and Exonerate to work. Really, don't use Windows. 
@@ -42,6 +42,7 @@ well as the proper database driver for your database engine of choice
 If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.
 
+
 DATA REQUIREMENTS
 =================
 
@@ -51,12 +52,16 @@ novo among genomes or transcriptomes, but relies on the orthology information in
 pre-defined sets. Because of this requirement, it is essential that your input
 data conforms to some data standards as listed below.
 
-a) The clusters of orthologous groups (COGs). It consists of a tab-delimited
-file that contains at least one line per COG. If you get your COGs from OrthoDB
-[3] (recommended), this is the case. In an OrthoDB file, each line has a number
-of tab-delimited fields like this:
 
-EOG7M10DZ       AECH19093       AECH19093-PA    Acromyrmex echinatior   Panamanian leafcutter ant       AECHI   1282                    IPR006121,IPR008250,IPR005834,IPR023214 
+a) The clusters of orthologous groups (COGs)
+--------------------------------------------
+
+The information about which genes belong to a COG consists of a tab-delimited
+file that contains at least one line per COG. If you get your COGs from
+[OrthoDB][3] (recommended), this is the case. In an OrthoDB file, each line has
+a number of tab-delimited fields like this:
+
+	EOG7M10DZ       AECH19093       AECH19093-PA    Acromyrmex echinatior   Panamanian leafcutter ant       AECHI   1282                    IPR006121,IPR008250,IPR005834,IPR023214 
 
 The 'EOG7M10DZ' field is the COG ID. The line must also contain an unambiguous
 sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
@@ -67,32 +72,38 @@ field).
 You may need to filter the OrthoDB file to contain only those taxa you want.
 Probably the easiest way is to do this using grep:
 
-	- create a file containing the taxon shorthands you want. The shorthands must
-		be unambiguously identical to the ones found in the OrthoDB file, and must
-		be in a single line each, with no extra whitespace anywhere in the file (no
-		trailing empty lines!).
-	
-	- use `grep -f LISTFILE ORTHODBFILE > OUTPUTFILE` to filter the ORTHODBFILE
-		according to the shorthand list in LISTFILE. The output will be written to
-		OUTPUTFILE. 
-	
-	- double-check the resulting file. Is it empty? Does it contain the right
-		number of lines (number of taxa * number of COGs)?
+- create a file containing the taxon shorthands you want. The shorthands must
+	be unambiguously identical to the ones found in the OrthoDB file, and must
+	be in a single line each, with no extra whitespace anywhere in the file (no
+	trailing empty lines!).
+
+- use `grep -f LISTFILE ORTHODBFILE > OUTPUTFILE` to filter the ORTHODBFILE
+	according to the shorthand list in LISTFILE. The output will be written to
+	OUTPUTFILE. 
+
+- double-check the resulting file. Is it empty? Does it contain the right
+	number of lines (number of taxa * number of COGs)?
 
 If you want to create these files yourself, make sure that the COG ID is in
 the first tab-separated field, the sequence ID in the third field, and the taxon
 shorthand in the sixth field. Any fields in between are irrelevant to Orthograph
 but must not be omitted since it relies on their order.
 
-b) The official gene set (OGS) for each of the taxa that are present in the
-ortholog set, i.e., contributed sequences to the COGs. The sequences for a
-single taxon must be in Fasta format, and all (!) sequences of this taxon that
-occur in the COGs must be in the OGS database as well. Their sequence identifier
-must be unambiguously identical to the sequence ID in the file from OrthoDB. For
+
+b) The official gene set (OGS)
+------------------------------
+
+You need the OGS for each of the taxa that are present in the ortholog set,
+i.e., contributed sequences to the COGs. The sequences for a single taxon must
+be in Fasta format, and all (!) sequences of this taxon that occur in the COGs
+must be in the OGS database as well. Their sequence identifier must be
+*unambiguously identical* to the sequence ID in the file from OrthoDB. For
 example, this would be the related sequence for Acromyrmex echinatior from the
 OGS:
 
 	>AECH19093-PA
+
+Note that these IDs must not contain any commas (',').
 
 The OGS must be present as amino acid sequences, and may be present as
 nucleotide sequences. If the latter is missing, no nucleotide sequences can be
@@ -214,6 +225,7 @@ available for nucleotide data, as well.
 I know. Nucleotide OGS loading is slow. I'm working on improving that
 performance. For now, be happy that you only need to do this once.
 
+
 ## 6. Upload your ortholog set into the database:
 
 	$ ./orthograph-manager FILE
@@ -224,9 +236,9 @@ any time using `Ctrl+C`. I'm sorry if you mistyped the last taxon name and have
 to start over :)
 
 The file must have an OrthoDB version 7 style tab-delimited format as described
-in the DATA REQUIREMENTS section. This is output by OrthoDB 7 [3] by default,
+in the DATA REQUIREMENTS section. This is output by [OrthoDB 7][3] by default,
 so you don't have to worry about that if you downloaded your ortholog set from
-OrthoDB version 7. 
+OrthoDB 7. 
 
 Dependent on your OrthoDB query, you may need to filter your file so that it
 contains only the taxa you want in the ortholog set. 
@@ -252,6 +264,7 @@ file is created in the output directory you specified in the config file.
 Supply the rest of the mandatory settings and consider changing some optional
 ones that will affect the searches.
 
+
 ## 9. Start Orthograph! 
 
 	$ ./orthograph-analyzer
@@ -274,6 +287,7 @@ The HMMER and BLAST output tables are placed in the 'hmmsearch' and 'blastp'
 subdirectories in the output directory. The 'aa' and 'nt' directories are
 created but left empty. A log file called 'orthograph-DATE.log' is created in
 the 'log' directory. 
+
 
 ## 11. Start the reporter
 
@@ -308,9 +322,12 @@ report tables after running orthograph-reporter:
 		mapped to each COG. These do not overlap and there are aa and nt output
 		files for them.
 
+
 ## 11. ???
 
+
 ## 12. Profit!
+
 
 ## 13. Optional: Summarize output
 
@@ -352,6 +369,7 @@ for each transcript, separated by '&&':
 The separators can be specified via the options "header-separator" and
 "concatenation-header-separator", respectively.
 
+
 MySQL performance
 -----------------
 
@@ -362,6 +380,7 @@ definitely use table files instead of database files (`innodb_file_per_table`)
 and increase the lock wait timeout (`innodb_lock_wait_timeout`) to between 200
 and 600 to make sure that long queries (which may occur) do not block other
 orthograph processes.
+
 
 Required Perl modules
 ---------------------
@@ -400,6 +419,7 @@ Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany
 [2]: <http://forums.mysql.com/read.php?51,389833,389833>
 [3]: <http://orthodb.org/>
 
+
 ## Set up the database. 
 
 Skip this step if you already have a MySQL account and a database (and know
@@ -434,6 +454,7 @@ working user the necessary permissions on it:
 You may use a different database name, of course. Make a note of your new user
 name, the password and the database name. You will need it later.
 
+
 Common problems
 ---------------
 
@@ -442,6 +463,7 @@ Common problems
 Really, check your input file. Is it empty? Is it a valid fasta file? If it
 looks ok, try deleting the translated version so Orthograph is forced to
 recreate it. 
+
 
 Options
 -------
