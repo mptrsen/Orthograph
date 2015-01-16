@@ -25,7 +25,6 @@ use autodie;        # die automatically on I/O functions
 use Archive::Tar;   # handling tar archives
 use Carp;           # carp and croak: warn and die with call stack
 use Config;         # allows checking for system configuration in $Config
-use DBD::mysql;     # MySQL database driver 
 use DBI;            # database interface 
 use Data::Dumper;   # great for debugging
 use Digest::SHA;    # SHA hashing: good idea or not?
