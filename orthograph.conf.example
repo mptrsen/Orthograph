@@ -213,7 +213,7 @@ exonerate-program    = exonerate
 # Selenocysteine (U) may occur in some protein sequences. However, some
 # alignment programs do not accept this nonstandard amino acid symbol. You can
 # tell Orthograph to substitute all 'U' in the sequences with a different
-# character. The default is not to substitute.
+# character. The default is to substitute.
 #substitute-u-with = X
 
 # Correct for frameshift errors using Exonerate. This ensures that you receive
