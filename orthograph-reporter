@@ -629,7 +629,7 @@ undef $tfh;
 # yay
 $endtime = scalar time;
 printf $stdout "## Orthograph report for %s completed in %.2f total seconds\n", $species_name, $endtime - $starttime;
-printf $stdout "## Found %d putative orthologs\n", $n_complete_orthoids unless $quiet;
+printf $stdout "## Mapped putatively orthologous transcripts to %d clusters\n", $n_complete_orthoids unless $quiet;
 exit;
 
 sub print_core_sequences {

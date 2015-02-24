@@ -392,7 +392,7 @@ sub create_tables {
 
 	my $dbh = get_dbh();
 	foreach (values %create_table, @indices) {
-		print $_, ";\n" if $verbose;
+		print $_, ";\n" if $debug;
 		$dbh->do($_) or die "Could not exec query: $DBI::errstr\n";
 	}
 	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
@@ -498,9 +498,9 @@ sub fill_tables_from_temp_table {
 	my $dbh = get_dbh();
 	my $nrows;
 	foreach (@queries) {
-		print $_ . ";\n" if $verbose;
+		print $_ . ";\n" if $debug;
 		$nrows = $dbh->do($_) or fail_and_exit("Query failed: $_");
-		if ($verbose) {
+		if ($debug) {
 			($nrows > 0) ? printf("Query OK, %d rows affected\n", $nrows) : print "Query OK\n";
 		}
 	}
@@ -630,20 +630,20 @@ sub preparedb {
 	(my $simple_table_hmmsearch = $db_table_hmmsearch) =~ s/$db_attached\.//;
 	(my $simple_table_blast = $db_table_blast)         =~ s/$db_attached\.//;
 	my @query_create_indices = (
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_digest ON $simple_table_ests ($db_col_digest)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_taxid ON $simple_table_ests ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_taxid ON $simple_table_hmmsearch ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_query ON $simple_table_hmmsearch ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_target ON $simple_table_hmmsearch ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_evalue ON $simple_table_hmmsearch ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_score ON $simple_table_hmmsearch ($db_col_score)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_taxid ON $simple_table_blast ($db_col_taxid)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_query ON $simple_table_blast ($db_col_query)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_target ON $simple_table_blast ($db_col_target)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_evalue ON $simple_table_blast ($db_col_log_evalue)",
-"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_hmmsearch_id ON $simple_table_blast ($db_col_hmmsearch_id)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_digest ON $simple_table_ests ($db_col_digest)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_taxid ON $simple_table_ests ($db_col_taxid)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_ests}_header ON $simple_table_ests ($db_col_header)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_taxid ON $simple_table_hmmsearch ($db_col_taxid)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_query ON $simple_table_hmmsearch ($db_col_query)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_target ON $simple_table_hmmsearch ($db_col_target)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_evalue ON $simple_table_hmmsearch ($db_col_log_evalue)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_hmmsearch}_score ON $simple_table_hmmsearch ($db_col_score)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_taxid ON $simple_table_blast ($db_col_taxid)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_query ON $simple_table_blast ($db_col_query)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_target ON $simple_table_blast ($db_col_target)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_evalue ON $simple_table_blast ($db_col_log_evalue)",
+		"CREATE INDEX IF NOT EXISTS $db_attached.${db_table_blast}_hmmsearch_id ON $simple_table_blast ($db_col_hmmsearch_id)",
 	);
 
 	# drop all tables (just delete the database file)
@@ -655,7 +655,7 @@ sub preparedb {
 
 	# create all tables
 	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast, $query_create_species_info, @query_create_indices) {
-		print "$query;\n" if $verbose;
+		print "$query;\n" if $debug;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
 		  or croak "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);

@@ -344,7 +344,7 @@ sub create_tables {
 
 	my $dbh = get_dbh();
 	foreach (values %create_table) {
-		print $_, ";\n" if $verbose;
+		print $_, ";\n" if $debug;
 		$dbh->do($_) or die "Could not exec query: $!\n";
 	}
 	$dbh->do($insert_seqtypes);	# start off with 'nt' and 'aa' seqtypes
@@ -642,7 +642,7 @@ sub preparedb {
 	# drop all tables
 	foreach ($db_table_ests, $db_table_hmmsearch, $db_table_blast) {
 		my $query_drop = "DROP TABLE IF EXISTS $_";
-		print "$query_drop;\n" if $verbose;
+		print "$query_drop;\n" if $debug;
 		my $sql = $dbh->prepare($query_drop);
 		$sql->execute()
 		  or croak "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);
@@ -650,7 +650,7 @@ sub preparedb {
 
 	# create all tables
 	foreach my $query ($query_create_ests, $query_create_hmmsearch, $query_create_blast) {
-		print "$query;\n" if $verbose;
+		print "$query;\n" if $debug;
 		my $sql = $dbh->prepare($query);
 		$sql->execute()
 		  or croak "Fatal: Could not execute SQL query: $DBI::errstr\n" and exit(1);

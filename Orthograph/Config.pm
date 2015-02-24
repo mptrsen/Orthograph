@@ -213,7 +213,7 @@ $config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
 $config->{'sqlite-database'}            //= 'orthograph.sqlite';
 $config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
-$config->{'substitute-u-with'}          //= 'X';
+$config->{'substitute-u-with'}          //= '';
 $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
@@ -255,8 +255,8 @@ $config->{'header-separator'} =~ s/^('|")//;
 $config->{'header-separator'} =~ s/('|")$//;
 
 # make sure the substitution for U is a single character
-if (length $config->{'substitute-u-with'} != 1) {
-	print STDERR "Fatal: substitution character for selenocysteine (U) (--substitute-u-with) must be a single character. You selected '" . $config->{'substitute-u-with'} . "'\n";
+if ($config->{'substitute-u-with'} and length $config->{'substitute-u-with'} != 1) {
+	print STDERR "Fatal: substitution character for selenocysteine (U) (--substitute-u-with) must be a single character. You selected: '" . $config->{'substitute-u-with'} . "'\n";
 	exit 1;
 }
 
