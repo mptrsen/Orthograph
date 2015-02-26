@@ -1204,6 +1204,8 @@ sub coordinate_overlap {
 	my $t_start_name = shift;
 	my $t_end_name = shift;
 	foreach my $hit ( grep { defined $_->{$q_start_name} } @$other_hits ) {
+		# skip this one unless the coordinates exist
+		unless (exists $hit->{$t_start_name}) { next }
 		# starts before other hit is over or ends after start of other hit
 		if ((
 				# starts before begin of another transcript, ends within or after the other transcript
