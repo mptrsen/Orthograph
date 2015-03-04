@@ -170,6 +170,10 @@ if ($verbose) {
 	print $stdout "\n";
 }
 
+# test whether programs exist where specified
+Orthograph::Functions::program_exists($exonerate_program) or print $stderr "Fatal: Exonerate not executable at '$exonerate_program'. Verify path and/or permissions\n" and exit(1);
+Orthograph::Functions::program_exists($translate_program) or print $stderr "Fatal: Fastatranslate not executable at '$translate_program'. Verify path and/or permissions\n" and exit(1);
+
 # read the list of orthoids from file
 my $list_of_wanted_orthoids;
 if ($orthoid_list_file) {

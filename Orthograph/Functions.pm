@@ -147,4 +147,11 @@ sub print_usage {
 	return 1;
 }
 
+# test whether a (program) file exists and is executable
+sub program_exists {
+	my $path = shift;
+	if (-x $path) { return 1 }
+	else          { return undef }
+}
+
 1;

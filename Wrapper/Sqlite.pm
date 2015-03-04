@@ -134,6 +134,8 @@ print "Using SQLite database file '$database'\n" unless $quiet;
 print "Using file '$attached_db_file' as attached database '$db_attached'\n" if $verbose;
 unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
 
+# test whether the sqlite binary exists where specified
+Orthograph::Functions::program_exists($sqlite) or print "Fatal: SQLite program not executable where specified at '$sqlite'. Verify path and/or permissions\n" and exit(1);
 
 =head1 FUNCTIONS
 

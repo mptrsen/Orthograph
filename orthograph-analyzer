@@ -110,10 +110,10 @@ elsif ($use_sqlite) {
 #-------------------------------------------------- 
 my $alignment_program          = $config->{'alignment-program'};
 my $hmmbuild_program           = $config->{'hmmbuild-program'};
-my $translateprog              = $config->{'translate-program'};
-my $hmmsearchprog              = $config->{'hmmsearch-program'};
-my $blastprog                  = $config->{'blast-program'};
-my $makeblastdbprog            = $config->{'makeblastdb-program'};
+my $translate_program          = $config->{'translate-program'};
+my $hmmsearch_program          = $config->{'hmmsearch-program'};
+my $blast_program              = $config->{'blast-program'};
+my $makeblastdb_program        = $config->{'makeblastdb-program'};
 
 #--------------------------------------------------
 # # These variables can be set in the config file
@@ -417,8 +417,8 @@ Wrapper::Hmmsearch->outdir($hmmoutdir);
 Wrapper::Blastp->outdir($blastoutdir);
 
 # the programs
-Wrapper::Hmmsearch->searchprog($hmmsearchprog);
-Wrapper::Blastp->searchprog($blastprog);
+Wrapper::Hmmsearch->searchprog($hmmsearch_program);
+Wrapper::Blastp->searchprog($blast_program);
 
 #}}}
 
@@ -700,6 +700,14 @@ sub intro {#{{{
 	print $stderr "Fatal: Can't operate in both verbose and quiet mode\n" and exit(1)
 		if ($verbose and $quiet);
 
+	# test whether the programs exist where specified
+	Orthograph::Functions::program_exists($fastatranslate) or print $stderr "Fatal: Fastatranslate not executable at '$fastatranslate'. Verify path and/or permissions\n" and exit(1);
+	Orthograph::Functions::program_exists($alignment_program) or print $stderr "Fatal: Alignment program not executable exist at '$alignment_program'. Verify path and/or permissions\n" and exit(1);
+	Orthograph::Functions::program_exists($hmmbuild_program) or print $stderr "Fatal: HMMbuild not executable at '$hmmbuild_program'. Verify path and/or permissions.\n" and exit(1);
+	Orthograph::Functions::program_exists($makeblastdb_program) or print $stderr "Fatal: Makeblastdb not executable at '$hmmbuild_program'. Verify path and/or permissions.\n" and exit(1);
+	Orthograph::Functions::program_exists($hmmsearchprog) or print $stderr "Fatal: HMMsearch not executable at '$hmmsearchprog'. Verify path and/or permissions\n" and exit(1);
+	Orthograph::Functions::program_exists($blastprog) or print $stderr "Fatal: BLASTP not executable at '$blastprog'\n" and exit(1);
+
 	# the alignment directory (for ortholog set creation)
 	unless ($alndir) { $alndir = File::Spec->catdir($sets_dir, $orthoset, 'aln') }
 	if (-d $alndir) {
@@ -865,7 +873,7 @@ sub translate_est {#{{{
     print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
   }
-  my @translateline = qq($translateprog --geneticcode $genetic_code $infile > $outfile);
+  my @translateline = qq($translate_program --geneticcode $genetic_code $infile > $outfile);
   system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?');
   return($outfile);
 }#}}}
@@ -1165,7 +1173,7 @@ sub make_blastdb {
 	
 
 	# make blast database
-	my @makeblastdbcmd = qq($makeblastdbprog -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset);
+	my @makeblastdbcmd = qq($makeblastdb_program -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset);
 	if ($debug) {
 		print $stdout "@makeblastdbcmd\n";
 	}
