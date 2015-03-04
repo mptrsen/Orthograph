@@ -25,6 +25,7 @@ use warnings;
 use Carp;
 use File::Basename;
 use File::Path qw( make_path );	# this also uses File::Spec
+use File::Which qw( which );    # test executability of programs in PATH
 
 =head2 file2arrayref
 
@@ -150,8 +151,12 @@ sub print_usage {
 # test whether a (program) file exists and is executable
 sub program_exists {
 	my $path = shift;
-	if (-x $path) { return 1 }
-	else          { return undef }
+	# remove optional arguments if they exist. this requires that arguments start
+	# with a - and are separated by a space from the command
+	$path =~ s/ +-.+//; 
+	if (which($path)) { return 1     }
+	elsif (-x $path)  { return 1     }
+	else              { return undef }
 }
 
 1;

@@ -385,6 +385,7 @@ orthograph processes.
 Required Perl modules
 ---------------------
 Orthograph uses only modules that are present in any standard Perl distribution. 
+Additional modules such as IO::Tee and File::Which are shipped with Orthograph.
 If you get an error like "Can't locate Some/Thing.pm in @INC" it means that
 Perl can't find one of the required modules. Update your Perl installation if
 this is the case and make sure it contains these modules:

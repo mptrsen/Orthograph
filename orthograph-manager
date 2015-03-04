@@ -182,11 +182,14 @@ elsif ($create) {
 	exit;
 }
 
+# want me to delete a set?
 elsif ($delete_set) { 
 	delete_set($delete_set);
 	print "OK, removed orthology relationships for set '$delete_set' completely. No sequences were deleted from database.\n";
 	exit;
 }
+
+# or remove an ogs from the database?
 elsif ($delete_ogs) {
 	print "Deleting OGS sequences from $delete_ogs. Are you sure (y/n)? ";
 	get_yn() or exit;
@@ -197,26 +200,30 @@ elsif ($delete_ogs) {
 
 #--------------------------------------------------
 # Just list the present ortholog sets, then exit
-# TODO make this less redundant!
 #-------------------------------------------------- 
 if ($listsets) {
 	list_sets() and exit;
 }
 
+# list ogs
 elsif ($listogs) {
 	print_ogs_list() and exit;
 }
 
+# list taxa
 elsif ($listtaxa) {
 	list_set_details() and exit;
 }
 
+# load a nucleotide ogs file
 elsif ($isnucleotide) {
 	$infile = $isnucleotide;
 	# 1 for nucleotide
 	upload_ogs($infile, 1) or fail_and_exit("Nucleotide loading failed");
 	exit;
 }
+
+# load a peptide ogs file
 elsif ($ispeptide) {
 	$infile = $ispeptide;
 	# 2 for amino-acid
@@ -232,7 +239,7 @@ die("Fatal: file not found: $infile\n") unless -f $infile;
 # # continue and gather information
 #-------------------------------------------------- 
 
-# TODO stop here if db structure is not present!
+# stop here if db structure is not present!
 if (!db_structure_present()) {
 	fail_and_exit('Orthograph database structure not present! Did you forget to run `orthograph-manager -create`?');
 }
@@ -242,6 +249,7 @@ print "Setting up core ortholog set from '$infile' in database '$database' on ho
 if (!$setname) { $setname = get_setname() }
 
 # TODO rewrite this part using parametrized queries to protect from SQL injections?
+# does this set exist in the database already?
 if (set_exists($setname)) {
 	warn "Warning: An ortholog set with this name already exists in $db_dbname on $db_dbserver.\n";
 	unless ($overwrite) {
