@@ -145,8 +145,8 @@ unless ($keep_old_output_files) {
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open report file '$logfile'\: $!\n";
 $logfh->autoflush();
-my $tablefile = File::Spec->catfile($outdir, 'table.txt');
-my $orthologous_transcripts_file = File::Spec->catfile($outdir, 'orthologous_transcripts.txt');
+my $tablefile = File::Spec->catfile($outdir, 'non_redundant_orthologous_transcript.txt');
+my $orthologous_transcripts_file = File::Spec->catfile($outdir, 'homologous_transcripts.txt');
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
