@@ -77,6 +77,7 @@ GetOptions( $config,
 	'load-ogs-peptide=s',
 	'logfile|log=s',
 	'max-blast-searches=i',
+	'minimum-transcript-length=i',
 	'mysql-database=s',
 	'mysql-password=s',
 	'mysql-server=s',
@@ -192,6 +193,7 @@ $config->{'load-ogs-peptide'}           //= '';
 $config->{'logfile'}                    //= '';
 $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
+$config->{'minimum-transcript-length'}  //= 30;
 $config->{'no-frameshift-correction'}   //= 0;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;

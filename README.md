@@ -204,7 +204,7 @@ Both version and name can be an arbitrary string (but enclose it in quotes if it
 contains spaces!). 
 
 
-## 6. Optional: Load nucleotide sequence data into the database:
+## 5. Optional: Load nucleotide sequence data into the database:
 
 	$ ./orthograph-manager --load-ogs-nucleotide FASTAFILE
 
