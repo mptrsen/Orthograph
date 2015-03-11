@@ -16,15 +16,15 @@ have the capabilities for a centralized server-client setup. In grid computing
 environments, this is an advantage since no network connections are required,
 but the database is a flat file on the hard drive.
 
-Package        Version   Download from
--------------- --------- -------------------------------------------------------------
-Perl           5.14      <http://www.perl.org>
-SQLite         3.8.2     <http://sqlite.org/download.html>
-MySQL          5.6.17    <http://dev.mysql.com/downloads/mysql/>
-MAFFT          7.023b    <http://mafft.cbrc.jp/alignment/software/>
-HMMer          3.1b1     <http://hmmer.janelia.org/software/>
-NCBI BLAST+    2.2.28+   <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
-Exonerate      2.2.0     <http://www.ebi.ac.uk/~guy/exonerate/>
+Package        | Version   | Download from
+-------------- | --------- | -------------------------------------------------------------
+Perl           | 5.14      | <http://www.perl.org>
+SQLite         | 3.8.2     | <http://sqlite.org/download.html>
+MySQL          | 5.6.17    | <http://dev.mysql.com/downloads/mysql/>
+MAFFT          | 7.023b    | <http://mafft.cbrc.jp/alignment/software/>
+HMMer          | 3.1b1     | <http://hmmer.janelia.org/software/>
+NCBI BLAST+    | 2.2.28+   | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
+Exonerate      | 2.2.0     | <http://www.ebi.ac.uk/~guy/exonerate/>
 
 Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
@@ -70,7 +70,7 @@ it's the way OrthoDB 7 outputs. In the future you'll be able to specify the
 field). 
 
 You may need to filter the OrthoDB file to contain only those taxa you want.
-Probably the easiest way is to do this using grep:
+Probably the easiest way is to do this using `grep`:
 
 - create a file containing the taxon shorthands you want. The shorthands must
 	be unambiguously identical to the ones found in the OrthoDB file, and must
@@ -138,12 +138,13 @@ Throughout this manual, the following marks a shell command:
 This means you should enter some_command at the shell prompt. The `$` sigil is
 not part of the command.
 
-All Orthograph tools adhere to the -c option that allows you to specify the path
-to a config file, e.g.:
+All Orthograph tools adhere to the `-c` option that allows you to specify the
+path to a config file, e.g.:
 
 	$ orthograph-analyzer -c different_species.conf
 
-This is useful if you use different SQLite or MySQL databases, for example.
+This is useful if you use different SQLite or MySQL databases, for example, or
+if you want to generate config files for dozens of species.
 
 
 ## 2. Create a config file. 
@@ -293,8 +294,8 @@ the 'log' directory.
 
 Make orthograph-reporter executable and run it:
 
-  $ chmod +x orthograph-reporter
-  $ ./orthograph-reporter
+	$ chmod +x orthograph-reporter
+	$ ./orthograph-reporter
 
 Orthograph-reporter fetches the search results from the database and assigns
 ortholog relationships by triangulating reciprocal best hits. After
@@ -314,13 +315,13 @@ d) nt. This contains the actual results on nucleotide level.
 e) log. This contains log files, such as the entire standard output and the
 report tables after running orthograph-reporter:
 
-	- orthologous_transcript.txt: a tabular listing of all transcripts that
-		would be assigned to each COG as orthologous, _irrespective_ of whether they
-		overlap with other transcripts.
+- orthologous_transcript.txt: a tabular listing of all transcripts that
+  would be assigned to each COG as orthologous, _irrespective_ of whether they
+  overlap with other transcripts.
 
-	- table.txt: a tabular listing of all transcripts that were eventually
-		mapped to each COG. These do not overlap and there are aa and nt output
-		files for them.
+- table.txt: a tabular listing of all transcripts that were eventually
+  mapped to each COG. These do not overlap and there are aa and nt output
+  files for them.
 
 
 ## 11. ???
@@ -332,16 +333,17 @@ report tables after running orthograph-reporter:
 ## 13. Optional: Summarize output
 
 For further analyses, it may be required to summarize the sequences from
-multiple Orthograph output directories. This can be accomplished using
-summarize_orthograph_results.pl by O. Niehuis, which can be run like this:
+multiple Orthograph output directories. This is accomplished using
+`summarize_orthograph_results.pl` by Oliver Niehuis, which can be run like
+this:
 
-  $ ./summarize_orthograph_results.pl -i INPUT_DIRECTORY -o OUTPUT_DIRECTORY [OPTIONS]
+	$ ./summarize_orthograph_results.pl -i INPUT_DIRECTORY -o OUTPUT_DIRECTORY [OPTIONS]
 
 The program generates an amino acid resp. nucleotide sequence file in the
 OUTPUT_DIRECTORY for each COG containing the sequences from all taxa, including
 reference taxa. The INPUT_DIRECTORY must be a directory containing Orthograph
 output directories. For further information, read the usage instructions
-that are printed when calling the program with the -h flag.
+that are printed when calling the program with the `-h` flag.
 
 
 
@@ -350,11 +352,11 @@ APPENDIX
 
 In the output Fasta files, the headers are structured like this:
 
-  >COG_ID|Taxon_name|Sequence_ID|Start-End|Reading_frame|Reference_taxon
+	>COG_ID|Taxon_name|Sequence_ID|Start-End|Reading_frame|Reference_taxon
 
 For example:
 
-  >EOG7VQW3C|Nasonia_vitripennis|NV15365-RA|4-604|[translate(1)]|Tribolium castaneum
+	>EOG7VQW3C|Nasonia_vitripennis|NV15365-RA|4-604|[translate(1)]|Tribolium castaneum
 
 This would mean: For the ortholog group EOG7VQW3C and the analyzed taxon with
 the name Nasonia_vitripennis, the transcript with the ID NV15365-RA, translated
@@ -364,7 +366,7 @@ taxon (the one with the best reciprocal hit) was Tribolium castaneum.
 If multiple transcripts were concatenated, the last four fields are repeated
 for each transcript, separated by '&&':
 
-  >EOG7096NB|Nasonia_vitripennis|NV50397-RA|128-553|[translate(1)]|Nasonia vitripennis&&NV50397-RA|578-1309|[translate(1)]|Nasonia vitripennis
+	>EOG7096NB|Nasonia_vitripennis|NV50397-RA|128-553|[translate(1)]|Nasonia vitripennis&&NV50397-RA|578-1309|[translate(1)]|Nasonia vitripennis
 
 The separators can be specified via the options "header-separator" and
 "concatenation-header-separator", respectively.
