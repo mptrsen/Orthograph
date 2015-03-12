@@ -104,6 +104,7 @@ my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $orthoid_list_file          = $config->{'cog-list-file'};
 my $extend_orf                 = $config->{'extend-orf'};
 my $genetic_code               = $config->{'genetic-code'};
+my $minimum_transcript_length  = $config->{'minimum-transcript-length'};
 my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
@@ -199,7 +200,6 @@ my $table                = [ ];
 my @reftaxa              = ( );
 my $species_id           = 0;
 my $set_id               = 0;
-my $match                = 0;
 my $mismatches           = 0;
 my $max_mismatches       = $soft_threshold;
 my $results              = undef;
@@ -235,8 +235,8 @@ unless ($set_id) {
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
 if ($reference_taxa) {
-	$reference_taxa =~ s/\s*$//;
-	@reftaxa = split(/\s*,\s*/, $reference_taxa);
+	$reference_taxa =~ s/\s*//g;
+	@reftaxa = split(/,/, $reference_taxa);
 }
 else { @reftaxa = get_taxa_in_set($set_id) }
 
@@ -305,15 +305,26 @@ foreach my $score (@$scores) {
 				$this_match->{'hmm_start'},
 				$this_match->{'hmm_end'},
 				$orthoid,
-				if $debug;
+					if $debug;
 
 			# print this to the orthologous transcript file
-			printf $otfh "%s\t%s\t%d\t%d\n",
+			printf $otfh "%s\t%s\t%d\t%d\t%.1f\n",
 				$orthoid, 
 				$this_match->{'header'},
 				$this_match->{'ali_start'},
 				$this_match->{'ali_end'},
+				$score,
 			;
+
+			# is this long enough?
+			if (transcript_not_long_enough($this_match)) {
+				printf $stdout "Orthologous region under minimum transcript length (%d), only %d\n",
+					$minimum_transcript_length,
+					calculate_length_of_ali($this_match),
+						unless $quiet;
+				next RESULT;
+			}
+			exit;
 
 			# if this orthoid has been hit before, check whether the new candidate
 			# overlaps on hmm (gene) level with previous hits
@@ -805,6 +816,7 @@ sub binify {
 sub is_reciprocal_match {
 	my $orthoid = shift;
 	my $blastresults = shift;
+	my $match = undef;
 
 	# this is for reftaxon counting
 	my $reftaxon_count = { map { $_ => 0 } @reftaxa };
@@ -1627,4 +1639,16 @@ sub try_to_extend_orf {
 	 $hit->{'extended_orf_aa_start'},
 	 $hit->{'extended_orf_aa_end'}
 	);
+}
+
+sub transcript_not_long_enough {
+	my $result = shift;
+	my $length = calculate_length_of_ali($result);
+	if ($length < $minimum_transcript_length) { return 1 }
+	return 0;
+}
+
+sub calculate_length_of_ali {
+	my $result = shift;
+	return abs($result->{'ali_end'} - $result->{'ali_start'}) + 1;
 }

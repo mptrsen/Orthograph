@@ -55,25 +55,6 @@ my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
 my $program_file = $FindBin::Script;
 
 #--------------------------------------------------
-# Only use threads if the system supports it.
-# The whole threads system is totally not implemented yet,
-# do not attempt to use it!
-#-------------------------------------------------- 
-my $use_threads = 0;#{{{
-if ($use_threads == 1 and $Config{'useithreads'}) {
-  $message .= "Using threads.\n\n";
-  #use Wrapper::Threaded;
-}
-elsif ($use_threads == 1 and not $Config{'useithreads'}) {
-  warn "Warning: Cannot use threads: Your version of Perl was not compiled with threading support. Not using threads.\n\n";
-	$use_threads = 0;
-}
-else {
-	$message .= "Not using threads.\n\n";
-	$use_threads = 0;
-}#}}}
-
-#--------------------------------------------------
 # # Copy configuration
 #-------------------------------------------------- 
 my $config = $Orthograph::Config::config;

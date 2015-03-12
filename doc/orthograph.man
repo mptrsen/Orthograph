@@ -194,6 +194,10 @@ set the makeblastdb program. Must be the complete path if the location is not in
 set the maximum number of BLAST searches for each COG. This is basically a way to limit the number of HMM hits being processed further. Defaults to 50.
 
 .TP
+\fB--minimum-transcript-length\fP N
+set the minimum length (in amino acids) that a transcript region must have in order to be accepted. This is to avoid very small fragments (commonly due to domain walking). Defaults to 30.
+
+.TP
 \fB--mysql-database\fP DATABASE
 set the MySQL database. If you use the MySQL backend, this option must be set.
 

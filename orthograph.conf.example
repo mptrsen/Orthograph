@@ -167,6 +167,13 @@ exonerate-program    = exonerate
 # 
 # # Other options
 #
+
+# Minimum transcript length. A transcript must have equal or more amino acids
+# in order to be accepted. This is a way to avoid very small fragments,
+# commonly due to domain walking, but you can also set it to a higher value if
+# you want longer transcripts. Defaults to 30 (a common domain length).
+#minimum-transcript-length = 30
+
 # Minimum ORF overlap. Each transcript is given to Exonerate to correct for
 # frameshift errors etc. The resulting ORF must overlap the HMM alignment
 # region by this percentage. Note that the value must be specified as a
