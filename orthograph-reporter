@@ -324,7 +324,6 @@ foreach my $score (@$scores) {
 						unless $quiet;
 				next RESULT;
 			}
-			exit;
 
 			# if this orthoid has been hit before, check whether the new candidate
 			# overlaps on hmm (gene) level with previous hits
