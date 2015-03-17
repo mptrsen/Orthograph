@@ -174,9 +174,16 @@ exonerate-program    = exonerate
 # you want longer transcripts. Defaults to 30 (a common domain length).
 #minimum-transcript-length = 30
 
-# Minimum ORF overlap. Each transcript is given to Exonerate to correct for
-# frameshift errors etc. The resulting ORF must overlap the HMM alignment
-# region by this percentage. Note that the value must be specified as a
+# Suppress for frameshift error correction using Exonerate. This ensures that
+# you receive a 100% corresponding nucleotide sequence for your predicted
+# orthologous transcripts, but may lead to lost transcripts where no matching
+# alignment could be obtained by Exonerate. This is the default behaviour;
+# uncomment this line to turn it off.
+#no-frameshift-correction = 0
+
+# Minimum ORF overlap. If enabled, each transcript is given to Exonerate to
+# correct for frameshift errors etc. The resulting ORF must overlap the HMM
+# alignment region by this percentage. Note that the value must be specified as a
 # fraction of 1.
 # 0.5 (50%) is the default; lower values make this less conservative.
 #orf-overlap-minimum = 0.5
@@ -222,13 +229,6 @@ exonerate-program    = exonerate
 # tell Orthograph to substitute all 'U' in the sequences with a different
 # character. The default is to substitute.
 #substitute-u-with = X
-
-# Correct for frameshift errors using Exonerate. This ensures that you receive
-# a 100% corresponding nucleotide sequence for your predicted orthologous
-# transcripts, but may lead to lost transcripts where no matching alignment
-# could be obtained by Exonerate. This is the default behaviour; uncomment this
-# line to turn it off.
-#no-frameshift-correction = 0
 
 # Header separator. This will be used to separate header fields in the output files.
 # May be an arbitrary string. Defaults to '|'. To use a whitespace character,

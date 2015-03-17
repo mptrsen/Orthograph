@@ -183,10 +183,19 @@ Sets or returns the path to the result file.
 
 sub resultfile {
 	my $self       = shift;
-	if    (scalar @_ == 0) { return $self->{'query'}->{'sequence'} }
+	if    (scalar @_ == 0) { return $self->{'resultfile'} }
 	elsif (scalar @_ > 1 ) { confess 'Usage: Wrapper::Exonerate->query_sequence($sequence)', "\n" }
 	$self->{'resultfile'} = shift;
 	return 1;
+}
+
+sub delete_resultfile {
+	my $self = shift;
+	if ($self->resultfile()) {
+		unlink $self->resultfile() or warn "Could not delete result file " . $self->resultfile() . "\n";
+		return 1;
+	}
+	return undef;
 }
 
 =head2 search
@@ -226,7 +235,7 @@ sub search {
 
 	# run the beast now
 	system($exonerate_cmd) and confess "Error running exonerate: $!\n";
-	$self->{'resultfile'} = $outfile;
+	$self->resultfile($outfile);
 	return 1;
 }
 
@@ -278,7 +287,7 @@ sub result {
 	my $self = shift;
 	if ($self->{'result'}) { return $self->{'result'} }
 	else {
-		my $fh = IO::File->new($self->{'resultfile'});
+		my $fh = IO::File->new($self->resultfile());
 		$self->{'result'} = [ <$fh> ];
 		$fh->close;
 		chomp @{$self->{'result'}};
@@ -306,10 +315,10 @@ sub parse_result {
 	my $self = shift;
 	my $header;
 	# if there was no result
-	if (-z $self->{'resultfile'}) { return undef }
+	if (-z $self->resultfile()) { return undef }
 
 	# otherwise, continue
-	my $fh = Seqload::Fasta->open($self->{'resultfile'});
+	my $fh = Seqload::Fasta->open($self->resultfile());
 	# watch for the order of sequences, they must correspond to the order in
 	# the --ryo option in the exonerate call
 	# get the cdna sequence
