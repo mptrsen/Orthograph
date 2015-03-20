@@ -131,7 +131,7 @@ my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attac
 
 # report that this module is loaded
 print "Using SQLite database file '$database'\n" unless $quiet;
-print "Using file '$attached_db_file' as attached database '$db_attached'\n" if $verbose;
+print "Using SQLite database file '$attached_db_file' as species-specific database\n" unless $quiet;
 unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
 
 # test whether the sqlite binary exists where specified
