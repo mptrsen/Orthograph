@@ -151,16 +151,23 @@ exonerate-program    = exonerate
 # strict mode (see below) whether the reciprocal hits are part of the ortholog
 # group in question, this many mismatches may occur before the ortholog
 # candidate is rejected.
-# Defaults to 5.
-#soft-threshold             = 5
+# When using a list of reference-taxa (see above), set this to at least the
+# number of taxa you are omitting from the ortholog set.
+# Defaults to 0 because normally we want to apply the BRH criterion and are
+# using the entire set.
+#soft-threshold             = 0
 
 # Maximum number of BLAST hits to consider for ortholog candidates.
 # Defaults to 100.
 #blast-max-hits             = 100
 
+# Maximum number of non-reciprocal hits for a given ortholog group. 
+# Defaults to 0 because we want to apply the BRH criterion.
+#max-reciprocal-mismatches  = 0
+
 # Number of CPU threads to use. For optimum CPU efficiency, set this to the
-# number of CPU threads that your CPU(s) can run. Ask your system administrator
-# if you don't know.
+# number of threads that your CPU(s) can run. Ask your system administrator if
+# you don't know.
 # Defaults to 1 (single-threaded: slow but safe)
 #num-threads                = 1
 

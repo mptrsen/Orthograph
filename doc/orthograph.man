@@ -194,6 +194,10 @@ set the makeblastdb program. Must be the complete path if the location is not in
 set the maximum number of BLAST searches for each COG. This is basically a way to limit the number of HMM hits being processed further. Defaults to 50.
 
 .TP
+\fB--max-reciprocal-mismatches\fP N
+set the maximum number of non-reciprocal hits that may occur before an orthologous group is no longer accepting new transcripts. Leave this at 0 if you want to apply a strict BRH criterion. Defaults to 0.
+
+.TP
 \fB--minimum-transcript-length\fP N
 set the minimum length (in amino acids) that a transcript region must have in order to be accepted. This is to avoid very small fragments (commonly due to domain walking). Defaults to 30.
 
@@ -271,7 +275,7 @@ set the ortholog set directory to DIR. This will contain the HMM files and the B
 
 .TP
 \fB--soft-threshold\fP N
-set the so-called soft threshold to N, the number of reciprocal hits that may not be part of the COG before a transcript is rejected. Defaults to 5.
+set the so-called soft threshold to N, the number of reciprocal hits that may not be part of the COG before a transcript is rejected. When using a list of reference-taxa (see above), set this to at least the number of taxa you are omitting from the ortholog set. Defaults to 0.
 
 .TP
 \fB--species-name\fP NAME

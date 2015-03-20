@@ -109,9 +109,10 @@ my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
-my $species_name                = $config->{'species-name'};
+my $species_name               = $config->{'species-name'};
 my $strict_search              = $config->{'strict-search'};
 my $no_frameshift_correction   = $config->{'no-frameshift-correction'};
+my $max_reciprocal_mismatches  = $config->{'max-reciprocal-mismatches'};
 
 # make a nice time string
 my @lt                   = localtime time;
@@ -253,6 +254,9 @@ my $transcripts_mapped_to = { };
 # this will hold all transcripts that were found so we can check for redundancy
 my @transcript_list;
 
+# accumulate errors (due to non-reciprocal hits) for COGs
+my $non_reciprocal_hits_for = { };
+
 # open a text file to hold all orthologous relationships, irrespectively of whether they overlap or not
 my $otfh = IO::File->new($orthologous_transcripts_file, 'w')
 	or print $stderr "Fatal: Could not open output file $orthologous_transcripts_file\: $!\n" and exit(1);
@@ -283,6 +287,11 @@ foreach my $score (@$scores) {
 		# skip this result if it concerns a ortholog group that we didn't want
 		if ($list_of_wanted_orthoids) {
 			next unless grep { /$orthoid/ } @$list_of_wanted_orthoids;
+		}
+		# also skip this result if the ortholog group has had too many non-reciprocal hits before
+		if ($non_reciprocal_hits_for->{$orthoid} and $non_reciprocal_hits_for->{$orthoid} > $max_reciprocal_mismatches) {
+			print $stdout "Too many non-reciprocal hits for ortholog group '$orthoid', skipping this match\n";
+			next RESULT;
 		}
 
 		print $stdout "Checking $orthoid for ortholog hits...\n" if $verbose;
@@ -318,10 +327,6 @@ foreach my $score (@$scores) {
 
 			# is this long enough?
 			if (transcript_not_long_enough($this_match)) {
-				printf $stdout "Orthologous region under minimum transcript length (%d), only %d\n",
-					$minimum_transcript_length,
-					calculate_length_of_ali($this_match),
-						unless $quiet;
 				next RESULT;
 			}
 
@@ -389,6 +394,8 @@ foreach my $score (@$scores) {
 			# this orthoid has no match
 			print $stdout "No orthology detected for $orthoid.\n"
 				if $verbose;
+			# one more error
+			$non_reciprocal_hits_for->{$orthoid}++;
 		}
 
 	# END RESULT
@@ -1643,7 +1650,13 @@ sub try_to_extend_orf {
 sub transcript_not_long_enough {
 	my $result = shift;
 	my $length = calculate_length_of_ali($result);
-	if ($length < $minimum_transcript_length) { return 1 }
+	if ($length < $minimum_transcript_length) { 
+		printf $stdout "Orthologous region under minimum transcript length (%d), only %d\n",
+			$minimum_transcript_length,
+			$length
+				unless $quiet;
+		return 1;
+	}
 	return 0;
 }
 
