@@ -266,5 +266,11 @@ exonerate-program    = exonerate
 
 # Path to log file. If set, all messages will also be written to this file. If
 # this is not set, messages are written to a log file in your output directory
-# (see the setting 'output-directory' above).
+# (see the setting 'output-directory' above). The log file for
+# orthograph-analyzer is called orthograph-analyzer-TIMESTAMP.log, and the log
+# file for orthograph-reporter is called orthograph-reporter-TIMESTAMP.log. The
+# TIMESTAMP is generated in YYYY-MM-DD_HH:MM format.
+# Note that if you do set a path here, both programs write to the same file,
+# meaning that orthograph-reporter will overwrite the log file of
+# orthograph-analyzer. It is much more convenient to leave this unset.
 #logfile = /PATH/TO/LOGFILE
