@@ -86,7 +86,7 @@ my $aaoutdir                   = File::Spec->catdir($outdir, $config->{'aaoutdir
 my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir'});
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $logfile                    = $config->{'logfile'};
-my $keep_old_output_files      = $config->{'keep-old-output-files'};
+my $clear_old_output_files     = $config->{'clear-files'};
 my $hamstr_compatible          = $config->{'hamstr-compatible-output'};
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
@@ -138,7 +138,7 @@ else {
 }
 
 # clear aa and nt output directories unless the user doesn't want to
-unless ($keep_old_output_files) {
+if ($clear_old_output_files) {
 	Orthograph::Functions::cleardir($aaoutdir);
 	Orthograph::Functions::cleardir($ntoutdir);
 }
