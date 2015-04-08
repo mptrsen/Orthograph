@@ -21,10 +21,7 @@
 use strict;
 use warnings;
 use File::Spec::Functions;
-use File::Basename;
 use Getopt::Long;
-use Tie::File;
-use Carp;
 
 
 my $header_sector_separator = '&&';

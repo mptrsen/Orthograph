@@ -163,7 +163,9 @@ mandatory part of the file is important as it contains settings for the database
 interaction. Without these settings none of the programs will work.
 
 
-## 3. Create the tables. Make the orthograph_manager script executable and use it:
+## 3. Create the tables.
+
+Make `orthograph_manager` executable and use it:
 
 	$ chmod +x orthograph-manager
 	$ ./orthograph-manager --create
@@ -251,7 +253,7 @@ To check what sets have been uploaded so far, call `orthograph-manager -ls`.
 
 ## 7. Create the required database structure for the Orthograph search program.
 
-Make orthograph-analyzer executable and run it with the -prepare option:
+Make `orthograph-analyzer` executable and run it with the -prepare option:
 
 	$ chmod +x orthograph-analyzer
 	$ ./orthograph-analyzer --prepare
@@ -286,21 +288,20 @@ are cached in the database.
 
 The HMMER and BLAST output tables are placed in the 'hmmsearch' and 'blastp'
 subdirectories in the output directory. The 'aa' and 'nt' directories are
-created but left empty. A log file called 'orthograph-DATE.log' is created in
-the 'log' directory. 
+created but left empty. A log file called 'orthograph-analyzer-DATE.log' is
+created in the 'log' directory (or wherever you specified).
 
 
 ## 11. Start the reporter
 
-Make orthograph-reporter executable and run it:
+Make `orthograph-reporter` executable and run it:
 
 	$ chmod +x orthograph-reporter
 	$ ./orthograph-reporter
 
-Orthograph-reporter fetches the search results from the database and assigns
-ortholog relationships by triangulating reciprocal best hits. After
-orthograph-reporter is finished, the output directory contains five
-subdirectories:
+`orthograph-reporter` fetches the search results from the database and assigns
+ortholog relationships by triangulating reciprocal best hits. After it is
+finished, the output directory contains five subdirectories:
 
 a) hmmsearch. This contains all the HMMsearch output tables. 
 
@@ -312,16 +313,24 @@ by ortholog groups. See the appendix for information on Fasta header structure.
 
 d) nt. This contains the actual results on nucleotide level.
 
-e) log. This contains log files, such as the entire standard output and the
-report tables after running orthograph-reporter:
+e) log. This contains log files, such as the entire standard output for both `orthograph-analyzer` and `orthograph-reporter`:
 
-- orthologous_transcript.txt: a tabular listing of all transcripts that
+
+The main output directory contains three report tables after running
+orthograph-reporter:
+
+- homologous_transcripts.txt: a tabular listing of all transcripts that
   would be assigned to each COG as orthologous, _irrespective_ of whether they
-  overlap with other transcripts.
+  overlap with other transcripts (i.e., may be paralogous copies). It is structured as follows (tab-separated):
+	- the COG ID
+	- transcript ID
+	- start on the transcript
+	- end on the transcript
+	- HMM score
 
-- table.txt: a tabular listing of all transcripts that were eventually
-  mapped to each COG. These do not overlap and there are aa and nt output
-  files for them.
+- non_redundant_orthologous_transcripts.txt: a tabular listing of all
+	transcripts that were eventually mapped to each COG. These do not overlap and
+	there are aa and nt output files for them.
 
 
 ## 11. ???
@@ -337,7 +346,7 @@ multiple Orthograph output directories. This is accomplished using
 `summarize_orthograph_results.pl` by Oliver Niehuis, which can be run like
 this:
 
-	$ ./summarize_orthograph_results.pl -i INPUT_DIRECTORY -o OUTPUT_DIRECTORY [OPTIONS]
+	$ perl summarize_orthograph_results.pl -i INPUT_DIRECTORY -o OUTPUT_DIRECTORY [OPTIONS]
 
 The program generates an amino acid resp. nucleotide sequence file in the
 OUTPUT_DIRECTORY for each COG containing the sequences from all taxa, including

@@ -1,4 +1,4 @@
-.TH Orthograph 1 "2014"
+.TH Orthograph 1 "2015"
 
 .SH NAME
 Orthograph - Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models
@@ -26,57 +26,85 @@ Print a short usage message along with a list of options, the description of whi
 \fB--aaoutdir\fP DIR
 set the output directory for amino acid sequences to DIR. Will be created if it does not exist.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB--alignment-program\fP PATH
 set the alignment program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'mafft-linsi --anysymbol'.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--backup\fP
 backup old output files before starting a new analysis. This is the default, disable it by saying \fB--nobackup\fP.
 
+Affects only orthograph-analyzer.
+
 .TP
 \fB--blast-evalue-threshold\fP X
 set the e-value threshold for BLAST searches. Can be specified in a floating point or an exponential number. Defaults to 10e-5.
+
+Affects both orthograph-analyzer and orthograph-reporter.
 
 .TP
 \fB--blast-max-hits\fP N
 set the number of BLAST hits for each search. A lower number speeds up searches. Defaults to 100.
 
+Affects only orthograph-analyzer.
+
 .TP
 \fB--blast-program\fP PATH
 set the BLAST program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'blastp'.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--blast-score-threshold\fP X
 set the score threshold for BLAST searches. Defaults to 10.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB--blastoutdir\fP DIR
 set the output directory for BLAST result files. Will be created if it does not exist.
 
+Affects only orthograph-analyzer.
+
 .TP
 \fB--clear-database\fP
-clear the database of old results. This will give you a clean slate before a new analysis. Does not remove any ortholog sets. This is the default, disable it by saying \fB-noclear-database\fP.
+clear the database of old results. This will give you a clean slate before a new analysis. Does not remove any ortholog sets, only alignment results. This is the default, disable it by saying \fB--no-clear-database\fP.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--clear-files\fP
 clear old output files. This will remove old output files, including the search results. This will give you a clean start, but will cause everything to run again.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB--cog-list-file\fP FILE
 specify a list file to filter COGs. If you are only interested in a few genes from your ortholog set, you can provide Orthograph with a list of ortholog IDs in a file. The IDs must be in a single line each, and there must be no empty lines in the file. 
+
+Affects both orthograph-analyzer and orthograph-reporter.
 
 .TP
 \fB--concatenation-header-separator\fP S
 set the header separator for concatenated sequences. Defaults to '&&', enclose it in quotes if it contains whitespace.
 
+Affects only orthograph-reporter.
+
 .TP
 \fB-c\fP, \fB--configfile\fP FILE
 specify the path to a configuration file, which will be read instead of the default. Defaults to 'orthograph.conf' in the installation directory.
 
+Affects all Orthograph tools.
+
 .TP
 \fB--continue\fP
 continue a previously begun analysis. This will skip loading the transcriptomic data into the database and assumes that is there from an earlier run.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--create\fP
@@ -86,49 +114,73 @@ create the database structure. Available for \fIorthograph-manager\fP.
 \fB--database-backend\fP NAME
 set the database backend to NAME. Must be 'sqlite' or 'mysql'. Defaults to 'sqlite'.
 
+Affects all Orthograph tools and must be the same for a contiguous analysis.
+
 .TP
 \fB--db-prefix\fP PREFIX
 set the database table prefix to PREFIX. Defaults to 'orthograph'.
+
+Affects all Orthograph tools and must be the same for a contiguous analysis.
 
 .TP
 \fB-d\fP, \fB--debug\fP
 turn on debug mode, including database queries and internal workings. This is only helpful if you want to find errors in the program. Be aware that the log files can become several gigabytes in size this way.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB--delete-ogs\fP FILE
 delete the OGS in FILE from the database. You must specify the exact same data that you used to load the OGS into the database, otherwise sequences cannot be correlated.
+
+Affects only orthograph-manager.
 
 .TP
 \fB--delete-set\fP SET
 delete the ortholog set SET from the database. Specify the name of the set.
 
+Affects only orthograph-manager.
+
 .TP
 \fB--destroy\fP
 delete everything Orthograph from the database.
+
+Affects only orthograph-manager.
 
 .TP
 \fB--exonerate-program\fP PATH
 set the Exonerate program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'exonerate'.
 
+Affects only orthograph-reporter.
+
 .TP
 \fB--extend-orf\fP
 try to extend ORFs beyond the region that the reciprocal search determined as orthologous. Without this setting, the ORF can only get smaller if Exonerate trims the sequences.
+
+Affects only orthograph-reporter.
 
 .TP
 \fB--fill-with-x\fP
 when concatenating transcripts, fill the gap in amino acid sequences with 'X' characters and in nucleotide sequences with 'N' characters.
 
+Affects only orthograph-reporter.
+
 .TP
 \fB--hamstr-compatible-output\fP
 produce output in a HaMStR compatible format so that other scripts can parse it.
+
+Affects only orthograph-reporter.
 
 .TP
 \fB--genetic-code\fP X
 specify an alternative genetic code. The default (1) is the standard genetic code. See \fIhttp://dev.man-online.org/man1/exonerate/\fP and look for \fBTRANSLATION OPTIONS\fP for a complete list of supported codes. 
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB--header-separator\fP S
 set the header field separator for Fasta output files. Enclose in quotes if it contains (or is) whitespace. Defaults to '|'.
+
+Affects only orthograph-reporter.
 
 .TP
 \fB-h\fP, \fB--help\fP
@@ -138,20 +190,30 @@ print a short synopsis and a list of options.
 \fB--hmmbuild-program\fP PATH
 set the hmmbuild program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'hmmbuild'.
 
+Affects only orthograph-analyzer.
+
 .TP
 \fB--hmmsearch-evalue-threshold\fP X
 set the e-value threshold for HMM searches. Can be specified in a floating point or an exponential number. Defaults to 10e-5.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 \fB--hmmsearch-program\fP
 set the hmmsearch program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'hmmsearch'.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--hmmsearch-score-threshold\fP X
 set the score threshold for HMM searches. Defaults to 10.
 
+Affects only orthograph-reporter.
+
 .TP
 \fB--hmmsearchoutdir\fP DIR
 set the output directory for HMM result files. Will be created if it does not exist.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--input-file\fP FILE
@@ -161,17 +223,25 @@ set the input file. Required for \fIorthograph-analyzer\fP.
 \fB-le\fP, \fB--list-ests\fP
 list a summary of all est data present in the database.
 
+Affects only orthograph-manager.
+
 .TP
 \fB-lo\fP, \fB--list-ogs\fP
 print a list of all OGS present in the database.
+
+Affects only orthograph-manager.
 
 .TP
 \fB-ls\fP, \fB--list-sets\fP
 print a list of ortholog sets present in the database.
 
+Affects only orthograph-manager.
+
 .TP
 \fB-lt\fP, \fB--list-taxa\fP
 print a list of taxa present in the database.
+
+Affects only orthograph-manager.
 
 .TP
 \fB--load-ogs-nucleotide\fP FILE
@@ -183,35 +253,51 @@ load the peptide OGS in FILE into the database. Available for \fIorthograph-mana
 
 .TP
 \fB--logfile\fP FILE
-set the path to the log file. Defaults to 'orthograph-XXXXXXXX' resp. 'report-XXXXXXXX' in the log directory, where XXXXXXXX is a date string.
+set the path to the log file. Defaults to 'orthograph-analyzer-XXXXXXXX' resp. 'orthograph-reporter-XXXXXXXX' in the log directory, where XXXXXXXX is a date string.
+
+Affects both orthograph-analyzer and orthograph-reporter.
 
 .TP
 \fB--makeblastdb-program\fP PATH
 set the makeblastdb program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'makeblastdb'.
 
+Affects only orthograph-analyzer.
+
 .TP
 \fB--max-blast-searches\fP N
 set the maximum number of BLAST searches for each COG. This is basically a way to limit the number of HMM hits being processed further. Defaults to 50.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--max-reciprocal-mismatches\fP N
 set the maximum number of non-reciprocal hits that may occur before an orthologous group is no longer accepting new transcripts. Leave this at 0 if you want to apply a strict BRH criterion. Defaults to 0.
 
+Affects only orthograph-reporter.
+
 .TP
 \fB--minimum-transcript-length\fP N
 set the minimum length (in amino acids) that a transcript region must have in order to be accepted. This is to avoid very small fragments (commonly due to domain walking). Defaults to 30.
+
+Affects only orthograph-reporter.
 
 .TP
 \fB--mysql-database\fP DATABASE
 set the MySQL database. If you use the MySQL backend, this option must be set.
 
+Affects all Orthograph tools and must be the same for a contiguous analysis.
+
 .TP
 \fB--mysql-password\fP PASSWORD
-set the MySQL database password. If you use the MySQL backend, this option must be set. If you are concerned about security issues, you should not set this on the command line, but in your config file.
+set the MySQL database password. If you use the MySQL backend, this option must be set. If you are concerned about security issues, you should not set this on the command line, but in your config file (and set its permissions accordingly).
+
+Affects all Orthograph tools and must be the same for a contiguous analysis.
 
 .TP
 \fB--mysql-server\fP SERVER
 set the MySQL database server. If you use the MySQL backend, this option must be set.
+
+Affects all Orthograph tools and must be the same for a contiguous analysis.
 
 .TP
 \fB--mysql-timeout\fP N
@@ -221,9 +307,13 @@ set the timeout for MySQL queries. If a query fails, Orthograph will wait this a
 \fB--mysql-username\fP NAME
 set the MySQL username. If you use the MySQL backend, this option must be set.
 
+Affects all Orthograph tools and must be the same for a contiguous analysis.
+
 .TP
 \fB--no-frameshift-correction\fP
 turn off frameshift correction using Exonerate. This way, the transcripts are guaranteed to be orthologous, but not that they correspond on amino acid and nucleotide leve.
+
+Affects only orthograph-reporter.
 
 .TP
 \fB--ntoutdir\fP DIR
@@ -233,17 +323,25 @@ set the output directory for nucleotide sequences to DIR. Will be created if it 
 \fB--num-threads\fP N
 set the number of parallel threads for the programs that support this (hmmbuild, hmmsearch, blastp). Set this to a higher number to speed up searches on a multicore system. Defaults to 1.
 
+Affects only orthograph-analyzer.
+
 .TP
 \fB--ogs-version\fP VERSION
 set the version for the OGS you are loading with --load-ogs-nucleotide or --load-ogs-peptide. May be an arbitrary string or number, enclose in quotes if it contains whitespace.
+
+Affects only orthograph-manager.
 
 .TP
 \fB--ogs-taxon-name\fP NAME
 set the version for the OGS you are loading with --load-ogs-nucleotide or --load-ogs-peptide. May be an arbitrary string, enclose in quotes if it contains whitespace.
 
+Affects only orthograph-manager.
+
 .TP
 \fB--orf-overlap-minimum\fP F
 set the ORF overlap percentage threshold to F. May be a floating-point number between 0 and 1. This is the minimum percentage of the orthologous region that an ORF must cover. Defaults to 0.5, set this to a lower value to make searches more relaxed.
+
+Affects only orthograph-reporter.
 
 .TP
 \fB--ortholog-set\fP SET
@@ -253,9 +351,13 @@ set the ortholog set to SET. Available for \fIorthograph-analyzer\fP and \fIorth
 \fB--output-directory\fP DIR
 set the output directory to DIR. Will be created if it does not exist. Defaults to the current directory.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB-o\fP, \fB--overwrite\fP
 overwrite existing ortholog set data in the database if the set already exists. This will most likely cause data disintegration, use only if you know what you are doing.
+
+Affects only orthograph-manager.
 
 .TP
 \fB--prepare\fP
@@ -265,9 +367,13 @@ prepare the database for analysis. This will remove existing result tables and (
 \fB-q\fP, \fB--quiet\fP
 be quiet. Orthograph will not report anything but the most important information.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB--reference-taxa\fP LIST,OF,REFTAXA
 specify a comma-separated list of reference taxon \fIshorthands\fP that are considered for the reciprocal search. In the config file, there may be whitespace, but not on the command line, for obvious reasons. Defaults to all taxa in your ortholog set.
+
+Affects only orthograph-reporter.
 
 .TP
 \fB--sets-dir\fP DIR
@@ -277,13 +383,19 @@ set the ortholog set directory to DIR. This will contain the HMM files and the B
 \fB--soft-threshold\fP N
 set the so-called soft threshold to N, the number of reciprocal hits that may not be part of the COG before a transcript is rejected. When using a list of reference-taxa (see above), set this to at least the number of taxa you are omitting from the ortholog set. Defaults to 0.
 
+Affects only orthograph-reporter.
+
 .TP
 \fB--species-name\fP NAME
 set NAME for the species being analyzed. Available for \fIorthograph-analyzer\fP.
 
+Affects both orthograph-analyzer and orthograph-reporter and must be the same for a contiguous analysis.
+
 .TP
 \fB--sqlite-database\fP FILE
 set the SQLite database FILE. Change this if you want to place your database somewhere else. Defaults to 'orthograph.sqlite' in the current directory.
+
+Affects all Orthograph tools and must be the same for a contiguous analysis.
 
 .TP
 \fB--sqlite-program\fP PATH
@@ -293,17 +405,25 @@ set the sqlite program. For some operations, Orthograph uses the sqlite program,
 \fB--strict-search\fP
 turns on strict behaviour. \fIAll\fP reference taxa you specified (or all in the set, if you did not specify any) must be hit for a transcript to be considered orthologous. This is \fImuch\fP more conservative.
 
+Affects only orthograph-reporter.
+
 .TP
 \fB--substitute-u-with\fP X
 set the substitution character for selenocysteine (U) to X. This is used before BLAST database creation because BLAST does not like Us in amino acid sequences. May be a single character. Defaults to 'X'.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--temp-dir\fP DIR
 set the temporary directory to DIR. Temporary files will be placed here. Defaults to '/tmp'.
 
+Affects both orthograph-analyzer and orthograph-reporter.
+
 .TP
 \fB--translate-program\fP PATH
 set the fastatranslate program, which is part of the Exonerate package. Used for translating the nucleotide transcripts into all six possible reading frames before analysis. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'fastatranslate'.
+
+Affects both orthograph-analyzer and orthograph-reporter.
 
 .TP
 \fB-v\fP, \fB--verbose\fP
@@ -328,5 +448,5 @@ Report bugs to mptrsen at uni-bonn.de
 Orthograph home page: <http://github.com/mptrsen/Orthograph/>
 
 .COPYRIGHT
-Copyright 2014 Malte Petersen
+Copyright 2015 Malte Petersen
 

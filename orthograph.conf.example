@@ -123,8 +123,9 @@ exonerate-program    = exonerate
 #
 # # Settings that affect the HMM and BLAST searches.
 #
-# Score threshold. A higher alignment score means a better match. Default value
-# is 10.
+# Score threshold. A higher alignment score means a better match. 
+# This affects both orthograph-analyzer and orthograph-reporter. 
+# Default value is 10.
 #hmmsearch-score-threshold = 10
 #blast-score-threshold     = 10
 
@@ -134,6 +135,7 @@ exonerate-program    = exonerate
 # searching through the transcriptome file. The BLAST e-value threshold affects
 # the second step, the reciprocal search. Basically, this defines the
 # false-positive probability (lower e-value = lower probability).
+# This affects both orthograph-analyzer and orthograph-reporter.
 # Default value is 1e-05 (0.00001).
 #hmmsearch-evalue-threshold = 1e-05
 #blast-evalue-threshold     = 1e-05
@@ -144,6 +146,7 @@ exonerate-program    = exonerate
 # normally don't want to do. Unless you have an idea of how many reciprocal
 # searches are required to effectively verify or reject a candidate ortholog,
 # don't change this setting. 
+# This affects only orthograph-analyzer.
 # Defaults to 100.
 #max-blast-searches         = 100
 
@@ -155,19 +158,23 @@ exonerate-program    = exonerate
 # number of taxa you are omitting from the ortholog set.
 # Defaults to 0 because normally we want to apply the BRH criterion and are
 # using the entire set.
+# This affects only orthograph-reporter.
 #soft-threshold             = 0
 
 # Maximum number of BLAST hits to consider for ortholog candidates.
+# This affects only orthograph-analyzer.
 # Defaults to 100.
 #blast-max-hits             = 100
 
 # Maximum number of non-reciprocal hits for a given ortholog group. 
+# This affects only orthograph-reporter.
 # Defaults to 0 because we want to apply the BRH criterion.
 #max-reciprocal-mismatches  = 0
 
 # Number of CPU threads to use. For optimum CPU efficiency, set this to the
 # number of threads that your CPU(s) can run. Ask your system administrator if
 # you don't know.
+# This affects only orthograph-analyzer.
 # Defaults to 1 (single-threaded: slow but safe)
 #num-threads                = 1
 
@@ -178,48 +185,57 @@ exonerate-program    = exonerate
 # Minimum transcript length. A transcript must have equal or more amino acids
 # in order to be accepted. This is a way to avoid very small fragments,
 # commonly due to domain walking, but you can also set it to a higher value if
-# you want longer transcripts. Defaults to 30 (a common domain length).
+# you want longer transcripts. 
+# This affects only orthograph-reporter.
+# Defaults to 30 (a common domain length).
 #minimum-transcript-length = 30
 
-# Suppress for frameshift error correction using Exonerate. This ensures that
-# you receive a 100% corresponding nucleotide sequence for your predicted
-# orthologous transcripts, but may lead to lost transcripts where no matching
-# alignment could be obtained by Exonerate. This is the default behaviour;
-# uncomment this line to turn it off.
+# Suppress frameshift error correction using Exonerate. Exonerate is used to
+# obtain a 100% corresponding nucleotide sequence for your predicted
+# orthologous transcripts, but this may lead to lost transcripts where no
+# matching alignment could be obtained.
+# This affects only orthograph-reporter.
+# Using Exonerate is the default behaviour; uncomment this line to turn it off.
 #no-frameshift-correction = 0
 
 # Minimum ORF overlap. If enabled, each transcript is given to Exonerate to
 # correct for frameshift errors etc. The resulting ORF must overlap the HMM
 # alignment region by this percentage. Note that the value must be specified as a
 # fraction of 1.
+# This affects only orthograph-reporter.
 # 0.5 (50%) is the default; lower values make this less conservative.
 #orf-overlap-minimum = 0.5
 
 # ORF extension. Try to extend the ORF while retaining the orthologous region.
 # This makes Exonerate run an additional time with the full transcript
-# sequence, and the resulting ORF must contain the original ORF. Defaults to 0
-# (off), uncomment this to turn it on.
+# sequence, and the resulting ORF must contain the original ORF.
+# This affects only orthograph-reporter.
+# Defaults to 0 (off), uncomment this to turn it on.
 #extend-orf = 1
 
 # HaMStR compatible output. Uncomment this if you want to use scripts
 # that depend on the sequence header format that the older HaMStR pipeline
 # used. The default is a more human-readable format, hence this extra option.
+# This affects only orthograph-reporter.
 #hamstr-compatible-output = 1
 
 # If you are only interested in a few genes from your ortholog set, you can 
 # provide Orthograph with a list of ortholog IDs in a file. The IDs must be
 # in a single line each, and there must be no empty lines in the file. 
+# This affects both orthograph-analyzer and orthograph-reporter.
 #cog-list-file = /PATH/TO/FILE
 
 # Strict search. Normally it is enough for a match to occur if one of the
 # reference taxa is hit in the reciprocal search. In strict mode ALL reference
 # taxa must be hit to verify an ortholog assignment. This is much more
 # conservative.
+# This affects only orthograph-reporter.
 #strict-search = 1
 
 # Clear pre-existing data of the same species from the database prior to the
 # analysis. Recommended if you plan to run the same analysis multiple times,
 # but doesn't hurt otherwise. 
+# This affects only orthograph-analyzer.
 # This behaviour is the default, uncomment this line if you want to turn it off.
 #clear-results-from-database  = 0
 
@@ -228,6 +244,7 @@ exonerate-program    = exonerate
 # with the same HMMsearch and BLAST settings, then don't have them deleted. This
 # will speed up the process significantly, since the search programs don't have
 # to be run again.
+# This affects both orthograph-analyzer and orthograph-reporter.
 # Uncomment this line if you want the files deleted.
 #clear-result-files = 1
 
@@ -235,23 +252,27 @@ exonerate-program    = exonerate
 # alignment programs do not accept this nonstandard amino acid symbol. You can
 # tell Orthograph to substitute all 'U' in the sequences with a different
 # character. The default is to substitute.
+# This affects only orthograph-analyzer.
 #substitute-u-with = X
 
 # Header separator. This will be used to separate header fields in the output files.
 # May be an arbitrary string. Defaults to '|'. To use a whitespace character,
 # enclose it in quotes, e.g., ' '.
+# This affects only orthograph-reporter.
 #header-separator = |
 
 # Verbose output. More information about the HMMsearch and BLAST hits. Normally
 # you don't want to see this. If you are really interested in what Orthograph is
 # thinking during the analysis, uncomment this. Verbose and quiet are mutually
 # exclusive.
+# This affects both orthograph-analyzer and orthograph-reporter.
 #verbose = 1
 
 # Quiet output. Uncomment this if you don't want to be bothered during the
 # analysis. After starting, Orthograph will keep still until the analysis is
 # complete (or unexpected things happen). Verbose and quiet are mutually
 # exclusive.
+# This affects both orthograph-analyzer and orthograph-reporter.
 #quiet = 1
 
 
@@ -262,6 +283,7 @@ exonerate-program    = exonerate
 # (that is, the BLAST database, the HMMs and the alignment files for each
 # ortholog gene) in a separate place. Defaults to 'sets' (in the current
 # directory).
+# This affects both orthograph-analyzer and orthograph-reporter.
 #sets-dir = /PATH/TO/SETS/DIR
 
 # Path to log file. If set, all messages will also be written to this file. If
@@ -273,4 +295,5 @@ exonerate-program    = exonerate
 # Note that if you do set a path here, both programs write to the same file,
 # meaning that orthograph-reporter will overwrite the log file of
 # orthograph-analyzer. It is much more convenient to leave this unset.
+# This affects both orthograph-analyzer and orthograph-reporter.
 #logfile = /PATH/TO/LOGFILE
