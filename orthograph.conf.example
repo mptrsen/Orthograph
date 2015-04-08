@@ -141,7 +141,7 @@ exonerate-program    = exonerate
 #blast-evalue-threshold     = 1e-05
 
 # Maximum number of HMMsearch hits to consider. This setting is useful to limit
-# the number of reciprocal searches for very large number of HMMsearch hits.
+# the number of reciprocal searches for very large numbers of HMMsearch hits.
 # However, it is also useful to limit the scope of your HMM searches, which you
 # normally don't want to do. Unless you have an idea of how many reciprocal
 # searches are required to effectively verify or reject a candidate ortholog,
@@ -150,21 +150,16 @@ exonerate-program    = exonerate
 # Defaults to 100.
 #max-blast-searches         = 100
 
-# The soft threshold is a special concept of Orthograph: While checking in
-# strict mode (see below) whether the reciprocal hits are part of the ortholog
-# group in question, this many mismatches may occur before the ortholog
-# candidate is rejected.
-# When using a list of reference-taxa (see above), set this to at least the
-# number of taxa you are omitting from the ortholog set.
-# Defaults to 0 because normally we want to apply the BRH criterion and are
-# using the entire set.
-# This affects only orthograph-reporter.
-#soft-threshold             = 0
-
-# Maximum number of BLAST hits to consider for ortholog candidates.
-# This affects only orthograph-analyzer.
+# Maximum number of BLAST hits to save. This affects only orthograph-analyzer.
 # Defaults to 100.
 #blast-max-hits             = 100
+
+# The soft threshold is a special concept of Orthograph: While checking whether
+# the reciprocal hits are part of the ortholog group in question, this many
+# mismatches may occur before the ortholog candidate is rejected.
+# Defaults to 0 because we want to apply the BRH criterion.
+# This affects only orthograph-reporter.
+#soft-threshold             = 0
 
 # Maximum number of non-reciprocal hits for a given ortholog group. 
 # This affects only orthograph-reporter.

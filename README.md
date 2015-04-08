@@ -354,6 +354,10 @@ reference taxa. The INPUT_DIRECTORY must be a directory containing Orthograph
 output directories. For further information, read the usage instructions
 that are printed when calling the program with the `-h` flag.
 
+A manual page containing a description of all options is in the `doc`
+directory. It can be read using `man -l doc/orthograph.man` or directly with
+`man orthograph` if installed properly (ask your system administrator).
+
 
 
 APPENDIX
