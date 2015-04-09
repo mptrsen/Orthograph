@@ -62,10 +62,10 @@ ortholog-set       = SETNAME
 # in your current working directory.
 #output-directory   = /PATH/TO/OUTPUT/DIR
 
-# Reference taxa. A comma-separated list of taxon shorthands that are present
+# Reference taxa. A comma-separated list of taxon names that are present
 # in your ortholog set. If you don't specify any reference taxa (i.e., leave this
 # setting commented out), all taxa in your set are used as reference taxa.
-#reference-taxa     = COMMA, SEPARATED, LIST, OF, TAXA, IN, YOUR, ORTHOLOG, SET
+#reference-taxa     = COMMA SEPARATED, LIST OF, TAXA IN, YOUR ORTHOLOG, SET
 
 
 #--------------------------------------------------

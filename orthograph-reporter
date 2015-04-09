@@ -35,12 +35,13 @@ use Time::HiRes qw(time);    # high-resolution timer
 use lib $FindBin::Bin;                 # $Bin is the directory of the original script
 use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
+use Orthograph::Version;
 use Wrapper::Exonerate;
 use IO::Tee;
 
 my $program_name = 'Orthograph';
 $0 = $program_name;
-my $version = 'beta3';
+my $version = $Orthograph::Version::version;
 
 my $config = $Orthograph::Config::config;	# copy config variables
 
@@ -117,8 +118,22 @@ my $max_reciprocal_mismatches  = $config->{'max-reciprocal-mismatches'};
 # make a nice time string
 my @lt                   = localtime time;
 my $timestring           = sprintf "%04d-%02d-%02d_%02d:%02d", $lt[5] + 1900, $lt[4] + 1, $lt[3], $lt[2], $lt[1];
-# this will hold all log messages until the logfile is open
-my $message = '';
+
+# this message will be printed later when we have a log file handle
+my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
+	"Reciprocal Approach with Profile Hidden Markov models\n" .
+	"Copyright 2015 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
+	"Version $version\n\n";
+
+# report configuration
+if ($verbose) {
+	$message .= "Using the following configuration settings:\n";
+	foreach (sort keys %$config) {
+		$message .= sprintf "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
+	}
+	$message .= "\n";
+}
+
 
 # set the logfile unless specified
 unless ($logfile) {
@@ -236,7 +251,7 @@ unless ($set_id) {
 # Create the list of reference taxa
 # This can be set in the config file, otherwise get all taxa in the set
 if ($reference_taxa) {
-	$reference_taxa =~ s/\s*//g;
+	$reference_taxa =~ s/\s*,\s*/,/g;
 	@reftaxa = split(/,/, $reference_taxa);
 }
 else { @reftaxa = get_taxa_in_set($set_id) }
@@ -290,7 +305,8 @@ foreach my $score (@$scores) {
 		}
 		# also skip this result if the ortholog group has had too many non-reciprocal hits before
 		if ($non_reciprocal_hits_for->{$orthoid} and $non_reciprocal_hits_for->{$orthoid} > $max_reciprocal_mismatches) {
-			print $stdout "Too many non-reciprocal hits for ortholog group '$orthoid', skipping this match\n";
+			print $stdout "Too many non-reciprocal hits for ortholog group '$orthoid', skipping this match\n"
+				unless $quiet;
 			next RESULT;
 		}
 
@@ -844,24 +860,32 @@ sub is_reciprocal_match {
 
 			$match = $result;
 
-			if ($strict_search) {
-				if (exists $reftaxon_count->{$reftaxon}) {
-					$reftaxon_count->{$reftaxon} = 1;
+			# we hit something, count it
+			if (exists $reftaxon_count->{$reftaxon}) {
+				$reftaxon_count->{$reftaxon} = 1;
+				# in strict mode, check whether we have hit all reftaxa
+				if ($strict_search) {
+					if ($debug) {
+						print $stdout "These taxa have been hit yet: \n";
+						printf $stdout "  %s: %d\n", $_, $reftaxon_count->{$_} foreach keys %$reftaxon_count;
+					}
+					# all reftaxa have been hit,
+					# even under strict conditions this is a reciprocal match
+					if (not grep { $_ == 0 } values %$reftaxon_count) {
+						return $match;
+					}
 				}
-				if ($debug) {
-					print $stdout "These taxa have been hit yet: \n";
-					printf $stdout "  %s: %d\n", $_, $reftaxon_count->{$_} foreach keys %$reftaxon_count;
-				}
-				# all reftaxa have been hit,
-				# even under strict conditions this is a reciprocal match
-				if (not grep { $_ == 0 } values %$reftaxon_count) {
+				# one hit is enough if not in strict mode
+				else {
 					return $match;
 				}
 			}
-			# one hit is enough if not in strict mode
 			else {
-				return $match;
+				if ($debug) {
+					printf $stdout "Omitting %s, not in reference taxon list\n", $reftaxon;
+				}
 			}
+
 		}
 		else {  # not found
 			# cry
@@ -960,80 +984,6 @@ sub print_no_overlap {
 		$$candidate{'hmm_end'},
 		$level
 	;
-}
-
-=head2 overlap
-
-Calculates whether or not a given transcript overlaps with already assigned other transcripts, on both HMM (=OG) coordinates and transcript coordinates (env coords).
-
-Returns 0 if nothing overlaps.
-Returns 1 if the candidate overlaps only on transcript coordinates, but not on the HMM.
-Returns 2 if the candidate overlaps on the HMM coords. This should not be accepted.
-
-Arguments: arrayref (already matched transcripts), hashref (candidate transcript)
-
-=cut
-
-sub overlap {
-	my $already_assigned = shift;
-	my $candidate = shift;
-	my $overlap   = 0;
-	for (my $i = 0; $i < scalar @$already_assigned; ++$i) {
-		# the hmm coords do not overlap
-		if ($$candidate{'hmm_end'} <= $$already_assigned[$i]{'hmm_start'} or $$candidate{'hmm_start'} >= $$already_assigned[$i]{'hmm_end'}) {
-			# the transcript coords do not overlap
-			if ($$candidate{'env_end'} <= $$already_assigned[$i]{'env_start'} or $$candidate{'env_start'} >= $$already_assigned[$i]{'env_end'}) {
-				printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
-					$$already_assigned[$i]{'header'},
-					$$already_assigned[$i]{'env_start'},
-					$$already_assigned[$i]{'env_end'},
-					$$already_assigned[$i]{'hmm_start'},
-					$$already_assigned[$i]{'hmm_end'},
-					$$candidate{'header'},
-					$$candidate[$i]{'env_start'},
-					$$candidate[$i]{'env_end'},
-					$$candidate{'hmm_start'},
-					$$candidate{'hmm_end'}
-						if $verbose;
-				# this is ok, best case
-			}
-			# the transcript coords overlap
-			elsif ($$candidate{'env_end'} >= $$already_assigned[$i]{'env_start'} or $$candidate{'env_start'} <= $$already_assigned[$i]{'env_end'}) {
-				printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do overlap.\n", 
-					$$already_assigned[$i]{'header'},
-					$$already_assigned[$i]{'env_start'},
-					$$already_assigned[$i]{'env_end'},
-					$$already_assigned[$i]{'hmm_start'},
-					$$already_assigned[$i]{'hmm_end'},
-					$$candidate{'header'},
-					$$candidate[$i]{'env_start'},
-					$$candidate[$i]{'env_end'},
-					$$candidate{'hmm_start'},
-					$$candidate{'hmm_end'}
-						if $verbose;
-				return 1;  # this is not ok, the transcript coords should be unified
-			}
-		}
-		# the hmm coords overlap
-		else {
-			# this is totally not ok
-			printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap.\n", 
-				$$already_assigned[$i]{'header'},
-				$$already_assigned[$i]{'env_start'},
-				$$already_assigned[$i]{'env_end'},
-				$$already_assigned[$i]{'hmm_start'},
-				$$already_assigned[$i]{'hmm_end'},
-				$$candidate{'header'},
-				$$candidate[$i]{'env_start'},
-				$$candidate[$i]{'env_end'},
-				$$candidate{'hmm_start'},
-				$$candidate{'hmm_end'}
-					if $verbose;
-			return 2;
-		}
-	}
-	if ($overlap == 0) { return 0 }
-	return 2;
 }
 
 sub transcripts_overlap {

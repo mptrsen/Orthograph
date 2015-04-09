@@ -43,14 +43,15 @@ use Wrapper::Hmmsearch;    # object-oriented interface to hmmsearch
 use Wrapper::Blastp;       # object-oriented interface to blastp
 use Orthograph::Functions; # functions for all Orthograph tools
 use Orthograph::Config;    # configuration in global hashref $config; also handles command line arguments
+use Orthograph::Version;   # holds the version number
 
 my $program_name = 'Orthograph';
 $0 = $program_name;
-my $version = 'beta3';
+my $version = $Orthograph::Version::version;
 # this message will be printed later when we have a log file handle
 my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
 	"Reciprocal Approach with Profile Hidden Markov models\n" .
-	"Copyright 2014 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
+	"Copyright 2015 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
 	"Version $version\n\n";
 my $program_file = $FindBin::Script;
 
@@ -1234,8 +1235,8 @@ sub load_data_infile {
 		$s =~ s/-//g;	# remove all gaps from the sequence
 		if ($s =~ /([^ACDEFGHIKLMNPQRSTVWYX*])/i) {
 			# change all Us to X if requested
-			if ($u_subst and $s =~ s/U/$u_subst/gi) {
-				print $stderr "Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence $h.\n";
+			if ($u_subst) {
+				$s =~ s/U/$u_subst/gi and print $stderr "Warning: Selenocysteine character ('U') replaced with '$u_subst' in sequence $h.\n";
 			}
 			else {
 				print $stderr "Warning: Sequence $h contains nonstandard amino acid symbol '$1'! Make sure your alignment program tolerates this.\n";
