@@ -157,18 +157,6 @@ exonerate-program    = exonerate
 # Defaults to 100.
 #blast-max-hits             = 100
 
-# The soft threshold is a special concept of Orthograph: While checking whether
-# the reciprocal hits are part of the ortholog group in question, this many
-# mismatches may occur before the ortholog candidate is rejected.
-# Defaults to 0 because we want to apply the BRH criterion.
-# This affects only orthograph-reporter.
-#soft-threshold             = 0
-
-# Maximum number of non-reciprocal hits for a given ortholog group. 
-# This affects only orthograph-reporter.
-# Defaults to 0 because we want to apply the BRH criterion.
-#max-reciprocal-mismatches  = 0
-
 # Number of CPU threads to use. For optimum CPU efficiency, set this to the
 # number of threads that your CPU(s) can run. Ask your system administrator if
 # you don't know.
@@ -249,7 +237,7 @@ exonerate-program    = exonerate
 # Selenocysteine (U) may occur in some protein sequences. However, some
 # alignment programs do not accept this nonstandard amino acid symbol. You can
 # tell Orthograph to substitute all 'U' in the sequences with a different
-# character. The default is to substitute.
+# character. The default is not to substitute.
 # This affects only orthograph-analyzer.
 #substitute-u-with = X
 
