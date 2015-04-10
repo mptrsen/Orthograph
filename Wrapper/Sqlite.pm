@@ -725,7 +725,6 @@ Returns: hash of scalars
 
 =cut
 sub get_taxa_in_all_sets {
-	my %setlist = ();
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	my $query = "SELECT DISTINCT $db_table_set_details.name, $db_table_taxa.name
 		FROM $db_table_seqpairs
@@ -737,10 +736,7 @@ sub get_taxa_in_all_sets {
 			ON $db_table_orthologs.setid = $db_table_set_details.id"
 	;
 	my $data = db_get($query) or croak();
-	foreach my $row (@$data) {
-		$setlist{$$row[0]} .= ' ' . $$row[1];
-	}
-	return %setlist;
+	return $data;
 }
 
 =head2 get_taxa_in_set(SETNAME)

@@ -65,6 +65,9 @@ ortholog-set       = SETNAME
 # Reference taxa. A comma-separated list of taxon names that are present
 # in your ortholog set. If you don't specify any reference taxa (i.e., leave this
 # setting commented out), all taxa in your set are used as reference taxa.
+# Note that you must use the taxon names exactly as they are in the database.
+# You can use the list provided from `orthograph-manager --list-taxa` as a
+# starting point.
 #reference-taxa     = COMMA SEPARATED, LIST OF, TAXA IN, YOUR ORTHOLOG, SET
 
 

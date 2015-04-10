@@ -954,12 +954,21 @@ sub delete_taxon {
 }
 
 sub get_taxa_in_all_sets{
+	my $data = { };
+	my %setlist = ();
 	if ($use_mysql) {
-		return Wrapper::Mysql::get_taxa_in_all_sets(@_);
+		$data = Wrapper::Mysql::get_taxa_in_all_sets(@_);
 	}
 	elsif ($use_sqlite) {
-		return Wrapper::Sqlite::get_taxa_in_all_sets(@_);
+		$data =  Wrapper::Sqlite::get_taxa_in_all_sets(@_);
 	}
+	foreach my $row (@$data) {
+		$setlist{$$row[0]} .= ', ' . $$row[1];
+	}
+	foreach my $set (keys %setlist) {
+		$setlist{$set} =~ s/^, //;
+	}
+	return %setlist;
 }
 
 sub get_ortholog_sets {
