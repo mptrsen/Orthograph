@@ -847,7 +847,7 @@ sub is_reciprocal_match {
 	$mismatches = 0;
 
 	foreach my $result (@$blastresults) {
-		my $reftaxon = get_reftaxon_shorthand($result->{'blast_hit'});
+		my $reftaxon = get_reftaxon_name($result->{'blast_hit'});
 
 		# this reciprocal hit occurs in the HMM
 		if ( first { /$result->{'blast_hit'}/ } @{$aaseqs_in_orthoid->{$orthoid}} ) {
@@ -1503,28 +1503,28 @@ sub get_results_for_single_score {
 	}
 }
 
-sub get_reftaxon_shorthand {
+sub get_reftaxon_name {
 	my $id = shift;
 	my $sh = undef;
 	if ($use_mysql) {
-		$sh = Wrapper::Mysql::get_reftaxon_shorthand($id);
+		$sh = Wrapper::Mysql::get_reftaxon_name($id);
 		if ($sh) {
 			printf $stdout "got reftaxon %s for reciprocal hit %d\n", $sh, $id if $debug;
 			return $sh;
 		}
 		else {
-			print $stderr "Fatal: Could not get reference taxon shorthand for $id\n";
+			print $stderr "Fatal: Could not get reference taxon name for $id\n";
 			exit(1);
 		}
 	}
 	elsif ($use_sqlite) {
-		$sh = Wrapper::Sqlite::get_reftaxon_shorthand($id);
+		$sh = Wrapper::Sqlite::get_reftaxon_name($id);
 		if ($sh) {
 			printf $stdout "got reftaxon %s for reciprocal hit %d\n", $sh, $id if $debug;
 			return $sh;
 		}
 		else {
-			print $stderr "Fatal: Could not get reference taxon shorthand for $id\n";
+			print $stderr "Fatal: Could not get reference taxon name for $id\n";
 			exit(1);
 		}
 	}
