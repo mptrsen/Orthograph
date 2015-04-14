@@ -316,7 +316,7 @@ d) nt. This contains the actual results on nucleotide level.
 e) log. This contains log files, such as the entire standard output for both `orthograph-analyzer` and `orthograph-reporter`:
 
 
-The main output directory contains three report tables after running
+The main output directory contains two report tables after running
 orthograph-reporter:
 
 - homologous_transcripts.txt: a tabular listing of all transcripts that
