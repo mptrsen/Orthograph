@@ -1,4 +1,10 @@
-commit 44ba092c9bcf085703af96b886b0ea3d475f6f36
+commit be57401557fd1d3a8ea619c3d11010f64cc1e3ad
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-16
+
+    Updated Makefile to update version
+
+commit 9c6931bcd115ef7d0b3fcd733ef592ba0755adcc
 Author: Malte Petersen <mptrsen@uni-bonn.de>
 Date:   2015-04-16
 

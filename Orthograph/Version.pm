@@ -1,5 +1,5 @@
 package Orthograph::Version;
 
-our $version = 'beta4.1';
+our $version = '';
 
 1;
