@@ -1,6 +1,15 @@
 ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models
 ===========================================================================================================
 
+DOCUMENTATION
+=============
+
+A manual page containing a description of all options is in the `doc`
+directory. It can be read using `man -l doc/orthograph.man` or directly with
+`man orthograph` if installed properly (ask your system administrator).
+
+This is a quickstart guide to help you start off.
+
 SYSTEM REQUIREMENTS
 ===================
 
@@ -354,9 +363,17 @@ reference taxa. The INPUT_DIRECTORY must be a directory containing Orthograph
 output directories. For further information, read the usage instructions
 that are printed when calling the program with the `-h` flag.
 
-A manual page containing a description of all options is in the `doc`
-directory. It can be read using `man -l doc/orthograph.man` or directly with
-`man orthograph` if installed properly (ask your system administrator).
+
+## 14. Optional: Convert to HaMStRad format
+
+For downstream analyses that depend on HaMStRad output, it is necessary to
+convert the Fasta header format accordingly. There is a converter script to do
+that; it is run like this:
+
+	$ perl orthograph2hamstrad.pl INPUT_DIRECTORY OUTPUT_DIRECTORY
+
+The program converts all files in INPUT_DIRECTORY/aa and INPUT_DIRECTORY/nt and
+places them in OUTPUT_DIRECTORY/aa and OUTPUT_DIRECTORY/nt, respectively. OUTPUT_DIRECTORY must exist, the aa and nt subdirectories will be created.
 
 
 

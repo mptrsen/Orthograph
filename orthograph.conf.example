@@ -199,12 +199,6 @@ exonerate-program    = exonerate
 # Defaults to 0 (off), uncomment this to turn it on.
 #extend-orf = 1
 
-# HaMStR compatible output. Uncomment this if you want to use scripts
-# that depend on the sequence header format that the older HaMStR pipeline
-# used. The default is a more human-readable format, hence this extra option.
-# This affects only orthograph-reporter.
-#hamstr-compatible-output = 1
-
 # If you are only interested in a few genes from your ortholog set, you can 
 # provide Orthograph with a list of ortholog IDs in a file. The IDs must be
 # in a single line each, and there must be no empty lines in the file. 

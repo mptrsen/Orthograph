@@ -1,0 +1,4500 @@
+commit 51481542d4fcf6210487bef8c93767721bdf9a36
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-14
+
+    Minor changes in documentation
+
+commit 0520a74d924e71068a190a5648965a784ab5aedb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-10
+
+    Removed soft-threshold and max-reciprocal-mismatches from example config; they were confusing people
+    
+    also clarified manpage
+
+commit e5c76bd1b4123bce65fe2203d0ff0a3c99b6b5fe
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-10
+
+    Improved list-taxa option
+
+commit 723fa18fdef94a836b2b9415325c6136e2085a88
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-10
+
+    Renamed reftaxon "shorthand" to "name"
+
+commit 3d37842a3a38fee8a0839b1d08e1973f21ce8f41
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-10
+
+    Added Version module for centralized version numbering
+
+commit 6d594b86e554059ee9629157a8e16cc71f0223a1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-09
+
+    Fixed reference taxon specification in example config and not considering omitted taxa in reporter
+    
+    also fixed selenocystein substitution warning
+
+commit bbf3b9c2e4292b72b89dd9f08cc5072051a10d04
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-08
+
+    Hopefully clarified both README and example config
+
+commit 7153162bf4a0d8c94e71b6951c215ea1b56d96b0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-08
+
+    Added more info to example config, manpage and README, removed unnecessary modules from summarize script.
+
+commit be4b23531935a9f8f28f5ae71bfe964fabcad781
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-01
+
+    Minor bug fix
+
+commit 3597cafd41887f28d22bcb011d38f0775a4bc36d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-31
+
+    Standardized log file name format
+
+commit 5596f01e128a7558344952aa26b53b4e0d0a4a24
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-20
+
+    Minor change: Notification of what aux database in use
+
+commit 19fd5da448b26793b7600e75a07d9e298db810f6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-20
+
+    Added option to specify maximum number of non-reciprocal hits
+
+commit 8e0a11ccb741ab5cf2e8f2e9f86df2276df3924b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-17
+
+    Minor changes
+
+commit 19f3b1785be7f13318134b87c1064f04e386e024
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-13
+
+    Ooops, accidentally was exiting at some point. Fixed.
+
+commit 8693008b8cadcf5766ace46530f6157be381df2d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-12
+
+    Added --minimum-transcript-length option to set lower limit of fragments, added score column to homologous_transcripts table
+
+commit 0bb316b0d568102967c468aa16ee11581a8a6d76
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-11
+
+    Formatted README
+
+commit 175bc9473574fcab71b9bcbb2d9d9fe062670315
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-11
+
+    Made readme a markdown file
+
+commit 50f6edf255df1536c686d7a3f87eda5e509bab6d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-04
+
+    Changed table names to be more informative
+
+commit 1204ecbe763e422df1d02d3bbbc37d0d3972b5a2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-04
+
+    Added File::Which for improved testing of executability.
+
+commit 73dab5f9b1607940de1372f41c0ac1fd42f4dfdd
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-03-04
+
+    Verify executability of external programs.
+
+commit 0accf36b4129a7d591468069b18a604fbc6d1441
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-02-26
+
+    Fixed "uninitialized value" warning in reporter.
+
+commit e07d468b8f88aded80c7218e141af1310b133acb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-02-24
+
+    Substitution of U in OGS sequences is the default. Updated README
+
+commit 8503848d510bc2ca0545b371f2bb7e1325656e69
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-02-24
+
+    Reduced verbosity (moved SQL commands to debug), clarified reporter output message
+
+commit 970918de2b587476359f3e11b78849f5559f67aa
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-01-16
+
+    Removed unnecessary and confusing database module loading from analyzer
+
+commit e6c1ce012e8912145496841ba20e296836d7e085
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-01-14
+
+    Updated README
+
+commit 158adf0ace215d0a398292b01cf53bfad1bc8562
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-12-10
+
+    Minor changes, added extend-orf in conf.example
+
+commit 7b4d543bf18bcf107d1f081c8d49731de310f3a6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-12-09
+
+    Removed erroneous debug exiting
+
+commit b9f324d4e4812ba52bfbc3cd5d6a6d43fd182dcc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-12-09
+
+    Fixed another coordinate bug
+
+commit d75cfab709c99508a6b58e9753b64aabbeb13fbe
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-11-12
+
+    Minor changes
+
+commit 481e307ecef6ce894b296fdd2bd6b22e7a0e3143
+Merge: d3803c4 eb90db1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-11-12
+
+    Merge branch 'devel'
+
+commit eb90db1beaf2df2b06dcb0e1e92e6886e87c558c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-11-12
+
+    Fixed bug in extend-orf
+
+commit d3803c451ee13a6ce49f4dad3a9f0829f1e2cac2
+Merge: 29e1dce cb46e22
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-11-12
+
+    Merge branch 'devel'
+
+commit cb46e2223289f441518dc7adce99a7f705d3725c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-11-12
+
+    Fixed a bug in extend-orf
+
+commit 29e1dce1ea7c7fa3bae6d8f3f90e38873b6d2f01
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-11-10
+
+    Merged extend-orf story from devel
+
+commit cf104888521a0925bf40fe7f3a5c3c19ffbccf38
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-15
+
+    Minor changes
+
+commit 6042ec285a7e998cb956fcc230bf3bab1cbca8ff
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-14
+
+    Added two-pass ORF prediction for extend-orf
+
+commit f141332e46599952351925099d81755e1519e551
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-08
+
+    Added documentation for --extend-orf
+
+commit 065498aa364402e154c3b8d9a212a421d83a3b08
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-06
+
+    Fixed minor bug and improved output
+
+commit a9bc3abcba43c168575fc236e8b8a1055dcce183
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-06
+
+    ORF extension with correct overlap calculation
+
+commit def1daf1ee63c1f78b2ef96f6df72cd121f96c0c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-01
+
+    Fixed bugs concerning --genetic-code
+
+commit 6a0830f9f1dfb8190740e01b6929f0eecd7ece2e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-01
+
+    Fixed a bug with the genetic-code option
+
+commit 6a9677a5b8ce9262f2b400d6e8687598eab78194
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-01
+
+    Added --genetic-code to manual
+
+commit 85292d638bac938a522f81f0e12ee38952e9850e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-10-01
+
+    Added genetic-code option to specify the genetic code. Affects translation in analyzer and Exonerate in reporter.
+
+commit da2564e130adae8cf0d7d001ea3bd749b1986eb8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-24
+
+    Working on extend-orf
+
+commit b5fb12fef654a41f8622b3ada095f8ed3b01581b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-22
+
+    Minor changes
+
+commit c24f563c93882916ec27f60bf3fe911d4c9140e3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-22
+
+    Oliver fixed small bug in summarizer script
+
+commit 04d80ffe4ee2efb09225a7632778013da62ce055
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-10
+
+    Don't create an empty backup tarball
+
+commit fea1a9ca4f0ef6d91dbff54d5a650292ff5d54e6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-05
+
+    Improved -ls output
+
+commit 36a4a92817a3a75bc01c3a82fff5b464e6bf52fe
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-05
+
+    Minor changes
+
+commit aeb48b15ce2f11a9e287c221b57860bd311c78e8
+Merge: 52c9a0b 18a6135
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-04
+
+    Merge branch 'devel'
+
+commit 18a61351720d546b3699ee05db4280aa4c9ba015
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-09-04
+
+    Fixed a bug
+
+commit 52c9a0b6cac1828620dcf0a07c564d640f9c7661
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-29
+
+    Included summarize instructions in README
+
+commit 199b20e5a612060eb64cde61555fd189a98a7596
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-28
+
+    Updated Oliver's script
+
+commit 992530a7858dc1b3b9a1684ad9c09721f77e19fe
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-28
+
+    Changed default minimum overlap to 0.5, updated documentation accordingly
+
+commit b7ed605cc3c1f47b082ecb4889c7405e968ff21d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-26
+
+    Updated README to explain header structure
+
+commit 1d36957b5310f96ae65a23f3af5bb432702cf4e4
+Merge: 7d53a8c 0e2071c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-26
+
+    Merge branch 'devel'
+
+commit 0e2071c6b23a2219d17ad0e5e3ec9d2fe0ae4583
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-26
+
+    Updated header structure, bug fixes
+
+commit 3dbf863a13dabbfec0f413dda97aae837878eb72
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-25
+
+    Added debug info to Sqlite import routines
+
+commit 69f1ddbd86392ca37831b65985f2a747bc231680
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-25
+
+    NT sequences do not have reading frame information
+
+commit 9dccb1a5e2d2383385270a84dcfaa95041f01188
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-25
+
+    New header structure done
+
+commit aaec79e85f9f17810c235d7edbe2c29f51fd3dfa
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-25
+
+    Added Oliver's summarize script
+
+commit ca5d48a19c8c3dc8f33c0f84c6a6130f284a1b2d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-22
+
+    Blah blah hullu header
+
+commit 7d53a8c465cfa9c49c6b8e6cfbf1fea5b198a1ad
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-20
+
+    Bug fix; hard coded table name :(
+
+commit 62ddcd36288bfa213a9fb29f56a1fdf712219e84
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-20
+
+    Mysql module almost up to speed
+
+commit cc1ea07073cbdea9cf650484157c72fcad2c2d44
+Merge: 75214fa 1534bef
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-20
+
+    Merge branch 'master' into devel
+
+commit 75214facfb4eddb50120585b6e587809bb721520
+Merge: 52dd45c b718aea
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-20
+
+    Merge branch 'devel' of github.com:mptrsen/Orthograph into devel
+
+commit 1534bef878760c7fd301408f0af3f2539d176665
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-19
+
+    Updated readme to reflect ogs loading changes
+
+commit 142f69d89f7fad6101438f6585c9b2e8e392aaa7
+Merge: 393a818 b718aea
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-19
+
+    Merge branch 'devel'
+
+commit b718aea12613774861b83af5e4e2fb93fed0890e
+Merge: 9739d6e c81b557
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-19
+
+    Merge branch 'ogs-loading-made-easy' into devel
+
+commit c81b55787ead8ef6bc00605e13edfb8591a08593
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-19
+
+    Minor changes
+
+commit 52dd45c1cd63db6a1edd8e2796d66b847aa9ccac
+Merge: 9739d6e 113a3d4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-18
+
+    Merge branch 'ogs-loading-made-easy' into devel
+
+commit 113a3d47f88a978bcc75ff29fa2e81e3e23c7735
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-18
+
+    Bug fixing, removed species id from table names in sqlite, it's all in the attached file anyway
+
+commit 19b51074628000c40a10f994248db55c8b39d2ef
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-18
+
+    Species information now in attached database, makes set db more portable
+
+commit 2116de8b47fa3c5a19d834d9386dfa07f94d8ba4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-18
+
+    OGS loading now easy
+
+commit 0f96bd3f57f5d876fde6365f94ca949fdd224fd2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-14
+
+    Inserting new set
+
+commit 393a8187d67ab5c48807dc200105c14df02d191c
+Merge: 3afec59 9739d6e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-14
+
+    Merge branch 'devel'
+
+commit 9739d6ea2bfdb5a47505311885cb8ad737d308b7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-14
+
+    100% Hamstrad compatible headers on demand!
+
+commit 3ec0bef10a9dc23c936d373b8d9d2493124f8cd6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-13
+
+    Assignment to OGS works, also revamped list-ogs
+
+commit 63811ec6b3132c4cf7c91ba4766c0cc85fdf4b4c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-13
+
+    Started second step: loading the OrthoDB file and associating with existing OGS
+
+commit 9c22ac0e50cd08196fc59f45dc7cc8e9dff141f6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-13
+
+    Added scheduling for blast db rebuild
+
+commit 3afec59d48ecc37667e17d6851eb6f44d3e58bcc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-13
+
+    working dir is now cwd, added sequence length check and report of strange seqs
+
+commit c38990e76a029df6ae021ee0366c4fd221439346
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-13
+
+    Zimplificated da zubroutinz
+
+commit c13058a70e60ea7cb70cf6ec5a34aec6066b56ce
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-12
+
+    OGS uploading works for both aa and nt data
+
+commit c6c6c497ff2d7175e6b10b72d2ea48693216ede9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-12
+
+    Started writing function sceleton
+
+commit 4db6a2aca7d9a24dfc0550ee07b8fc8bf78774cc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-08
+
+    Reporter now considers reverse complement reading frame, updated documentation, README, etc.
+
+commit 3a551f550e81edb71f11ca74dcab85829bddaf77
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-08
+
+    Finished option list in documentation, added print_usage to all programs
+
+commit 0a74a42a05bd2f965f511ce9a6ab3788789487a6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-07
+
+    Added documentation, some cleaning up
+
+commit 3fbbb97fb2f9f306c4d6fec6bc4d2aab1f432e2e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-07
+
+    Changed to OrthoDB 7 header format, added version 5 compatibility option
+    
+    Removed --skipfirst from make-ogs-corresponding.pl
+    Minor changes
+
+commit 4a528ec0a038c0660ac7e718e68cc94ec5f52b55
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-06
+
+    Minor changes
+
+commit b9417cf1235fcf996066be120821ccecd9e8ff6b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-06
+
+    Clarified make-ogs-corresponding.pl
+
+commit e496e22f1ecaef5f74f937d4e2e239ffb0576875
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-06
+
+    Finished make-ogs-corresponding.pl, minor changes
+
+commit 0ff9bac0476dcbe13891c6bf9e6cb280666c0b17
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-06
+
+    Added helper script to make OGS corresponding, minor changes
+
+commit 42a439ae441db33b2e1036733f0b9946d9ff59d8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-05
+
+    Minor message update
+
+commit 192f55fa147464deaa4ea7cf9c6e570316b75571
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-08-05
+
+    Fixed stderr bugs in Functions.pm
+
+commit 6c8d2c487fb6e758704f6e09d57a144faa817bf6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-31
+
+    Clearing old output files unless the user chooses not to
+
+commit ca6a18efd80d383e54889ebba04d2137ea806b56
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-31
+
+    Added orthologous transcript table file
+    
+    this holds all orthologous relationships, irrespective of whether they overlap
+
+commit 4f806954d6ec15fea0d26f8a61543c71683acb4b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-31
+
+    Added program name to reporter
+
+commit ec5b039f6f1d4ddff2370f8b226ccaea4ee708c6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-31
+
+    Fixed ORF coordinate overlap calculation
+
+commit 11be0fe416bda0f4f46a012d236c9086e3f94ccb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-31
+
+    Updated table output
+
+commit 4599199580667819a2e47341000c5b04cd9a3461
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-31
+
+    Bug fix and minor output format optimization
+
+commit 320cea790da49913727af4005ef08a84d09eceb5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-30
+
+    Redid the table generation
+
+commit 09e61ad2963624020b436d0780d99a937f3f85dc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-29
+
+    Explicitly close all temporary filehandles
+
+commit 3a21e5778ab6db1334f0c57687f543c8a91b7ca1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-28
+
+    MySQL module up to speed
+
+commit 3c1d454b62838adcb87bd3a0b8d86a2de79d75b8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-28
+
+    Added post-analysis setting of HMM score threshold
+
+commit f7a488a128791e502066b03a1d1535e8d4324127
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-28
+
+    reporter checks for existence of log dir and creates accordingly
+
+commit ab36c5f138070d00bbabdeac5013b1742ff83e7c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-25
+
+    updated README appendix with a few output options
+
+commit 0cce931150232a1e25bd8ed4a3405e1813a9c3f1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-25
+
+    Fixed hmmname method
+
+commit 2aae1d53dd8b36951488a5e939f8e33994e2894e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-24
+
+    Added multithreading to hmmbuild
+
+commit 36966e1626f8f421d1014ad57e2e512f3f821452
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-24
+
+    Bugfix for MySQL version, changed ORF overlap default to 100%
+
+commit 23ef6acbe677d06b4e202f5c9b5c0e2279edbc80
+Merge: 2781d6a 55f4370
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-24
+
+    Merge branch 'devel'
+
+commit 55f4370b8a250a64ff1c23ab5dcc1d0a942cc089
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-24
+
+    Added cog-list-file option to analyzer, speeds up searches
+
+commit c89f4f2c9a59763ef3fea2f95779346877704a98
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-24
+
+    Getting MySQL module up to speed
+
+commit 2781d6a72b62355f9178f593271a82709e242446
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-24
+
+    Moved progress_bar to Functions module
+
+commit c6290ee477955a1d7dafe85975861c1ce9cfed80
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-23
+
+    Minor changes
+
+commit 4267806cd9fabe22c9d3f22bd51b9ef1c762e35e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-23
+
+    More informative warning output
+
+commit ebbce1fb5fca559913670ae98067718179a523f2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-23
+
+    Devised new algorithm to upload OGS
+
+commit a522f5e0be6e305d51b5a63463399612d3ec3b4f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-23
+
+    Smaller bugfixes
+
+commit 3bace774c79c6ccfecc828e178ffbdf9f23f1548
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-22
+
+    Fixed more stuff, mostly minor changes
+
+commit 2fb9fc5007136ce74babadce3e5a863171b00965
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-22
+
+    Minor bugfixes
+
+commit 624e716bc4b1226a9ad7e733f63ed3e626fa31de
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-22
+
+    Bug fix in SQL query
+
+commit 4b5f9865e10b0225cc69d9dbcb749fb5d359d1cc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-22
+
+    Minor changes
+
+commit 0f1a918056ef09282f7d734a5fd8a2451b042c28
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-22
+
+    Bug fix
+
+commit fb119eb8a5898a2fad72d067b32568fd1edad72f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-22
+
+    Fixed OGS uploading with MySQL
+
+commit c50ba95a336bb5842a53ab7402d42b09ccd6abfc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-22
+
+    OGS loading with MySQL works again.
+
+commit 68d102dfa3ae26434750445c823d2f7d56851963
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-21
+
+    Added more informative error msg if OGS input file does not exist
+
+commit 53fdec0b502f0a9d05594e77fb5b64431baaa42c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-11
+
+    Another function missing
+
+commit c8822b0620afc93c271fd7be6ed2af5697119d9c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-11
+
+    Added missing function for MySQL
+
+commit 6fc28fb6442d0ec0b13624c6518f90a327f9e484
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-11
+
+    Another typo
+
+commit 4c2eaea0455dc751767c7d2e9992bc70d825b8d4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-11
+
+    Minor change
+
+commit 01abd0acc538d148e93854e3a590ea88ae9686da
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-11
+
+    Typo in sub name :|
+
+commit cc4e893b4bb70cc359db0dcaca2657b4975df4c5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-11
+
+    Minor change
+
+commit 90862fc550b92a12c9aeeaa357af2d09fff0faba
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-11
+
+    Limited MySQL index length to 24 for header fields
+
+commit 0678cea4c90a12bca23fffe594a7f8967a567c97
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-10
+
+    Minor change
+
+commit 519df52102ea9e3c80202b09c6fb7ce851b5977f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-10
+
+    Fixed bug in touch function
+
+commit 8d42986a26a11f999df0b8d5210559e5fe6713fa
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-09
+
+    Database modules now loaded at runtime, minor changes
+
+commit 43e3f3fc62b75c3d52e21f63e29567b423ed2bab
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-08
+
+    Minor change, updated README
+
+commit 8b521cc2d55428d717a078c871d1020a763409e6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-07
+
+    Oops, syntax error.
+
+commit a59050723816b4840ddc67f0cd46757b4336c9b8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-07
+
+    Bugfix, OGS upload will no longer die if row update failed
+
+commit c5bff0124a232ee64464a52c394365b8562cc513
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-06
+
+    Tiny change
+
+commit 04a82f1e997575593f44327ab3a47bf1179d6c34
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-06
+
+    Minor changes
+
+commit e6b07015d56972e19f3217da7282e849010c9d1b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-06
+
+    Fixed bug, fluechtigkeitsfehler
+
+commit a9551e161cb57e724e44f771c23fa2572c693843
+Merge: f0e0c0d b1ebca6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-04
+
+    Merge branch 'devel'
+
+commit b1ebca69f49368dc4e4bc9367e1efff4a2b80f8d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-04
+
+    Minor changes
+
+commit d4e0971e911d4fbde495d14953b4fbcc7eeba77f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-04
+
+    Minor changes
+
+commit 5ed81cac2f513d260d80588d8454f0c066d85d50
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-04
+
+    Now auto-creating species database file
+
+commit 1e244071b461f4c61cc1359f0eae272111c3205d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-04
+
+    Minor changes
+
+commit e4ed1e27722f5981571b8e601de8d5ed060fe0ec
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-04
+
+    Minor bugfix, now OGS version can be a string
+
+commit 448a1e61f43ad1f962287afc0f3bcbafaae57c8c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-03
+
+    Hopefully the final fix!
+
+commit 990641292ca57df85cf667df25ee7870a78bc314
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-03
+
+    Another fix for the OGS uploading problm
+
+commit f8c3277ccf0d1216f4e9b9cb9ee4b857055baf8e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-07-03
+
+    Fixed OGS loading for when no other OGS is present
+
+commit 9a135822dec0ecbb9487322c7901266e9dd9395c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-23
+
+    GRrrr...
+
+commit f1b3ba80a6a8b9fecd31b04e62fb4901ccb23898
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-22
+
+    Another try... :@
+
+commit d33a745f4a4f38937cadcbac6ce7c9789ee6bc85
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-20
+
+    Final bug fix!?
+
+commit c15714fb1b53f2efecb09fca462e2baaa498d9b3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-19
+
+    Yet another bug fix, hopefully final
+
+commit 5bbe4f7a2bfeb4e54d738a8a78538c442baee3e5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-19
+
+    Another bug fix
+
+commit 685763c42813d6637564f23f3eb902ffb6ebe765
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-19
+
+    Bug fix
+
+commit 9b0d4a79bfbe69de3cfecabb3f2ecae9ef55b5a7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-19
+
+    Simplified a query to fix bug
+
+commit 5f3fec81a592fc40d92991bc6bdaa8a7f4206794
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-19
+
+    Clearer error message, switched to open() for reading files
+
+commit 58174645a792fe956ebb52b5555fa5723c1e951a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-13
+
+    Minor changes
+
+commit 48df14436f90e95bea0c7c70a85f1db68649ca4d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-12
+
+    Clarified example config
+
+commit 81b32a1b2219e00b7a84b4203177bc5bd8f67ea4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-12
+
+    Hamstr compatible output, now the default
+
+commit e865a378f2f971cc38f83f43c8d0c1e0865bee27
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-11
+
+    Headers backwards compatible with hamstr (WIP)
+
+commit 3d0d3142b9d72c12b1abcd8385b88610cc776316
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-11
+
+    Minor changes, OGS info gets into database again
+
+commit 3558bf0d768416cd7b906a37c1ef90da0bf02754
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-10
+
+    Minor changes
+
+commit 217944c08795432d5d883bb966fa6cdc9a816c38
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-05
+
+    Improved readability
+
+commit 8cc966db107eb2362f0f2dec6275ae6f27968653
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-05
+
+    Strict search implemented
+
+commit bdd90c08c32c5b591804d4053b2d194112ec47c7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-04
+
+    Started working on strict search
+
+commit 01c8864908058df01edbcd2eaf0a8cd7c599a769
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-04
+
+    Minor changes
+
+commit 60533de51cc39c601678184a6ba5ae43b9696de6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-04
+
+    Added option to specify temp dir
+
+commit 9c3bd5cd2a37bcaf308fcc60d7611dc84d5e9f32
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-04
+
+    Sorting by HMM alignment length now, the longest transcript coming first
+
+commit 9ceef68fb2c0d4427fecd35958d0a64d7094b2fc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-04
+
+    Fixed bug, ORF overlaps are now correctly filtered out
+
+commit 3d035b5f6d2dbf060602fe3e9d2d2bc1ca9efe1f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-06-03
+
+    BLAHAHFHHHHAAAh
+
+commit ebc83c10299e3e909f7eafba48c6fccb58da71c3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-30
+
+    Minor changes, need to get path to fastatranslate as well
+
+commit aeacde674b7010754efe1d2115db8529df414551
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-30
+
+    Added cog-list-file option to example config file
+
+commit e691613a9f29b3b064b2588fdb533f08dab9e395
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-29
+
+    Fixed number of X to be included when concatenating
+
+commit 6398294f0c2f82b9ec3bc5cf451afe89dbcb1733
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-29
+
+    Added info about cog-list-file in the README for Oliver
+
+commit c2f6911ea274574a5745424d3d7d8685d0eac5ae
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-29
+
+    Added option to specify file with list of orthoids
+    
+    only those will be considered during analysis and reporting
+
+commit da560f1f84c0126e5548629664158f187253ede7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-28
+
+    Improved log filename format
+
+commit 20d7e10cf9d06dab77981b352d2021376f9e88d6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-28
+
+    Added check for overlapping ORFs,
+    
+    cleaned up options, made concatenation header separator an option,
+    improved fine-grained output verbosity
+
+commit 3f5c98df372051a0b39307c2379a02c6fbc26d79
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-28
+
+    Fixed overlap bug, made debug option incremental
+    
+    (more debugging output possible)
+
+commit 9ecbdc97ae6a915958b0d8bc1fefb1172abab205
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-28
+
+    Overlap checking complete.
+
+commit 236a9282e0f32f2a50ec4d7b8a2e97130f4fb661
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-28
+
+    Fixed overlap checking. This works now.
+
+commit 3cd107cf47dc9e5ccaab6b4545eb147d335b1cd9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-27
+
+    Improving on the overlap story
+
+commit 60ad082d8fab47ec4f500066caf6527b7f2cb89f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-26
+
+    Included new option in example config file
+
+commit 886684c49d4115b8310cd09faa84b11a2d42382d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-26
+
+    Added check for whether the ORF overlaps with the HMM alignment region by a certain percentage
+
+commit 30771f5c20fced1a5f101ef6ae95945a2b29fc07
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-24
+
+    Fixed, now outputting the correct translated cdna sequence
+
+commit a6e1f91f575490de6be7d750b5966337efb008ff
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-23
+
+    Fixed a tiny bug that led to not fetching the correct original transcript sequence
+
+commit faffa3f2cae45bad137aea5153c1c692a9aa679d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-22
+
+    Added info about ogs loading options to readme
+
+commit 24972359804a8b051f708bebd670b4c23595bf01
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-20
+
+    Added options for non-interactive OGS upload
+
+commit cbfb3d2f2e2e1b1a67f971866d74546b893dd0fd
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-15
+
+    Added reftaxa information to output headers
+
+commit bd10568062e5aafacc5d7ac230c104ad226c2821
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-14
+
+    More informative overlap message
+
+commit f0e0c0dd4c9d8bb3cbe22c14ecb4971d1ead01be
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-13
+
+    Fixed bug in orthograph.conf.example
+
+commit e8e0bd7baedf032bbf4d7473f4884509c9242c10
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-13
+
+    More informative instructions
+
+commit 65eb3973213a19504e65cded690c77d2d3a81001
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-11
+
+    Fixed header separator on aa sequence output
+
+commit c27a7f41e14784440ee6ef1d093726e23545a5c1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-11
+
+    Added some debug output
+
+commit e21554ee81b5066786940a6cfe2c0ef7d63cb4c9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-03
+
+    Minor changes
+
+commit 6b35f4f5cda50e2c0c58b711d28e565fde6a6ee1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-05-03
+
+    Fixed database creation with template config file
+
+commit 1091542ba5cbda0d8f53e0f76b2b19b5eb7a3186
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-29
+
+    Reftaxon done
+
+commit b40639caaa2b9157f109964f82cea5eed2b460a9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-29
+
+    bug fix
+
+commit c2738affee3e65a098167a3fc6445b74ddc4125b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-29
+
+    Fixed reftaxon determination
+
+commit 0a101d6558604bacbedc2cbe36a6dbd2f7be506f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-29
+
+    Added reftaxon returning
+
+commit 81d0a22eec0ff81d9912761184b7c9ca9f96299c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-29
+
+    Minor changes, more informative log output
+
+commit df28af18a06bddddd97fc73ffba9fa19ac044f44
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-23
+
+    Removed superfluous code, continued ORF overlap checking
+
+commit 96652a708e2cfd321e8e6f393391e832fbe2d2e6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-22
+
+    started taking ORF overlap into account
+
+commit fa5e236f76c248e4ae08bee08174224b8c35f81f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-22
+
+    Another bug fix
+
+commit 999fef65723ec9d655b23daab2dc8751cf0e2ab9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-22
+
+    Bug fix
+
+commit aa26f886e34553b82e815362679ea7f8ca91e90f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-22
+
+    Bug fix: push the actual filtered hits to database, not the filter rubbish
+
+commit c2caebe7cb6a49a45f43eacdea22b2920de6ad3c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-21
+
+    Tiny change, making debugging easier
+
+commit df7be58f8bc9f7881aecffa77c9e75b4d47382f7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-18
+
+    Bug fix; needed to create output dir before creating sqlite db file
+
+commit 3274a1ed3d87a7d98ff036046899276c1f71c116
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-17
+
+    Oops again
+
+commit 9ec48d5d2f6c2ca9cdf6c6c90a5d90835716bada
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-17
+
+    Oops
+
+commit 2ed46420d331604f3a778209980e3e2d663bbd05
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-17
+
+    Removed whitespace from sqlite database names
+
+commit 1c5165911eb24d371145cfce3400ee881bcee707
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-17
+
+    Importing transcripts directly into the species database now
+    
+    the sqlite command line tool can't do ".import"s on attached databases,
+    apparently, so this is a workaround.
+
+commit 6fd1354e1f34b134cfde935ad2c2752756b0ade5
+Merge: e013b17 bbf8560
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-16
+
+    Merge branch 'ontheroad' into devel
+
+commit bbf8560bd2cf80e6415483232888591301342235
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-16
+
+    Changes on the road
+
+commit e013b172220463738bb6a03ac0a2fddfcbfa63be
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-15
+
+    importing into temp table in attached database doesn't work (yet)
+
+commit f68971da50b91d054a7cee859e05b1cdf6f3688b
+Merge: ce33959 fe23771
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-13
+
+    Merge branch 'devel'
+
+commit ce339591306cf7d9998b1a53156a6da8891b6337
+Merge: a2932b4 fc35af1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-13
+
+    Merge branch 'master' of https://github.com/mptrsen/Orthograph
+    
+    Conflicts:
+    	Orthograph/Config.pm
+    	Wrapper/Sqlite.pm
+    	orthograph-analyzer
+    	orthograph-manager
+    	orthograph.conf.example
+
+commit fe23771b1294f71331a96d0c768d97174d927ce8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-13
+
+    Updated README to reflect SQLite
+
+commit 0a9944edf566389da614242439c3b04035231a29
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-13
+
+    Added attached SQLite database for species data
+    
+    benefits:
+    * faster, each database file has its own indices
+    * smaller files
+    * decentralization
+
+commit fc35af1412f7076ac7aface971524b8c40a8016a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-11
+
+    Minor changes
+
+commit bcc5e2fcec8bb50602e22cb8000cb7f84f813304
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-11
+
+    minor changes
+
+commit 76521309e415c52e627cd8829b9839890f78094c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-11
+
+    Implemented using hmmsearch id for correlating blast results
+
+commit 447a1d364c2c83cd02717cec7e9c4ee8503719e4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-10
+
+    Introducing hmmsearch ids in the blast table for reference and better filtering
+
+commit 0ed1b335a18d9edec40c19bafbfd95046953456f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-09
+
+    Revert "Manually copied to go to origin version"
+    
+    This reverts commit d73ec52be825625be21ff7146170dab86a152675.
+
+commit d73ec52be825625be21ff7146170dab86a152675
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-09
+
+    Manually copied to go to origin version
+
+commit 25c9564778a7459c2a7837315a37a5f608ed3a93
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-09
+
+    trivial change so i can merge into master
+
+commit 079200a68d371f593718e114867fea1e49db5c13
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-09
+
+    Typo
+
+commit a7095ce3f9cb0f4b86f8a0dc21cf76b82c9ae4bf
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-08
+
+    Fixed nucleotide sequence truncation, minor changes
+
+commit 53d195d16e85fa3d6fa70f778b4f4320909dd2f4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-04-07
+
+    cosmetic changes
+
+commit f9de7eafc38ea8d7f3e3f8743979f067a624fbd0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-31
+
+    Added errcodes to failure messages
+
+commit a489cdffa3a049d1068020a36b3138c66fae8601
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-31
+
+    Renamed $estfile to $input_file
+
+commit 9c0d85479f62869cbb326eaaef5b6b1ed37a21fa
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-31
+
+    Added checking and creation of BLAST dir
+
+commit beb0fcbef9a73dc902742902aef4ba24724dcf67
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-26
+
+    Bug fix
+
+commit 3fb2996693ee1cb21c5e3a311e9a3e8bb25c5520
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-26
+
+    Removed "no arguments provided" test (for now)
+
+commit 44d8f3bb9666025f6eb5c0301f3069bfdc70ca4a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-26
+
+    Removed pending gh-pages files
+
+commit e05017ed347553eac85b08b7d16e2a264ce5fe84
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-26
+
+    Minor changes
+
+commit 21b9e3e1885c50b118765f800f920150a0294273
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-26
+
+    Bugfix
+
+commit fd1249ed21dc623ecc75f5c75bbfe69cb926b617
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-26
+
+    Forgot to change mysql-prefix to db-prefix and have it default to 'orthograph'
+
+commit 8211db0a0a71755c06d10dfe4afa0640f7231c5e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-26
+
+    Added indices to improve speed
+
+commit 725e2728db745770d70facf18df53be90d2d6a10
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-25
+
+    Cleaned up, added progress bar, works now, terribly slow
+
+commit 52845d5fc532acc60d78ce56df1a8626d43df272
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-25
+
+    Almost done, doing the OGS loading one sequence at a time (slow, but works)
+
+commit 699b3750f7807f67620d7cc37ed7116523f02578
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-21
+
+    Changed sqlite timeout defaults, updated orthograph.conf
+
+commit 1d0ab5486460c98b3cdbf69228e6eeb46eaac52c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-21
+
+    Working now, using SQLite.
+    
+    Just need to solve the ortholog set creation problem...
+
+commit 86810530c3e4b99b1ce0a32b6ba5eeddae00223c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-19
+
+    all database functions for reporter now converted to use SQLite if requested
+
+commit a2932b4cb955b1797eac3066fbc64a0f70b42cfe
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-18
+
+    forgot to change Config.pm
+
+commit 1aeaccbb757c48549e5696188b0862045104feb5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-18
+
+    updated copyright year, changed 'estfile' to 'input-file'
+
+commit c2b9cdb891d6e78e22a1362e068b4959ba155c68
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-18
+
+    Starting to fix SQLite module
+
+commit 6d4100fb4ce004860f632108e146bd40c2b083e9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-07
+
+    Fixed something
+
+commit 07d249714d6b3e3f392a4640a3ef543d00f2d7a3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-03-07
+
+    Fixed output dir creation
+
+commit c56c9ce72ecf221f37bdbad19c7c7e8010988346
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-21
+
+    Forgot to pass path to Exonerate to the Wrapper module
+
+commit 67425a8f0acb75ade55ab7e409b0e8e476eaf27b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-21
+
+    Forgot to pass path to Exonerate to the Wrapper module
+
+commit b6c2870c2e27fac72dfe803d018f10b39069e0c2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-21
+
+    Fixed header column length to 4096
+    
+    hoping this is enough to not induce cropping
+
+commit a7b4ed34dc726df5381f464459260cf9b6a42e8d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-21
+
+    Made header column longer
+
+commit 9169c06a986954c0a685b5b21d95d2e6528a83d5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-21
+
+    Made header column longer
+
+commit 0fe226c06813553f42e608e2941427d9fd4beff9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-21
+
+    cosmetic changes
+
+commit 475f43a94fa7f74f20cf8794972204d0e3e73086
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-18
+
+    Fixed example config option
+
+commit dd3a584b3695ab0965068a9d1864d6bef1350091
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-14
+
+    Dunno
+
+commit d8f4cce7ef67bdb933d1fc5f660d0d1ef17751b4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-14
+
+    Added SQLite module
+
+commit ed0354fdd2ccf5caa6955a7a738c3b577f7dc2fc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-14
+
+    More bug fixes
+
+commit abe25fbca6aa479c7b24ff31ad0768d1339a206f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-14
+
+    Fixed index length for ortholog set generation
+
+commit b18d43063a4d971ce253c7e27a1ea3708cf60c94
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-14
+
+    More SQLite trouble
+
+commit a1cf164527c958f036556bde63874d6e2d9afd52
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-08
+
+    Fixed more SQLite implementation bugs
+
+commit 3f5f4630aacaa3c84d7135f438c6d960352e0071
+Merge: c9c2982 5784c80
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-05
+
+    Merge branch 'devel' of github.com:mptrsen/Orthograph into devel
+
+commit c9c2982973b97ec3255cf9f80f6278c95cf5ebbe
+Merge: 76e92b2 9ca82b5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-05
+
+    Merge branch 'gh-pages' of github.com:mptrsen/Orthograph into devel
+    
+    Conflicts:
+    	index.html
+    	params.json
+    	stylesheets/stylesheet.css
+
+commit 5784c808717f6e02a0aed995a7f55dbccf6e9607
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-05
+
+    Need to adapt more queries for sqlite
+
+commit 76e92b2b05807de0836ac390667358e7155fdd7f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-02-02
+
+    Working on the other manager functions, e.g., uploading OGS
+
+commit 9ca82b50dbed57cb286e7ffbceacdfa077938831
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-31
+
+    New content, made container wider, font a bit darker for readability
+
+commit 833e9ba2095d945e16e7e2f46b198d6398a185ff
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-29
+
+    Optimizations and bigfixes and stuff
+
+commit a34b03894af4faaf63e2598b2064e3efea0f96f0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-29
+
+    Finished implementing SQLite
+
+commit c91c67fa66906d14d9953dd6f7d6a604440eaccd
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-29
+
+    Modified everything so that it can now use SQLite instead of MySQL
+    
+    but there seems to be something wrong still, no results. need to check into that
+
+commit b52580857bd5a281e87651033d319d94d5009121
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-23
+
+    Ortholog creation almost works with both MySQL and SQLite
+
+commit 78dcc4256f49cbe61a7a3bb32c87e2fcf1b08fd9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-22
+
+    Fixed prefix generation
+
+commit da597f4c83b70ebfbd4f6e68e93098dffcf023dc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-22
+
+    Adjusted table and index creation for SQLite
+
+commit 696357b92148b95ec9a831329cc566f53757a7e4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-21
+
+    Database engine selection now works, gotta continue integrating SQLite
+
+commit fe8f4aba250c500ab6417da37c89f5dadbaab1de
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-21
+
+    Started to add SQLite module and functionality
+
+commit 56f3dc120da4e4a353a4f31c472fad6ea506a3c5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-17
+
+    Started to add sqlite module
+
+commit 48c8ccfcd9a0a4aae1e964ebb207f49101a3e043
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2014-01-15
+
+    limited key length in table creation
+
+commit a65b3fdf60bbd315abed66448bbcd261809846fc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-12-20
+
+    I dunno
+
+commit 45cd9577dcd5da35ebf3823c38f2f4f0dc9bf3de
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-12-12
+
+    Fixed Hmmsearch wrapper to reflect new HMMER3b1 output
+
+commit 135660ca35d4197781e850c883c10c4f40c39df7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-28
+
+    makeblastdb output is no longer directed to /dev/null in debug mode
+
+commit 2d53024f52656b6ae2e47e9494bedad0c4eb7e4f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-28
+
+    makeblastdb output is no longer directed to /dev/null in debug mode
+
+commit d0cbf56b0e19b39f081a37e5a38d3b93e9470fc5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-28
+
+    Added documentation and GPL notice to Ortholog module
+
+commit 7f65089e785c2bfbbb7a09ececf3488c11f61270
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-26
+
+    Added header separator option
+
+commit b71210518c6f1c179b15078fc3bef9fc35887343
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-26
+
+    Added header separator option
+
+commit 1590bc118474b762080098321a30078b75a48db0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-26
+
+    the ortholog module shows its strength
+
+commit 14cc1ec00f0bd6e11d01fe48e78ae9ce37558a1e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-25
+
+    Using ortholog module now
+
+commit 2f14066840c078673fefe2e77797d32e1e6d1f44
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-22
+
+    Added ortholog class
+    
+    this shall contain all information on a transcript-COG pair that
+    was validatated via BRH triangulation
+
+commit 93911d0735884e9861460b92a19ed279d4d2fa3a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-11-20
+
+    Fixed a few bugs, reporting algorithm almost done
+
+commit 47623def2ba8ee52efc1fdde08a495ec82d6a49b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-31
+
+    On the way to a fast orthology prediction... :)
+
+commit 6958f3716899a5e8a31de5b3a83a85e0f8446739
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-29
+
+    Starting to migrate to single-row fetching... much faster
+
+commit cf96c85df10fd7863278378832f296795d1d06aa
+Merge: f03f0af 7133988
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-22
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph into devel
+
+commit f03f0af7cae4641717b8189edd1b044b71bb1ad3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-02
+
+    Completed switch to sorting by score
+
+commit 5e781496f7eedb75eee48ca62c31a357e44d6a0b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Minor change
+
+commit 8c7782af4ba9ed90f2bd9bea8800c470e1b7ab06
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Updated stylesheet.
+
+commit 91a61ed1de8bb4f59401e9f8144ac56767811e1f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Fixed page.
+
+commit 517daecb34157df79b535161c7d011337c7cb52e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Create gh-pages branch via GitHub
+
+commit 71339884363afbfdd46c4b873dd0ad76df9294ce
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Updated README
+
+commit 90bc5ce877a6116eed56e29e764ad4fe718084ae
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Create gh-pages branch via GitHub
+
+commit 2ffb74780b7108a1cfb7ec3b73e92cd18fb620cd
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Updated README
+
+commit 7f4504603bf7111c2d47cf89f1eefe7d157bfdb6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Minor changes
+
+commit 7445876f3355f062fc661ab47ffeafba04def83c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-10-01
+
+    Switched to sorting by scores instead of by log evalue
+
+commit 6309b19304e89385bc2bf2fe9728417c550f906c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Also removed doc directory, outdated anyway
+
+commit 39d3f885d64d6381988d86da21b2944ca58c904c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Also removed the doc directory, it is outdated anyway
+
+commit c80d1f37a4773ad4ac1a3e3fcfdfe80bbd445cd6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Removed remaining gh-pages files
+
+commit 7cb54cc9f81fcdc242763a95ad2651d6d532ab72
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Removed remaining gh-pages files
+
+commit a2912bb7b9eb9cb67ce487f81cec3d7a24e6568e
+Merge: 6808eb3 4de4c8d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Merge branch 'devel'
+    
+    Conflicts:
+    	index.html
+    	stylesheets/stylesheet.css
+
+commit 4de4c8d9af737dca69a859fd09c26514ddf555ad
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Removed gh-pages files
+
+commit 6808eb3af652fe0481776df76431fb9685594b82
+Merge: 50a2ab8 249f0d5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Merge branch 'gh-pages' of github.com:mptrsen/Orthograph
+
+commit 50a2ab8dda68417ade572e5f063c994f33a02f4f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-30
+
+    Minor fix to README
+
+commit 4d167dc97e0f65420a113cafb41402a803051e97
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-25
+
+    Changed the real ID header field from OrthoDB files to the 4th field
+
+commit 249f0d5479c296e437a77fc08dbde6360150aaed
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-25
+
+    Corrected something
+
+commit 8303aa4d8c88f429dfeb95526dc447b0a62818a1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-25
+
+    Fixed error in README
+
+commit 36cf83687ccaec091c699a924fbfd292646cf082
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-25
+
+    Fixed a field error
+
+commit 79088925034cc659e03cde69ef5d6c57e295a1ca
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-20
+
+    Added nucleotide output, minor changes + bugfixes
+
+commit 38d7b2657262e89d67e59cb6aeb5c22b6dada0bc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-20
+
+    Fixed the reporting routines
+
+commit 67b0c591954b0249e99bb90c9bc37dfa40c6cc6c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-19
+
+    Look at the Exonerate sequences again!
+
+commit 168407357b7506186cee13ffe436be8386bf06b6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-19
+
+    Something's wrong but I don't know what
+
+commit 956d7da615e360d61f289ce3e8e09d050cdef363
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-18
+
+    Minor bugfix
+
+commit 0afad8d51f145aaec180b4ef3e5f7b5f8340c6b7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-18
+
+    Now using the cdna coordinates instead of the (wrong) env coords
+
+commit 61c27076686f12de9cb4f8162bfc3dcf366805c1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-17
+
+    Fixed a bug that would allow empty output sequences
+
+commit 03c3f9ad06a20ef59de9fed9cb4e859b5d0d5806
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-17
+
+    Fixed a bug, improved Exonerate
+
+commit 2d16cffe8b12e40baeab0725d51eb8e9353e32ef
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-13
+
+    Bug fixes, frameshift-corrected aa output works now :)
+
+commit c5cf931504568287b70217515f8d32ecc9b2932b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-13
+
+    Forgot to trim the transcript seq to the hit domain
+
+commit 16c57183db1e971fd9d5c6a8921343893a100b0b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-12
+
+    Minor changes
+
+commit 8133616e04a1600f02e3333a2c35e2b018223cf1
+Merge: bdbfe60 71d29cf
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-12
+
+    Merge branch 'gh-pages' of github.com:mptrsen/Orthograph
+
+commit bdbfe60228bb0742d5ac82a5fb1047344e987eea
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-12
+
+    Minor changes
+
+commit 71d29cfc69c43107ca58bed5091e7cb289dc4a73
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-12
+
+    Create gh-pages branch via GitHub
+
+commit c5ab91bbb3df9e628301ccb98a66d889125aee85
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-12
+
+    Added more info to README
+
+commit 5f8c8c66fb75fe3152266afa2ee02684d1498856
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-09-12
+
+    Added checking for both hmm (gene) and transcript overlap to the assignment algorithm
+    
+    plus minor changes
+
+commit 67b784b38d6c4d293e4b3e1eeb9cca6cc319ef86
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-27
+
+    Reporter now uses hmm coords to calculate order, length and overlaps
+
+commit f4088c6ff4a1eb2bbbefc02445344ba7235dd3da
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-27
+
+    Fixed a bug.
+
+commit b1c6416c2cce35819ebb47563d4b9e7cbfd3dcb3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-26
+
+    Minor changes
+
+commit 62829744ed4f8cde6ea47a69a4478a6400d6cbd9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-26
+
+    Minor changes in README
+
+commit f6fd29f9e6ce610e84215d13bba5103792832e99
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-26
+
+    Updated documentation
+
+commit 6edb12f7b885ac7161f98bd5c8ea0f0f1f734b34
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-26
+
+    table content left-aligned please
+
+commit ee055415e1732bfdf7fcc471a7353c22263dc9a0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-26
+
+    Minor changes
+
+commit 656fce006fc9a184b2e5cdb5693cf2f1b188ead5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-26
+
+    Updated version requirement for BLAST
+    
+    2.2.25+ has a bug that prevents it to work with more than one thread
+    (at least on my machine)
+
+commit 42728f65afac8bdcd52d9f3b2d15ebe7303c478f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-23
+
+    Working on using HMM coordinates instead of env coords
+
+commit b4266ab5a9e6c972a83dbea2e66d76c0d023d033
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-22
+
+    Minor changes
+
+commit efd98b72b2f00af6941cc23468f56c275d7c152e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-21
+
+    Added new num-threads option to orthograph.conf.example
+
+commit 3dfb8277ea2da6345358e1e951ba4af7ab056a25
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-21
+
+    Added num-threads option to control the number of CPU threads
+
+commit 2c4598b8c0fc2be2a31ffc084d2e28bb35a5e729
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-20
+
+    Bug fixes; updated date in copyright section
+
+commit b748f6117fb78ebf82f3624a71f49b549e4e3aeb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-16
+
+    Minor changes
+
+commit d050a79b7df6e0f809615a85047e8caea6ff461d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-16
+
+    Added slurp_fasta function to Seqload::Fasta, bugfixes
+
+commit 761c51d3c62ccc86dfe7a2eeba721f59e1902347
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-14
+
+    Man I dunno
+
+commit 5a8cd847df1f727b4169eeb814094f037fa3fd6a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-09
+
+    minor changes
+
+commit fa10c99558914966d849d6436f3abfa44fdf77ca
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-08
+
+    Changed title
+
+commit 72c9a6bd46eab1dfc2788ef9739a4fc389e4c538
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-08
+
+    OK Exonerate works.
+
+commit 027c8f1f33e2bd9ca1ab8c017e11f0b7bcda1b21
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Cosmetic changes
+
+commit 5adfaceb871d6b2cbd18a81533c9d1a12f7e0ad2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Style changes
+
+commit 461252139400c96f876adc58b5618e8b186b57a6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Looking better now.
+
+commit d1fded27aefd31f34a393694ac4e405336067830
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Minor changes
+
+commit 84a605cc550de39b81957dd58d03a7baea960742
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Minor changes
+
+commit 3d6495a51541a8f984855600c2c1ed25258e4925
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Added table formatting and forgotten footnotes
+
+commit 5e096db8aa0604264770bf68acf4c2f2251d9123
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Added some markdown formatting to README for easier conversion later
+
+commit 26cf3b300acf1b4759037527fa4a5948e9d85b0a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-08-01
+
+    Added formatting to page.
+
+commit e1736efdc23d6112884479c8808b5426371868a1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-31
+
+    Fixed half the formatting
+
+commit 4584e07f522d7f2ec29e514581179d6ca13d9bbf
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-31
+
+    Enabled fetching of protein/nuc pair for detecting ORF...
+    
+    But somehow that is the wrong AA sequence. Dafuq?
+
+commit 3638266886439a18a89ac1f81561af8f709fe345
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-30
+
+    Made the README better for GitHub Pages
+
+commit 87befa0dafa1c9bd3d93b82358f691a90d2d13f9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-30
+
+    Create gh-pages branch via GitHub
+
+commit 662d1f81c2248a3a2ed28393a26bc895c1293114
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-30
+
+    Removed commented-out lines and unnecessary variables
+
+commit 4a1de019262727559014fa54221fb5cde7bbcc11
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-30
+
+    Simplified timeout-safe execution of MySQL queries,
+    closed in on completing Exonerate implementation to detect ORF
+
+commit 29234d0419a0402080819961e26a7faac7b1c629
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-28
+
+    Can I now keep this file please?
+
+commit 9ebfd2333d0746dcf7b2d71b9a0955d35514c716
+Merge: 34f0e5d 8285b8f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-28
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+    
+    Conflicts:
+    	Wrapper/Exonerate.pm
+
+commit 34f0e5d7bd6f906046383e438a4a0e8922f338b7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-28
+
+    Cleaned up git's mess
+
+commit 3e5c5d651c34b06e196293a5e7be1b208a1a2ed9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-26
+
+    made the Exonerate module more sensible
+
+commit 8285b8fcf9345604f2aa64e9f7be6177eda24fc1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-09
+
+    Optimized Exonerate module
+
+commit 2d8e83093ef2b97ff02923b782a5ba6465e64784
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-08
+
+    Tiny changes
+
+commit ea31c3279f517993593ded90406dca3268523d3a
+Merge: 3db38e2 a4ce6bc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-07-02
+
+    Merge branch 'individual-tables-per-species'
+
+commit 3db38e212976a5e48b40edef2a3558dd2f72752b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-06-28
+
+    Fixed typo in README, bug in database creation
+
+commit ad190f2ab5809293241366e909210663cc3fc7db
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-06-28
+
+    headers for aa and nt sequences must be unique.
+
+commit a4ce6bc26b7133aca49977dd3b1b51d22d107929
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-06-28
+
+    blegh
+
+commit aefc7993777fcc7f1b0b2daa5f93a99abc6914a5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-06-26
+
+    Lotta small changes
+
+commit 640f463068cd3ec7f7848ff7f0d1c488d1531958
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-06-20
+
+    Individual tables per species appear to work.
+
+commit f98ec6c16d4c296ff99f575ea651960eb37a44d3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-06-19
+
+    Working...
+
+commit e55eaee04930bf0c1abf652fd5252da3318954c0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-05-08
+
+    TODO fix this
+
+commit 4e8557bc1823f3f2e2fa8ca1b9caf111002bdd6d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-05-08
+
+    Added subroutine for getting individual tables per species
+
+commit 90b24814813ef5a9bb5a3a9a2f8b8b0e0fd33b86
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-02-26
+
+    See this through
+
+commit 3b0cb169fde8f1bdefd03ac2b43ea1de7a58eb53
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-02-26
+
+    Added finish message to reporter output
+
+commit dcc234692942356dd30af80f49d9ef800f26b8dc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-02-15
+
+    Fixed syntax errors and shit
+
+commit b76e3da19fbe37708ab617e84b35052a0767d886
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-02-15
+
+    More robustness to mysql functions, with timeout
+
+commit 06c26aa62d2dc8cb6d19d5ea7c3d04c698a90dbf
+Merge: b9d1107 0795b1c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-22
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit b9d1107788d713d46f1764e28a55f75481c7ba03
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-22
+
+    Removed blastdb_path from database, simplified config parsing with defined-or (//=)
+
+commit 0795b1cfbe204924a8f0f8fa9b72ad7f3d4f830e
+Merge: 1e97f57 86b81e2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-16
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+    
+    Conflicts:
+    	orthograph-analyzer
+
+commit 1e97f574c8b1a19b35424d021bc998051bdd32af
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-16
+
+    Updated README, cleaned up code a little
+
+commit 86b81e2d6049ac9a71dedc4d419c677b51ca366b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-16
+
+    Tagged beta2
+
+commit d120dad16752f5db328a99c27c02fed68a8c0e64
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-15
+
+    Hopefully improved database performance, added coordinates to blastp output filename
+
+commit e51d153ec31dfe0d417caec67bdaec125b75763f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-11
+
+    Disabled MySQL query cache for get_hmmresults
+
+commit 18603c0bdd5ab8b2cd60c9f035f40a078dd9b3e4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-11
+
+    Using transactions for speed
+
+commit c0398ba89b42658d254fe1a33ef0a3d3bf0c2850
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-10
+
+    Added SHA-256 notes to manual, etc
+
+commit bc7441b2641320ec2b24a6909028d2051bd89680
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-09
+
+    No more unique indices on hmmsearch, blast and ests tables
+
+commit 33499520d93359a43c7d6c5849d577533f725a2a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-08
+
+    No more table flushing, not likely to have all privileges
+
+commit 9df927aabb312a1f7cde7a22a4abe13dc9396412
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-08
+
+    Improved warnings on flush fail
+
+commit 087da7a9799f3a93b3bcab5eeff7d60849017ca0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-08
+
+    More info in verbose mode
+
+commit 77ed649807e5014caa41c40db6edf1e89fda60d3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-08
+
+    Backup no longer backs up old backups
+
+commit e739814f0a68f3be2cb039898d28a2a1812dedce
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-08
+
+    Fixed bug
+
+commit b005ac6967756ab02b295bc287d8b53f15f03d88
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-07
+
+    Switched ests table to MyISAM engine
+
+commit 07b6b58b4acd8b1124a6a0ba868d82973f226ac1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2013-01-07
+
+    Improved dying on MySQL errors
+
+commit b3a1e21c3ad767cc41bade76947548012f4cbb46
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-23
+
+    Making the Exonerate module work
+
+commit 56fdf86c76cbbad63e8619f6536cc2383dfe0d02
+Merge: 6275c31 0ab4736
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-22
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit 0ab47363f711de6a0e7bcf2e44cb4294b9a507a1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-21
+
+    Happy holidays
+
+commit d45cfe728fc44f4750e5dde271177bdeebcfabd7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-21
+
+    Working on outputting nucleotide sequences
+
+commit c8379c7fc73ddacb40700e4ccd054494af720740
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-21
+
+    Exonerate
+
+commit 68f8c61777e9719fbbb00290213b75297fa96383
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-21
+
+    Minor changes
+
+commit 6275c312478e10a36760288319d6c74421b3774d
+Merge: be8d3a3 fbc0ece
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-20
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit fbc0ece0faaf527da0390f06261d882b246d0684
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-19
+
+    Fixed bug
+
+commit 30c52f6ee4ee30b629faf7e2cf934989c7007bbb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-19
+
+    Added Exonerate module and Sequence class
+
+commit c9b5d1c57f28b35c10377984c55d5914dc7853d3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-18
+
+    Updated conf.example to new options format with hyphens
+
+commit be8d3a3595b70b9a2f0fd43b9cb66c5690373190
+Merge: 8c04775 849a35c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-17
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit 849a35c7f362ab3d2a898694291528c99134008e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-17
+
+    Man I dunno
+
+commit 4cd618d3aa4874aa5ae26f265d677e96712aac2d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-17
+
+    Added Fasta output
+
+commit e3ce4a43fd5b0ce38b5bf7b945dc1de0fb0d5372
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-17
+
+    Improved backup, fixed bugs
+
+commit b7fc66846cd2622595ae95cb18ea06fc511f4c94
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-17
+
+    Added coordinates to BLAST results
+
+commit 8c04775996dd44593838420a7ce06be4e548a1b6
+Merge: 52c7760 dcb2a72
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-14
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit dcb2a726994d34470b3bf81591636be52018f065
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-14
+
+    Going home
+
+commit 52c776094b3d140423774efb5903dd8e615ae474
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-13
+
+    Removed Blah::Module
+
+commit f0801d15eaccd018ddd2f8afba7fd8df9e25b7ad
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-13
+
+    Updated Config, fixed bug in -continue option
+
+commit c0d61ce8d2824c9ea1bdeb112e6ab50e2a55a6ad
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-13
+
+    Added -continue option, fixed bugs
+
+commit 334992f184e92889ad0de75cd39f0b9934a97c9d
+Merge: c0c4c7e fea89d9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-13
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit c0c4c7e60bbc080a228f284f043f5a5095ca8cd5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-13
+
+    Dunno what I'm doing
+
+commit fea89d907cd30633aa4fbc0904ca57d5aaa5a813
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-13
+
+    Updated README
+
+commit 0aae6652a704cfb98b979652f495dec6c1c059e9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-12
+
+    Cleaning up.
+
+commit b1ccc2d6b2ef182b73d9eee9de4848e203abb59c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-11
+
+    Increased BLAST max hit number
+
+commit 5c1e24ce8268e3251a49bd624233434f77f0b208
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-11
+
+    Minor changes.
+
+commit 56a9aed504d3ae310fb1adc1d321196a8c719edc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-11
+
+    Minor changes.
+
+commit bead42ab8c1d4069d8b856066ab30e02f19e2f86
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-11
+
+    Updated README.
+
+commit cc6f25ba40761f11f69f81e250025d85c1f013c6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-11
+
+    Updated README
+
+commit ebbb3b8c74360c0564810ddeffe09bd14a183778
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-11
+
+    More bugs yay
+
+commit 403eccfba8ac9275b4890aae2c84252e1db56df9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-11
+
+    Another bug fixed.
+
+commit 6a190f1795e8d5b56d03f2bf8397e12b372cc81d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-10
+
+    Fixed another bug.
+
+commit 5ed67165422cc27d5be28bc2e75037a0deb25892
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-10
+
+    Fixed bug.
+
+commit eb22c7ef7973ca343d004d421bbf32069d8ab407
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-10
+
+    Minor changes
+
+commit e4e89d9eaf91e090bdb02f572f3bec48b46a7dbc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-10
+
+    More bugs fixed
+
+commit e75bca3e05a5d947c4ae1e5c9b1680c3210018cb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-10
+
+    Fixed another bug (damn, there are many).
+
+commit 920e8c5f06af961f6f6ebd560270775273d41421
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-10
+
+    Fixed another bug
+
+commit 6fcef9de24ff8338128ae48794a24739bf5ad2af
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-10
+
+    Fixed bug
+
+commit 57f0d184e6bd479138e6b34d4bdda56e8452dcef
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-09
+
+    Minor changes
+
+commit ffdd4082f35a85d04092fdd43db7d13b1a39c83f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-09
+
+    Bug fixes, removed redundant code
+
+commit d285efd1c796999bcb4a079b09f572b85e7459b7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-09
+
+    multiple, non-overlapping transcripts may be assigned to one ortholog group
+
+commit 870e51ba1b9d5eb0b0644d6735a88f3ab105bc4d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-08
+
+    The concatenation almost works but it still gives weird results
+
+commit b769e070924ca7120049bbc347018558436ddb4d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-08
+
+    Working on the concatenation stuf
+
+commit 952f9b83d492c2e0fa149cb03638f8492802bc95
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-08
+
+    Okay... gotta work on the concatenation shit
+
+commit c0ef9dd4d5e9276d043fb4e47d0a0692e80852de
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-07
+
+    Bug fixed, localized the VIEW for log-evalue counts
+
+commit 4904acf99d89c239d1d5c99562c0e7f8b8e63e5d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-07
+
+    Yeah
+
+commit 01d4772b9f406cd81a53cf71ca82f556e2b2ca75
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-06
+
+    Seems to work... Now just mop up and do the output
+
+commit 2077ea3554a1c499295c4a4ae01011edd11b7b3e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-06
+
+    Using the bin method in orthograph-reporter
+    
+    Enables faster result retrieval from the database when dealing with
+    large datasets
+
+commit 6559fe4d8efe72b05e96ace8a06fbfe019a68a67
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-05
+
+    Added experimental mysql.pl
+
+commit ad81244a0a1aed2496e233c53eee504b515058b8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-05
+
+    Using e-value bins to speed up the database query for the final result
+
+commit 6575b13b05ca7d1230bb0b8c4c9f92a9809f5654
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-02
+
+    Working
+
+commit 522e57eb15cf32f8cdc442f026570efd9670c508
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-02
+
+    Minor changes
+
+commit 087dae4d2d15debc26b27d8a2bfd76d75d30f051
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-02
+
+    New options: clear_result_files and clear_results_from_database.
+    
+    The former should speed up repeated analyses significantly.
+
+commit 1faf295b784ac72056d4b59cecdd2417556b7c51
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-02
+
+    Reporter appears to work now.
+
+commit 8d1aa4f79835775b60f697665e34712b021d8745
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-02
+
+    Block-wise result fetching works, but we get redundant output now...
+    
+    Gotta make the shit work across block boundaries
+
+commit 608cdf5a75de84430dcbbe63f2e41000580bae04
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-12-01
+
+    Appears to run work with the log-evalue so far
+
+commit 5755e7576f88a76ac693f4f1b03d499496fd27de
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-30
+
+    Using logevalues now
+
+commit a6a472e23141a8d1c644f69ae712c5fb838fa683
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-30
+
+    Not storing evalues per se anymore, but use natural logarithm.
+    
+    This eliminates the MySQL precision limit of 30 digits after the decimal point.
+
+commit d0e3f25a3b494456f16ad4060cfbdfe511a36364
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-29
+
+    Further compartmentalized the configuration
+
+commit 4300b7b539c702b8bef20346623caa9818e754d1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-29
+
+    Simplifying the configuration interface
+
+commit d70e083c296568e8592d3e360502b9d5b0c5fcd6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-29
+
+    Reduced redundant code, externalized config more, extended example conf
+
+commit 0d2166fcecf93fe71be14dfe87c39e80a86e56df
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-28
+
+    More messing with the logging facility
+
+commit a05c8e4cbe98d2012f2b392c966d41b6d02e6254
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-28
+
+    Bug fixed in logging facility
+
+commit b7d2ccb24265e95e27ca559fca5716a586c622a6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-28
+
+    Added logging facility.
+    
+    Use with 'logfile = XXX' directive in config file or via -logfile on the command line.
+
+commit aa084ba282c7f93d96198f111e4da868857b6535
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-27
+
+    Added TODO
+
+commit 0d9950d502356f9f0494bf3e24e83f2c1aa0ec7a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-27
+
+    Bug fixes, added IO::Tee
+
+commit 2927c7567010a7e3ca7a8febce1368161ae4c28f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    blah
+
+commit f9b102f681d24b9af4c61243576da9cc04db4950
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    More minor changes
+
+commit e044671b1f36f3a418c0fe0cf97fb5bc593e4970
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    Minor changes
+
+commit 142e09ab9f35b9409cc20f034246d9112ebc587d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    Added documentation
+
+commit 77088c429181ad85c4ca8c6479ea49e25d098dea
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    added -delete-ogs to orthograph-manager
+    
+    For deletion of an OGS. Requires the original file, though
+
+commit 94219571d75aa38ff0e10a13603e1f64a9ea5494
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    Fixed a bug in orthograph-manager that lead to the wrong type of sequence in the databae
+
+commit dd2f4c199f29018edb22f284d44ec429f20725f0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    Fixed a bug in Wrapper::Hmmsearch
+
+commit 19975603c1eface77560f7a5515d6d8452c43e3f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-26
+
+    Minor changes
+
+commit 4a1ce1d709dcfebf29c9886c43d8648d85044288
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-23
+
+    Blegh
+
+commit d518987ccbec0083cd2a36fde4d78811dcdef501
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-23
+
+    Works again... Why is MySQL so fucking slow all of a sudden?!
+
+commit 9169ef7f8a6e1f432048f0436565eb801c3f2507
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-22
+
+    Bug-fixed the BLAST db creation
+
+commit 557c4b0e6bc66a00cc7fd6d9345bac071a60b03d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-21
+
+    Blah?
+
+commit d47e8d446c63d2cf4605a6dde513d73e6bb30012
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-20
+
+    Minor changes
+
+commit 4297a50b8dc2eee1e97783095ea170d5bb1eb4e0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-20
+
+    Undid the broken changes from yesterday, using match/mismatch counters now
+
+commit 83e0b0c19873d10d96ebdd55aa352e91e771e32f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-19
+
+    I broke everything :(
+
+commit fadc3a17e7e315f019f49180538064035d310042
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-19
+
+    Updated README and example config file
+
+commit 029987ab728c7a1314ee33095e52a732b8cf5d56
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-19
+
+    SELECT DISTINCT
+
+commit 25faed4c1fcb335a5b758db91d30834c702a15ff
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-18
+
+    Merge branches 'config' and 'master'
+
+commit a45a9c2bbbd9189ec4efd1f85dbe17767c30df49
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-18
+
+    Non-redundant output. Yeah!
+
+commit 53568d07aaac6cab0b0a5c43fa29f8f5595e60f0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-18
+
+    Got the hit list working now.
+    
+    Fine tuning (strict, relaxed, 'soft' threshold, tabular output, fasta
+    output) follows.
+
+commit 58b3d73a8209c54c02c9f25d0f6158deca8f2d16
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-17
+
+    Bugfixed, working on the hit list
+
+commit d0c24ba395f15439a26cbc00123f63d962e87d75
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-16
+
+    Blah.
+
+commit 930677f4fec17ca358771962eec76a0c19b5d66a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-16
+
+    Re-designed the config system
+
+commit 24ed6c254970ad83bbcad7027588ae84f905151d
+Merge: b47bc69 dcb1615
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-15
+
+    Merge remote-tracking branch 'origin/config'
+    
+    Conflicts:
+    	Orthograph/Config.pm
+    	orthograph-analyzer
+
+commit b47bc6964a10b9553fcfef5c05f4512b5b408a1d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-15
+
+    Commit so I can merge the config branch
+
+commit dcb1615288b9a707ca2c39ddc6dc7d966fb23566
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-15
+
+    Facilitated config without exporting a hashref
+
+commit da3d401f1527e3c9ac38a6277cf80680a6c3a246
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-13
+
+    Bug-fixed the config parsing, introduced FindBin
+
+commit a3bcdb948bc6be8df42fb124f4580496c57f1507
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-13
+
+    Externalized config because it is used in three scripts, decomposed even further
+
+commit 9a03144a109ddd9f9d0ac457dd3f702c801d7c09
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-13
+
+    Alpha3
+
+commit 26eb268e915d29301fc579ce109a543a9077a1b4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-12
+
+    Outsourced some functions to Orthograph::Functions
+
+commit 824d1d0e70663621047734d70f6b9173fcd60118
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-12
+
+    Created a third tool: orthograph-reporter
+    
+    Got most of this working now, it's mainly fine-tuning and adressing issues.
+     a) orthograph-manager can create ortholog sets
+     b) orthograph-analyzer does the searching and filling the database with results
+     c) orthograph-reporter can establish ortholog relationships and report on them
+
+commit 86c38a5b21a16838866129a61e4d13e0bc7df2cb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-11
+
+    Minor changes
+
+commit 802a6aeb72acfcf9576b0d59347354b34b8ac12f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-10
+
+    One reftaxon is not enough, keep track of their hits.
+
+commit 65a01f1391a250868484a8164ba0ca640c9214dc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-10
+
+    1:1 ortholog assignment works.
+    
+    Now for the reftaxon selection and strict/relaxed...
+
+commit 2d64e24e5d0ab57083cd5a5343f182c6ad3018f7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-09
+
+    Getting closer
+    
+    I have a list of e-values and am traversing it, at every stop checking whether
+    this orthoid-transcript pair has been assigned before and whether the reftaxon
+    of that hit occurs in the reftaxa list. If so, I print it out.
+
+commit 3d5e063b179926ed4e5fadd485e987e76bf391f0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-08
+
+    Minor changes to the README.
+
+commit 950ab650a94e6b325c73ea5c4a2bcb28e7ecc763
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-11-02
+
+    One step closer to knowing
+
+commit 94d1e79529ec8533869f627532ffd18cb69d0999
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-29
+
+    Fixed a nasty bug that caused random database corruption during set
+    upload
+
+commit 460daed70e3efb349389d0832e1b70d68dfbb33e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-23
+
+    Blegh.
+
+commit b555003b63d7c07077d11d223edb14f5fc6b3c60
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-22
+
+    One step closer to knowing
+
+commit 27f1e9107e04d3b7ae2e70944467fd929529405c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-22
+
+    Wondering what is going on
+
+commit fe9d857011bff86d812c4a7dae567ab71193d888
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-19
+
+    More documentation and bugfixes
+
+commit b7e7f18ca7f15e6fff98978d8e6def5af75be79e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-18
+
+    Fixed csv import bug
+
+commit e8de576598492d8df10d65899956be792a86f218
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-16
+
+    Minor changes, bug fix in Seqload::Fasta that might leave whitespace
+    at the end of the header
+
+commit b45d6ad53b8bdf143d88420f9a45eef403792c47
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-12
+
+    Yeah...
+
+commit fe6f1ccc87bf98cb36d8a0208a1e4235da822601
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-12
+
+    Blegh.
+
+commit bfb515114cf37ba7330d20ab51d808af7de3cfa8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-11
+
+    Work for tomorrow
+
+commit ab6b2fd265d06aec86d8e68e3451205d916bf7b7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-11
+
+    Duplicate assignment problems: eliminated :P
+
+commit 04a99772d344e6aa3148108685151803c50ae56e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-11
+
+    Fuzzy and strict work
+
+commit 9b6f8c090e55db910807cd391056cd61d6488d3a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-11
+
+    strict and fuzzy almost work
+
+commit e0e6c66996c88657716ed761f3cc64a0888c20f8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-11
+
+    Added reference_taxa to orthograph.conf.example
+
+commit 803e8adaa022199cc557ebbb297de9e05274193f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-10
+
+    Still working on this graph
+
+commit 1f6d3da304ff35c345e62054902eb1fdeac2054b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-10
+
+    MySQL evalue column must be CHAR/VARCHAR due to precision problems in MySQL.
+
+commit b37f7eece9c36b0347375c66f7562c924690e7b4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-10
+
+    No longer need to edit your username/pwd
+
+commit d9bf1be474d2f135e9edf22edae4d30cfaadf277
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-09
+
+    Got a HTML table now :P
+
+commit 0b3ccc236bf3746c0755368b197b6f1d134cf133
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-09
+
+    Working on a graph-based solution to the redundancy problem.
+
+commit 228e980046f64d98448cb969963969d17754dd46
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-09
+
+    Got a working SQL query for the orthology assignment
+
+commit 5943702094d60e063a886671e89f6f52e9eb5543
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-09
+
+    Renamed modules to avoid case sensitivity problems
+
+commit d3dbc580c73ff8164163dcff9e899499e8c68179
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-09
+
+    Revert "Renamed the Orthograph::* modules to Wrapper::*"
+    
+    This reverts commit fda60c3a6ca6c63f4d3a93f4e84453fd37d8b707.
+
+commit fda60c3a6ca6c63f4d3a93f4e84453fd37d8b707
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-08
+
+    Renamed the Orthograph::* modules to Wrapper::*
+
+commit 8c097b01db017b5efed06b9475483afa38ee5bd6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-08
+
+    Incorporated Alex' suggestions
+
+commit c39fa2458daf520c1ba51a407677b6379fc606b0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-08
+
+    Updated e-value and score check
+
+commit de4c8687769f4dfc6a0ded7212da66e0a8c8cd06
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-08
+
+    Check for valid e-value and score numbers
+
+commit 74251b6ac976fe28faf628bd0f6cd49c531a9d58
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-07
+
+    Possible solution to the redundancy problem?
+
+commit 30f555bcbc4ac335b89196c7b9d5f6768b727043
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-05
+
+    Yesterday, when I was young...
+
+commit a7205b06e211077f3fcd0d69c3a391c6d30f99cf
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-04
+
+    Updated mysql test script
+
+commit 40b07a8e0b894031812f7a0123fb3bec1581beb6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-04
+
+    Testing mysql output handling
+
+commit ba124795009f9e012ea5609b3b2fdcb8b04266be
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-04
+
+    Fixed csv generation
+
+commit 08ec8a10533226ff81a15b590f6c18e9b6f76b0d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-10-03
+
+    Completed -delete_set, fixed bug in Seqload::Fasta
+
+commit b75a15be87fb5eac954e5f47526aaaa3d3b7c41a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-28
+
+    Output format updated. Bugs in modules fixed.
+    
+    The output headers now contain ortholog id and species name and will get the
+    reftaxon name as well.
+    
+    Fixed bugs in the search modules where e-value and score threshold setting
+    didn't work as expected.
+
+commit c951f241a0219c5acb95bd1170b01212777fdb69
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-27
+
+    Somehow the example config file got deleted. Added it back again.
+
+commit d5a11314c458c736f0af27edc304d4a3109f31cb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-27
+
+    Backup. Backup. Backup! Uses Archive::Tar
+    
+    If you choose not to clear existing data, it will now be put in a
+    timestamped, zipped tarball before analysis.
+
+commit 4641580c8a23ea87f2c49fca69e681a43dcabd87
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-26
+
+    Updated README
+
+commit 031c200583ec396ab1769238e027789ec14fce12
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-26
+
+    More textile formatting.
+
+commit 286ca0093048032f7a0e852a2dd3c32389abf9c1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-26
+
+    Textile formatting.
+
+commit 8114577e2ff1a3d314ad18580b76c698b512ab79
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-26
+
+    Trying README in textile.
+
+commit fa0a80bbd4236d405a7149d5edadf67424e92e0e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-26
+
+    User input checking routines, fixed bug when uploading proteome data
+
+commit 271d2522da0804dfe7fac6ef685aa7845586fc10
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-26
+
+    More minor changes, added Karen's suggestions to README
+
+commit 7f16acb66468c0af21386178054eb2a8ff2e94fa
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-26
+
+    More explanations in README
+
+commit c8e26f36be637eec963d13a2efe334fe0b8facea
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-25
+
+    More minor changes
+
+commit 0667a98396668d986552e192a569bbc7603a54d7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-25
+
+    Made README clearer
+
+commit 369d66649cd578c2fb1381b0ab74bda0e0a41c24
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-25
+
+    Minor changes
+
+commit 155925ee226f3fcde52fc4aafd3f1e72c4b6f2ff
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-25
+
+    Made the config file clearer, added sequence and header check for importers
+
+commit fa1c9c580f021075fd363cdfbdee930c0381a07c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-24
+
+    Added AUTHORS file + minor changes
+
+commit 4e56a0c4538039981bc9d7da79d2bab635611242
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-22
+
+    Added -dbtype to makeblastdb
+
+commit ee68a647cf668983db87d2a1d27e87fb4d42aa9f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-21
+
+    Warn if nonstandard amino acid symbol.
+    
+    Added note in example config file.
+
+commit 73e5e69af26e9f2ef3170eda93ce5ad900de05cc
+Merge: 44c3044 8f6d123
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-20
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+    
+    Conflicts:
+    	orthograph.conf
+
+commit 44c3044e9962b95dd8ac2e7fe95014a532564f4d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-20
+
+    Don't use tempfiles during ortholog set generation.
+
+commit 8f6d123b96c53eaccfcc907a60dd5dc4b1cc953c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-19
+
+    Added list function for the taxa in a set
+
+commit 977e06e28e9dd69ad824b5daa05644a277d415f6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-17
+
+    Using the IO::File frontend throughout
+
+commit 93dfbc7ed8f088d798d5e5e4968fdae59770a407
+Merge: acf86f4 8f4be12
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-17
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit acf86f4d638f81e1e9e9225da659a70df39a66aa
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-17
+
+    Blah
+
+commit 8f4be123b087044d86151abdbefafec136d69901
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-17
+
+    Cleaned up a little more
+
+commit 30631c370d4c8b5589d29dc2b91f2c16d7f6f66d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-17
+
+    Cleaned up a little, added backup routines
+
+commit d8da9cd292091e1da4546cff603e6a15f184a3a5
+Merge: bf7a6e2 a6d1bd7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-16
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit a6d1bd77021224402a2fa5ab7698918b6863964c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-12
+
+    dunno
+
+commit f301c3cc6b1b8072571fb63d478a0a55652cdff8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-11
+
+    Tue Sep 11 17:13:02 CEST 2012
+
+commit bf7a6e269d56d7c6c6cfc2ea08e090ba97605cee
+Merge: 57c3012 be73e22
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-10
+
+    Merge branch 'master' of github.com:mptrsen/Orthograph
+
+commit be73e222b79b0ffa3555bc52bc9032dbd1ab94f5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-07
+
+    ??
+
+commit 92d9bb502c759c5982ccae99014c0edc72031e86
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-05
+
+    Renamed to orthograph.
+
+commit 57c30125704395466024fa60304a55aaa9225627
+Merge: 619f734 c719902
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-05
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 619f734bcd81e3dc1520e0c279d654963ed4e4e3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-05
+
+    commit to pull
+
+commit c719902d6da7cbc1a69ba22ac930e64b98c7eef2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-04
+
+    Completed the Forage::Orthocandidate module.
+    
+    It manages a list of candidate orthologs. This list may be stored in a
+    database, which I intend to do.
+
+commit b85864860ee54212778e91c7540f9185d066495a
+Merge: 355e822 a551635
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-04
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 355e8224c8c2ab21d5caab6d041843a40b3234a8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-09-03
+
+    Added Forage::Orthocandidate
+
+commit a5516350c258712f1cb9d91698a97eeab840ea9b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-31
+
+    Adjustment to --domtblout complete, orthology assignment works again
+
+commit 77dcfbfc106fc7da3857722290589ccccf792b5e
+Merge: fb18da5 483cd42
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-31
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit fb18da54cf17c1f79ae8447fb2221432ec4bcf1d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-31
+
+    Blah
+
+commit 483cd425f40add12537a6922a2e87b3f6b6c5407
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-29
+
+    Renamed to Orthograph.
+    
+    Added parsing capability for --domtblout.
+    
+    TODO: Orthology assignment doesn't work anymore. :(
+
+commit b4c8359ff08f8b3a137019bb8ea1c7b5e4b3f030
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-20
+
+    Migrated database listing functions to coreload.
+    
+    Renamed coreload to forage_manager.
+
+commit 06c3bfc250d0a455fa9951ee835f7c95cf143807
+Merge: 1940076 7e6da05
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-18
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 1940076c60166407f2506ea3230194695bc85c6b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-18
+
+    Blah
+
+commit 7e6da052a1e0611495b8d65964cb8ff0fafccf0c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-17
+
+    Minor changes, supplemented documentation
+    
+    - output formatted
+    - testing
+
+commit 341ed5d08b41c75bf8931bd08846e0e9e9161130
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-16
+
+    Added functionality: List installed ortholog sets
+
+commit 52f106d8abf063a5d45e03e0150eccc0fabde61a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-16
+
+    Added documentation
+
+commit 025bdbc425b7a3303ba6ffa3985fb1b41468f5bb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-15
+
+    Minor changes:
+    
+    - output formatting
+    - added cleardir() for pruning dir contents
+    - config file syntax checking
+
+commit b5766b06a813c2b2279ea268944502dd7ef5a639
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-08-15
+
+    Minor fixes:
+    
+    - renamed some functions of the Hmmsearch module to more general names
+    - made README more clear
+    - more useful messages by coreload
+
+commit bf86081156e06364cc1414e6d44aa872167f2fc1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Updated README
+
+commit 4234e5e77fbeb678a51e6d7c1edb017b4c7170de
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Bug fix, updated README
+
+commit 26792567bc222f71f7387af04d3877b9661683fe
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Bug fixes. Hope this will work now.
+
+commit 7c610b4082d53b8baae8c796b2112dce28c64b35
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Updated example config file
+
+commit 444205ba83b355ff88f01251f393e3d05377fc46
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Updated forage.conf.example
+
+commit 12e2ea9c03e976b7b77e7ae73bea905579817c44
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Orthology prediction no longer depends on -v option.
+    
+    Updated README and example config file.
+
+commit e39d70437b3474cbbf78aac650dc49b4046c0024
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Added -delete to coreload for quick dropping of all tables
+
+commit 2b94608af36c77af6437cc40e017e598d9743310
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-29
+
+    Fixed the alpha. Ortholog set generation and the search works again.
+    
+    Some SQL query was wrong. Dunno wtf happened. Also updated the README.
+
+commit 6d00dbd73fc4f4768081c4a69b986eaa0891b899
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-28
+
+    Reformatted README
+
+commit f4ceb4368280d56d31a8556bfc7e0370cc94b276
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-28
+
+    Bug fixes:
+    
+    The whole coreload/forage combo should work now. Limitations still
+    remain:
+      - you must load peptide sequences before nucleotide sequences
+    	- can't think of anything else at the moment, it's late
+
+commit bce016889aecf82c17f388222e1b7948ecd14688
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-27
+
+    It works! It works!
+    
+    Hamstr output emulated, we now get a fasta file for each ortholog group
+    in which there are all sequences from the core-taxa plus the one
+    transcript sequence.
+
+commit f74ea1e7936f40b5ac43b231b08331eeecfe9783
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-25
+
+    Everything works (if you do it right),
+    
+    orthologous clusters can be obtained from the db via the query:
+    SELECT *
+    FROM f_ests
+    INNER JOIN f_hmmsearch
+    ON f_ests.digest = f_hmmsearch.target
+    INNER JOIN f_blast
+    ON f_blast.query = f_hmmsearch.target
+    INNER JOIN f_aaseqs
+    ON f_aaseqs.id = f_blast.target
+
+commit c846f40d1bed728d2b41dd9f7e84652a38d13e07
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    On-the-fly generation of the ortholog set works,
+    
+    including does-exist check on both BLAST db and HMM files. Yay!
+
+commit 842e520d96b0b8b33fcc9933a9e8a5c2a05d79d5
+Merge: bb5a29b 1db92c3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	forage
+
+commit bb5a29bcac4b5c249b25152753207a61cc5f7adf
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    commit so I can pull
+
+commit 1db92c3f8feb710e66288c4ead964de7b6701ebc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    TODO fix the blastdb generation routine (path confusion)
+
+commit 1923b5a57a841cf426a54994cad6faf84daedcaf
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    sets are compiled in the sets/ directory in sync with the sql database.
+
+commit 590324b27fe8dc9db50f7d5bd7adedea726aba1d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    TODO: BLAST db is specified as a path that is also stored in the sql db
+    Future runs fetch the path from the db
+
+commit 1cc6da9976c51ed5ec176cccc1099fb141100c2a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    Added Forage::Orthoset module
+
+commit fe698c5fdb8e05fa66c17796f33e58b154858e97
+Merge: 4ed3c13 4c01979
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 4ed3c1326494f7ce3c1cad9ab0ac35263e4ea8ad
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-23
+
+    blah?
+
+commit 4c0197978da27e25c046d3126f857005c87a42cc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-22
+
+    bla
+
+commit 18bb7be8f9cf0f6b6ace155ff3856a95c25f3a93
+Merge: 3934ec2 fd8413f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-22
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	forage
+
+commit fd8413f8315afa8bb6d1be74f3b3eb64fadabb95
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-21
+
+    Collates fasta files of all orthologs for alignment and hmm-generation on the fly
+
+commit 15de5a8498c22ce573863647a82b68dc63b008b2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-16
+
+    SHA1 hashing complete.
+    Working on generation of HMMs on the fly
+
+commit 3934ec206df8d375fb54283a3852a2853a578fd1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-11
+
+    BLAH BLAH git
+
+commit dbff413a3e28c42f29f611d4c5f7cdcddf37637e
+Merge: 573f1dc ca0c145
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-11
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	forage
+
+commit 573f1dc32d34c2cbd71e3073f4905d1435381359
+Merge: b651c67 ea89b6c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-11
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	Seqload/Fasta.pm
+    	coreload
+
+commit ca0c1451c51370b4d29bd8760d521cec50a9d3c5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-11
+
+    No more duplicates when using clear_data
+    If not using clear_data, problem persists. What do?
+
+commit b651c670380e72d2cca81fec90e4447a837e8a34
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-10
+
+    Locally added Seqload::Fasta
+
+commit ea89b6cabdde5bed09c8b423fe2486bbc6c77d5a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-10
+
+    outsourced a lot into functions. transcript sequences are now re-downloaded
+    from the db, using the ID as header. this is used for the entire search.
+    
+    Problems: when re-running forage, the IDs no longer correspond in the hmmsearch
+    result files. what do?
+    a) delete everything in the beginning
+    b) dunno
+
+commit fc79ea4c26f97ac4acdacb913356c4ed689c6209
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-09
+
+    On-the-fly creation of BLAST database.
+
+commit e21af3c14c7dfd70606199c854794d7c7e3f1b35
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-08
+
+    Works with new db structure... rudimentarily
+
+commit b646299ce3e18bccca3067433c9096de798d8ad7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-08
+
+    Added Seqload::Fasta
+
+commit 3cb724f78f376350bb44163b6ff73c46d2d86630
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-07
+
+    Cleaned up after merge with origin. Frakkin' >>>> HEAD
+
+commit b5e213f2627c6c96e66e8b4493147508e4c9fbe1
+Merge: 17942cb 831b877
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-07
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	coreload
+
+commit 17942cb55b39826ca81b3256f82d9e50dd179148
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-04
+
+    Dunno
+
+commit 831b877c27b0ff770951a1431da355d5c26957fc
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-05-04
+
+    both nucleotide and peptide loading matures
+
+commit 3317695d8bd2323d44a81a62b271b574c28e613c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-26
+
+    Nucleotide uploading works, but not the connecting of orthologs.
+
+commit 2975348125561f0c9fc1868c905c7a5115e0a7b1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-25
+
+    Coreload almost working, need to insert pep data without having seqpairs
+
+commit 41efab30088bb425ee6bf6ad4b86f9fbdcf07ef0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-17
+
+    Coreload works now, for OrthoDB5-style files
+
+commit d153a52ba711b15559c60dfc48cbb026693b4170
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-16
+
+    Continued, coreload is maturing...
+
+commit 2c70f7442794bff433caf45c7a597a7b1a41b054
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-16
+
+    Getting closer...
+
+commit eef18d4727717b13237013558119c236b5fcbcd0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-13
+
+    Maturing further...
+
+commit 52ae1871f1adba6f92a9b46d8d553d403465febe
+Merge: a268d28 5a08769
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-09
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit a268d28e1a3d1213a6472e7c60d34b3959f4b867
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-09
+
+    Blah.
+
+commit 63ad42b5797f1dd55ec77128c43024e9b9dde550
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-05
+
+    Merged changes
+
+commit 5a08769af039df9cd25972a6b440f8cd031cc486
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-04-05
+
+    coreload is growing...
+
+commit 895cd72f99e4331445e746ba8d24f996df3af641
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-03-09
+
+    Merged changes
+
+commit 8e303c9e163b31344e38a7daaab61ceb6fbcca6c
+Merge: 2e01779 c47d930
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-03-09
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	coreload
+
+commit 2e01779a2e493e1d9b80974104434e7e265d75bf
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-03-09
+
+    Continued on coreload.
+    ATM, forage is only functional if you create the db structure yourself.
+
+commit c47d9303b0a6e2432b12f151515316fb8439d1f0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-03-06
+
+    Updated coreload script; still disfunctional, though.
+
+commit eeb1d1ad2859afeab0098c145601decfd1f47257
+Merge: c569ff8 67594de
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-02-14
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 67594dec6e4754a379f507a069c54aad122bdfa4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-02-13
+
+    Integrating the db structure. neither coreload nor forage are functional ATM.
+
+commit c569ff8ab51688ee0872d66913d91a42d78a6240
+Merge: 52d43cc 6fc64f4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-02-13
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 52d43cc3ba155007595f9052ebd84505df15fcb4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-02-13
+
+    Blah
+
+commit 6fc64f47d36f9b780a8692b059c261cc702147c9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-02-10
+
+    Restructuring the database... coreload disfunctional ATM
+
+commit 4b94cf4dd800fb5a7e2d398cc1a2d94f257cb665
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-02-02
+
+    Don't remember what I changed beside the percentage report
+
+commit 2c325911dc39d09cc10bcb4ed18bbbe06bccdd3e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-30
+
+    Reciprocal BLASTP search is now complete.
+    
+    Database structure needs re-thinking.
+
+commit 197b3d17dda618f44c853085e31a38fc438e43fd
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-30
+
+    Integrated multi-reftaxon support; but this still needs work
+
+commit 6a4ea031096bab1ce6000d48a952752b8cb52d9f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-27
+
+    Renamed forage.pl to forage and preparedb.pl to coreload.
+    Coreload is now complete.
+    Added documentation.
+
+commit 5be6ebd42cc5dbf2dd54fdb79c3980e8345504a1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-27
+
+    BLASTP search complete.
+
+commit f3a85273d61285798df7b632d3419f9c88237514
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-25
+
+    Blastp search is maturing;
+    results are to be stored directly to the database, no file necessary.
+
+commit 873488d483552f35ef3d69d858bef5de72279ce8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-25
+
+    Proceeded writing Blast module
+
+commit 6ff5291dd801b060b65377c3e9e564527f5609a8
+Merge: c84f8fb ffbb259
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-24
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	forage.pl
+
+commit c84f8fb738a5000e18f29b8c108cfd7dcdd38d3c
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-24
+
+    Commit so I can merge
+
+commit ffbb25968d9e0cdc1dac57195419dd04e634aa20
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-24
+
+    Started writing the Forage::Blast module for the reciprocal blastp search
+    Renamed Forage::Unthreaded to Forage::Hmmsearch
+
+commit 56e9e8a29206765d31312313b0901858f8bf7cbe
+Merge: 622773a b7802d3
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-19
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	Seqload/Fasta.pm
+
+commit b7802d3e3511472bbe4f81b84e8d83027c6908f0
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-19
+
+    Started examining the hmmsearch results, fixed some bugs
+
+commit 622773aa0b29b9b26f839a4215a33356483c1081
+Merge: de31479 1b2fc07
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-17
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	forage.pl
+
+commit de31479370f08d9cad93a7a34b8ab14064e005b1
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-17
+
+    Minor changes
+
+commit 1b2fc0744584aa0e40067861353bdff09c3dd2ca
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-17
+
+    Using LOAD DATA INFILE instead of INSERT INSERT INSERT for storing the EST file into the database
+
+commit 1707eab1c1fa626f616d5ecf42b227fcfdac9a16
+Merge: 5735e6a 54de336
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-17
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 5735e6ae8efb9fb143c8cbff8b8bc9f03be0361d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-17
+
+    Don't remember
+
+commit 54de33617914cdc19c190be9362ba35342fd2dca
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-17
+
+    Added fasta2csv routine to Seqload::Fasta
+    
+    It is exported and may be used as follows:
+    use Seqload::Fasta qw(fasta2csv);
+    fasta2csv($fastafile, $csvfile);
+
+commit 3ea95bfe46f99261a6dbfa95cbf7acad8b7fd409
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-17
+
+    Seqload::Fasta now produces sequences without linebreaks.
+
+commit a9713cd19bda765dbac00f4f9a088fb5d6cc112f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-16
+
+    Removed git artifact in Seqload::Mysql
+
+commit d32f8c9f8c31cdeb780637965372d601a9b37433
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-16
+
+    Added Seqload
+
+commit b268270c44f811a2e95af56bea0a43ca5e4e9b6a
+Merge: cf39f28 6b27041
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-16
+
+    Removed Seqload
+    
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	Seqload/Fasta.pm
+    	Seqload/Mysql.pm
+
+commit cf39f284f8947c081c2f025a4598115aad7d95b7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-16
+
+    Added Seqload::Mysql and Seqload::Fasta
+
+commit 6b270413c1e5973f0e7efd176ef4187edba1449e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-16
+
+    More MySQL integration polishing
+
+commit 4d479462d45273285844afa8086e77af7f53c4e2
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-15
+
+    Added Seqload::Mysql and Seqload::Fasta
+
+commit ecd36bf554db771b5613206526ac8512024563eb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-15
+
+    HMMsearch results pushed to database now.
+
+commit 72a05ff2219fa50911a873360ddb4238fcac3f2f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-13
+
+    Started integrating MySQL support.
+    It works, but needs a lot of refinements to make it more flexible.
+
+commit a3b27e424dae03e3ebc11576349603d25f38ea00
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-13
+
+    Added POD
+
+commit 97ef9befbfa31dac07e3a705884ecbcb083e8466
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-13
+
+    Blah
+
+commit e97551115cd0e951cb8a798d27a414215bc6dcaf
+Merge: 49f2e5e 85ac1ef
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-13
+
+    blah
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	forage.conf
+
+commit 49f2e5ec2deebe761a01b117ddbcc0b095e711e7
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-13
+
+    blah
+
+commit 85ac1ef114d89e68372c8dfe8b860273fe469027
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-13
+
+    Integrated support for external config file. May be specified on the command line using the -c switch, or use forage.conf.
+
+commit f9c8ab39858fe028b64d5e4c20aec162249a75fb
+Merge: 3d02179 66b3f72
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-12
+
+    blah
+    
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	README
+    	forage.pl
+
+commit 3d021790043aa44203f63d694578734fb9fff657
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-12
+
+    blah
+
+commit 66b3f72bd19aaeffe89d447ff45039807da66bd4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-12
+
+    Added ini-style config file parsing support.
+
+commit 2abe4b596992e9a3159a3c57c35bb9d18d108608
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-12
+
+    Updated README
+
+commit f6c2ccb8eecc0b2b42d0f671172dd184dcba445e
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-12
+
+    Preparing to implement MySQL support
+
+commit 0baf3c1908fb3f7f0f69021471795dbcdd232d52
+Merge: a30e276 2d5b51d
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-06
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 2d5b51de4226c194880484ab8962283e7c97c719
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-06
+
+    TODO implement fastaindex and fastafetch somehow
+
+commit a30e27664f832d23b429efd65df18d84e8aaf039
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-04
+
+    Remove annoying git mess
+
+commit b0ba7d5c25d2032a19f3e313117bf2bc0fe60fc9
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-04
+
+    Trying to remove annoying git mess
+
+commit 00bce191b4eb4f4a3b7a4fc3b7afeae3f50e4b42
+Merge: 1a7929c 0260c66
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-04
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+
+commit 0260c6656d5401aec6eaf521f0490a94185cc57b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-04
+
+    Minor changes
+
+commit 1a7929cf6d5cf328b3596c9c2c436f04d64e16b2
+Merge: 91cee6f a07f701
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2012-01-04
+
+    Merge branch 'master' of github.com:mptrsen/Forage
+    
+    Conflicts:
+    	Forage/.Unthreaded.pm.swp
+    	Forage/Unthreaded.pm
+    	README
+    	forage.pl
+
+commit 91cee6f707364d62ef0a525d94afe5ea49e6861a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-12-21
+
+    Commit so I can pull
+
+commit a07f701a45cd85c003e75f258d4a96c5be684fca
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-12-20
+
+    Object-oriented everything
+
+commit 753c46f7a18a90cf511faf515ff8e899bb404616
+Author: Malte Petersen <mpetersen@mpetersen.(none)>
+Date:   2011-11-15
+
+    Added Forage dir
+
+commit cd3475a98a9159d89bc77c57af096e0b089a6e44
+Author: Malte Petersen <mpetersen@mpetersen.(none)>
+Date:   2011-11-15
+
+    Finished hmmsearch section... more or less :)
+
+commit 81e327fcae369482d10c72c661b81168fb51651e
+Author: Malte Petersen <mpetersen@mpetersen.(none)>
+Date:   2011-11-11
+
+    Added portability code, should be platform-independent now
+
+commit ef1ac7e37ab535f98b63da1a006d0618ce440d47
+Author: Malte Petersen <mpetersen@mpetersen.(none)>
+Date:   2011-11-10
+
+    Updated README, added option for multithreading (to be implemented)
+
+commit 02984e989db2190680e30116b30f0ef8d8a5549c
+Author: Malte Petersen <mpetersen@mpetersen.(none)>
+Date:   2011-11-08
+
+    Started to use Path::Class from CPAN
+
+commit 8ca5d7e435cdba49c83534bb1d5a4570126b6f91
+Author: Malte Petersen <mpetersen@mpetersen.(none)>
+Date:   2011-11-08
+
+    Removed BioPerl completely
+
+commit 39bfc7196ee8f25124a657347bebcc61203608b9
+Author: Malte Petersen <mpetersen@mpetersen.(none)>
+Date:   2011-11-08
+
+    ZFMK more precise
+
+commit 54e91b5ffed9c7f322fe52facee718f772936970
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-11-07
+
+    Added Forage::Item
+
+commit 95195395ee85a30e8aef25d8c22596e3020791c6
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-10-28
+
+    Added more verbosity
+
+commit e6c6f239ea0238da410de4519c0e34a0100f4fbe
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-10-26
+
+    Blah.
+
+commit cc46ee620458d7205de2bec5f181f2be10e12a7b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-10-02
+
+    Core structure, hmmsearch works now
+
+commit 1c294b72b934e2884fe508ec7ef6047340e2c63a
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-09-08
+
+    Added GPL license
+
+commit 5d6f86f06c5ae6ca38d866097e38011515fea423
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-09-08
+
+    Improved translate sub
+
+commit 457cba397650242f1e9784b1a187a0691dc77b1f
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-09-08
+
+    Rudimentary translate sub using Bio::SeqUtils
+
+commit ebd345ac291bbc9da70992b4c64f21f8e2473fc4
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-09-08
+
+    Option handling initiated
+
+commit 64138b65ad46f01851df0e7c325325610e11e955
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-08-31
+
+    Put project name/description+contact in README
+
+commit d0f259dd11e5bd4803cd3da23445be5c4dd83c41
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2011-08-31
+
+    started repo

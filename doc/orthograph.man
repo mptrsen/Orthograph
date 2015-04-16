@@ -165,12 +165,6 @@ when concatenating transcripts, fill the gap in amino acid sequences with 'X' ch
 Affects only orthograph-reporter.
 
 .TP
-\fB--hamstr-compatible-output\fP
-produce output in a HaMStR compatible format so that other scripts can parse it.
-
-Affects only orthograph-reporter.
-
-.TP
 \fB--genetic-code\fP X
 specify an alternative genetic code. The default (1) is the standard genetic code. See \fIhttp://dev.man-online.org/man1/exonerate/\fP and look for \fBTRANSLATION OPTIONS\fP for a complete list of supported codes. 
 
