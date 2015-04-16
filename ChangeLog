@@ -1,8 +1,14 @@
-commit 98a2aeedb473a9016cc4907e9b947f609cf11ceb
+commit c3dde4642e06239c18f97f6186a5fc242ab222d1
 Author: Malte Petersen <mptrsen@uni-bonn.de>
 Date:   2015-04-16
 
-    Introduced ChangeLog consisting of git log
+    Merged ChangeLog
+
+commit e3af2673bc9b218909c375167f100a1938d1a14b
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-16
+
+    merged changelog
 
 commit 9a3d5f1d0d04773faf2f66085b205ab0bd96a7e5
 Author: Malte Petersen <mptrsen@uni-bonn.de>
