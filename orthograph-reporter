@@ -88,7 +88,6 @@ my $ntoutdir                   = File::Spec->catdir($outdir, $config->{'ntoutdir
 my $logdir                     = File::Spec->catdir($outdir, 'log');
 my $logfile                    = $config->{'logfile'};
 my $clear_old_output_files     = $config->{'clear-files'};
-my $hamstr_compatible          = $config->{'hamstr-compatible-output'};
 my $debug                      = $config->{'debug'};
 my $quiet                      = $config->{'quiet'};
 my $concat_sep                 = $config->{'concatenation-header-separator'};
@@ -708,21 +707,11 @@ sub format_header {
 	my $taxon    = shift;
 	my $header   = shift;
 
-	if ($hamstr_compatible) {
-		return join '|',
-			$orthoid,  # cog id
-			$reftaxon, # reftaxon name
-			$header    # header
-		;
-	}
-
-	else {
-		return join $sep,
-			$orthoid,  # cog id
-			$taxon,    # this taxon name
-			$header,   # the rest of the header
-		;
-	}
+	return join $sep,
+		$orthoid,  # cog id
+		$taxon,    # this taxon name
+		$header,   # the rest of the header
+	;
 
 }
 
@@ -736,32 +725,27 @@ sub join_transcript_headers {
 	foreach my $hit (@$hits) {
 		next unless defined $hit->{'orf_aa_sequence'};
 		($this_hdr, $rf) = get_rf($hit->{'header'});
-		if ($hamstr_compatible) {
-			push @hdrs, sprintf '%s-%d', $this_hdr, length $hit->{'orf_aa_sequence'};
+		# amino acid sequences have reading frame info
+		if ($type eq 'aa') {
+			push @hdrs, 
+				format_transcript_header(
+					$this_hdr,
+					defined $hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start'},
+					defined $hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end'},
+					$rf,
+					$hit->{'reftaxon'},
+				);
 		}
+		# nucleotide sequences do not
 		else {
-			# amino acid sequences have reading frame info
-			if ($type eq 'aa') {
-				push @hdrs, 
-					format_transcript_header(
-						$this_hdr,
-						defined $hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start'},
-						defined $hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end'},
-						$rf,
-						$hit->{'reftaxon'},
-					);
-			}
-			# nucleotide sequences do not
-			else {
-				push @hdrs, 
-					format_transcript_header(
-						$this_hdr,
-						defined $hit->{'extended_orf_cdna_start'} ? $hit->{'extended_orf_cdna_start'} : $hit->{'orf_cdna_start_on_transcript'},
-						defined $hit->{'extended_orf_cdna_end'} ? $hit->{'extended_orf_cdna_end'} : $hit->{'orf_cdna_end_on_transcript'},
-						'.',
-						$hit->{'reftaxon'},
-					);
-			}
+			push @hdrs, 
+				format_transcript_header(
+					$this_hdr,
+					defined $hit->{'extended_orf_cdna_start'} ? $hit->{'extended_orf_cdna_start'} : $hit->{'orf_cdna_start_on_transcript'},
+					defined $hit->{'extended_orf_cdna_end'} ? $hit->{'extended_orf_cdna_end'} : $hit->{'orf_cdna_end_on_transcript'},
+					'.',
+					$hit->{'reftaxon'},
+				);
 		}
 	}
 	return join $concat_sep, @hdrs;

@@ -61,7 +61,6 @@ GetOptions( $config,
 	'extend-orf',
 	'fill-with-x',
 	'genetic-code=i',
-	'hamstr-compatible-output',
 	'header-separator=s',
 	'help|h',
 	'hmmsearch-evalue-threshold=f',
@@ -180,7 +179,6 @@ $config->{'extend-orf'}                 //= 0;
 $config->{'exonerate-program'}          //= 'exonerate';
 $config->{'fill-with-x'}                //= 1;
 $config->{'genetic-code'}               //= 1;
-$config->{'hamstr-compatible-output'}   //= 0;
 $config->{'header-separator'}           //= '|';
 $config->{'help'}                       //= 0;
 $config->{'hmmbuild-program'}           //= 'hmmbuild';
