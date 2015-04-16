@@ -1,3 +1,15 @@
+commit 98a2aeedb473a9016cc4907e9b947f609cf11ceb
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-16
+
+    Introduced ChangeLog consisting of git log
+
+commit 9a3d5f1d0d04773faf2f66085b205ab0bd96a7e5
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-16
+
+    Removed hamstr-compatible-output option.
+
 commit 87980d76434c06b6a2ec5d21dc16cc4c5895ed42
 Author: Malte Petersen <mptrsen@uni-bonn.de>
 Date:   2015-04-16
