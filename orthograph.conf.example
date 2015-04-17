@@ -217,7 +217,7 @@ exonerate-program    = exonerate
 # but doesn't hurt otherwise. 
 # This affects only orthograph-analyzer.
 # This behaviour is the default, uncomment this line if you want to turn it off.
-#clear-results-from-database  = 0
+#clear-database  = 0
 
 # Delete old result files. This means the HMMsearch and BLAST report files found
 # in the output directory. If you plan to run the same analysis multiple times
@@ -226,7 +226,7 @@ exonerate-program    = exonerate
 # to be run again.
 # This affects both orthograph-analyzer and orthograph-reporter.
 # Uncomment this line if you want the files deleted.
-#clear-result-files = 1
+#clear-files = 1
 
 # Selenocysteine (U) may occur in some protein sequences. However, some
 # alignment programs do not accept this nonstandard amino acid symbol. You can
@@ -272,8 +272,8 @@ exonerate-program    = exonerate
 # orthograph-analyzer is called orthograph-analyzer-TIMESTAMP.log, and the log
 # file for orthograph-reporter is called orthograph-reporter-TIMESTAMP.log. The
 # TIMESTAMP is generated in YYYY-MM-DD_HH:MM format.
+# This affects both orthograph-analyzer and orthograph-reporter.
 # Note that if you do set a path here, both programs write to the same file,
 # meaning that orthograph-reporter will overwrite the log file of
 # orthograph-analyzer. It is much more convenient to leave this unset.
-# This affects both orthograph-analyzer and orthograph-reporter.
 #logfile = /PATH/TO/LOGFILE

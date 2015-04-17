@@ -1,4 +1,10 @@
-commit be57401557fd1d3a8ea619c3d11010f64cc1e3ad
+commit 6e46f8110ded50f84242f61a3c61c28c747b07f8
+Author: Malte Petersen <mptrsen@uni-bonn.de>
+Date:   2015-04-17
+
+    Fixed: Amended changes in example config
+
+commit e54238043e79154877a6ee4318a9f4a4a6285756
 Author: Malte Petersen <mptrsen@uni-bonn.de>
 Date:   2015-04-16
 
