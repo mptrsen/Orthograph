@@ -45,10 +45,12 @@ while (my $f = readdir($aadh)) {
 
 	# skip everything but aa fasta files
 	next unless $f =~ /\.fa$/;
-	(my $basename = $f) =~ s/\.aa\.fa$//;
+	(my $basename = $f) =~ s/\.aa(\.summarized)?(\.mafft)?\.fa$//;
+
+	print "$basename\n"; exit;
 
 	# the corresponding nt file must exist
-	if (!-e catfile($ntind, "$basename.nt.fa")) {
+	if (!-e catfile($ntind, "$basename.nt$1$2.fa")) {
 		warn "Warning: $basename does not exist in $ntind, skipping...\n";
 		next;
 	}

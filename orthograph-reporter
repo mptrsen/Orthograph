@@ -535,6 +535,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
 							if $verbose;
 					++$transcripts_skipped;
+					print Dumper $hit; exit;
 					next HIT;
 				}
 				# the overlap is sufficient, this is ok
@@ -1015,7 +1016,7 @@ sub get_orf {
 		$alignment->cdna_start(),
 		$alignment->cdna_end(),
 		$alignment->aa_start(),
-		$alignment->aa_end()
+		$alignment->aa_end(),
 	);
 }
 
@@ -1025,6 +1026,15 @@ sub orf_overlaps_hmm {
 	my $orf_overlap = 0;
 	my $orf_length = abs( $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'} );
 	my $ali_length = abs( $cand->{'ali_end'} - $cand->{'ali_start'} );
+	my $overlap_length = get_overlap_length($cand);
+	if ($debug) {
+		printf "DEBUG: \n";
+	}
+	return $overlap_length / $orf_length;
+}
+
+sub get_overlap_length {
+	my $cand = shift;
 	# orf starts before alignment end, ends after alignment start -> overlaps alignment
 	if ($cand->{'orf_aa_start'} < $cand->{'ali_end'} and $cand->{'orf_aa_end'} > $cand->{'ali_start'}) {
 		# take the innermost start coordinate
@@ -1032,7 +1042,7 @@ sub orf_overlaps_hmm {
 		# take the innermost end coordinate
 		my $overlap_end = $cand->{'orf_aa_end'} < $cand->{'ali_end'} ? $cand->{'orf_aa_end'} : $cand->{'ali_end'};
 		my $overlap_length = $overlap_end - $overlap_start;
-		return $overlap_length / $ali_length;
+		return $overlap_length;
 	}
 	else {
 		return 0;
