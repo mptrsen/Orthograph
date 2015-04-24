@@ -508,12 +508,16 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				# calculate orf coordinates with respect to transcript
 				$hit->{'orf_cdna_start_on_transcript'} = $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 3;
 				$hit->{'orf_cdna_end_on_transcript'}   = $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 3;
-				printf $stdout "Got an ORF for '%s'[%d-%d aa] (ORF coords %d-%d nt)\n",
+				$hit->{'orf_aa_start_on_transcript'} = ( $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 3 ) / 3;
+				$hit->{'orf_aa_end_on_transcript'}   = ( $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 3 ) / 3;
+				printf $stdout "Got an ORF for '%s'[%d-%d aa] (ORF coords %d-%d nt, %d-%d aa)\n",
 					$hit->{'header'},
 					$hit->{'ali_start'},
 					$hit->{'ali_end'},
 					$hit->{'orf_cdna_start_on_transcript'},
-					$hit->{'orf_cdna_end_on_transcript'}
+					$hit->{'orf_cdna_end_on_transcript'},
+					$hit->{'orf_aa_start_on_transcript'},
+					$hit->{'orf_aa_end_on_transcript'}
 						if $verbose;
 				if ($debug > 1) {
 					print $hit->{'orf_cdna_sequence'}, "\n";
@@ -526,9 +530,11 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 				# this is too little
 				if ($orf_overlap < $orf_overlap_minimum) {
-					printf $stdout "ORF (%d-%d nt) overlaps only %.2f %% of the HMM alignment region (%d-%d, length %d aa), discarding this transcript\n", 
+					printf $stdout "ORF (%d-%d nt, %d-%d aa) overlaps only %.2f %% of the HMM alignment region (%d-%d, length %d aa), discarding this transcript\n", 
 						$hit->{'orf_cdna_start_on_transcript'},
 						$hit->{'orf_cdna_end_on_transcript'},
+						$hit->{'orf_aa_start_on_transcript'},
+						$hit->{'orf_aa_end_on_transcript'},
 						$orf_overlap * 100,
 						$hit->{'ali_start'},
 						$hit->{'ali_end'},
@@ -1027,20 +1033,17 @@ sub orf_overlaps_hmm {
 	my $orf_length = abs( $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'} );
 	my $ali_length = abs( $cand->{'ali_end'} - $cand->{'ali_start'} );
 	my $overlap_length = get_overlap_length($cand);
-	if ($debug) {
-		printf "DEBUG: \n";
-	}
 	return $overlap_length / $orf_length;
 }
 
 sub get_overlap_length {
 	my $cand = shift;
 	# orf starts before alignment end, ends after alignment start -> overlaps alignment
-	if ($cand->{'orf_aa_start'} < $cand->{'ali_end'} and $cand->{'orf_aa_end'} > $cand->{'ali_start'}) {
+	if (( $cand->{'orf_cdna_start_on_transcript'} * 3 ) < $cand->{'ali_end'} and ( $cand->{'orf_cdna_end_on_transcript'} * 3 ) > $cand->{'ali_start'}) {
 		# take the innermost start coordinate
-		my $overlap_start = $cand->{'orf_aa_start'} < $cand->{'ali_start'} ? $cand->{'orf_aa_start'} : $cand->{'ali_start'};
+		my $overlap_start = ( $cand->{'orf_cdna_start_on_transcript'} * 3 ) < $cand->{'ali_start'} ? ( $cand->{'orf_cdna_start_on_transcript'} * 3 ) : $cand->{'ali_start'};
 		# take the innermost end coordinate
-		my $overlap_end = $cand->{'orf_aa_end'} < $cand->{'ali_end'} ? $cand->{'orf_aa_end'} : $cand->{'ali_end'};
+		my $overlap_end = ( $cand->{'orf_cdna_end_on_transcript'} * 3 ) < $cand->{'ali_end'} ? ( $cand->{'orf_cdna_end_on_transcript'} * 3 ) : $cand->{'ali_end'};
 		my $overlap_length = $overlap_end - $overlap_start;
 		return $overlap_length;
 	}
