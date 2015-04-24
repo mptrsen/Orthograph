@@ -1039,11 +1039,11 @@ sub orf_overlaps_hmm {
 sub get_overlap_length {
 	my $cand = shift;
 	# orf starts before alignment end, ends after alignment start -> overlaps alignment
-	if (( $cand->{'orf_cdna_start_on_transcript'} * 3 ) < $cand->{'ali_end'} and ( $cand->{'orf_cdna_end_on_transcript'} * 3 ) > $cand->{'ali_start'}) {
+	if ( $cand->{'orf_aa_start_on_transcript'} < $cand->{'ali_end'} and $cand->{'orf_aa_end_on_transcript'} > $cand->{'ali_start'} ) {
 		# take the innermost start coordinate
-		my $overlap_start = ( $cand->{'orf_cdna_start_on_transcript'} * 3 ) < $cand->{'ali_start'} ? ( $cand->{'orf_cdna_start_on_transcript'} * 3 ) : $cand->{'ali_start'};
+		my $overlap_start = $cand->{'orf_aa_start_on_transcript'} < $cand->{'ali_start'} ? $cand->{'orf_aa_start_on_transcript'} : $cand->{'ali_start'};
 		# take the innermost end coordinate
-		my $overlap_end = ( $cand->{'orf_cdna_end_on_transcript'} * 3 ) < $cand->{'ali_end'} ? ( $cand->{'orf_cdna_end_on_transcript'} * 3 ) : $cand->{'ali_end'};
+		my $overlap_end = $cand->{'orf_aa_end_on_transcript'} < $cand->{'ali_end'} ? $cand->{'orf_aa_end_on_transcript'} : $cand->{'ali_end'};
 		my $overlap_length = $overlap_end - $overlap_start;
 		return $overlap_length;
 	}
