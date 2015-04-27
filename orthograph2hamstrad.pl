@@ -47,17 +47,20 @@ while (my $f = readdir($aadh)) {
 	next unless $f =~ /\.fa$/;
 	(my $basename = $f) =~ s/\.aa(\.summarized)?(\.mafft)?\.fa$//;
 
-	print "$basename\n"; exit;
+	#print "$basename\n"; exit;
+	
+	my $aafile = catfile($aaind, $f);
+	my $ntfile = catfile($ntind, $basename . '.nt' . $1 . $2 . '.fa');
 
 	# the corresponding nt file must exist
-	if (!-e catfile($ntind, "$basename.nt$1$2.fa")) {
-		warn "Warning: $basename does not exist in $ntind, skipping...\n";
+	if (!-e catfile($ntfile)) {
+		warn "Warning: $ntfile does not exist, skipping...\n";
 		next;
 	}
 
 	# read them both in
-	my $aadata = fasta2arrayref(catfile($aaind, $basename . '.aa.fa'));
-	my $ntdata = fasta2arrayref(catfile($ntind, $basename . '.nt.fa'));
+	my $aadata = fasta2arrayref($aafile);
+	my $ntdata = fasta2arrayref($ntfile);
 	
 	# open output files
 	open my $ntofh, '>', catfile($ntod, $basename . '.nt.fa');
@@ -154,14 +157,14 @@ sub magic_hamstr_format {
 			$first_sector[-1],                     # reftaxon
 			$first_sector[1],                      # taxon
 			$first_sector[2],                      # seq id
-			abs( eval(  $first_sector[3] ) ) + 1,  # length
+			$first_sector[3] ne '.' ? abs( eval(  $first_sector[3] ) ) + 1 : 0,  # length
 		;
 		if (scalar @sectors > 1) {
 			for (my $i = 1; $i < scalar @sectors; ++$i) {
 				my @sectorfields = split /\|/, $sectors[$i];
 				$hamstr_hdr .= sprintf "PP%s-%d",
 					$sectorfields[0],                     # seq id
-					abs( eval(  $sectorfields[1] ) ) + 1, # length
+					$sectorfields[1] ne '.' ? abs( eval(  $sectorfields[1] ) ) + 1 : 0, # length
 				;
 			}
 		}

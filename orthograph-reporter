@@ -577,7 +577,6 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					if ($hit->{'extended_orf_cdna_start'} > $hit->{'orf_cdna_start_on_transcript'} or $hit->{'extended_orf_cdna_end'} < $hit->{'orf_cdna_end_on_transcript'}) {
 						printf $stdout "Extended ORF (%d-%d) outside of original ORF, using original ORF\n" if $verbose;
 						remove_extended_orf($hit);
-						next HIT;
 					}
 				}
 
@@ -595,8 +594,8 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					if ($verbose) {
 						printf $stdout "Added '%s' (%d-%d aa) to %s\n",
 							$hit->{'header'},
-							$hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start'},
-							$hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end'},
+							$hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript'},
+							$hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript'},
 							$orthoid,
 						;
 					}
@@ -737,8 +736,8 @@ sub join_transcript_headers {
 			push @hdrs, 
 				format_transcript_header(
 					$this_hdr,
-					defined $hit->{'extended_orf_aa_start'} ? $hit->{'extended_orf_aa_start'} : $hit->{'orf_aa_start'},
-					defined $hit->{'extended_orf_aa_end'} ? $hit->{'extended_orf_aa_end'} : $hit->{'orf_aa_end'},
+					defined $hit->{'extended_orf_aa_start_on_transcript'} ? $hit->{'extended_orf_aa_start_on_transcript'} : $hit->{'orf_aa_start_on_transcript'},
+					defined $hit->{'extended_orf_aa_end_on_transcript'} ? $hit->{'extended_orf_aa_end_on_transcript'} : $hit->{'orf_aa_end_on_transcript'},
 					$rf,
 					$hit->{'reftaxon'},
 				);
@@ -748,8 +747,8 @@ sub join_transcript_headers {
 			push @hdrs, 
 				format_transcript_header(
 					$this_hdr,
-					defined $hit->{'extended_orf_cdna_start'} ? $hit->{'extended_orf_cdna_start'} : $hit->{'orf_cdna_start_on_transcript'},
-					defined $hit->{'extended_orf_cdna_end'} ? $hit->{'extended_orf_cdna_end'} : $hit->{'orf_cdna_end_on_transcript'},
+					defined $hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript_on_transcript'},
+					defined $hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript_on_transcript'},
 					'.',
 					$hit->{'reftaxon'},
 				);
