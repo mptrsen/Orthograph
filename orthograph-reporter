@@ -522,39 +522,43 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				if ($debug > 1) {
 					print $hit->{'orf_cdna_sequence'}, "\n";
 				}
-
-				# check whether the overlap to the hmm alignment is sufficient
-				# the area where the orf overlaps the hmm alignment must cover
-				# at least $orf_overlap_minimum percent of the hmm alignment
-				my $orf_overlap = orf_overlaps_hmm($hit);
-
-				# this is too little
-				if ($orf_overlap < $orf_overlap_minimum) {
-					printf $stdout "ORF (%d-%d nt, %d-%d aa) overlaps only %.2f %% of the HMM alignment region (%d-%d, length %d aa), discarding this transcript\n", 
-						$hit->{'orf_cdna_start_on_transcript'},
-						$hit->{'orf_cdna_end_on_transcript'},
-						$hit->{'orf_aa_start_on_transcript'},
-						$hit->{'orf_aa_end_on_transcript'},
-						$orf_overlap * 100,
-						$hit->{'ali_start'},
-						$hit->{'ali_end'},
-						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
-							if $verbose;
-					++$transcripts_skipped;
-					print Dumper $hit; exit;
-					next HIT;
-				}
-				# the overlap is sufficient, this is ok
-				else {
-					printf $stdout "ORF (%d-%d nt) overlaps %.2f %% of the HMM alignment region (%d-%d, %d aa)\n",
-						$hit->{'orf_cdna_start_on_transcript'},
-						$hit->{'orf_cdna_end_on_transcript'},
-						$orf_overlap * 100,
-						$hit->{'ali_start'},
-						$hit->{'ali_end'},
-						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
-							if $verbose;
-
+#--------------------------------------------------
+# 
+# 				# check whether the overlap to the hmm alignment is sufficient
+# 				# the area where the orf overlaps the hmm alignment must cover
+# 				# at least $orf_overlap_minimum percent of the hmm alignment
+# 				my $orf_overlap = orf_overlap($hit);
+# 
+# 				# this is too little
+# 				if ($orf_overlap < $orf_overlap_minimum) {
+# 					printf $stdout "ORF (%d-%d nt, %d-%d aa) overlaps only %.2f %% of the HMM alignment region (%d-%d, length %d aa), discarding this transcript\n", 
+# 						$hit->{'orf_cdna_start_on_transcript'},
+# 						$hit->{'orf_cdna_end_on_transcript'},
+# 						$hit->{'orf_aa_start_on_transcript'},
+# 						$hit->{'orf_aa_end_on_transcript'},
+# 						$orf_overlap * 100,
+# 						$hit->{'ali_start'},
+# 						$hit->{'ali_end'},
+# 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
+# 							if $verbose;
+# 					++$transcripts_skipped;
+# 					print Dumper $hit; exit;
+# 					next HIT;
+# 				}
+# 				# the overlap is sufficient, this is ok
+# 				else {
+# 					printf $stdout "ORF (%d-%d nt, %d-%d aa) overlaps %.2f %% of the HMM alignment region (%d-%d, %d aa)\n",
+# 						$hit->{'orf_cdna_start_on_transcript'},
+# 						$hit->{'orf_cdna_end_on_transcript'},
+# 						$hit->{'orf_aa_start_on_transcript'},
+# 						$hit->{'orf_aa_end_on_transcript'},
+# 						$orf_overlap * 100,
+# 						$hit->{'ali_start'},
+# 						$hit->{'ali_end'},
+# 						$hit->{'ali_end'} - $hit->{'ali_start'} + 1,
+# 							if $verbose;
+# 
+#-------------------------------------------------- 
 				# check whether this ORF overlaps with any previous hits
 				if (overlaps_previous_hit($output_sequences, $hit)) {
 					if ($verbose) {
@@ -567,7 +571,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 
 				if ($extend_orf) {
 					# get the orf a second time, using the full transcript sequence.
-					# this alignment must include 100% of the previous one.
+					# this alignment must cover part of the orthologous region.
 					( $hit->{'extended_orf_aa_sequence'},
 					$hit->{'extended_orf_cdna_sequence'},
 					$hit->{'extended_orf_cdna_start'},
@@ -592,7 +596,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 					# ok, this can be added to the output sequences
 					push @$output_sequences, $hit;
 					if ($verbose) {
-						printf $stdout "Added '%s' (%d-%d aa) to %s\n",
+						printf $stdout "Added '%s' (%d-%d nt) to %s\n",
 							$hit->{'header'},
 							$hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript'},
 							$hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript'},
@@ -610,7 +614,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						$reftaxon_score = $hit->{'blast_score'};
 					}
 				}
-			}
+			#}
 		}
 	}
 
@@ -747,8 +751,8 @@ sub join_transcript_headers {
 			push @hdrs, 
 				format_transcript_header(
 					$this_hdr,
-					defined $hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript_on_transcript'},
-					defined $hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript_on_transcript'},
+					defined $hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript'},
+					defined $hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript'},
 					'.',
 					$hit->{'reftaxon'},
 				);
@@ -1026,7 +1030,7 @@ sub get_orf {
 }
 
 # determines whether the ORF overlaps with the HMM alignment by a certain percentage. 
-sub orf_overlaps_hmm {
+sub orf_overlap {
 	my $cand = shift;
 	my $orf_overlap = 0;
 	my $orf_length = abs( $cand->{'orf_aa_end'} - $cand->{'orf_aa_start'} );
@@ -1038,9 +1042,9 @@ sub orf_overlaps_hmm {
 sub get_overlap_length {
 	my $cand = shift;
 	# orf starts before alignment end, ends after alignment start -> overlaps alignment
-	if ( $cand->{'orf_aa_start_on_transcript'} < $cand->{'ali_end'} and $cand->{'orf_aa_end_on_transcript'} > $cand->{'ali_start'} ) {
+	if ( $cand->{'orf_aa_start_on_transcript'} <= $cand->{'ali_end'} and $cand->{'orf_aa_end_on_transcript'} >= $cand->{'ali_start'} ) {
 		# take the innermost start coordinate
-		my $overlap_start = $cand->{'orf_aa_start_on_transcript'} < $cand->{'ali_start'} ? $cand->{'orf_aa_start_on_transcript'} : $cand->{'ali_start'};
+		my $overlap_start = $cand->{'orf_aa_start_on_transcript'} > $cand->{'ali_start'} ? $cand->{'orf_aa_start_on_transcript'} : $cand->{'ali_start'};
 		# take the innermost end coordinate
 		my $overlap_end = $cand->{'orf_aa_end_on_transcript'} < $cand->{'ali_end'} ? $cand->{'orf_aa_end_on_transcript'} : $cand->{'ali_end'};
 		my $overlap_length = $overlap_end - $overlap_start;
