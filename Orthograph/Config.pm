@@ -59,6 +59,7 @@ GetOptions( $config,
 	'delete-set=s',
 	'destroy!',
 	'extend-orf',
+	'extended-orf-overlap-minimum',
 	'fill-with-x',
 	'genetic-code=i',
 	'header-separator=s',
@@ -176,6 +177,7 @@ $config->{'delete-ogs'}                 //= '';
 $config->{'delete-set'}                 //= '';
 $config->{'destroy'}                    //= 0;
 $config->{'extend-orf'}                 //= 0;
+$config->{'extended-orf-overlap-minimum'} //= 0.5;
 $config->{'exonerate-program'}          //= 'exonerate';
 $config->{'fill-with-x'}                //= 1;
 $config->{'genetic-code'}               //= 1;

@@ -325,14 +325,14 @@ sub parse_result {
 	($header, $self->{'cdna_sequence'}) = $fh->next_seq();
 	# get the cdna coordinates 
 	my @fields = split ' ', $header;
-	$self->{'cdna_start'} = $fields[1];
-	$self->{'cdna_end'}   = $fields[2];
+	$self->{'cdna_start'} = $fields[-2];
+	$self->{'cdna_end'}   = $fields[-1];
 	# get the aa sequence
 	($header, $self->{'aa_sequence'})   = $fh->next_seq();
 	# get the aa coordinates
 	@fields = split ' ', $header;
-	$self->{'aa_start'} = $fields[1];
-	$self->{'aa_end'}   = $fields[2];
+	$self->{'aa_start'} = $fields[-2];
+	$self->{'aa_end'}   = $fields[-1];
 	undef $fh;
 }
 
