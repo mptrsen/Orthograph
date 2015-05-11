@@ -112,7 +112,7 @@ my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
 my $species_name               = $config->{'species-name'};
 my $strict_search              = $config->{'strict-search'};
-my $no_frameshift_correction   = $config->{'no-frameshift-correction'};
+my $frameshift_correction      = $config->{'frameshift-correction'};
 my $max_reciprocal_mismatches  = $config->{'max-reciprocal-mismatches'};
 
 # make a nice time string
@@ -469,7 +469,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		my $est_sequence_hmm_region = crop_to_hmm($est_sequence_complete, $est_header, $hit);
 
 		# if you don't want me to correct for frameshift errors or extend the orf...
-		if ($no_frameshift_correction) {
+		unless ($frameshift_correction) {
 			( $hit->{'orf_aa_sequence'},
 				$hit->{'orf_cdna_sequence'},
 				$hit->{'orf_cdna_start'},
@@ -583,26 +583,16 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						remove_extended_orf($hit);
 					}
 
-				# check whether the extended ORF overlaps with any previous hits
-				if (overlaps_previous_hit($output_sequences, $hit)) {
+					# check whether the extended ORF overlaps with any previous hits
+					if (overlaps_previous_hit($output_sequences, $hit)) {
 						printf $stdout "Extended ORF (%d-%d nt, %d-%d aa) overlaps with previous ORF, using original ORF\n",
 							$hit->{'extended_orf_cdna_start'},
 							$hit->{'extended_orf_cdna_end'},
 							$hit->{'extended_orf_aa_start'},
 							$hit->{'extended_orf_aa_end'},
-				}
-
-					# ok, this can be added to the output sequences
-					push @$output_sequences, $hit;
-					if ($verbose) {
-						printf $stdout "Added '%s' (%d-%d nt) to %s\n",
-							$hit->{'header'},
-							$hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript'},
-							$hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript'},
-							$orthoid,
 						;
+						remove_extended_orf($hit);
 					}
-
 					# assign (new) reference taxon if blast score higher
 					if (not defined $reftaxon) { 
 						$reftaxon       = $hit->{'reftaxon'};
@@ -612,6 +602,17 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 						$reftaxon       = $hit->{'reftaxon'};
 						$reftaxon_score = $hit->{'blast_score'};
 					}
+				}
+
+				# ok, this can be added to the output sequences
+				push @$output_sequences, $hit;
+				if ($verbose) {
+					printf $stdout "Added '%s' (%d-%d nt) to %s\n",
+						$hit->{'header'},
+						$hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript'},
+						$hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript'},
+						$orthoid,
+					;
 				}
 			}
 		}

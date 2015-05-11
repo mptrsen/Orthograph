@@ -58,7 +58,7 @@ GetOptions( $config,
 	'delete-ogs=s',
 	'delete-set=s',
 	'destroy!',
-	'extend-orf',
+	'extend-orf!',
 	'extended-orf-overlap-minimum',
 	'fill-with-x',
 	'genetic-code=i',
@@ -83,7 +83,7 @@ GetOptions( $config,
 	'mysql-password=s',
 	'mysql-server=s',
 	'mysql-username=s',
-	'no-frameshift-correction',
+	'frameshift-correction!',
 	'num-threads=i',
 	'ogs-taxon-name=s',
 	'ogs-version=s',
@@ -196,7 +196,7 @@ $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
 $config->{'max-reciprocal-mismatches'}  //= 0;
 $config->{'minimum-transcript-length'}  //= 30;
-$config->{'no-frameshift-correction'}   //= 0;
+$config->{'frameshift-correction'}      //= 1;
 $config->{'ntoutdir'}                   //= 'nt';
 $config->{'num-threads'}                //= 1;
 $config->{'ogs-taxon-name'}             //= '';

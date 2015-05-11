@@ -176,13 +176,13 @@ exonerate-program    = exonerate
 # Defaults to 30 (a common domain length).
 #minimum-transcript-length = 30
 
-# Suppress frameshift error correction using Exonerate. Exonerate is used to
+# Frameshift error correction using Exonerate. Exonerate is used to
 # obtain a 100% corresponding nucleotide sequence for your predicted
 # orthologous transcripts, but this may lead to lost transcripts where no
-# matching alignment could be obtained.
+# ORF could be obtained.
 # This affects only orthograph-reporter.
 # Using Exonerate is the default behaviour; uncomment this line to turn it off.
-#no-frameshift-correction = 0
+#frameshift-correction = 0
 
 # Minimum ORF overlap. If enabled, each transcript is given to Exonerate to
 # correct for frameshift errors etc. The resulting ORF must overlap the HMM
