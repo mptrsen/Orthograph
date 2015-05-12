@@ -178,15 +178,6 @@ my $stderr = IO::Tee->new(
 print $stdout $message;
 undef $message;
 
-# report configuration
-if ($verbose) {
-	print $stdout "Using the following configuration settings:\n";
-	foreach (sort keys %$config) {
-		printf $stdout "%s = %s\n", $_, $config->{$_} if defined $config->{$_};
-	}
-	print $stdout "\n";
-}
-
 # test whether programs exist where specified
 Orthograph::Functions::program_exists($exonerate_program) or print $stderr "Fatal: Exonerate not executable at '$exonerate_program'. Verify path and/or permissions\n" and exit(1);
 Orthograph::Functions::program_exists($translate_program) or print $stderr "Fatal: Fastatranslate not executable at '$translate_program'. Verify path and/or permissions\n" and exit(1);
@@ -680,7 +671,7 @@ undef $tfh;
 # yay
 $endtime = scalar time;
 printf $stdout "## Orthograph report for %s completed in %.2f total seconds\n", $species_name, $endtime - $starttime;
-printf $stdout "## Mapped putatively orthologous transcripts to %d clusters\n", $n_complete_orthoids unless $quiet;
+printf $stdout "## Mapped putatively orthologous transcripts to %d clusters\n", $n_complete_orthoids;
 exit;
 
 
@@ -1158,11 +1149,9 @@ sub overlaps_previous_hit {
 	}
 	# test whether the original orf overlaps with any extended ORFs
 	elsif ( coordinate_overlap($other_hits, $cand, 'orf_cdna_start_on_transcript', 'orf_cdna_end_on_transcript', 'extended_orf_cdna_start', 'extended_orf_cdna_end') ) {
-		printf $stdout "ORF (%d-%d nt) overlaps other extended ORF (%d-%d nt)\n",
+		printf $stdout "ORF (%d-%d nt) overlaps other extended ORF\n",
 			$cand->{'orf_cdna_start_on_transcript'}, 
 			$cand->{'orf_cdna_end_on_transcript'},
-			$cand->{'extended_orf_cdna_start'},
-			$cand->{'extended_orf_cdna_end'}
 		;
 		return 1;
 	}
@@ -1170,21 +1159,17 @@ sub overlaps_previous_hit {
 	if ($cand->{'extended_orf_cdna_start'}) {
 		# oops, got an overlap. remove the ORF extension and try again
 		if (coordinate_overlap($other_hits, $cand, 'extended_orf_cdna_start', 'extended_orf_cdna_end', 'extended_orf_cdna_start', 'extended_orf_cdna_end')) {
-			printf $stdout "Extended ORF (%d-%d nt) overlaps other extended ORF (%d-%d nt)\n",
+			printf $stdout "Extended ORF (%d-%d nt) overlaps other extended ORF\n",
 				$cand->{'extended_orf_cdna_start'}, 
 				$cand->{'extended_orf_cdna_end'},
-				$cand->{'extended_orf_cdna_start'},
-				$cand->{'extended_orf_cdna_end'}
 			;
 			remove_extended_orf($cand);
 		}
 		# even the original ORF overlaps with the other extended ORF: not ok
 		if (coordinate_overlap($other_hits, $cand, 'extended_orf_cdna_start', 'extended_orf_cdna_end', 'orf_cdna_start_on_transcript', 'orf_cdna_end_on_transcript')) {
-			printf $stdout "Extended ORF (%d-%d nt) overlaps other non-extended ORF (%d-%d nt)\n",
+			printf $stdout "Extended ORF (%d-%d nt) overlaps other non-extended ORF\n",
 				$cand->{'extended_orf_cdna_start'}, 
 				$cand->{'extended_orf_cdna_end'},
-				$cand->{'orf_cdna_start_on_transcript'},
-				$cand->{'orf_cdna_end_on_transcript'}
 			;
 			return 1;
 		}
@@ -1220,7 +1205,17 @@ sub coordinate_overlap {
 				$cand->{$q_start_name} > $hit->{$t_start_name}
 					and $cand->{$q_end_name} < $hit->{$t_end_name}
 				)
-			) { return 1 }
+			) {
+			if ($verbose) {
+				printf $stdout "Coordinates (%d-%d) overlap other coordinates (%d-%d)\n",
+					$cand->{$q_start_name},
+					$cand->{$q_end_name},
+					$cand->{$t_start_name},
+					$cand->{$t_end_name},
+				;
+			}
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -1247,12 +1242,14 @@ sub extended_orf_overlaps_previous_hit {
 				)
 			)
 		{
-			printf $stdout "extended ORF (%d-%d nt) overlaps other extended ORF (%d-%d nt)\n",
-				$cand->{'extended_orf_cdna_start'}, 
-				$cand->{'extended_orf_cdna_end'},
-				$hit->{'extended_orf_cdna_start'},
-				$hit->{'extended_orf_cdna_end'}
-			;
+			if ($verbose) {
+				printf $stdout "extended ORF (%d-%d nt) overlaps other extended ORF (%d-%d nt)\n",
+					$cand->{'extended_orf_cdna_start'}, 
+					$cand->{'extended_orf_cdna_end'},
+					$hit->{'extended_orf_cdna_start'},
+					$hit->{'extended_orf_cdna_end'}
+				;
+			}
 			return 1;
 		}
 	}
