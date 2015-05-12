@@ -474,8 +474,13 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				$hit->{'orf_cdna_sequence'},
 				$hit->{'orf_cdna_start'},
 				$hit->{'orf_cdna_end'},
+				$hit->{'orf_cdna_start_on_transcript'},
+				$hit->{'orf_cdna_end_on_transcript'},
 				$hit->{'orf_aa_start'},
-				$hit->{'orf_aa_end'} ) = hmm_to_orf($hit, $est_sequence_hmm_region, $proteome_sequence);
+				$hit->{'orf_aa_end'},
+				$hit->{'orf_aa_start_on_transcript'},
+				$hit->{'orf_aa_end_on_transcript'},
+			) = hmm_to_orf($hit, $est_sequence_hmm_region, $proteome_sequence);
 			# this can be added to the output sequences
 			push @$output_sequences, $hit;
 			next HIT;
@@ -1473,6 +1478,18 @@ sub get_nucleotide_transcript_for {
 	else { return($original_header, $nt_seq) }
 }
 
+sub get_transcript_for {
+	my $digest = shift;
+	my $sequence = '';
+	if ($use_mysql) {
+		$sequence = Wrapper::Mysql::get_transcript_for($digest);
+	}
+	elsif ($use_sqlite) {
+		$sequence = Wrapper::Sqlite::get_transcript_for($digest);
+	}
+	return $sequence;
+}
+
 sub reverse_complement {
 	my $seq = shift @_;
 	$seq =~ tr/AGCTYRKMWSagct/TCGARYMKWSTCGA/;
@@ -1568,8 +1585,33 @@ sub crop_to_hmm {
 }
 
 sub hmm_to_orf {
+	# turn a hmm alignment region into an orf (at least as far as
+	# orthograph is concerned)
 	my $h = shift;
+	my $cdna_sequence = shift;
+	my $reference_sequence = shift;
+	my $ali_start_on_aa = $h->{'ali_start'};
+	my $aa_seq = get_transcript_for($h->{'hmmhit'});
+	my $length = abs($h->{'ali_end'} - $h->{'ali_start'} + 1) * 3;
+	my $cdna_start = ( $h->{'ali_start'} - 1 ) * 3;
+	my $cdna_end = $cdna_start + $length;
 	return (
+		# aa sequence -> return hmm region 
+		# cdna sequence -> calculate nt coordinates of HMM alignment region on transcript
+		# cdna start -> ali start
+		# cdna end -> ali end
+		# aa start -> AA start
+		# aa end -> AA end
+		substr($aa_seq, $h->{'ali_start'} - 1, $h->{'ali_end'} - $h->{'ali_start'} + 1),
+		$cdna_sequence,
+		$cdna_start,
+		$cdna_end,
+		$cdna_start,
+		$cdna_end,
+		$h->{'ali_start'},
+		$h->{'ali_end'},
+		$h->{'ali_start'},
+		$h->{'ali_end'},
 	);
 }
 
