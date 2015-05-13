@@ -177,20 +177,12 @@ exonerate-program    = exonerate
 #minimum-transcript-length = 30
 
 # Frameshift error correction using Exonerate. Exonerate is used to
-# obtain a 100% corresponding nucleotide sequence for your predicted
-# orthologous transcripts, but this may lead to lost transcripts where no
-# ORF could be obtained.
+# infer ORFs and obtain a 100% corresponding nucleotide sequence for
+# your predicted orthologous transcripts, but this may lead to lost
+# transcripts where no ORF could be obtained.
 # This affects only orthograph-reporter.
 # Using Exonerate is the default behaviour; uncomment this line to turn it off.
 #frameshift-correction = 0
-
-# Minimum ORF overlap. If enabled, each transcript is given to Exonerate to
-# correct for frameshift errors etc. The resulting ORF must overlap the HMM
-# alignment region by this percentage. Note that the value must be specified as a
-# fraction of 1.
-# This affects only orthograph-reporter.
-# 0.5 (50%) is the default; lower values make this less conservative.
-#orf-overlap-minimum = 0.5
 
 # ORF extension. Try to extend the ORF while retaining the orthologous region.
 # This makes Exonerate run an additional time with the full transcript
@@ -198,6 +190,14 @@ exonerate-program    = exonerate
 # This affects only orthograph-reporter.
 # Defaults to 0 (off), uncomment this to turn it on.
 #extend-orf = 1
+
+# Minimum ORF overlap. If extend-overlap is enabled, Orthograph tries to
+# extend the ORF beyond HMM alignment coordinates. The resulting ORF
+# must overlap the HMM alignment region by this percentage. Note that
+# the value must be specified as a fraction of 1.
+# This affects only orthograph-reporter.
+# 0.5 (50%) is the default; lower values make this less conservative.
+#orf-overlap-minimum = 0.5
 
 # If you are only interested in a few genes from your ortholog set, you can 
 # provide Orthograph with a list of ortholog IDs in a file. The IDs must be
