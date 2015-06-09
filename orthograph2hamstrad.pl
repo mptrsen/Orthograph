@@ -50,7 +50,7 @@ while (my $f = readdir($aadh)) {
 	#print "$basename\n"; exit;
 	
 	my $aafile = catfile($aaind, $f);
-	my $ntfile = catfile($ntind, $basename . '.nt' . $1 . $2 . '.fa');
+	my $ntfile = catfile($ntind, $basename . '.nt' . defined $1 ? $1 : '' . defined $2 ? $2 : '' . '.fa');
 
 	# the corresponding nt file must exist
 	if (!-e catfile($ntfile)) {
