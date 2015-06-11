@@ -162,8 +162,8 @@ if ($clear_old_output_files) {
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open log file '$logfile'\: $!\n";
 $logfh->autoflush();
-my $tablefile = File::Spec->catfile($outdir, 'non_redundant_orthologous_transcript.txt');
-my $orthologous_transcripts_file = File::Spec->catfile($outdir, 'homologous_transcripts.txt');
+my $tablefile = File::Spec->catfile($outdir, 'non_redundant_orthologous_transcripts.txt');
+my $homologous_transcripts_file = File::Spec->catfile($outdir, 'homologous_transcripts.txt');
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
@@ -263,9 +263,9 @@ my @transcript_list;
 # accumulate errors (due to non-reciprocal hits) for COGs
 my $non_reciprocal_hits_for = { };
 
-# open a text file to hold all orthologous relationships, irrespectively of whether they overlap or not
-my $otfh = IO::File->new($orthologous_transcripts_file, 'w')
-	or print $stderr "Fatal: Could not open output file $orthologous_transcripts_file\: $!\n" and exit(1);
+# open a text file to hold all homologous relationships, irrespectively of whether they overlap or not
+my $htfh = IO::File->new($homologous_transcripts_file, 'w')
+	or print $stderr "Fatal: Could not open output file $homologous_transcripts_file\: $!\n" and exit(1);
 
 # okay let's do the loop come on baby let's do the loop
 my $c = 0;
@@ -323,8 +323,8 @@ foreach my $score (@$scores) {
 				$orthoid,
 					if $debug;
 
-			# print this to the orthologous transcript file
-			printf $otfh "%s\t%s\t%d\t%d\t%.1f\n",
+			# print this to the homologous transcript file
+			printf $htfh "%s\t%s\t%d\t%d\t%.1f\n",
 				$orthoid, 
 				$this_match->{'header'},
 				$this_match->{'ali_start'},
@@ -412,7 +412,7 @@ foreach my $score (@$scores) {
 }
 
 # close the orthologous transcript file, we no longer need it
-undef $otfh;
+undef $htfh;
 
 print $stdout "\n";
 print $stdout "####################################\n";
@@ -652,7 +652,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	printf $tfh "%s", $orthoid;
 	foreach my $hit (@$output_sequences) {
 		next unless defined $hit->{'orf_aa_sequence'};
-		printf $tfh "\t%s[%d aa]", $hit->{'header'}, length $hit->{'orf_aa_sequence'};
+		printf $tfh "\t%s[%d aa]", $hit->{'header'}, defined $hit->{'extended_orf_aa_sequence'} ? length $hit->{'extended_orf_aa_sequence'} : length $hit->{'orf_aa_sequence'};
 	}
 	print $tfh "\n";
 
