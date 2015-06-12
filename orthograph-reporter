@@ -1215,8 +1215,8 @@ sub coordinate_overlap {
 				printf $stdout "Coordinates (%d-%d) overlap other coordinates (%d-%d)\n",
 					$cand->{$q_start_name},
 					$cand->{$q_end_name},
-					$cand->{$t_start_name},
-					$cand->{$t_end_name},
+					$hit->{$t_start_name},
+					$hit->{$t_end_name},
 				;
 			}
 			return 1;
