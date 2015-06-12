@@ -936,7 +936,12 @@ sub transcript_overlap {
 	my $already_assigned = shift;
 	my $candidate = shift;
 	# test whether the candidate overlaps on transcript level, return 1 or 0
+	# but only if it is on the same transcript
 	foreach my $assigned_transcript (@$already_assigned) {
+		# these are different transcripts, we don't care if coordinates overlap
+		if ($$candidate{'hmmhit'} ne $$assigned_transcript{'hmmhit'}) {
+			return 0;
+		}
 		# the env coords do not overlap
 		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
 			print_no_overlap($candidate, $assigned_transcript, 'transcript')
