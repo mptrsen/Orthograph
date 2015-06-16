@@ -37,9 +37,7 @@ create_dir($aaod);
 
 # directory handles
 my $aadh;
-my $ntdh;
 opendir $aadh, $aaind;
-opendir $ntdh, $ntind;
 
 while (my $f = readdir($aadh)) {
 
@@ -47,10 +45,11 @@ while (my $f = readdir($aadh)) {
 	next unless $f =~ /\.fa$/;
 	(my $basename = $f) =~ s/\.aa(\.summarized)?(\.mafft)?\.fa$//;
 
-	#print "$basename\n"; exit;
+	my $summarized = defined $1 ? '.' . $1 : '';
+	my $mafft      = defined $2 ? '.' . $2 : '';
 	
 	my $aafile = catfile($aaind, $f);
-	my $ntfile = catfile($ntind, $basename . '.nt' . defined $1 ? $1 : '' . defined $2 ? $2 : '' . '.fa');
+	my $ntfile = catfile($ntind, $basename . '.nt' . $summarized . $mafft . '.fa');
 
 	# the corresponding nt file must exist
 	if (!-e catfile($ntfile)) {
@@ -107,7 +106,7 @@ sub find_sequence_for_taxon {
 	my $data = shift;
 	my $tax = shift;
 	foreach my $item (@$data) {
-		if ($item->{'tax'} eq $tax) { return $item }
+		if (defined $item->{'tax'} and $item->{'tax'} eq $tax) { return $item }
 	}
 	# not found
 	warn "Warning: in $data->[0]->{'cog'}: no nucleotide sequence for $tax, leaving it empty\n";
@@ -130,7 +129,7 @@ sub fasta2arrayref {
 		my @sectors = split /&&/, $h;
 		my @first_sector = split /\|/, $sectors[0];
 		my $is_reftaxon = $first_sector[-1] eq '.' ? 1 : 0;
-		push @$seqs, { 'tax' => $first_sector[1], 'cog' => $first_sector[0], 'hdr' => $h, 'seq' => $s, 'ref' => $is_reftaxon };
+		push @$seqs, { 'cog' => $first_sector[0], 'tax' => $first_sector[1], 'hdr' => $h, 'seq' => $s, 'ref' => $is_reftaxon };
 	}
 	$fh->close();
 	return $seqs;
