@@ -1038,15 +1038,15 @@ sub make_hmms {#{{{
 
 		# align
 		my $alnfile = align($fafile, $orthoid)
-			or die("Fatal: Alignment failed for '$fafh': $! (errcode $?)\n");
+			or die("\nFatal: Alignment failed for '$fafh': $! (errcode $?)\n");
 
 		# convert to stockholm
 		my $stockhfile = fasta2stockholm($alnfile, $orthoid)
-			or die("Fatal: Conversion to Stockholm format failed for '$alnfile': $! (errcode $?)\n");
+			or die("\nFatal: Conversion to Stockholm format failed for '$alnfile': $! (errcode $?)\n");
 
 		# build HMM
 		hmmbuild($stockhfile, $hmmfile)
-			or die("Fatal: HMM generation failed for '$alnfile': $! (errcode $?)\n");
+			or die("\nFatal: HMM generation failed for '$alnfile': $! (errcode $?)\n");
 	}
 	undef($data);	# free memory... well, it's bound to go out of scope anyway
 	return($hmmdir);
@@ -1065,11 +1065,11 @@ sub align {#{{{
 	print $stdout "@alignment_cmd\n" if $debug;
 	my $alnf = File::Spec->catfile($alndir, $orthoid . '.aln.fa');
 	my $aln = `@alignment_cmd`
-		or print $stderr "Fatal: Alignment for $orthoid failed: $?\n" and exit(1);
+		or print $stderr "\nFatal: Alignment for $orthoid failed: $?\n" and exit(1);
 	my $alnfh = IO::File->new($alnf, 'w')
-		or print $stderr "Fatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
+		or print $stderr "\nFatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
 	print $alnfh $aln
-		or print $stderr "Fatal: Could not write alignment to file $alnf: $!\n" and exit(1);
+		or print $stderr "\nFatal: Could not write alignment to file $alnf: $!\n" and exit(1);
 	$alnfh->close();
 	return $alnf;
 }#}}}
@@ -1084,11 +1084,11 @@ sub fasta2stockholm {
 	my $fh = Seqload::Fasta->open($fafile);
 	my $stockhf = File::Spec->catfile($alndir, $orthoid . '.stockh');
 	my $stockhfh = IO::File->new($stockhf, 'w')
-		or print $stderr "Fatal: Could not open file '$stockhf' for writing: $!\n" and exit(1);
+		or print $stderr "\nFatal: Could not open file '$stockhf' for writing: $!\n" and exit(1);
 	print $stockhfh "# STOCKHOLM 1.0\n";
 	while (my ($h, $s) = $fh->next_seq()) {
 		printf($stockhfh "%-50s %s\n", $h, $s)
-			or print $stderr "Fatal: Could not write Stockholm file $stockhfh: $!" and exit(1);
+			or print $stderr "\nFatal: Could not write Stockholm file $stockhfh: $!" and exit(1);
 	}
 	print $stockhfh "//";
 	close($stockhfh);
