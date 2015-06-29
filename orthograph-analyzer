@@ -672,10 +672,10 @@ sub intro {#{{{
 	pass_stderr($stderr);
 	pass_stdout($stdout);
 
-	print $stderr "Fatal: Species name needed (-taxon NAME)!\n" and exit(1)
+	print $stderr "Fatal: Species name needed (--species-name NAME)!\n" and exit(1)
 		unless ($species_name);
 	
-	print $stderr "Fatal: Ortholog set name required (ortholog_set)!\n" and exit(1)
+	print $stderr "Fatal: Ortholog set name required (--ortholog-set SETNAME)!\n" and exit(1)
 		unless ($orthoset);
 
 	# mutually exclusive options
