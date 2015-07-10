@@ -414,6 +414,7 @@ sub make_csv_for_set_uploading {
 	open my $fh, '<', $infile;
 	while (my $l = <$fh>) {
 		next if $l =~ /^\s*$/;	# skip empty lines
+		chomp $l;
 		@f = split "\t", $l;
 		# skip those that should not be included
 		next if $ogsid_for->{$f[5]} == 0;
@@ -640,6 +641,7 @@ sub get_all_ogsids {
 	while (my $line = <$fh>) {
 		# skip the first line if it is some orthodb file
 		if ($line =~ /^Group\tGene\tProtein/) { next }
+		chomp $line;
 		@fields = split "\t", $line;
 		next if exists $seen->{$fields[5]};
 		$seen->{$fields[5]} = 0;
