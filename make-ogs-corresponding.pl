@@ -131,7 +131,8 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 
 	# no alignment found, something is wrong, skip this pair
 	if (!$res->{'ca'}) {
-		print ", no alignment found, skipping";
+		print ", no alignment found, skipping\n";
+		push @strange, $res->{'ca'};
 		next;
 	}
 	# the sequence has been updated
@@ -171,7 +172,8 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	undef $outfile;
 }
 
-printf "Done, updated %d of %d sequences, wrote %d sequence%s to %s and %s\n",
+print "Done\n";
+printf "Updated %d of %d sequences, wrote %d sequence%s to %s and %s\n",
 	$nupd,
 	$n,
 	$nupd + $nunchgd,
@@ -181,12 +183,14 @@ printf "Done, updated %d of %d sequences, wrote %d sequence%s to %s and %s\n",
 ;
 
 if (@strange) {
-	print "The following sequences are not of equal length, please double-check these:\n";
+	print "The following sequences are not of equal length or no alignment could be found. You should double-check these:\n";
 	while (my $hdr = shift @strange) {
 		print $hdr, "\n";
 	}
 	print "The most common reason are ambiguity characters (X) in the amino acid sequence.\nExonerate does not insert a corresponding gap for those in the nucleotide sequence.\nIt is recommended to remove all X from the amino acid sequences.\n";
 }
+
+print "All done.\n";
 
 exit;
 

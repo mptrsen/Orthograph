@@ -192,7 +192,7 @@ exonerate-program    = exonerate
 #extend-orf = 1
 
 # Minimum ORF overlap. If extend-overlap is enabled, Orthograph tries to extend
-# the ORF beyond the RBH HMM alignment region. The resulting ORF must overlap
+# the ORF beyond the BRH HMM alignment region. The resulting ORF must overlap
 # the original HMM alignment region by this percentage. Note that the value
 # must be specified as a fraction of 1.
 # This affects only orthograph-reporter.
