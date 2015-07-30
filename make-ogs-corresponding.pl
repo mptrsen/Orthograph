@@ -56,14 +56,15 @@ GetOptions(
 scalar @ARGV == 2 or die $usage;
 
 # read input files and check they have equal numbers of sequences
-my $ogs         = slurp_fasta($ARGV[0]);
-my $transcripts = slurp_fasta($ARGV[1]);
+my $ogs         = slurp_fasta($ARGV[0]) or die "Fatal error, exiting\n";
+my $transcripts = slurp_fasta($ARGV[1]) or die "Fatal error, exiting\n";
 unless (scalar keys %$ogs == scalar keys %$transcripts) {
 	warn "Warning: Unequal number of sequences!\n";
 }
 
 # initialize more variables
 my @strange              = ();
+my @doublestrange        = ();
 my $nupd                 = 0;
 my $nunchgd              = 0;
 my $n                    = 0;
@@ -101,7 +102,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 
 	# some settings for exonerate
 	my $exonerate_model = 'protein2dna';
-	my $exonerate_ryo   = '>ca\n%tcs>qa\n%qas';
+	my $exonerate_ryo   = '>nucleotide\n%tcs>aminoacid\n%qas';
 
 	# set output buffer to flush immediately
 	local $| = 0;
@@ -124,42 +125,45 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	);
 	system("@command") and die "Fatal: Exonerate failed with errcode $?: $!\n";
 
-	print 'done';
+	print 'done: ';
 
 	# get the alignment results
 	my $res = slurp_fasta($outfile);
+	unless ($res) {
+		print "strange sequences, skipping\n";
+		push @doublestrange, $hdr;
+		next;
+	}
 
 	# no alignment found, something is wrong, skip this pair
-	if (!$res->{'ca'}) {
-		print ", no alignment found, skipping\n";
-		push @strange, $res->{'ca'};
+	if (!$res->{'nucleotide'}) {
+		print "no alignment found, skipping\n";
+		push @strange, $hdr;
 		next;
 	}
 	# the sequence has been updated
-	elsif ($res->{'ca'} ne $transcripts->{$hdr}) {
-		printf $new_ogs ">%s\n%s\n", $hdr, $res->{'qa'};
-		printf $new_transcripts ">%s\n%s\n", $hdr, $res->{'ca'};
+	elsif ($res->{'nucleotide'} ne $transcripts->{$hdr}) {
+		printf $new_ogs ">%s\n%s\n", $hdr, $res->{'aminoacid'};
+		printf $new_transcripts ">%s\n%s\n", $hdr, $res->{'nucleotide'};
 		# count
 		++$nupd;
-		++$n;
-		print ", updated";
+		print "updated: ";
 	}
 	# the sequence is the same
 	else {
-		printf $new_ogs ">%s\n%s\n", $hdr, $res->{'qa'};
-		printf $new_transcripts ">%s\n%s\n", $hdr, $res->{'ca'};
+		printf $new_ogs ">%s\n%s\n", $hdr, $res->{'aminoacid'};
+		printf $new_transcripts ">%s\n%s\n", $hdr, $res->{'nucleotide'};
 		# count
 		++$nunchgd;
-		++$n;
-		print ", unchanged";
+		print "unchanged: ";
 	}
 
 	# check whether lengths correlate
-	if (length($res->{'ca'}) == length($res->{'qa'}) * 3) {
-		print "\n";
+	if (length($res->{'nucleotide'}) == length($res->{'aminoacid'}) * 3) {
+		print "lengths equal\n";
 	}
 	else {
-		print ", lengths differ\n";
+		print "lengths differ\n";
 		push @strange, $hdr;
 	}
 
@@ -175,9 +179,9 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 print "Done\n";
 printf "Updated %d of %d sequences, wrote %d sequence%s to %s and %s\n",
 	$nupd,
-	$n,
+	$c,
 	$nupd + $nunchgd,
-	$n > 1 ? 's' : '',
+	$n == 1 ? '' : 's',
 	$new_ogs_file,
 	$new_transcripts_file,
 ;
@@ -188,6 +192,14 @@ if (@strange) {
 		print $hdr, "\n";
 	}
 	print "The most common reason are ambiguity characters (X) in the amino acid sequence.\nExonerate does not insert a corresponding gap for those in the nucleotide sequence.\nIt is recommended to remove all X from the amino acid sequences.\n";
+}
+
+if (@doublestrange) {
+	print "\nThe following sequences turned up a very strange alignment. You should _really_ double-check these:\n\n";
+	while (my $hdr = shift @doublestrange) {
+		print $hdr, "\n";
+	}
+	print "\nThe most common reason is a subsequence missing from either amino acid or nucleotide sequence so that Exonerate finds more than one alignment.\nIt is _recommended_ to fix these sequences.\n";
 }
 
 print "All done.\n";
@@ -211,7 +223,7 @@ sub slurp_fasta {
 	my $infh = Seqload::Fasta->open($infile);
 	while (my ($h, $s) = $infh->next_seq()) {
 		# make sure the header is unique
-		die "Non-unique header: $h\n" if $sequences->{$h};
+		print "Warning: Non-unique header '$h': " and return 0 if $sequences->{$h};
 		# ok you got it
 		$sequences->{$h} = $s;
 	}
