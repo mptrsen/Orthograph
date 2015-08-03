@@ -102,7 +102,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 
 	# some settings for exonerate
 	my $exonerate_model = 'protein2dna';
-	my $exonerate_ryo   = '>nucleotide: %s\n%tcs>aminoacid: %s\n%qas';
+	my $exonerate_ryo   = '>nucleotide\n%tcs>aminoacid\n%qas';
 
 	# set output buffer to flush immediately
 	local $| = 0;
