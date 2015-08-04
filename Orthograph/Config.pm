@@ -58,6 +58,7 @@ GetOptions( $config,
 	'delete-ogs=s',
 	'delete-set=s',
 	'destroy!',
+	'exonerate-alignment-model=s',
 	'extend-orf!',
 	'extended-orf-overlap-minimum',
 	'fill-with-x',
@@ -180,6 +181,7 @@ $config->{'destroy'}                    //= 0;
 $config->{'extend-orf'}                 //= 0;
 $config->{'extended-orf-overlap-minimum'} //= 0.5;
 $config->{'exonerate-program'}          //= 'exonerate';
+$config->{'exonerate-alignment-model'}  //= 'protein2genome';
 $config->{'fill-with-x'}                //= 1;
 $config->{'genetic-code'}               //= 1;
 $config->{'header-separator'}           //= '|';
@@ -243,6 +245,10 @@ if ($config->{'database-backend'} !~ /mysql/i and $config->{'database-backend'} 
 
 if ($config->{'database-backend'} =~ /sqlite/i and not defined $config->{'sqlite-database'}) {
 	print STDERR "Fatal: SQLite database backend selected, but database file not specified\n";
+	exit 1;
+}
+if ($config->{'exonerate-alignment-model'} !~ /^protein2(genome|dna)$/) {
+	print STDERR "Fatal: Alignment model misspecified. Must be 'protein2genome' or 'protein2dna'.\n";
 	exit 1;
 }
 

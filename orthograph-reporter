@@ -102,6 +102,7 @@ my $fill_with_x                = $config->{'fill-with-x'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
 my $orthoid_list_file          = $config->{'cog-list-file'};
+my $exonerate_alignment_model  = $config->{'exonerate-alignment-model'};
 my $extend_orf                 = $config->{'extend-orf'};
 my $extended_orf_overlap_minimum = $config->{'extended-orf-overlap-minimum'};
 my $genetic_code               = $config->{'genetic-code'};
@@ -221,6 +222,7 @@ Wrapper::Exonerate->searchprog($exonerate_program);
 Wrapper::Exonerate->translateprog($translate_program);
 Wrapper::Exonerate->outdir($logdir);
 Wrapper::Exonerate->genetic_code($genetic_code);
+Wrapper::Exonerate->alignment_model($exonerate_alignment_model);
 
 # get the species id from the database
 $species_id = get_taxid_for_species($species_name);

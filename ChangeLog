@@ -1,6 +1,7 @@
 Changes since release 0.5.3
 ===========================
 
+* Added option `exonerate-alignment-model`.
 * Added length statistics script by Alex V.
 * Fixed bug in make-ogs-corresponding for cases where indels result in multiple alignments for a single sequence pair
 * Fixed COG table import for edge cases where you only have 6 columns
