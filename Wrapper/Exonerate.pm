@@ -31,6 +31,7 @@ my $verbose          = 0;
 my $debug            = 0;
 my $exhaustive       = 0;
 my $genetic_code     = 1;
+my $alignment_model  = 'protein2genome';
 my $outdir           = File::Spec->catdir('.');
 my $searchprog       = 'exonerate';
 my $translateprog    = 'fastatranslate';
@@ -155,6 +156,21 @@ sub genetic_code {
 	unless ($genetic_code =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $genetic_code\n") }
 }
 
+=head2 alignment_model
+
+Sets or returns the alignment model. Defaults to 'protein2genome' (alignment of a protein sequence to genomic DNA).
+
+=cut
+
+sub alignment_model {
+	my $class = shift;
+	if (ref $class) { confess("Class method used as object method\n") }
+	if (scalar(@_) == 0) { return $alignment_model }
+	if (scalar(@_) >  1) { confess("Usage: Wrapper::Exonerate->alignment_model(MODEL)\n") }
+	$alignment_model = shift(@_);
+	unless ($alignment_model =~ /^protein2(genome|dna)$/) { confess("Invalid argument: $alignment_model\n") }
+}
+
 =head2 score_threshold
 
 Sets or returns the score threshold to use for the exonerate search. Defaults to
@@ -207,7 +223,7 @@ Searches query against target sequence(s) and stores the result in the object (a
 sub search {
 	my $self = shift;
 	# some exonerate options
-	my $exonerate_model = $exhaustive ? 'protein2genome:bestfit' : 'protein2genome';
+	my $exonerate_model = $exhaustive ? $alignment_model . ':bestfit' : $alignment_model;
 	my $exhaustive = $exhaustive ? '--exhaustive yes' : '';
 
 	my ($queryfile, $targetfile);

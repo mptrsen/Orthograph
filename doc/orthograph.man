@@ -153,6 +153,12 @@ set the Exonerate program. Must be the complete path if the location is not in t
 Affects only orthograph-reporter.
 
 .TP
+\fB--exonerate-alignment-model\fP MODEL
+set the alignment model for Exonerate. Must be either 'protein2genome' or 'protein2dna'. The protein2dna model  compares a protein sequence to a DNA sequence, incorporating all the appropriate gaps and frameshifts. The protein2genome model allows alignment of a protein sequence to genomic DNA. This is similar to the protein2dna model, with the addition of modelling of introns and intron phases. You should use 'protein2genome' unless you have sequences that contain introns. Defaults to 'protein2genome'.
+
+Affects only orthograph-reporter.
+
+.TP
 \fB--extend-orf\fP
 try to extend ORFs beyond the region that the reciprocal search determined as orthologous. Without this setting, the ORF can only get smaller if Exonerate trims the sequences.
 
