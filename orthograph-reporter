@@ -96,25 +96,26 @@ my $verbose                    = $config->{'verbose'};
 
 # settings for this specific analysis
 my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
-my $exonerate_program          = $config->{'exonerate-program'};
-my $translate_program          = $config->{'translate-program'};
-my $fill_with_x                = $config->{'fill-with-x'};
-my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
-my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
-my $orthoid_list_file          = $config->{'cog-list-file'};
+my $brh_only                   = $config->{'brh-only'};
 my $exonerate_alignment_model  = $config->{'exonerate-alignment-model'};
+my $exonerate_program          = $config->{'exonerate-program'};
 my $extend_orf                 = $config->{'extend-orf'};
 my $extended_orf_overlap_minimum = $config->{'extended-orf-overlap-minimum'};
+my $fill_with_x                = $config->{'fill-with-x'};
+my $frameshift_correction      = $config->{'frameshift-correction'};
 my $genetic_code               = $config->{'genetic-code'};
+my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
+my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
+my $max_reciprocal_mismatches  = $config->{'max-reciprocal-mismatches'};
 my $minimum_transcript_length  = $config->{'minimum-transcript-length'};
 my $orf_overlap_minimum        = $config->{'orf-overlap-minimum'};
+my $orthoid_list_file          = $config->{'cog-list-file'};
 my $reference_taxa             = $config->{'reference-taxa'};
 my $setname                    = $config->{'ortholog-set'};
 my $soft_threshold             = $config->{'soft-threshold'};
 my $species_name               = $config->{'species-name'};
 my $strict_search              = $config->{'strict-search'};
-my $frameshift_correction      = $config->{'frameshift-correction'};
-my $max_reciprocal_mismatches  = $config->{'max-reciprocal-mismatches'};
+my $translate_program          = $config->{'translate-program'};
 
 # make a nice time string
 my @lt                   = localtime time;
@@ -340,8 +341,14 @@ foreach my $score (@$scores) {
 			}
 
 			# if this orthoid has been hit before, check whether the new candidate
-			# overlaps on hmm (gene) level with previous hits
+			# overlaps on hmm (gene) level with previous hits or whether we want any
+			# more candidates at all
 			if (exists $transcripts_mapped_to->{$orthoid}) {
+
+				# sometimes we only need the best one (BRH)
+				if ($brh_only) {
+					next RESULT;
+				}
 
 				if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
 					# yep, it overlaps, so we can't assign this transcript because better
@@ -422,6 +429,9 @@ print $stdout "Finished fetching from the database.\n";
 print $stdout "Starting output.\n";
 print $stdout "####################################\n";
 
+printf "%s\n", $_ foreach keys %$transcripts_mapped_to;
+print scalar keys %$transcripts_mapped_to;
+exit;
 
 # a tablefile
 my $tfh = IO::File->new($tablefile, 'w')

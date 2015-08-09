@@ -45,6 +45,7 @@ GetOptions( $config,
 	'blast-score-threshold=i',
 	'blastoutdir=s',
 	'blastp-output-dir=s',
+	'brh-only',
 	'clear-database!',
 	'clear-files!',
 	'cog-list-file=s',
@@ -167,6 +168,7 @@ $config->{'blast-max-hits'}             //= 100;
 $config->{'blast-program'}              //= 'blastp';
 $config->{'blast-score-threshold'}      //= 10;
 $config->{'blastoutdir'}                //= basename($config->{'blast-program'});
+$config->{'brh-only'}                   //= 0;
 $config->{'clear-files'}                //= 0;
 $config->{'clear-database'}             //= 1;
 $config->{'cog-list-file'}              //= '';

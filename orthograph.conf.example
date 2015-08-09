@@ -176,6 +176,13 @@ exonerate-program    = exonerate
 # Defaults to 30 (a common domain length).
 #minimum-transcript-length = 30
 
+# If you do not want Orthograph to do any concatenation at all, but are only
+# interested in the very best reciprocal hit, set this to 1. Only a single
+# transcript will be assigned to each COG. 
+# This affects only orthograph-reporter.
+# Defaults to 0 (off), uncomment this to turn it on.
+#brh-only = 1
+
 # Frameshift error correction using Exonerate. Exonerate is used to
 # infer ORFs and obtain a 100% corresponding nucleotide sequence for
 # your predicted orthologous transcripts, but this may lead to lost
