@@ -1014,7 +1014,7 @@ sub make_hmms {#{{{
 
 	my $num_orthoids = scalar(keys(%$data));
 	my $o = 0;
-	foreach my $orthoid (keys(%$data)) {
+	foreach my $orthoid (sort { $a cmp $b } keys(%$data)) {
 		Orthograph::Functions::progress_bar($o, $num_orthoids, 25, '-');
 		++$o;
 		my $hmmfile = File::Spec->catfile($hmmdir, $orthoid . $hmmsuffix);
@@ -1030,7 +1030,7 @@ sub make_hmms {#{{{
 		# no, create new fasta file and so on
 		my $fafile = File::Spec->catfile($alndir, $orthoid . '.fa');
 		my $fafh = IO::File->new($fafile, 'w');
-		foreach my $id (keys(%{$data->{$orthoid}})) {
+		foreach my $id (sort { $a cmp $b } keys(%{$data->{$orthoid}})) {
 			printf($fafh ">%s\n%s\n", $id, $$data{$orthoid}{$id})
 				or die("Fatal: Could not write to file '$fafh': $!\n");
 		}
@@ -1061,11 +1061,12 @@ sub align {#{{{
 	my $orthoid = shift;
 	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
 	my $alnsuffix = '.aln';
-	my @alignment_cmd = qq($alignment_program $fafile 2> /dev/null);	# this prints the alignment to STDOUT, must be captured somehow
+	my $errfile = File::Spec->catfile($logdir, 'alignment.err');
+	my @alignment_cmd = qq($alignment_program $fafile 2> $errfile);	# this prints the alignment to STDOUT, must be captured somehow
 	print $stdout "@alignment_cmd\n" if $debug;
 	my $alnf = File::Spec->catfile($alndir, $orthoid . '.aln.fa');
 	my $aln = `@alignment_cmd`
-		or print $stderr "\nFatal: Alignment for $orthoid failed: $?\n" and exit(1);
+		or print $stderr "\nFatal: Alignment for $orthoid failed: errcode $?. Look into alignment.err in your log directory for more information.\n" and exit(1);
 	my $alnfh = IO::File->new($alnf, 'w')
 		or print $stderr "\nFatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
 	print $alnfh $aln
@@ -1357,12 +1358,14 @@ sub get_hmmresults {
 	my $species_id = shift;
 	print $stdout "Getting list of HMMsearch results...\n" if $debug;
 	if ($use_mysql) {
-		return @{ Wrapper::Mysql::get_hmmresults($hit, $species_id) }
-			or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
+		my $r = @{ Wrapper::Mysql::get_hmmresults($hit, $species_id) }
+		if ($r) { return $r }
+		else    { print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n" }
 	}
 	elsif ($use_sqlite) {
-		return @{ Wrapper::Sqlite::get_hmmresults($hit, $species_id) }
-			or print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n";
+		my $r = @{ Wrapper::Sqlite::get_hmmresults($hit, $species_id) }
+		if ($r) { return $r }
+		else    { print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n" }
 	}
 }
 

@@ -1,7 +1,10 @@
 Changes since release 0.5.5
 ===========================
 
+* Added `brh-only` option to restrict mappings to a single transcript per COG
 * Added Makefile. Currently has only the target 'doc' to compile a PDF version of the manual.
+* Added `alignment.err` logfile to capture stderr during HMM generation, for troubleshooting
+* Minor changes
 
 
 Changes since release 0.5.3
