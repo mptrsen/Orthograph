@@ -1,10 +1,13 @@
 Changes since release 0.5.5
 ===========================
 
+* Added `brh-only` option to restrict mappings to a single transcript per COG
 * Added Makefile. Currently has only the target 'doc' to compile a PDF version of the manual.
+* Added `alignment.err` logfile to capture stderr during HMM generation, for troubleshooting
+* Minor changes
 
 
-Changes since release 0.5.3
+Changes since release 0.5.4
 ===========================
 
 * Added option `exonerate-alignment-model`.
@@ -13,3 +16,9 @@ Changes since release 0.5.3
 * Fixed COG table import for edge cases where you only have 6 columns
 * Minor changes in example config
 * Minor changes in error reporting
+
+
+Changes since release 0.5.3
+===========================
+
+* Fixed a bug in orthograph2hamstrad converter

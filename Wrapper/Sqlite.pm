@@ -2634,7 +2634,7 @@ sub get_list_of_tables {
 	my $q = '.tables';
 	my $cmd = "$sqlite $database '$q'";
 	my $r = [ `$cmd` ];
-	if ($!) { die "Fatal: Could not get list of tables: $!\n" }
+	if ($?) { die "Fatal: Could not get list of tables\n" }
 	return $r;
 }
 

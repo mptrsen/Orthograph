@@ -429,10 +429,6 @@ print $stdout "Finished fetching from the database.\n";
 print $stdout "Starting output.\n";
 print $stdout "####################################\n";
 
-printf "%s\n", $_ foreach keys %$transcripts_mapped_to;
-print scalar keys %$transcripts_mapped_to;
-exit;
-
 # a tablefile
 my $tfh = IO::File->new($tablefile, 'w')
 	or print $stderr "Fatal: Could not open table file $tablefile\: $!\n" and exit(1);
