@@ -1358,13 +1358,13 @@ sub get_hmmresults {
 	my $species_id = shift;
 	print $stdout "Getting list of HMMsearch results...\n" if $debug;
 	if ($use_mysql) {
-		my $r = @{ Wrapper::Mysql::get_hmmresults($hit, $species_id) }
-		if ($r) { return $r }
+		my @r = @{ Wrapper::Mysql::get_hmmresults($hit, $species_id) };
+		if (@r) { return @r }
 		else    { print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n" }
 	}
 	elsif ($use_sqlite) {
-		my $r = @{ Wrapper::Sqlite::get_hmmresults($hit, $species_id) }
-		if ($r) { return $r }
+		my @r = @{ Wrapper::Sqlite::get_hmmresults($hit, $species_id) };
+		if (@r) { return @r }
 		else    { print $stderr "Warning: Failed to get HMMsearch results from database: $DBI::errstr\n" }
 	}
 }
