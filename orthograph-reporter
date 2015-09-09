@@ -892,8 +892,8 @@ sub is_reciprocal_match {
 				}
 			}
 			else {
-				if ($debug) {
-					printf $stdout "Omitting %s, not in reference taxon list\n", $reftaxon;
+				if ($verbose) {
+					printf $stdout "'%s' not in reference taxon list, skipping\n", $reftaxon;
 				}
 			}
 

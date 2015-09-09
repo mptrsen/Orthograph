@@ -1,3 +1,9 @@
+Changes since release 0.5.6
+===========================
+
+* Moved notification on reftaxon skipping to `verbose`, improved wording on said message
+
+
 Changes since release 0.5.5
 ===========================
 
