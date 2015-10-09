@@ -558,15 +558,15 @@ Returns a hashref of hashrefs to create an ortholog set from. Each key in the ha
 sub get_ortholog_groups_for_set {
 	my $setid = shift @_ or croak "Usage: Wrapper::Sqlite::get_ortholog_groups_for_set(SETID)";
 	my $data = {};
-	my $query = "SELECT o.ortholog_gene_id, a.id, a.sequence
+	my $query = "SELECT o.ortholog_gene_id, a.header, a.sequence
 		FROM $db_table_orthologs         AS o
     INNER JOIN $db_table_seqpairs    AS p
     ON o.sequence_pair = p.id
     INNER JOIN $db_table_aaseqs      AS a
     ON a.id = p.aa_seq
-    INNER JOIN $db_table_set_details AS d
-    ON d.id = o.setid
-    WHERE d.id = ?";
+    INNER JOIN $db_table_set_details AS s
+    ON s.id = o.setid
+    WHERE s.id = ?";
 
 	my $dbh = get_dbh()
 		or return undef;
