@@ -2,6 +2,7 @@ Changes since release 0.5.6
 ===========================
 
 * Moved notification on reftaxon skipping to `verbose`, improved wording on said message
+* Alignment files for ortholog set now contain the reference OGS headers, not just database IDs
 
 
 Changes since release 0.5.5
