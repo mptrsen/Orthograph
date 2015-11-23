@@ -1,6 +1,13 @@
+Changes since release 0.5.7
+===========================
+
+* orthograph2hamstrad.pl now also accepts directories that were summarized using summarize_orthograph_results.pl
+
+
 Changes since release 0.5.6
 ===========================
 
+* Fixed bug in orthograph2hamstrad.pl that prevented summarized data to be converted
 * Moved notification on reftaxon skipping to `verbose`, improved wording on said message
 * Alignment files for ortholog set now contain the reference OGS headers, not just database IDs
 

@@ -20,14 +20,27 @@ Fasta headers will be corresponding.
 __EOT__
 
 
-my $indir = shift @ARGV or print $usage and exit;
+my $indir  = shift @ARGV or print $usage and exit;
 my $outdir = shift @ARGV or print $usage and exit;
 
 # input and output directories
-my $aaind = catdir($indir, 'aa');
-my $ntind = catdir($indir, 'nt');
-my $ntod = catdir($outdir, 'nt');
-my $aaod = catdir($outdir, 'aa');
+my $aaind = catdir($indir,  'aa');
+my $ntind = catdir($indir,  'nt');
+my $ntod  = catdir($outdir, 'nt');
+my $aaod  = catdir($outdir, 'aa');
+
+# see whether we have summarized data or not, change input directory accordingly
+if (! -d $aaind) {
+	if (-d catdir($indir, 'aa_summarized') and -d  catdir($indir, 'nt_summarized')) {
+		$aaind = catdir($indir,  'aa_summarized');
+		$ntind = catdir($indir,  'nt_summarized');
+		$ntod  = catdir($outdir, 'nt_summarized');
+		$aaod  = catdir($outdir, 'aa_summarized');
+	}
+	else {
+		die "Fatal: could not find aa and nt subdirectories. Is this an Orthograph output directory?\n"
+	}
+}
 
 # create nt output dir unless it exists
 create_dir($ntod);
@@ -45,8 +58,8 @@ while (my $f = readdir($aadh)) {
 	next unless $f =~ /\.fa$/;
 	(my $basename = $f) =~ s/\.aa(\.summarized)?(\.mafft)?\.fa$//;
 
-	my $summarized = defined $1 ? '.' . $1 : '';
-	my $mafft      = defined $2 ? '.' . $2 : '';
+	my $summarized = defined $1 ? $1 : '';
+	my $mafft      = defined $2 ? $2 : '';
 	
 	my $aafile = catfile($aaind, $f);
 	my $ntfile = catfile($ntind, $basename . '.nt' . $summarized . $mafft . '.fa');
@@ -62,8 +75,8 @@ while (my $f = readdir($aadh)) {
 	my $ntdata = fasta2arrayref($ntfile);
 	
 	# open output files
-	open my $ntofh, '>', catfile($ntod, $basename . '.nt.fa');
-	open my $aaofh, '>', catfile($aaod, $basename . '.aa.fa');
+	open my $ntofh, '>', catfile($ntod, $basename . $summarized . $mafft . '.nt.fa');
+	open my $aaofh, '>', catfile($aaod, $basename . $summarized . $mafft . '.aa.fa');
 
 	foreach my $item (@$aadata) {
 
