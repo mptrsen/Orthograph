@@ -45,8 +45,8 @@ while (my $f = readdir($aadh)) {
 	next unless $f =~ /\.fa$/;
 	(my $basename = $f) =~ s/\.aa(\.summarized)?(\.mafft)?\.fa$//;
 
-	my $summarized = defined $1 ? '.' . $1 : '';
-	my $mafft      = defined $2 ? '.' . $2 : '';
+	my $summarized = defined $1 ? $1 : '';
+	my $mafft      = defined $2 ? $2 : '';
 	
 	my $aafile = catfile($aaind, $f);
 	my $ntfile = catfile($ntind, $basename . '.nt' . $summarized . $mafft . '.fa');
