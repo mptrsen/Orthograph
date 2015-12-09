@@ -29,6 +29,7 @@ my $skipall         = 0;
 my $outdir          = cwd();
 my $exonerate       = 'exonerate';
 my $score_threshold = 30;
+my $num_threads     = 1;
 my $help            = 0;
 
 print "Called: $0 @ARGV\n";
@@ -42,6 +43,7 @@ Options:
   --outdir PATH       set output directory to PATH (default: '/tmp')
   --exonerate PATH    set path to Exonerate executable (default: 'exonerate')
   --score-threshold N set score threshold for the alignments (default: 30)
+  --num-threads N     set number of CPU threads to use [requires the Perl module Parallel::ForkManager] (default: 1)
 END_OF_USAGE
 
 GetOptions(
@@ -49,8 +51,20 @@ GetOptions(
 	'outdir=s'          => \$outdir,
 	'exonerate=s'       => \$exonerate,
 	'score-threshold=i' => \$score_threshold,
+	'num-threads=i'     => \$num_threads,
 	'help|h'            => \$help,
-) or exit 1;
+) or print $usage and exit 1;
+
+# see whether Parallel::ForkManager is installed
+my $forkmanager = eval {
+	require Parallel::ForkManager;
+	Parallel::ForkManager->new( $num_threads );
+};
+unless ($forkmanager) {
+	if ($num_threads != 1) {
+		print "Error: Requested to multi-thread but Parallel::ForkManager not usable\n" and exit 1;	
+	}
+}
 
 # need exactly two input files
 scalar @ARGV == 2 or die $usage;
@@ -82,6 +96,9 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 
 	++$c;
 
+	# fork this
+	if ($forkmanager) { $forkmanager->start and next }
+
 	# if the headers aren't identical, the sequences can't be correlated. 
 	# in this case, they may be skipped at the user's discretion (--skipall).
 	# otherwise, the program will exit.
@@ -104,10 +121,9 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	my $exonerate_model = 'protein2dna';
 	my $exonerate_ryo   = '>nucleotide\n%tcs>aminoacid\n%qas';
 
-	# set output buffer to flush immediately
-	local $| = 0;
-	print "Checking $hdr ($c of $nseqs)... ";
-	
+	my $reportline = "$hdr ($c of $nseqs) ";
+	print $reportline . "aligning...\n";
+
 	# run exonerate
 	my @command = QW( "$exonerate
 		--bestn 1
@@ -125,19 +141,17 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	);
 	system("@command") and die "Fatal: Exonerate failed with errcode $?: $!\n";
 
-	print 'done: ';
-
 	# get the alignment results
 	my $res = slurp_fasta($outfile);
 	unless ($res) {
-		print "strange sequences, skipping\n";
+		print $reportline . "strange sequences, skipping\n";
 		push @doublestrange, $hdr;
 		next;
 	}
 
 	# no alignment found, something is wrong, skip this pair
 	if (!$res->{'nucleotide'}) {
-		print "no alignment found, skipping\n";
+		print $reportline . "no alignment found, skipping\n";
 		push @strange, $hdr;
 		next;
 	}
@@ -147,7 +161,7 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 		printf $new_transcripts ">%s\n%s\n", $hdr, $res->{'nucleotide'};
 		# count
 		++$nupd;
-		print "updated: ";
+		$reportline .= "updated: ";
 	}
 	# the sequence is the same
 	else {
@@ -155,15 +169,15 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 		printf $new_transcripts ">%s\n%s\n", $hdr, $res->{'nucleotide'};
 		# count
 		++$nunchgd;
-		print "unchanged: ";
+		$reportline .= "unchanged: ";
 	}
 
 	# check whether lengths correlate
 	if (length($res->{'nucleotide'}) == length($res->{'aminoacid'}) * 3) {
-		print "lengths equal\n";
+		print $reportline . "lengths equal\n";
 	}
 	else {
-		print "lengths differ\n";
+		print $reportline . "lengths differ\n";
 		push @strange, $hdr;
 	}
 
@@ -174,7 +188,13 @@ foreach my $hdr (sort {$a cmp $b} keys %$ogs) {
 	undef $aafn;
 	undef $ntfn;
 	undef $outfile;
+
+	# catch fork
+	if ($forkmanager) { $forkmanager->finish }
 }
+
+# wait for all children
+if ($forkmanager) { $forkmanager->wait_all_children }
 
 print "Done\n";
 printf "Updated %d of %d sequences, wrote %d sequence%s to %s and %s\n",
