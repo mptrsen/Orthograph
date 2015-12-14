@@ -411,7 +411,7 @@ Affects only orthograph-reporter.
 \fB--substitute-u-with\fP X
 set the substitution character for selenocysteine (U) to X. This is used before BLAST database creation because BLAST does not like Us in amino acid sequences. May be a single character. Defaults to '' (no substitution).
 
-Affects only orthograph-analyzer.
+Affects orthograph-manager and orthograph-analyzer.
 
 .TP
 \fB--temp-dir\fP DIR
