@@ -261,8 +261,6 @@ if (set_exists($setname)) {
 }
 
 $description = get_answer("\nEnter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,)");
-unless ($description) { print "Caught EOF. Exiting.\n" and exit }
-chomp $description;
 
 unless (defined $setname) {
 	print "Fatal: You must specify the core-ortholog set name (-s).\n";

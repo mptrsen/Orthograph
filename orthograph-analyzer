@@ -112,7 +112,7 @@ my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
 my $input_file                 = $config->{'input-file'};
-my $genetic_code                = $config->{'genetic-code'};
+my $genetic_code               = $config->{'genetic-code'};
 my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
@@ -141,6 +141,7 @@ my $db_dbpwd                   = $config->{'mysql-password'};
 my $db_dbserver                = $config->{'mysql-server'};
 my $db_dbuser                  = $config->{'mysql-username'};
 
+# these settings are usually not changed by the user
 my $db_table_blast             = $config->{'db_table_blast'};
 my $db_table_blastdbs          = $config->{'db_table_blastdbs'};
 my $db_table_ests              = $config->{'db_table_ests'};
@@ -208,8 +209,8 @@ my $set_id               = 0;
 my $species_id           = 0;
 my $stderr               = undef;
 my $stdout               = undef;
-my $t0;  # these are used for timing 
-my $t1;  # these are used for timing 
+my $t0;  # used for timing 
+my $t1;  # used for timing 
 my $timestamp_diff       = 0;
 my $timestamp_end        = 0; # will hold the time at the end
 my $timestamp_start      = scalar time;
@@ -238,14 +239,14 @@ if ($verbose) {
 # # Special case: Prepare the database by dropping and recreating all
 # # tables if requested, then exit
 #-------------------------------------------------- 
-if ($preparedb) {#{{{
+if ($preparedb) {
 	local $| = 1;
   print "Setting database $attached_db_file to a clean slate... ";
 	local $| = 0;
   preparedb();
   print "OK\nDatabase now ready to run $program_name.\n";
   exit;
-}#}}}
+}
 
 #--------------------------------------------------
 # # Normal run. Input error checking, reporting etc
@@ -281,7 +282,7 @@ if ($orthoid_list_file) {
 }
 
 
-unless ($quiet) {#{{{
+unless ($quiet) {
 	print $stdout "Using temporary directory '$tmpdir'.\n"
 		if $tmpdir;
   print $stdout "Using HMM dir '$hmmdir' with ", scalar(@hmmfiles), " HMM files.\n" 
@@ -292,12 +293,12 @@ unless ($quiet) {#{{{
     if $hmmsearch_evalue_threshold;
   print $stdout "Score cutoff: $hmmsearch_score_threshold.\n"
     if $hmmsearch_score_threshold;
-}#}}}
+}
 
 #--------------------------------------------------
 # # translate the ESTs to protein, feed that stuff to the database
 #-------------------------------------------------- 
-$protfile = translate_est(File::Spec->catfile($input_file));#{{{
+$protfile = translate_est(File::Spec->catfile($input_file));
 
 # clear database of data from the same species
 if ($clear_database) {
@@ -358,13 +359,13 @@ else {
 
 # get the transcripts with their new ID back from the database. TODO is this efficient?
 $protfile = get_transcripts($species_id, 1);
-#}}}
+
 
 #--------------------------------------------------
 # # Setup the Orthograph modules. These are all class methods.
 #-------------------------------------------------- 
 
-# verbose output #{{{
+# verbose output 
 if ($verbose) {
 	Wrapper::Hmmsearch->verbose(1);
 	Wrapper::Blastp->verbose(1);
@@ -402,7 +403,7 @@ Wrapper::Blastp->outdir($blastoutdir);
 Wrapper::Hmmsearch->searchprog($hmmsearch_program);
 Wrapper::Blastp->searchprog($blast_program);
 
-#}}}
+
 
 #--------------------------------------------------
 # # HMMsearch the protfile using all HMMs
@@ -413,7 +414,7 @@ $hmmcount = 0;
 $hmmhitcount = 0;
 
 HMMFILE:
-foreach my $hmmfile (@hmmfiles) {#{{{
+foreach my $hmmfile (@hmmfiles) {
 	$blastcount = 0;	# reset counter
 
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
@@ -497,7 +498,7 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 	my $max = scalar(@hmmresults) >= $max_blast_searches ? $max_blast_searches : scalar(@hmmresults);
 
 	HMMRESULT:
-	for (my $n = 0; $n < $max; ++$n) { #{{{
+	for (my $n = 0; $n < $max; ++$n) { 
  		++$count;
 
 		# the hmmsearch table id for this result
@@ -536,14 +537,14 @@ foreach my $hmmfile (@hmmfiles) {#{{{
 			$count,
 			$count > 1 ? 's' : ''
 				if $verbose;
-	} #}}}
+	} 
 
 	if ($hmmcount <= scalar(@hmmfiles) / 100) {
 		print $stdout "\n(Don't be alarmed, the sequence identifiers are SHA256-hashed but their original label is preserved in the database and will be output at the end. Don't be alarmed)\n\n"
 			if $verbose;
 	}
 
-}#}}}	# End hmmlist loop
+}	# End hmmlist loop
 
 # report, end the program
 $timestamp_end = scalar time();
@@ -597,7 +598,7 @@ sub get_real_table_names {
 # Sub: intro
 # Checks input, file/dir presence, etc.
 # Returns True if everything is OK.
-sub intro {#{{{
+sub intro {
 	# first things first: 
 	# construct output directory paths
 	# the output directory. create if it does not exist.
@@ -821,12 +822,12 @@ sub intro {#{{{
 
 	# everything is fine
 	return 1;
-}#}}}
+}
 
 # Sub: hmmlist
 # Expects: scalar string directory path
 # Returns: array hmmfiles
-sub hmmlist {#{{{
+sub hmmlist {
 	my $hmmdir = shift;
 	if (-e $hmmdir) {
 		my $dir = IO::Dir->new(File::Spec->catdir($hmmdir));
@@ -841,13 +842,13 @@ sub hmmlist {#{{{
 		push(@hmmfiles, $hmmfile);
 		return(@hmmfiles);
 	}
-}#}}}
+}
 
 # Sub: translate_est
 # Translate a nucleotide fasta file to protein in all six reading frames
 # Expects: scalar string filename
 # Returns: scalar string filename (protfile)
-sub translate_est {#{{{
+sub translate_est {
   my ($infile) = shift;
   (my $outfile = File::Spec->catfile($outdir, basename($infile))) =~ s/(\.[^.]*$)/_prot$1/;
   print $stdout "Translating $input_file in all six reading frames...\n" unless $quiet;
@@ -858,11 +859,11 @@ sub translate_est {#{{{
   my @translateline = qq($translate_program --geneticcode $genetic_code $infile > $outfile);
   system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?');
   return($outfile);
-}#}}}
+}
 
 # sub: backup_old_output_files
 # input: reference to list of relevant contigs
-sub schedule_for_backup {#{{{
+sub schedule_for_backup {
   my $outfile = shift;
 	if (-d $outfile) {	# it's a directory
 		my $dirh = IO::Dir->new($outfile);
@@ -880,13 +881,13 @@ sub schedule_for_backup {#{{{
     push(@backup, $outfile);
   }
 	return 1;
-}#}}}
+}
 
 # sub: create_tarball
 # writes a compressed tar archive
 # Expects: list of files
 # Returns: scalar string tarfilename
-sub create_tarball {#{{{
+sub create_tarball {
 	my @files = @_;
 	my $tarfile = File::Spec->catfile($outdir, 'backup-' . $timestring . '.tar.bz2');
 	my $tarball = Archive::Tar->new();
@@ -894,7 +895,7 @@ sub create_tarball {#{{{
 	$tarball->add_files(@files);
 	$tarball->write($tarfile, COMPRESS_BZIP) or print $stderr "Fatal: Could not create tarball in '$tarfile': $!\n" and exit(1);
 	return $tarfile;
-}#}}}
+}
 
 # Sub: preparedb
 # Generate a clean database, deleting all existing tables and starting from scratch
@@ -911,7 +912,7 @@ sub preparedb {
 
 # Sub: clear_db
 # clears the database of previous results from the same species 
-sub clear_db {#{{{
+sub clear_db {
 
 	my $species_name = shift;
 	return unless $species_name;
@@ -923,13 +924,13 @@ sub clear_db {#{{{
 
 	# clear previous results from the same species
 	return clear_db($specid);
-}#}}}
+}
 
 # Sub: insert_results_into_table
 #	inserts the results of either hmmsearch or blastp into a database
 # Expects: scalar string TABLENAME, reference to array HITS, scalar string BLASTDATABASE (optional)
 # Returns: Number of inserted results (hitcount)
-sub insert_results_into_table {#{{{
+sub insert_results_into_table {
 	my $table = shift;
 	my $hits  = shift;
 	my $hmmsearch_id = undef;
@@ -974,7 +975,7 @@ sub insert_results_into_table {#{{{
 			return Wrapper::Sqlite::insert_results_into_hmmsearch_table($actual_hits, $species_id);
 		}
 	}
-}#}}}
+}
 
 # Sub: file_is_empty
 # tests whether a file is empty (i.e., contains nothing or only empty lines)
@@ -993,7 +994,7 @@ sub file_is_empty {
 # Generate HMMs for a given core-ortholog set
 # Arguments: scalar string ortholog set name
 # Returns: True if successful
-sub make_hmms {#{{{
+sub make_hmms {
 	my $set = shift;
 	my $set_id = get_set_id($set)
 		or print $stderr "Warning: Could not get set ID for set '$set' from database: $DBI::errstr\n";
@@ -1050,13 +1051,13 @@ sub make_hmms {#{{{
 	}
 	undef($data);	# free memory... well, it's bound to go out of scope anyway
 	return($hmmdir);
-}#}}}
+}
 
 # Sub: align
 # Generate a fasta alignment from a fasta file
 # Arguments: Scalar string filename, scalar string orthoid
 # Returns: Scalar string alignment filename on success, false otherwise
-sub align {#{{{
+sub align {
 	my $fafile = shift;
 	my $orthoid = shift;
 	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
@@ -1073,7 +1074,7 @@ sub align {#{{{
 		or print $stderr "\nFatal: Could not write alignment to file $alnf: $!\n" and exit(1);
 	$alnfh->close();
 	return $alnf;
-}#}}}
+}
 
 # Sub: fasta2stockholm
 # Converts a fasta file into a stockholm file. Warning: Does no validity checking whatsoever!
