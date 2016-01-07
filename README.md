@@ -35,7 +35,7 @@ MySQL          | 5.6.17    | <http://dev.mysql.com/downloads/mysql/>
 MAFFT          | 7.023b    | <http://mafft.cbrc.jp/alignment/software/>
 HMMer          | 3.1b1     | <http://hmmer.janelia.org/software/>
 NCBI BLAST+    | 2.2.28+   | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
-Exonerate      | 2.2.0     | <http://www.ebi.ac.uk/~guy/exonerate/>
+Exonerate      | 2.2.0     | <https://github.com/nathanweeks/exonerate>
 
 Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
@@ -344,13 +344,7 @@ orthograph-reporter:
 	there are aa and nt output files for them.
 
 
-## 11. ???
-
-
-## 12. Profit!
-
-
-## 13. Optional: Summarize output
+## 12. Optional: Summarize output
 
 For further analyses, it may be required to summarize the sequences from
 multiple Orthograph output directories. This is accomplished using
@@ -366,7 +360,7 @@ output directories. For further information, read the usage instructions
 that are printed when calling the program with the `-h` flag.
 
 
-## 14. Optional: Convert to HaMStRad format
+## 13. Optional: Convert to HaMStRad format
 
 For downstream analyses that depend on HaMStRad output, it is necessary to
 convert the Fasta header format accordingly. There is a converter script to do
