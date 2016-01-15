@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright (C) 2014, Oliver Niehuis
+# Copyright (C) 2016, Oliver Niehuis
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -16,31 +16,35 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Please contact: o.niehuis@zfmk.de
-# Version: 2014-09-20
+# Version: 2016-01-14
 
 use strict;
 use warnings;
 use File::Spec::Functions;
 use Getopt::Long;
-
+use File::Copy;
 
 my $header_sector_separator = '&&';
 
 # Get options from command line
 my %options;
-GetOptions( \%options, 'i=s', 'o=s' , 'c', 'm', 'd=s', 'help', 'h' );
+GetOptions( \%options, 'i=s', 'o=s' , 'c', 's', 'u', 't', 'd=s', 'help', 'h' );
 
 my $usage =
 	"\nUSAGE: summarize_orthograph_results.pl -i INPUTFOLDER -o OUTPUTFOLDER\n\n"
    ."Mandatory parameters: -i FOLDER containing exclusively Orthograph result folders\n"
    ."                      -o existing FOLDER for summary files to be stored\n"
    ."\nOptional parameters:  -c Make corresponding AA and NT headers identical\n"
-   ."                      -d FILENAME of file with a list of species you want\n"
-   ."                         to exclude. Sequences of these species will not\n"
+   ."                      -d FILENAME of file with a list of reference species you\n"
+   ."                         want to exclude. Sequences of these species will not\n"
    ."                         be in the output. Species names have to be in\n"
    ."                         separate lines.\n"
-   ."                      -m Mask stop symbols (*) with X\n\n";
-;
+   ."                      -t Removes any terminal stop codon that is not\n"   
+   ."                         encoded by the corresponding nucleotide sequence.\n"   
+   ."                      -s Mask stop symbols (*) with X and NNN, respectively\n"
+   ."                         Terminal stop codons that are not encoded by the\n"
+   ."                         corresponding nucleotide sequence are not removed!\n"   
+   ."                      -u Mask selenocystein symbol (U) with X and NNN, respectively\n\n";
 
 # Check user input
 if (    $options{ 'help' }
@@ -88,8 +92,10 @@ if ( exists $options{ 'd' } ) {
 	}
 }
 
-my $corresponding = exists $options{ 'c' } ? 1 : 0;
-my $mask_stop_symbols = exists $options{ 'm' } ? 1 : 0;
+my $corresponding                        = exists $options{ 'c' } ? 1 : 0;
+my $mask_stop_symbol                     = exists $options{ 's' } ? 1 : 0;
+my $mask_selenocystein_symbol            = exists $options{ 'u' } ? 1 : 0;
+my $remove_surplus_terminal_stop_symbol  = exists $options{ 't' } ? 1 : 0;
 
 # Names for summary directories
 my $aa_sum_dir = 'aa_summarized';
@@ -130,7 +136,7 @@ foreach my $dir ( @dir ) {
 	    my $output_file = catfile( $options{ 'o' }, $aa_sum_dir, $summary_filename_aa );
 
 	    &summarize( $input_file, $output_file, $header_sector_separator, $corresponding,
-	                \%is_to_discard, $mask_stop_symbols, 
+	                \%is_to_discard
 	               )
 	    ;	
     }
@@ -149,10 +155,249 @@ foreach my $dir ( @dir ) {
 		my $output_file = catfile( $options{ 'o' }, $nt_sum_dir, $summary_filename_nt );
 
 	    &summarize( $input_file, $output_file, $header_sector_separator, $corresponding,
-	                \%is_to_discard, $mask_stop_symbols, 
+	                \%is_to_discard
 	               )
 	    ;	
 	}	
+}
+
+if( $mask_stop_symbol or $mask_selenocystein_symbol or $remove_surplus_terminal_stop_symbol ) {
+
+	print "Remmoving surplus terminal stop symbols\n" if $mask_stop_symbol ;
+	print "Masking stop codons\n"                     if $mask_stop_symbol ;
+	print "Masking selenocytein symbols\n"            if $mask_selenocystein_symbol;
+	print 'File',          "\t",
+	      'Header',        "\t",
+	      'Searched for',  "\t",
+	      'Found',         "\t",
+	      'Replaced with', "\t",
+	      'Position',      "\t",
+	      'Warning',      "\n"
+	;
+	
+	# Get list of summarized aa files to be processed
+	my @aa_file_names = &read_dir( catdir( $options{ 'o' }, $aa_sum_dir ), {'hide' => 1} );
+
+	# open each summarized aa and corresponding summarized nt file
+	foreach my $aa_filename ( @aa_file_names )  {
+
+		$aa_filename =~ m/(\S+)\.aa.summarized\.fa$/;
+		my $nt_filename = $1 . '.nt.summarized.fa';
+
+		my $aa_file = catfile( $options{ 'o' }, $aa_sum_dir, $aa_filename );
+		my $nt_file = catfile( $options{ 'o' }, $nt_sum_dir, $nt_filename );
+
+		open( my $aa_input_file_fh, '<', $aa_file )
+			or die "Could not open file\"$aa_file\": $!\n";
+
+		open( my $nt_input_file_fh, '<', $nt_file )
+			or die "Could not open file\"$nt_file\": $!\n";
+
+		my $aa_output_file = $aa_file.'_temp';
+		my $nt_output_file = $nt_file.'_temp';
+		
+		open( my $aa_output_file_fh, '>', $aa_output_file )
+			or die "Could not open file\"$aa_output_file\": $!\n";
+
+		open( my $nt_output_file_fh, '>', $nt_output_file )
+			or die "Could not open file\"$nt_output_file\": $!\n";
+
+		my $aa_header = '';
+		my $nt_header = '';
+		
+		while( my $aa_line = <$aa_input_file_fh>) {
+			my $nt_line = <$nt_input_file_fh>;
+			chomp $aa_line;
+			chomp $nt_line;
+			
+			# Headers
+			if( $aa_line =~ m/^>/ ) {
+				$aa_header = $aa_line;
+				$nt_header = $nt_line;
+				print {$aa_output_file_fh} $aa_line, "\n";
+				print {$nt_output_file_fh} $nt_line, "\n";
+			}
+			else{
+
+				( $aa_line, $nt_line )
+					= remove_extra_terminal_stop_symbol( $aa_line, $nt_line,
+					                                     $aa_filename, $nt_filename,
+					                                     $aa_header, $nt_header       )
+					if $remove_surplus_terminal_stop_symbol 
+				;
+
+				$corresponding
+					= check_whether_sequences_are_corresponding_in_their_length( $aa_line,
+				                                                                 $nt_line,
+					                                                             $aa_filename,
+					                                                             $nt_filename,
+					                                                             $aa_header,
+					                                                             $nt_header
+				                                                                               )
+					if ( $mask_stop_symbol or  $mask_selenocystein_symbol )
+				;
+				
+				( $aa_line, $nt_line )
+					= mask_unwanted_symbols( $aa_line, $nt_line, '*',
+					                         $aa_filename, $nt_filename,
+					                         $aa_header, $nt_header       )
+					if ( $mask_stop_symbol and $corresponding )
+				;
+
+				($aa_line, $nt_line)
+					= mask_unwanted_symbols( $aa_line, $nt_line, 'U',
+										     $aa_filename, $nt_filename,
+					                         $aa_header, $nt_header       )
+					if ( $mask_selenocystein_symbol and $corresponding )
+				;
+				                                              
+				print {$aa_output_file_fh} $aa_line, "\n";
+				print {$nt_output_file_fh} $nt_line, "\n";
+
+			}
+		}
+
+		# Close all file handles of processed files
+		close $aa_input_file_fh   or die "Could not close file\"$aa_input_file_fh\": $!\n";
+		close $nt_input_file_fh   or die "Could not close file\"$nt_input_file_fh\": $!\n";
+		close $aa_output_file_fh  or die "Could not close file\"$aa_output_file_fh\": $!\n";
+		close $nt_output_file_fh  or die "Could not close file\"$nt_output_file_fh\": $!\n";
+
+		# Rename processed files
+		move ($aa_output_file, $aa_file); 		
+		move ($nt_output_file, $nt_file); 		
+		
+	}
+
+}
+
+##########################################################################################
+
+sub remove_extra_terminal_stop_symbol {
+	my ( $aa_sequence, $nt_sequence,
+	     $aa_filename, $nt_filename,
+	     $aa_header, $nt_header               ) = @_;
+
+	$aa_header =~ s/^>//;
+	$nt_header =~ s/^>//;
+	
+	if(     ( 3 * ( ( length $aa_sequence ) - 1 )) == length $nt_sequence 
+		and substr( $aa_sequence, -1, 1, '' )      eq '*'                  ) {
+
+				my $position = 1 + length $aa_sequence;
+				
+    	    	print $aa_filename,          "\t", # file name
+        	  		  $aa_header,            "\t", # header
+            		  'surplus terminal *',  "\t", # searched for
+             		  'surplus terminal *',  "\t", # found
+            		  '',                    "\t", # replaced with
+            	 	  $position,             "\n"; # position
+        		;
+        		
+    }
+    return $aa_sequence, $nt_sequence;
+}
+
+##########################################################################################
+
+sub check_whether_sequences_are_corresponding_in_their_length {
+	my ( $aa_sequence, $nt_sequence,
+	     $aa_filename, $nt_filename,
+	     $aa_header, $nt_header               ) = @_;
+		
+	$aa_header =~ s/^>//;
+	$nt_header =~ s/^>//;
+
+	# Exit program if aa and nt (still) not corresponding in their length
+	if( ( 3 * length $aa_sequence ) != length $nt_sequence ) {
+		print $aa_filename,                                                      "\t", # file name
+              $aa_header,                                                        "\t", # header
+              '',                                                                "\t", # searched for
+              '',                                                                "\t", # found
+              '',                                                                "\t", # replaced with
+              '',                                                                "\t", # position
+              'AA and NT sequences not corresponding in their length! '.
+              'Sequence masking not possible!',                                  "\n";
+
+		print $nt_filename,                                                      "\t", # file name
+              $nt_header,                                                        "\t", # header
+              '',                                                                "\t", # searched for
+              '',                                                                "\t", # found
+              '',                                                                "\t", # replaced with
+              '',                                                                "\t", # position
+              'AA and NT sequences not corresponding in their length! '.
+              'Sequence masking not possible!',                                  "\n";
+
+        return 0;
+	}
+	else{
+		return 1;
+	}
+}
+
+##########################################################################################
+
+
+sub mask_unwanted_symbols {
+	my ( $aa_sequence, $nt_sequence, $symbol,
+	     $aa_filename, $nt_filename,
+	     $aa_header, $nt_header               ) = @_;
+
+	$aa_header =~ s/^>//;
+	$nt_header =~ s/^>//;
+		
+    my $begin_search_at = 0;
+    my $position_in_aa = index( uc $aa_sequence, $symbol, $begin_search_at );
+
+    while ( $position_in_aa != -1 ) {
+
+    	substr( $aa_sequence, $position_in_aa, 1, 'X' );
+
+        my $position_in_nt;
+        my $internal_three_nucleotides;
+        $position_in_nt = $position_in_aa * 3;
+        $internal_three_nucleotides = substr( $nt_sequence, $position_in_nt, 3 );
+        substr( $nt_sequence, $position_in_nt, 3, 'NNN' );
+
+		my $nt_warning = '';
+		my $aa_warning = '';
+		
+        # Verify stop codon
+        if (       $symbol eq '*' 
+             and ( $internal_three_nucleotides !~ m/^TAA$/i )
+             and ( $internal_three_nucleotides !~ m/^TGA$/i )
+             and ( $internal_three_nucleotides !~ m/^TAG$/i ) ) {
+
+            $nt_warning = "WARNING: $internal_three_nucleotides not a stop codon!\n";
+            $aa_warning = "WARNING: * not encoded by regular stop codon!\n";
+        }
+
+        $begin_search_at = $position_in_aa + 1;
+        print $aa_filename,     "\t", # file name
+              $aa_header,       "\t", # header
+              $symbol,          "\t", # searched for
+              $symbol,          "\t", # found
+              'X',              "\t", # replaced with
+              $begin_search_at      ; # position
+        print "\t", $aa_warning if $aa_warning;
+        print "\n";
+
+        my $begin_in_nt = $position_in_nt + 1;
+        my $end_in_nt   = $begin_in_nt    + 2;
+        print $nt_filename,                  "\t", # file name
+              $nt_header,                    "\t", # header
+              $symbol,                       "\t", # searched for
+              $internal_three_nucleotides,   "\t", # found
+              'NNN',                         "\t", # replaced with
+              $begin_in_nt, '-', $end_in_nt      ; # position
+        print "\t", $nt_warning if $nt_warning;
+        print "\n";
+
+        $position_in_aa = index( $aa_sequence, $symbol, $begin_search_at );
+        
+	}
+	
+	return $aa_sequence, $nt_sequence;
 }
 
 ##########################################################################################
@@ -161,7 +406,7 @@ sub summarize {
 	
 	# Unpack @_
 	my ( $input_file, $output_file, $header_sector_separator, $corresponding,
-	     $is_to_discard_REF, $mask_stop_symbols                                 ) = @_;
+	     $is_to_discard_REF                                                    ) = @_;
 		
 	open( my $input_file_fh, '<', $input_file )
 		or die "Could not open file\"$input_file\": $!\n";
@@ -253,7 +498,6 @@ sub summarize {
 		
 		# Sequences
 		else{
-			$line =~ tr/*/X/ if $mask_stop_symbols;
 			print { $output_file_fh } $line, "\n" if $print_sequences;
 		
 		}
@@ -262,6 +506,7 @@ sub summarize {
 	close $output_file_fh or die "Couldn't close file \" $output_file\": $!\n";
 }
 
+##########################################################################################
 
 sub erase_range_and_translation_information {
 
