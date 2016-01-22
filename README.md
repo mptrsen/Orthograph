@@ -324,7 +324,8 @@ by ortholog groups. See the appendix for information on Fasta header structure.
 
 d) nt. This contains the actual results on nucleotide level.
 
-e) log. This contains log files, such as the entire standard output for both `orthograph-analyzer` and `orthograph-reporter`:
+e) log. This contains log files, such as the entire standard output for both
+`orthograph-analyzer` and `orthograph-reporter`:
 
 
 The main output directory contains two report tables after running
@@ -332,16 +333,17 @@ orthograph-reporter:
 
 - homologous_transcripts.txt: a tabular listing of all transcripts that
   would be assigned to each COG as orthologous, _irrespective_ of whether they
-  overlap with other transcripts (i.e., may be paralogous copies). It is structured as follows (tab-separated):
-	- the COG ID
-	- transcript ID
-	- start on the transcript
-	- end on the transcript
-	- HMM score
+  overlap with other transcripts (i.e., may be paralogous copies). It is
+  structured as follows (tab-separated):
+  - the COG ID
+  - transcript ID
+  - start on the transcript
+  - end on the transcript
+  - HMM score
 
 - non_redundant_orthologous_transcripts.txt: a tabular listing of all
-	transcripts that were eventually mapped to each COG. These do not overlap and
-	there are aa and nt output files for them.
+  transcripts that were eventually mapped to each COG. These do not overlap and
+  there are aa and nt output files for them.
 
 
 ## 12. Optional: Summarize output
@@ -369,7 +371,8 @@ that; it is run like this:
 	$ perl orthograph2hamstrad.pl INPUT_DIRECTORY OUTPUT_DIRECTORY
 
 The program converts all files in INPUT_DIRECTORY/aa and INPUT_DIRECTORY/nt and
-places them in OUTPUT_DIRECTORY/aa and OUTPUT_DIRECTORY/nt, respectively. OUTPUT_DIRECTORY must exist, the aa and nt subdirectories will be created.
+places them in OUTPUT_DIRECTORY/aa and OUTPUT_DIRECTORY/nt, respectively.
+OUTPUT_DIRECTORY must exist, the aa and nt subdirectories will be created.
 
 
 
