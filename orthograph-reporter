@@ -164,8 +164,8 @@ if ($clear_old_output_files) {
 my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open log file '$logfile'\: $!\n";
 $logfh->autoflush();
-my $tablefile = File::Spec->catfile($outdir, 'non_redundant_orthologous_transcripts.txt');
-my $homologous_transcripts_file = File::Spec->catfile($outdir, 'homologous_transcripts.txt');
+my $tablefile = File::Spec->catfile($outdir, 'summary.txt');
+my $best_reciprocal_hits_file = File::Spec->catfile($outdir, 'best-reciprocal-hits.txt');
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
@@ -266,9 +266,9 @@ my @transcript_list;
 # accumulate errors (due to non-reciprocal hits) for COGs
 my $non_reciprocal_hits_for = { };
 
-# open a text file to hold all homologous relationships, irrespectively of whether they overlap or not
-my $htfh = IO::File->new($homologous_transcripts_file, 'w')
-	or print $stderr "Fatal: Could not open output file $homologous_transcripts_file\: $!\n" and exit(1);
+# open a text file to hold all best reciprocal relationships, irrespectively of whether they overlap or not
+my $htfh = IO::File->new($best_reciprocal_hits_file, 'w')
+	or print $stderr "Fatal: Could not open output file $best_reciprocal_hits_file\: $!\n" and exit(1);
 
 # okay let's do the loop come on baby let's do the loop
 my $c = 0;
@@ -315,103 +315,103 @@ foreach my $score (@$scores) {
 
 
 		# so, was this a reciprocal match?
-		if (my $this_match = is_reciprocal_match($orthoid, $blastresults)) {
-
-			# yeah
-			printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
-				$orthoid,
-				$this_match->{'header'},
-				$this_match->{'hmm_start'},
-				$this_match->{'hmm_end'},
-				$orthoid,
-					if $debug;
-
-			# print this to the homologous transcript file
-			printf $htfh "%s\t%s\t%d\t%d\t%.1f\n",
-				$orthoid, 
-				$this_match->{'header'},
-				$this_match->{'ali_start'},
-				$this_match->{'ali_end'},
-				$score,
-			;
-
-			# is this long enough?
-			if (transcript_not_long_enough($this_match)) {
-				next RESULT;
-			}
-
-			# if this orthoid has been hit before, check whether the new candidate
-			# overlaps on hmm (gene) level with previous hits or whether we want any
-			# more candidates at all
-			if (exists $transcripts_mapped_to->{$orthoid}) {
-
-				# sometimes we only need the best one (BRH)
-				if ($brh_only) {
-					next RESULT;
-				}
-
-				if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-					# yep, it overlaps, so we can't assign this transcript because better
-					# e-values have precedence. just go to the next one
-					printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n",
-						$orthoid,
-						$this_match->{'header'}
-							if $verbose;
-					next RESULT;
-				}
-
-				# or does it overlap on transcript level?
-				elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
-					printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n",
-						$orthoid,
-						$this_match->{'header'}
-							if $verbose;
-					next RESULT;
-				}
-
-				else {
-					# does not overlap, add to list of transcripts for this ortholog group
-					push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-					printf $stdout ">> No overlap with previous hits: added '%s' [%d:%d] to %s.\n",
-						$this_match->{'header'},
-						$this_match->{'env_start'},
-						$this_match->{'env_end'},
-						$orthoid
-							unless $quiet;
-					# this transcript can't be found again
-					push @transcript_list, $this_match->{'hmmhit'};
-					# ok, next one
-					next RESULT;
-				}
-
-			}
-
-			else {
-
-				# this has not been hit before, just assign
-				printf $stdout ">> Assigned '%s' [%d:%d] to %s.\n",
-					$this_match->{'header'},
-					$this_match->{'env_start'},
-					$this_match->{'env_end'},
-					$orthoid
-						unless $quiet;
-				push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-
-				# this transcript can't be found again
-				push @transcript_list, $this_match->{'hmmhit'};
-
-				# reset 
-				undef $this_match;
-			}
-
-		}
-
-		else {
+		my $this_match = is_reciprocal_match($orthoid, $blastresults);
+		
+		# if not, skip this one
+		unless (defined $this_match) {
 			# this orthoid has no match
 			print $stdout "No orthology detected for $orthoid.\n"
 				if $verbose;
 			# one more error
 			$non_reciprocal_hits_for->{$orthoid}++;
+			next RESULT;
+		}
+
+		# yeah, reciprocal hit, continue
+		printf $stdout "Orthology detected for %s! Trying to add %s[%d:%d] to %s.\n",
+			$orthoid,
+			$this_match->{'header'},
+			$this_match->{'hmm_start'},
+			$this_match->{'hmm_end'},
+			$orthoid,
+				if $debug;
+
+		# print this to the best reciprocal hits file
+		printf $htfh "%s\t%s\t%d\t%d\t%.1f\n",
+			$orthoid, 
+			$this_match->{'header'},
+			$this_match->{'ali_start'},
+			$this_match->{'ali_end'},
+			$score,
+		;
+
+		# is this long enough?
+		if (transcript_not_long_enough($this_match)) {
+			next RESULT;
+		}
+
+		# if this orthoid has been hit before, check whether the new candidate
+		# overlaps on hmm (gene) level with previous hits or whether we want any
+		# more candidates at all
+		if (exists $transcripts_mapped_to->{$orthoid}) {
+
+			# sometimes we only need the best one (BRH)
+			if ($brh_only) {
+				next RESULT;
+			}
+
+			if (hmm_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
+				# yep, it overlaps, so we can't assign this transcript because better
+				# e-values have precedence. just go to the next one
+				printf $stdout "Overlap with previous hit on hmm level for %s: discarded %s.\n",
+					$orthoid,
+					$this_match->{'header'}
+						if $verbose;
+				next RESULT;
+			}
+
+			# or does it overlap on transcript level?
+			elsif (transcript_overlap($transcripts_mapped_to->{$orthoid}, $this_match)) {
+				printf $stdout "Overlap with previous hit on transcript level for %s: discarded %s.\n",
+					$orthoid,
+					$this_match->{'header'}
+						if $verbose;
+				next RESULT;
+			}
+
+			else {
+				# does not overlap, add to list of transcripts for this ortholog group
+				push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
+				printf $stdout ">> No overlap with previous hits: added '%s' [%d:%d] to %s.\n",
+					$this_match->{'header'},
+					$this_match->{'ali_start'},
+					$this_match->{'ali_end'},
+					$orthoid
+						unless $quiet;
+				# this transcript can't be found again
+				push @transcript_list, $this_match->{'hmmhit'};
+				# ok, next one
+				next RESULT;
+			}
+
+		}
+
+		else {
+
+			# this has not been hit before, just assign
+			printf $stdout ">> Assigned '%s' [%d:%d] to %s.\n",
+				$this_match->{'header'},
+				$this_match->{'ali_start'},
+				$this_match->{'ali_end'},
+				$orthoid
+					unless $quiet;
+			push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
+
+			# this transcript can't be found again
+			push @transcript_list, $this_match->{'hmmhit'};
+
+			# reset 
+			undef $this_match;
 		}
 
 	# END RESULT
@@ -950,8 +950,8 @@ sub transcript_overlap {
 		if ($$candidate{'hmmhit'} ne $$assigned_transcript{'hmmhit'}) {
 			return 0;
 		}
-		# the env coords do not overlap
-		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
+		# the alignment coords do not overlap
+		if ($$candidate{'ali_end'} <= $$assigned_transcript{'ali_start'} or $$candidate{'ali_start'} >= $$assigned_transcript{'ali_end'}) {
 			print_no_overlap($candidate, $assigned_transcript, 'transcript')
 				if $verbose;
 		}
@@ -970,13 +970,13 @@ sub print_overlap {
 	my $level      = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap on %s level.\n", 
 		$$transcript{'header'},
-		$$transcript{'env_start'},
-		$$transcript{'env_end'},
+		$$transcript{'ali_start'},
+		$$transcript{'ali_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
 		$$candidate{'header'},
-		$$candidate{'env_start'},
-		$$candidate{'env_end'},
+		$$candidate{'ali_start'},
+		$$candidate{'ali_end'},
 		$$candidate{'hmm_start'},
 		$$candidate{'hmm_end'},
 		$level
@@ -989,13 +989,13 @@ sub print_no_overlap {
 	my $level      = shift;
 	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap on %s level.\n", 
 		$$transcript{'header'},
-		$$transcript{'env_start'},
-		$$transcript{'env_end'},
+		$$transcript{'ali_start'},
+		$$transcript{'ali_end'},
 		$$transcript{'hmm_start'},
 		$$transcript{'hmm_end'},
 		$$candidate{'header'},
-		$$candidate{'env_start'},
-		$$candidate{'env_end'},
+		$$candidate{'ali_start'},
+		$$candidate{'ali_end'},
 		$$candidate{'hmm_start'},
 		$$candidate{'hmm_end'},
 		$level
@@ -1009,16 +1009,16 @@ sub transcripts_overlap {
 	foreach my $assigned_transcript (@$already_matched) {
 		# the candidate is either before or after the already assigned transcript
 		# this is ok
-		if ($$candidate{'env_end'} <= $$assigned_transcript{'env_start'} or $$candidate{'env_start'} >= $$assigned_transcript{'env_end'}) {
+		if ($$candidate{'ali_end'} <= $$assigned_transcript{'ali_start'} or $$candidate{'ali_start'} >= $$assigned_transcript{'ali_end'}) {
 			printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
 				$$already_matched{'header'},
-				$$already_matched{'env_start'},
-				$$already_matched{'env_end'},
+				$$already_matched{'ali_start'},
+				$$already_matched{'ali_end'},
 				$$already_matched{'hmm_start'},
 				$$already_matched{'hmm_end'},
 				$$candidate{'header'},
-				$$candidate{'env_start'},
-				$$candidate{'env_end'},
+				$$candidate{'ali_start'},
+				$$candidate{'ali_end'},
 				$$candidate{'hmm_start'},
 				$$candidate{'hmm_end'}
 					if $verbose;

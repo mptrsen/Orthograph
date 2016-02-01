@@ -23,7 +23,9 @@ threads using `--num-threads`. This requires the module
 - orthograph2hamstrad.pl now also accepts directories that were summarized
 using summarize_orthograph_results.pl
 
-* Description is now really optional when uploading a new ortholog set
+- Description is now really optional when uploading a new ortholog set
+
+- Uses ali coordinates instead of env coordinates for everything
 
 
 ## [0.5.7] - 2015-11-24
