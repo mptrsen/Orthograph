@@ -4,11 +4,11 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
-## [Unreleased]
+## [0.5.8] - 2016-02-01
 
 ### Changed
 
--	The helper script `summarize_orthograph_results.pl` can now mask internal
+- The helper script `summarize_orthograph_results.pl` can now mask internal
 stop codons, clip terminal stop codons and mask selenocystein characters. The
 new options are `-s`, `-t`, and `-u`, respectively.
 
