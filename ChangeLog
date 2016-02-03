@@ -4,6 +4,23 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
+## [0.5.9] - 2016-02-04
+
+### Added
+
+- Added another tabular output file, non-overlapping-best-reciprocal-hits.txt,
+that contains, well, non-overlapping sequence sections that fulfilled the BRH
+criterion. They may, however, overlap on HMM level (paralogous copies
+perhaps).
+
+### Changed
+
+- Renamed the other tabular output files:
+  * homologous_transcripts.txt is now best-reciprocal-hits.txt
+	* non_redundant_orthologous_transcripts.txt is now summary.txt
+
+- Added e-value column to best-reciprocal-hits.txt table
+
 ## [0.5.8] - 2016-02-01
 
 ### Changed
