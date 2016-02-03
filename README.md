@@ -331,19 +331,25 @@ e) log. This contains log files, such as the entire standard output for both
 The main output directory contains two report tables after running
 orthograph-reporter:
 
-- homologous_transcripts.txt: a tabular listing of all transcripts that
-  would be assigned to each COG as orthologous, _irrespective_ of whether they
-  overlap with other transcripts (i.e., may be paralogous copies). It is
-  structured as follows (tab-separated):
+- best-reciprocal-hits.txt: a tabular listing of all sequences (sections) that
+  fulfilled the BRH criterion, _irrespective_ of whether they overlap with
+  other sequences. It is structured as follows (tab-separated):
   - the COG ID
   - transcript ID
   - start on the transcript
   - end on the transcript
   - HMM score
+  - HMM e-value
 
-- non_redundant_orthologous_transcripts.txt: a tabular listing of all
-  transcripts that were eventually mapped to each COG. These do not overlap and
-  there are aa and nt output files for them.
+- non-overlapping-best-reciprocal-hits.txt: a tabular listing of all sequences
+  (sections) that fulfilled the BRH criterion but do _not_ overlap with other
+  hits on transcript level. They may overlap on HMM level, though (paralogous
+  copies perhaps). Its structure is identical to the one of
+  best-reciprocal-hits.txt (see above).
+
+- summary.txt: a tabular listing of all transcripts that were eventually mapped
+  to each COG. These do not overlap, fulfill all other criteria (length, number
+  of mismatches and there are aa and nt output files for them.
 
 
 ## 12. Optional: Summarize output

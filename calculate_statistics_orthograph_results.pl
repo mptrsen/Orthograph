@@ -25,7 +25,7 @@ my $pwd = cwd();
 #If one argument is given and is a .txt file (list of names)
 if (scalar @ARGV == 1 and -f $ARGV[0]) {
 	
-	my $list='list_of_taxa.txt';	
+	my $list=$ARGV[0];	
 	open (my $fh_list, '<', $list)
 		or die"Could not open file \"$list\":$!\n";
 	
@@ -64,14 +64,14 @@ if (scalar @ARGV == 1 and -f $ARGV[0]) {
 #If multiple directories are given as arguments
 else {
 	
-  my $out = "statistics_orthograph.txt";
-  open (my $fh_out, '>', $out)  
-            or die "Could not open file \"$out\":$!\n"; 
+	my $out = "statistics_orthograph.txt";
+	open (my $fh_out, '>', $out)  
+		or die "Could not open file \"$out\":$!\n"; 
   
-  #print labels          
-  print {$fh_out} "Species_name\tno.hits\ttotal_no_aa\tno_X\tno_stop\tN50\taverage_length\tmedian_length\tmax_length\tmin_length\n";
+	#print labels          
+	print {$fh_out} "Species_name\tno.hits\ttotal_no_aa\tno_X\tno_stop\tN50\taverage_length\tmedian_length\tmax_length\tmin_length\n";
 		 
-  foreach (@ARGV) {
+	foreach (@ARGV) {
 	
 		chdir "$pwd";
 	
@@ -91,7 +91,7 @@ else {
 			$statistics[6],
 			$statistics[7],
 			$statistics[8];
-  }                    
+	}                    
 }
 
 ########################################################################################################################
@@ -128,7 +128,7 @@ sub calculate_statistics_orthograph_results {
 		
 		while (my $line = <$fh_COG>) {			
 			chomp $line;			
-      if ($line =~ m/>.+translate.+/) {
+			if ($line =~ m/>.+\[translate\([1-3]\)\].+/) {
 					 
 				$line = <$fh_COG>;	
 				chomp $line;				 
@@ -136,10 +136,10 @@ sub calculate_statistics_orthograph_results {
 				#Count no of ambiguous sites
 				my @aa = split ("", $line);
 				
-				foreach my $aa (@aa){							 
-					if    ($aa eq "*") { ++$total_stop }											
-					elsif ($aa eq "X") {	++$total_Xs   }
-				}		
+				foreach my $aa (@aa){
+					if    ($aa eq "*") { ++$total_stop }
+					elsif ($aa eq "X") { ++$total_Xs   }
+				}
 				
 				my $length = length $line;			 
 				$total_aa_sites += $length;   
@@ -158,26 +158,26 @@ sub calculate_statistics_orthograph_results {
 	my $N50_threshold = $total_aa_sites/2;   
 	my $sum_check = 0;
     
-	for (my $i = 0; $i < @lengths_sorted; ++$i){		
+	for (my $i = 0; $i < @lengths_sorted; ++$i){
 		$sum_check += $lengths_sorted[$i];		
-		if ($sum_check >= $N50_threshold) {			
+		if ($sum_check >= $N50_threshold) {
 			$N50 = $lengths_sorted[$i];
 			last;
 		}
-	}   
+	}
 
 	#Calculate median length of protein hits
-	if ($no_hits%2==0) {		
+	if ($no_hits%2==0) {
 		my $first = $lengths_sorted[scalar @lengths_sorted/2];		
 		my $second = $lengths_sorted[(scalar @lengths_sorted/2)-1];		
 		$median_length = ($first+$second)/2;
 	}
-	else {		
+	else {
 		$median_length = $lengths_sorted[((scalar @lengths_sorted)-1)/2];
 	}
 	$max_length = pop @lengths_sorted;
 	$min_length = shift @lengths_sorted;
 	
-	my @statistics = ($no_hits, $total_aa_sites, $total_Xs, $total_stop, $N50, $mean, $median_length, $max_length, $min_length);    
+	my @statistics = ($no_hits, $total_aa_sites, $total_Xs, $total_stop, $N50, $mean, $median_length, $max_length, $min_length);
 	return @statistics;
 }
