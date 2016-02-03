@@ -166,6 +166,7 @@ my $logfh = IO::File->new($logfile, 'w')
 $logfh->autoflush();
 my $tablefile = File::Spec->catfile($outdir, 'summary.txt');
 my $best_reciprocal_hits_file = File::Spec->catfile($outdir, 'best-reciprocal-hits.txt');
+my $non_overlapping_best_reciprocal_hits_file = File::Spec->catfile($outdir, 'non-overlapping-best-reciprocal-hits.txt');
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
@@ -261,14 +262,18 @@ my $num_scores = scalar @$scores;
 my $transcripts_mapped_to = { };
 
 # this will hold all transcripts that were found so we can check for redundancy
-my @transcript_list;
+my $transcript_list = [ ];
 
 # accumulate errors (due to non-reciprocal hits) for COGs
 my $non_reciprocal_hits_for = { };
 
 # open a text file to hold all best reciprocal relationships, irrespectively of whether they overlap or not
-my $htfh = IO::File->new($best_reciprocal_hits_file, 'w')
+my $brh_fh = IO::File->new($best_reciprocal_hits_file, 'w')
 	or print $stderr "Fatal: Could not open output file $best_reciprocal_hits_file\: $!\n" and exit(1);
+
+# open a text file to hold all best reciprocal relationships, irrespectively of whether they overlap or not
+my $non_overlapping_brh_fh = IO::File->new($non_overlapping_best_reciprocal_hits_file, 'w')
+	or print $stderr "Fatal: Could not open output file $non_overlapping_best_reciprocal_hits_file\: $!\n" and exit(1);
 
 # okay let's do the loop come on baby let's do the loop
 my $c = 0;
@@ -295,7 +300,7 @@ foreach my $score (@$scores) {
 		my $orthoid = $result->{'orthoid'};
 		# skip this result if it concerns a ortholog group that we didn't want
 		if ($list_of_wanted_orthoids) {
-			next unless grep { /$orthoid/ } @$list_of_wanted_orthoids;
+			next unless grep { $_ eq $orthoid } @$list_of_wanted_orthoids;
 		}
 		# also skip this result if the ortholog group has had too many non-reciprocal hits before
 		if ($non_reciprocal_hits_for->{$orthoid} and $non_reciprocal_hits_for->{$orthoid} > $max_reciprocal_mismatches) {
@@ -316,7 +321,7 @@ foreach my $score (@$scores) {
 
 		# so, was this a reciprocal match?
 		my $this_match = is_reciprocal_match($orthoid, $blastresults);
-		
+
 		# if not, skip this one
 		unless (defined $this_match) {
 			# this orthoid has no match
@@ -337,13 +342,35 @@ foreach my $score (@$scores) {
 				if $debug;
 
 		# print this to the best reciprocal hits file
-		printf $htfh "%s\t%s\t%d\t%d\t%.1f\n",
+		printf $brh_fh "%s\t%s\t%d\t%d\t%.1f\t%s\n",
 			$orthoid, 
 			$this_match->{'header'},
 			$this_match->{'ali_start'},
 			$this_match->{'ali_end'},
 			$score,
+			$this_match->{'hmm_evalue'},
 		;
+
+		# does this overlap with previous mappings on the same sequence?
+		if (scalar @$transcript_list and region_mapped_before($result, $transcript_list)) {
+			printf $stdout "Hit %s [%d-%d] overlaps with previous mappings on the same sequence, skipping this match\n",
+				$result->{'header'},
+				$result->{'ali_start'},
+				$result->{'ali_end'},
+					unless $quiet;
+			next RESULT;
+		}
+
+		# no, print this to the non-redundant best reciprocal hits file
+		printf $non_overlapping_brh_fh "%s\t%s\t%d\t%d\t%.1f\t%s\n",
+			$orthoid, 
+			$this_match->{'header'},
+			$this_match->{'ali_start'},
+			$this_match->{'ali_end'},
+			$score,
+			$this_match->{'hmm_evalue'},
+		;
+
 
 		# is this long enough?
 		if (transcript_not_long_enough($this_match)) {
@@ -389,7 +416,7 @@ foreach my $score (@$scores) {
 					$orthoid
 						unless $quiet;
 				# this transcript can't be found again
-				push @transcript_list, $this_match->{'hmmhit'};
+				push @$transcript_list, $this_match;
 				# ok, next one
 				next RESULT;
 			}
@@ -408,7 +435,7 @@ foreach my $score (@$scores) {
 			push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
 
 			# this transcript can't be found again
-			push @transcript_list, $this_match->{'hmmhit'};
+			push @$transcript_list, $this_match;
 
 			# reset 
 			undef $this_match;
@@ -420,8 +447,9 @@ foreach my $score (@$scores) {
 # END SCORE
 }
 
-# close the orthologous transcript file, we no longer need it
-undef $htfh;
+# close the table files, we no longer need them
+undef $brh_fh;
+undef $non_overlapping_brh_fh;
 
 print $stdout "\n";
 print $stdout "####################################\n";
@@ -1189,6 +1217,16 @@ sub overlaps_previous_hit {
 	}
 	
 	# otherwise, it's fine, no overlap
+	return 0;
+}
+
+sub region_mapped_before {
+	my $new_hit = shift;
+	my $previous_hits = shift;
+	my $old_hits_on_same_sequence = [ grep { $_->{'hmmhit'} eq $new_hit->{'hmmhit'} } @$previous_hits ];
+	if (coordinate_overlap($old_hits_on_same_sequence, $new_hit, 'ali_start', 'ali_end', 'ali_start', 'ali_end')) {
+		return 1;
+	}
 	return 0;
 }
 

@@ -445,8 +445,9 @@ Written by Malte Petersen.
 .PP
 .SH "REPORTING BUGS"
 Report bugs to mptrsen at uni-bonn.de
+
 Orthograph home page: <http://github.com/mptrsen/Orthograph/>
 
 .COPYRIGHT
-Copyright 2015 Malte Petersen
+Copyright 2016 Malte Petersen
 
