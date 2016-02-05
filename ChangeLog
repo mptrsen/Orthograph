@@ -4,6 +4,13 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
+## [Unreleased]
+
+### Fixed
+
+- In the database, BLAST results had reversed coordinates (end-start). This
+had no influence on the results.
+
 ## [0.5.9] - 2016-02-04
 
 ### Added
@@ -16,7 +23,7 @@ perhaps).
 ### Changed
 
 - Renamed the other tabular output files:
-  * homologous_transcripts.txt is now best-reciprocal-hits.txt
+	* homologous_transcripts.txt is now best-reciprocal-hits.txt
 	* non_redundant_orthologous_transcripts.txt is now summary.txt
 
 - Added e-value column to best-reciprocal-hits.txt table

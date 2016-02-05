@@ -2061,8 +2061,8 @@ sub insert_results_into_blast_table {
 			$hit->{'score'},  # score
 			$hit->{'evalue'},  # evalue
 			$hit->{'evalue'} != 0 ? log($hit->{'evalue'}) : -999,  # natural logarithm only if not 0
-			$hit->{'end'},
 			$hit->{'start'},
+			$hit->{'end'},
 			$hmmsearch_id,
 		) or print "Fatal: Could not push to database!\n" and exit(1);
 		++$hitcount;
