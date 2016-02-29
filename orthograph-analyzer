@@ -683,14 +683,6 @@ sub intro {
 	print $stderr "Fatal: Can't operate in both verbose and quiet mode\n" and exit(1)
 		if ($verbose and $quiet);
 
-	# test whether the programs exist where specified
-	Orthograph::Functions::program_exists($translate_program) or print $stderr "Fatal: Fastatranslate not executable at '$translate_program'. Verify path and/or permissions.\n" and exit(1);
-	Orthograph::Functions::program_exists($alignment_program) or print $stderr "Fatal: Alignment program not executable at '$alignment_program'. Verify path and/or permissions.\n" and exit(1);
-	Orthograph::Functions::program_exists($hmmbuild_program) or print $stderr "Fatal: HMMbuild not executable at '$hmmbuild_program'. Verify path and/or permissions.\n" and exit(1);
-	Orthograph::Functions::program_exists($makeblastdb_program) or print $stderr "Fatal: Makeblastdb not executable at '$hmmbuild_program'. Verify path and/or permissions.\n" and exit(1);
-	Orthograph::Functions::program_exists($hmmsearch_program) or print $stderr "Fatal: HMMsearch not executable at '$hmmsearch_program'. Verify path and/or permissions.\n" and exit(1);
-	Orthograph::Functions::program_exists($blast_program) or print $stderr "Fatal: BLASTP not executable at '$blast_program'. Verify path and/or permissions.\n" and exit(1);
-
 	# the alignment directory (for ortholog set creation)
 	unless ($alndir) { $alndir = File::Spec->catdir($sets_dir, $orthoset, 'aln') }
 	if (-d $alndir) {

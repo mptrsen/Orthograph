@@ -106,6 +106,7 @@ GetOptions( $config,
 	'strict-search',
 	'substitute-u-with=s',
 	'temp-dir=s',
+	'test',
 	'verbose|v',
 ) or print "Fatal: No suitable option found. I don't know what you want me to do. Terminating.\n" and exit(1);
 
