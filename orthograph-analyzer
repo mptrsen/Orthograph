@@ -133,6 +133,7 @@ my $u_subst                    = $config->{'substitute-u-with'};
 my $sets_dir                   = $config->{'sets-dir'};
 my $species_name               = $config->{'species-name'};
 my $tmpdir                     = $config->{'temp-dir'};
+my $testdeps                   = $config->{'test-deps'};
 my $verbose                    = $config->{'verbose'};
 
 # MySQL settings
@@ -251,6 +252,9 @@ if ($preparedb) {
 #--------------------------------------------------
 # # Normal run. Input error checking, reporting etc
 #-------------------------------------------------- 
+
+# exit here if we are just to test dependencies
+if ($testdeps) { Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program) and exit }
 intro();
 
 # get the set id
@@ -600,6 +604,9 @@ sub get_real_table_names {
 # Returns True if everything is OK.
 sub intro {
 	# first things first: 
+	# test whether dependencies exist where specified and whether versions are sufficient
+	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program);
+
 	# construct output directory paths
 	# the output directory. create if it does not exist.
 	# outdir may be defined in the config file
@@ -669,7 +676,8 @@ sub intro {
 		print $stdout "Using log file '$logfile'.\n";
 	}
 
-	# pass the new stdout and stderr filehandles to the database modules for their output
+	# pass the new stdout and stderr filehandles to the database modules for
+	# their output
 	pass_stderr($stderr);
 	pass_stdout($stdout);
 
@@ -1469,7 +1477,7 @@ sub db_structure_present {
 
 sub fail_and_exit {
 	my $msg = shift @_;
-	print STDERR 'Fatal: ' . $msg . "\n";
+	print $stderr 'Fatal: ' . $msg . "\n";
 	exit 1;
 }
 

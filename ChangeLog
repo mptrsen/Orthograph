@@ -4,7 +4,13 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
-## [Unreleased]
+## [0.5.10] - 2016-03-01
+
+### Added
+
+- Added `--test-deps` option to check whether dependencies have been properly
+installed in sufficient versions. All dependencies, their required versions
+and download URLs are listed in the README.
 
 ### Fixed
 

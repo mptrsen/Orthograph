@@ -106,7 +106,7 @@ GetOptions( $config,
 	'strict-search',
 	'substitute-u-with=s',
 	'temp-dir=s',
-	'test',
+	'test-deps',
 	'verbose|v',
 ) or print "Fatal: No suitable option found. I don't know what you want me to do. Terminating.\n" and exit(1);
 
@@ -225,6 +225,7 @@ $config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= '';
 $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');
+$config->{'test-deps'}                  //= 0;
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
 

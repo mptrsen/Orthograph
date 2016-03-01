@@ -159,4 +159,88 @@ sub program_exists {
 	else              { return undef }
 }
 
+# test whether the program versions are OK
+sub fastatranslate_version_ok {
+	my $program = shift;
+	my $ret = [ `$program --version` ];
+	$$ret[0] =~ /version ([0-9]+)\.([0-9]+)/;
+	if ("$1.$2" >= 2.2) { return "$1.$2" }
+	return undef;
+}
+
+sub alignment_program_version_ok {
+	my $program = shift;
+	my $ret = [ `$program 2>&1 1> /dev/null` ];
+	$$ret[4] =~ /v([0-9]+)\.([0-9]+)/;
+	if ("$1.$2" >= 7.023) { return "$1.$2" };
+	return undef;
+}
+
+sub hmmbuild_version_ok {
+	my $program = shift;
+	my $ret = [ `$program -h` ];
+	$$ret[1] =~ /HMMER ([0-9]+)\.([0-9]+)/;
+	if ("$1.$2" >= 3.1) { return "$1.$2" };
+	return undef;
+}
+
+sub hmmsearch_version_ok {
+	my $program = shift;
+	my $ret = [ `$program -h` ];
+	$$ret[1] =~ /HMMER ([0-9]+)\.([0-9]+)/;
+	if ("$1.$2" >= 3.1) { return "$1.$2" };
+	return undef;
+}
+
+sub makeblastdb_version_ok {
+	my $program = shift;
+	my $ret = [ `$program -version` ];
+	$$ret[0] =~ /makeblastdb: ([0-9]+)\.([0-9]+)\.([0-9]+)/;
+	if ($1 == 2 and "$2.$3" >= 2.28) { return "$1.$2.$3" }
+	elsif ($1 > 2) { return "$1.$2.$3" }
+	return undef;
+}
+
+sub blastp_version_ok {
+	my $program = shift;
+	my $ret = [ `$program -version` ];
+	$$ret[0] =~ /blastp: ([0-9]+)\.([0-9]+)\.([0-9]+)/;
+	if ($1 == 2 and "$2.$3" >= 2.28) { return "$1.$2.$3" }
+	elsif ($1 > 2) { return "$1.$2.$3" }
+	return undef;
+}
+
+sub test_dependencies {
+
+	my ($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program) = @_;
+
+	my $version = 0;
+
+	# test whether the programs exist where specified
+	program_exists($translate_program)   or die "Fatal: Fastatranslate not executable at '$translate_program'. Verify path and/or permissions.";
+	program_exists($alignment_program)   or die "Fatal: Alignment program not executable at '$alignment_program'. Verify path and/or permissions.";
+	program_exists($hmmbuild_program)    or die "Fatal: HMMbuild not executable at '$hmmbuild_program'. Verify path and/or permissions.";
+	program_exists($makeblastdb_program) or die "Fatal: Makeblastdb not executable at '$hmmbuild_program'. Verify path and/or permissions.";
+	program_exists($hmmsearch_program)   or die "Fatal: HMMsearch not executable at '$hmmsearch_program'. Verify path and/or permissions.";
+	program_exists($blast_program)       or die "Fatal: BLASTP not executable at '$blast_program'. Verify path and/or permissions.";
+
+	# test whether the versions are correct
+	$version = fastatranslate_version_ok($translate_program) or die "Fatal: fastatranslate failed version check. Requires at least version 2.2.0.";
+	print "OK: '$translate_program' version $version\n";
+	$version = alignment_program_version_ok($alignment_program) or die "Fatal: mafft failed version check. Requires at least version 7.023b.";
+	print "OK: '$alignment_program' version $version\n";
+	$version = hmmbuild_version_ok($hmmbuild_program) or die "Fatal: hmmbuild failed version check. Requires at least version 3.1b1.";
+	print "OK: '$hmmbuild_program' version $version\n";
+	$version = hmmsearch_version_ok($hmmsearch_program) or die "Fatal: hmmsearch failed version check. Requires at least version 3.1b1.";
+	print "OK: '$hmmsearch_program' version $version\n";
+	$version = makeblastdb_version_ok($makeblastdb_program) or die "Fatal: makeblastdb failed version check. Requires at least version 2.2.28.";
+	print "OK: '$makeblastdb_program' version $version \n";
+	$version = blastp_version_ok($blast_program) or die "Fatal: blastp failed version check. Requires at least version 2.2.28.";
+	print "OK: '$blast_program' version $version \n";
+
+	return 1;
+
+}
+
+
 1;

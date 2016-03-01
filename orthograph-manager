@@ -94,7 +94,7 @@ my $listogs                   = $config->{'list-ogs'};
 my $isnucleotide              = $config->{'load-ogs-nucleotide'};
 my $ispeptide                 = $config->{'load-ogs-peptide'};
 my $overwrite                 = $config->{'overwrite'};
-my $test                      = $config->{'test'};
+my $testdeps                  = $config->{'test-deps'};
 
 # other variables
 my $verbose                   = $config->{'verbose'};
@@ -224,8 +224,8 @@ elsif ($listtaxa) {
 }
 
 # test dependencies and everything
-elsif ($test) {
-	test_dependencies() and exit;
+elsif ($testdeps) {
+	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program) and exit;
 }
 
 # load a nucleotide ogs file
@@ -948,79 +948,6 @@ sub get_headers_from_fasta {
 	undef $fh;
 	return $hs;
 }
-
-sub test_dependencies {
-
-	# test whether the programs exist where specified
-	Orthograph::Functions::program_exists($translate_program)   or die "Fatal: Fastatranslate not executable at '$translate_program'. Verify path and/or permissions.\n";
-	Orthograph::Functions::program_exists($alignment_program)   or die "Fatal: Alignment program not executable at '$alignment_program'. Verify path and/or permissions.\n";
-	Orthograph::Functions::program_exists($hmmbuild_program)    or die "Fatal: HMMbuild not executable at '$hmmbuild_program'. Verify path and/or permissions.\n";
-	Orthograph::Functions::program_exists($makeblastdb_program) or die "Fatal: Makeblastdb not executable at '$hmmbuild_program'. Verify path and/or permissions.\n";
-	Orthograph::Functions::program_exists($hmmsearch_program)   or die "Fatal: HMMsearch not executable at '$hmmsearch_program'. Verify path and/or permissions.\n";
-	Orthograph::Functions::program_exists($blast_program)       or die "Fatal: BLASTP not executable at '$blast_program'. Verify path and/or permissions.\n";
-
-	fastatranslate_version_ok($translate_program) or die "Fatal: fastatranslate failed version check. Requires at least version 2.2.0\n";
-	print "version OK: $translate_program\n";
-	alignment_program_version_ok($alignment_program) or die "Fatal: mafft failed version check. Requires at least version 7.023b\n";
-	print "version OK: $alignment_program\n";
-	hmmbuild_version_ok($hmmbuild_program) or die "Fatal: hmmbuild failed version check. Requires at least version 3.1b1\n";
-	print "version OK: $hmmbuild_program\n";
-	hmmsearch_version_ok($hmmsearch_program) or die "Fatal: hmmsearch failed version check. Requires at least version 3.1b1\n";
-	print "version OK: $hmmsearch_program\n";
-	makeblastdb_version_ok($makeblastdb_program) or die  "Fatal: makeblastdb failed version check. Requires at least version 3.1b1\n";
-	print "version OK: $makeblastdb_program\n";
-	blastp_version_ok($blast_program) or die  "Fatal: BLASTP failed version check. Requires at least version 3.1b1\n";
-	print "version OK: $blast_program\n";
-}
-
-sub fastatranslate_version_ok {
-	my $program = shift;
-	my $ret = [ `$program --version` ];
-	$$ret[0] =~ /version ([0-9]+)\.([0-9]+)/;
-	if ($1 >= 2 and $2 >= 2) { return 1 }
-	return undef;
-}
-
-sub alignment_program_version_ok {
-	my $program = shift;
-	my $ret = [ `$program 2>&1 1> /dev/null` ];
-	$$ret[4] =~ /v([0-9]+)\.([0-9]+)/;
-	if ($1 >= 7 and $2 >= 23) { return 1 };
-	return undef;
-}
-
-sub hmmbuild_version_ok {
-	my $program = shift;
-	my $ret = [ `$program -h` ];
-	$$ret[1] =~ /HMMER ([0-9]+)\.([0-9]+)/;
-	if ($1 >= 3 and $2 >= 1) { return 1 };
-	return undef;
-}
-
-sub hmmsearch_version_ok {
-	my $program = shift;
-	my $ret = [ `$program -h` ];
-	$$ret[1] =~ /HMMER ([0-9]+)\.([0-9]+)/;
-	if ($1 >= 3 and $2 >= 1) { return 1 };
-	return undef;
-}
-
-sub makeblastdb_version_ok {
-	my $program = shift;
-	my $ret = [ `$program -version` ];
-	$$ret[0] =~ /makeblastdb: ([0-9]+)\.([0-9]+)\.([0-9]+)/;
-	if ($1 >= 2 and $2 >= 2 and $3 >= 28) { return 1 }
-	return undef;
-}
-
-sub blastp_version_ok {
-	my $program = shift;
-	my $ret = [ `$program -version` ];
-	$$ret[0] =~ /blastp: ([0-9]+)\.([0-9]+)\.([0-9]+)/;
-	if ($1 >= 2 and $2 >= 2 and $3 >= 28) { return 1 }
-	return undef;
-}
-
 
 sub delete_sequences_with_headers {
 	if ($use_mysql) {
