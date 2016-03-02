@@ -311,8 +311,8 @@ Make `orthograph-reporter` executable and run it:
 	$ ./orthograph-reporter
 
 `orthograph-reporter` fetches the search results from the database and assigns
-ortholog relationships by triangulating reciprocal best hits. After it is
-finished, the output directory contains five subdirectories:
+ortholog relations by clustering best reciprocal hits. After it is finished,
+the output directory contains five subdirectories:
 
 a) hmmsearch. This contains all the HMMsearch output tables. 
 

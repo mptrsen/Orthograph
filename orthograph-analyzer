@@ -117,7 +117,6 @@ my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
 my $hmmsearch_evalue_threshold = $config->{'hmmsearch-evalue-threshold'};
 my $hmmsearch_score_threshold  = $config->{'hmmsearch-score-threshold'};
-my $logfile                    = $config->{'logfile'};
 my $max_blast_searches         = $config->{'max-blast-searches'};
 my $makeset                    = $config->{'make-set'};
 my $ntoutdir                   = $config->{'ntoutdir'};
@@ -172,6 +171,7 @@ my $hmmresultfileref     = $EMPTY;
 my $list_of_wanted_orthoids = $EMPTY;
 my $listspecies          = 0;
 my $logdir               = $EMPTY;
+my $logfile              = $EMPTY;
 my $db_col_aaseq         = 'aa_seq';
 my $db_col_blastdbpath   = 'blastdb_path';
 my $db_col_date          = 'date';
@@ -636,45 +636,27 @@ sub intro {
   $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blast_program));
 
 	# setup the log file
-	if ($logfile) {
-		# new log file handle
-		my $logfh = IO::File->new($logfile, 'w') or die "Fatal: Could not create log file '$logfile': $!\n";  
-		$stdout = IO::Tee->new(
-			\*STDOUT,  # reference to STDOUT typeglob
-			$logfh, 
-		);
-		$stderr = IO::Tee->new(
-			\*STDERR,  # reference to STDERR typeglob
-			$logfh,
-		);
-		# print the messages that were collected so far
-		print $stdout $message;
-		print $stdout "Writing to log file $logfile\n";
+	$logdir = File::Spec->catdir($outdir, 'log');
+	if (-d $logdir) {
+		$message .= "Using log dir '$logdir'.\n" unless $quiet;
 	}
-	# default logfile: 'orthograph-' plus a timestamp
 	else {
-		$logdir = File::Spec->catdir($outdir, 'log');
-		if (-d $logdir) {
-			$message .= "Using log dir '$logdir'.\n" unless $quiet;
-		}
-		else {
-			$message .= "Log dir '$logdir' does not exist, creating...\n" unless $quiet;
-			Orthograph::Functions::makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
-		}
-		$logfile = File::Spec->catfile($logdir,  'orthograph-analyzer-' . $timestring . '.log');
-		my $logfh = IO::File->new($logfile, 'w') or die "Fatal: Could not create log file '$logfile': $!\n";
-		$stdout = IO::Tee->new(
-			\*STDOUT,
-			$logfh,
-		);
-		$stderr = IO::Tee->new(
-			\*STDERR,
-			$logfh,
-		);
-		# print the messages that were collected so far
-		print $stdout $message;
-		print $stdout "Using log file '$logfile'.\n";
+		$message .= "Log dir '$logdir' does not exist, creating...\n" unless $quiet;
+		Orthograph::Functions::makedir($logdir) or die "Fatal: Failed to create log directory $logdir\n";
 	}
+	$logfile = File::Spec->catfile($logdir,  'orthograph-analyzer-' . $timestring . '.log');
+	my $logfh = IO::File->new($logfile, 'w') or die "Fatal: Could not create log file '$logfile': $!\n";
+	$stdout = IO::Tee->new(
+		\*STDOUT,
+		$logfh,
+	);
+	$stderr = IO::Tee->new(
+		\*STDERR,
+		$logfh,
+	);
+	# print the messages that were collected so far
+	print $stdout $message;
+	print $stdout "Using log file '$logfile'.\n";
 
 	# pass the new stdout and stderr filehandles to the database modules for
 	# their output

@@ -77,7 +77,6 @@ GetOptions( $config,
 	'list-taxa|lt',
 	'load-ogs-nucleotide=s',
 	'load-ogs-peptide=s',
-	'logfile|log=s',
 	'max-blast-searches=i',
 	'max-reciprocal-mismatches=i',
 	'minimum-transcript-length=i',
@@ -197,7 +196,6 @@ $config->{'hmmsearchoutdir'}            //= basename($config->{'hmmsearch-progra
 $config->{'input-file'}                 //= '';
 $config->{'load-ogs-nucleotide'}        //= '';
 $config->{'load-ogs-peptide'}           //= '';
-$config->{'logfile'}                    //= '';
 $config->{'makeblastdb-program'}        //= 'makeblastdb';
 $config->{'max-blast-searches'}         //= 100;
 $config->{'max-reciprocal-mismatches'}  //= 0;

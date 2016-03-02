@@ -4,6 +4,15 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
+## [Unreleased]
+
+### Changed
+
+- Removed the option `--logfile`. It was rubbish anyway because the reporter
+would overwrite the analyzer logfile unless you changed it, and analyzer and
+reporter create separate, uniquely identifiable logfiles automatically in the
+log dir.
+
 ## [0.5.10] - 2016-03-01
 
 ### Added
