@@ -79,6 +79,7 @@ my $db_table_temp             = $config->{'db_table_temp'};
 my $alignment_program          = $config->{'alignment-program'};
 my $hmmbuild_program           = $config->{'hmmbuild-program'};
 my $translate_program          = $config->{'translate-program'};
+my $exonerate_program          = $config->{'exonerate-program'};
 my $hmmsearch_program          = $config->{'hmmsearch-program'};
 my $blast_program              = $config->{'blast-program'};
 my $makeblastdb_program        = $config->{'makeblastdb-program'};
@@ -225,7 +226,7 @@ elsif ($listtaxa) {
 
 # test dependencies and everything
 elsif ($testdeps) {
-	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program) and exit;
+	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program) and exit;
 }
 
 # load a nucleotide ogs file

@@ -95,6 +95,7 @@ my $hmmbuild_program           = $config->{'hmmbuild-program'};
 my $translate_program          = $config->{'translate-program'};
 my $hmmsearch_program          = $config->{'hmmsearch-program'};
 my $blast_program              = $config->{'blast-program'};
+my $exonerate_program          = $config->{'exonerate-program'};
 my $makeblastdb_program        = $config->{'makeblastdb-program'};
 
 #--------------------------------------------------
@@ -254,7 +255,7 @@ if ($preparedb) {
 #-------------------------------------------------- 
 
 # exit here if we are just to test dependencies
-if ($testdeps) { Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program) and exit }
+if ($testdeps) { Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program) and exit }
 intro();
 
 # get the set id
@@ -605,7 +606,7 @@ sub get_real_table_names {
 sub intro {
 	# first things first: 
 	# test whether dependencies exist where specified and whether versions are sufficient
-	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program);
+	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program);
 
 	# construct output directory paths
 	# the output directory. create if it does not exist.

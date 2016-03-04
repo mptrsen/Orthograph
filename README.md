@@ -8,7 +8,7 @@ A manual page containing a description of all options is in the `doc`
 directory. It can be read using `man -l doc/orthograph.man` or directly with
 `man orthograph` if installed properly (ask your system administrator).
 
-This is a quickstart guide to help you start off.
+This is a quickstart guide to help you start off. 
 
 SYSTEM REQUIREMENTS
 ===================
@@ -53,6 +53,27 @@ well as the proper database driver for your database engine of choice
 If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation; see REQUIRED PERL MODULES for more information.
 
+
+TEST DATA
+=========
+
+To verify that your dependencies are correctly installed and work, you can test
+Orthograph right away using the example config file orthograph.conf and the test
+dataset in the test_data directory. It includes part of a transcriptome assembly
+from Misof et al. (2014) (<http://www.ncbi.nlm.nih.gov/Traces/wgs/?val=GAUJ02>).
+Test your dependencies using:
+
+	$ ./orthograph-analyzer --test-deps
+
+Review the path settings in the config file and adjust them accordingly if you
+installed some dependencies locally.
+
+Then run Orthograph on the supplied test file (it is already specified as the
+input file in the example config):
+
+	$ ./orthograph-analyzer
+
+If all goes smooth, this should run without problems.
 
 DATA REQUIREMENTS
 =================
