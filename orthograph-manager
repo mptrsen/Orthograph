@@ -424,9 +424,12 @@ sub make_csv_for_set_uploading {
 	my $csvfh = File::Temp->new();
 	open my $fh, '<', $infile;
 	while (my $l = <$fh>) {
-		next if $l =~ /^\s*$/;	# skip empty lines
 		chomp $l;
+		next if $l =~ /^Group\tGene\tProtein/;  # skip orthodb table header lines
+		next if $l =~ /^\s*$/;	# skip empty lines
 		@f = split "\t", $l;
+		# skip those that are not mentioned at all
+		next unless defined $ogsid_for->{$f[2]};
 		# skip those that should not be included
 		next if $ogsid_for->{$f[2]} == 0;
 		printf $csvfh "%s,%s,%d,%d\n", 
