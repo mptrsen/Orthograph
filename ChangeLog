@@ -8,10 +8,23 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 
 ### Changed
 
+- Orthograph now reads ortholog set information from a simple, three-column
+table. The columns must be tab-separated and be:
+  - ortholog gene id
+  - sequence id
+  - taxon name
+Generating such a table from OrthoDB tables is trivial using GNU tools such as
+`cut`. The README was amended accordingly.
+
 - Removed the option `--logfile`. It was rubbish anyway because the reporter
 would overwrite the analyzer logfile unless you changed it, and analyzer and
 reporter create separate, uniquely identifiable logfiles automatically in the
 log dir.
+
+### Fixed
+
+- Fixed a bug in the database backend modules that prevented identical taxon
+names in the database.
 
 ## [0.5.10] - 2016-03-01
 

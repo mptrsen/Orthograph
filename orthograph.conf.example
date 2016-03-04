@@ -19,7 +19,8 @@
 # # Database backend selection
 #
 # Database backend. Defaults to 'sqlite', which means to use the file-based
-# SQLite database system. Set this to 'mysql' if you want to use MySQL.
+# SQLite database system. Set this to 'mysql' and adjust the MySQL settings
+# below if you want to use MySQL.
 database-backend   = sqlite
 
 #
@@ -28,39 +29,31 @@ database-backend   = sqlite
 # Path to the database file for SQLite. Required if you use SQLite. This is a
 # plain file that can be located anywhere. It will be created automatically. By
 # convention, SQLite database files carry the extension '.sqlite'.
-sqlite-database    = ORTHOGRAPH.sqlite
+sqlite-database    = test_data/testset.sqlite
 
 # Path to the sqlite executable. Normally this is located at /usr/bin/sqlite3
 # (the default). Required if you use SQLite and have 'database-backend' set to
 # 'sqlite'. Change this if your setup differs. 
 sqlite-program     = /usr/bin/sqlite3
 
-#
-# # MySQL connection settings. Only required if you use MySQL and have
-# 'database-backend' set to 'mysql'.
-#
-#mysql-username     = USERNAME
-#mysql-password     = PASSWORD
-#mysql-database     = DATABASE
-
 # The path to your transcript data file. Must be in Fasta format. It is always
 # best to use absolute paths. You may only supply one file, not a directory of
 # files.
-input-file         = FASTAFILE
+input-file         = /var/tmp/GAUJ02.1.fsa_nt
 
 # Species name. Make sure to pick a unique name because otherwise results get
 # mixed up. You can, however, supply an existing name if you want to add
 # sequences to an existing data set (this has been neither tested nor
 # documented yet, though).
-species-name       = NAME
+species-name       = Orussus_abietinus
 
 # The name of the ortholog set (not the path to a file) you created earlier.
-ortholog-set       = SETNAME
+ortholog-set       = testset_hymenoptera
 
 # This is where your results are placed. Will be created if it doesn't exist.
 # You should provide the path to a directory here or your output will be placed
 # in your current working directory.
-#output-directory   = /PATH/TO/OUTPUT/DIR
+output-directory   = test_data/output
 
 # Reference taxa. A comma-separated list of taxon names that are present in
 # your ortholog set. If you don't specify any reference taxa (i.e., leave this
@@ -110,8 +103,13 @@ blast-program        = blastp
 exonerate-program    = exonerate
 
 #
-# # MySQL settings
+# # MySQL connection settings. Only required if you use MySQL and have
+# 'database-backend' set to 'mysql'.
 #
+#mysql-username     = USERNAME
+#mysql-password     = PASSWORD
+#mysql-database     = DATABASE
+
 # The database server. Change this if the database does not run on the same
 # computer as the analysis. Ask your administrator if you don't know what to
 # write here.
@@ -169,9 +167,9 @@ exonerate-program    = exonerate
 #
 
 # Minimum transcript length. A transcript must have equal or more amino acids
-# in order to be accepted. This is a way to avoid very small fragments,
-# commonly due to domain walking, but you can also set it to a higher value if
-# you want longer transcripts. 
+# in order to be accepted for further processing. This is a way to avoid very
+# small fragments, commonly due to domain walking, but you can also set it to a
+# higher value if you want longer transcripts. 
 # This affects only orthograph-reporter.
 # Defaults to 30 (a common domain length).
 #minimum-transcript-length = 30

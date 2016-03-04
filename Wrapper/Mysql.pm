@@ -1470,13 +1470,13 @@ sub get_hmmresults_for_single_score {
 			ON $db_table_hmmsearch.$db_col_target = $db_table_ests.$db_col_digest
 		LEFT JOIN $db_table_orthologs
 			ON $db_table_hmmsearch.$db_col_query = $db_table_orthologs.$db_col_orthoid
-		LEFT JOIN $db_table_taxa
-			ON $db_table_hmmsearch.$db_col_taxid = $db_table_taxa.$db_col_id
+		LEFT JOIN $db_table_species_info
+			ON $db_table_hmmsearch.$db_col_taxid = $db_table_species_info.$db_col_id
 		LEFT JOIN $db_table_set_details
 			ON $db_table_orthologs.$db_col_setid = $db_table_set_details.$db_col_id
 		WHERE $db_table_ests.$db_col_digest          IS NOT NULL
 			AND $db_table_orthologs.$db_col_orthoid    IS NOT NULL
-			AND $db_table_taxa.$db_col_id              IS NOT NULL
+			AND $db_table_species_info.$db_col_id      IS NOT NULL
 			AND $db_table_set_details.$db_col_id       IS NOT NULL
 			AND $db_table_set_details.$db_col_id       = ?
 			AND $db_table_hmmsearch.$db_col_score      = ?

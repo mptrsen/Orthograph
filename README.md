@@ -69,16 +69,21 @@ a) The clusters of orthologous groups (COGs)
 
 The information about which genes belong to a COG consists of a tab-delimited
 file that contains at least one line per COG. If you get your COGs from
-[OrthoDB][3] (recommended), this is the case. In an OrthoDB file, each line has
-a number of tab-delimited fields like this:
+[OrthoDB][3] (recommended), this is the case. The table must have three
+columns:
 
-	EOG7M10DZ       AECH19093       AECH19093-PA    Acromyrmex echinatior   Panamanian leafcutter ant       AECHI   1282                    IPR006121,IPR008250,IPR005834,IPR023214 
+	COG_ID	sequence_ID	taxon_name
 
-The 'EOG7M10DZ' field is the COG ID. The line must also contain an unambiguous
+In an OrthoDB file, each line has a number of tab-delimited fields like this:
+
+	EOG7M10DZ	AECH19093	AECH19093-PA	Acromyrmex echinatior	Panamanian leafcutter ant	AECHI	1282	IPR006121,IPR008250,IPR005834,IPR023214 
+
+The 'EOG7M10DZ' field is the COG ID. The line must also have an unambiguous
 sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
-'AECH19093-PA'. The sixth field is the taxon shorthand (I know this is odd, but
-it's the way OrthoDB 7 outputs. In the future you'll be able to specify the
-field). 
+'AECH19093-PA'. The sixth field is the taxon shorthand. An OrthoDBw 7 table can
+be re-formatted using `cut`, picking out the columns 1, 3, and 6:
+
+	$ cut -f1,3,6 ORTHODBFILE > ORTHOGRAPH_INPUT_FILE
 
 You may need to filter the OrthoDB file to contain only those taxa you want.
 Probably the easiest way is to do this using `grep`:
@@ -95,10 +100,9 @@ Probably the easiest way is to do this using `grep`:
 - double-check the resulting file. Is it empty? Does it contain the right
 	number of lines (number of taxa * number of COGs)?
 
-If you want to create these files yourself, make sure that the COG ID is in
-the first tab-separated field, the sequence ID in the third field, and the taxon
-shorthand in the sixth field. Any fields in between are irrelevant to Orthograph
-but must not be omitted since it relies on their order.
+If you want to create these files yourself, make sure that the COG ID is in the
+first tab-separated field, the sequence ID in the second field, and the taxon
+shorthand in the third field. 
 
 
 b) The official gene set (OGS)

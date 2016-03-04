@@ -428,11 +428,11 @@ sub make_csv_for_set_uploading {
 		chomp $l;
 		@f = split "\t", $l;
 		# skip those that should not be included
-		next if $ogsid_for->{$f[5]} == 0;
+		next if $ogsid_for->{$f[2]} == 0;
 		printf $csvfh "%s,%s,%d,%d\n", 
 			$f[0],								# cog id
-			$f[2],								# protein id
-			$ogsid_for->{$f[5]},	# ogs id for this shorthand
+			$f[1],								# protein id
+			$ogsid_for->{$f[2]},	# ogs id for this shorthand
 			$setid,								# well... setid
 		;
 	}
@@ -655,8 +655,8 @@ sub get_all_ogsids {
 		if ($line =~ /^Group\tGene\tProtein/) { next }
 		chomp $line;
 		@fields = split "\t", $line;
-		next if exists $seen->{$fields[5]};
-		$seen->{$fields[5]} = 0;
+		next if exists $seen->{$fields[2]};
+		$seen->{$fields[2]} = 0;
 	}
 	$seen = assign_ogsids_to_taxa($seen);
 	return $seen;
