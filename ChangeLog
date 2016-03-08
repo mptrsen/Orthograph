@@ -4,7 +4,13 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
-## [Unreleased]
+## [0.5.11]
+
+### Added
+
+Added a test dataset using a subset of the Orussus abietinus transcriptome
+from 1KITE (http://1kite.org). The dataset is configured in the default config
+file so just starting Orthograph will verify a correct installation.
 
 ### Changed
 
