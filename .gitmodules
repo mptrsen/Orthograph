@@ -1,3 +1,0 @@
-[submodule "test_data"]
-	path = test_data
-	url = https://github.com/mptrsen/Orthograph-test-data.git
