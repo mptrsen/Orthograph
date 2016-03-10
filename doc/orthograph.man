@@ -414,6 +414,13 @@ set the temporary directory to DIR. Temporary files will be placed here. Default
 Affects both orthograph-analyzer and orthograph-reporter.
 
 .TP
+\fB--test-deps\fP
+test dependencies. Verify location, executability and version of each required dependency as listed in the SYSTEM REQUIREMENTS section of README.md.
+
+Can be used with orthograph-manager and orthograph-analyzer.
+
+
+.TP
 \fB--translate-program\fP PATH
 set the fastatranslate program, which is part of the Exonerate package. Used for translating the nucleotide transcripts into all six possible reading frames before analysis. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'fastatranslate'.
 
