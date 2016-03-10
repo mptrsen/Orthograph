@@ -16,6 +16,18 @@ from 1KITE. It is linked as a git submodule and can be installed using:
 The dataset is configured in the default config file so just starting
 Orthograph will verify a correct installation.
 
+### Added
+
+* Added `--test-deps` option with description to man page
+
+## [0.5.11]
+
+### Added
+
+Added a test dataset using a subset of the Orussus abietinus transcriptome
+from 1KITE (http://1kite.org). The dataset is configured in the default config
+file so just starting Orthograph will verify a correct installation.
+
 ### Changed
 
 - Orthograph now reads ortholog set information from a simple, three-column
