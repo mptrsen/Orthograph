@@ -102,7 +102,7 @@ In an OrthoDB file, each line has a number of tab-delimited fields like this:
 The 'EOG7M10DZ' field is the COG ID. The line must also have an unambiguous
 sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
 'AECH19093-PA'. The taxon name is in the fourth field and the sixth field
-contains the taxon shorthand. An OrthoDBw 7 table can be re-formatted using
+contains the taxon shorthand. An OrthoDB 7 table can be re-formatted using
 `cut`, picking out the columns 1, 3, and 4:
 
 	$ cut -f1,3,4 ORTHODBFILE > ORTHOGRAPH_INPUT_FILE
