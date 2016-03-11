@@ -35,7 +35,7 @@ MySQL          | 5.6.17    | <http://dev.mysql.com/downloads/mysql/>
 MAFFT          | 7.023b    | <http://mafft.cbrc.jp/alignment/software/>
 HMMer          | 3.1b1     | <http://hmmer.janelia.org/software/>
 NCBI BLAST+    | 2.2.28+   | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
-Exonerate      | 2.2.0     | <https://github.com/nathanweeks/exonerate>
+Exonerate      | 2.2.0     | <https://www.ebi.ac.uk/about/vertebrate-genomics/software/exonerate>
 
 Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).
