@@ -202,7 +202,6 @@ sub hmmsearch_version_ok {
 sub makeblastdb_version_ok {
 	my $program = shift;
 	my $ret = [ `$program -version` ];
-	$$ret[0] = 'makeblastdb: 2.2.28';
 	$$ret[0] =~ /makeblastdb: ([0-9.]+)/;
 	my $version = $1;
 	my @nums = split /\./, $version;
