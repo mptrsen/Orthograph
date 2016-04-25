@@ -4,6 +4,12 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
+## [Unreleased]
+
+### Fixed
+
+* Fix bug in makeblastdb version check
+
 ## [0.5.12]
 
 ### Added
