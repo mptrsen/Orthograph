@@ -110,7 +110,11 @@ required, but the database is a flat file on the hard drive.</p>
 <p>Make sure you get the correct versions for your operating system (most packages
 are provided as 32 bit and 64 bit versions).</p>
 
-<p>If you use some flavor of Linux, these packages are most likely present in your software repositories. It is recommended to install them using <code>apt-get</code>, <code>yum</code>, or whatever package manager your system uses. Additionally, you need the Perl modules <b>DBI</b> and <b>DBD::mysql</b> or <b>DBD::SQLite</b>, depending on your database choice.</p>
+<p>If you use some flavor of Linux, these packages are most likely present in
+your software repositories. It is recommended to install them using
+<code>apt-get</code>, <code>yum</code>, or whatever package manager your system
+uses. Additionally, you need the Perl modules <b>DBI</b> or <b>DBD::mysql</b>
+or <b>DBD::SQLite</b>, depending on your database choice.</p>
 
 <p>Don't worry about your Perl version if you run a reasonably recent Linux or
 UNIX system, such as Mac OS X, but see <a href="http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems">here</a> and <a href="http://forums.mysql.com/read.php?51,389833,389833">there</a> if you are
@@ -125,77 +129,9 @@ well as the proper database driver for your database engine of choice
 <p>If you get an error like "Can't locate Some/Module.pm in @INC", you need to
 update your Perl installation.</p>
 
-<h1>
-<a name="data-requirements" class="anchor" href="#data-requirements"><span class="octicon octicon-link"></span></a>DATA REQUIREMENTS</h1>
+<h1>QUICK START INSTRUCTIONS</h1>
 
-<p>Orthograph is an orthology prediction pipeline that attempts to map transcript
-sequences to known orthologous groups. It is not meant to infer orthology de
-novo among genomes or transcriptomes, but relies on the orthology information in
-pre-defined sets. Because of this requirement, it is essential that your input
-data conforms to some data standards as listed below.</p>
-
-<p><strong>a) The clusters of orthologous groups (COGs).</strong> It consists
-of a tab-delimited file that contains at least one line per COG. If you get
-your COGs from <a href="http://orthodb.org/">OrthoDB</a> (recommended), this is
-the case. The table must have three columns (and no header line):</p>
-
-<pre>COG_ID	sequence_ID	taxon_name</pre>
-
-In an OrthoDB file, each line has a number of tab-delimited fields
-like this:</p>
-
-<pre>EOG7M10DZ       AECH19093       AECH19093-PA    Acromyrmex echinatior   Panamanian leafcutter ant       AECHI   1282                    IPR006121,IPR008250,IPR005834,IPR023214</pre>
-
-<p>The 'EOG7M10DZ' field is the COG ID. The line must also contain an unambiguous
-sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
-'AECH19093-PA'. The taxon name is in the fourth field and the sixth field contains the taxon shorthand. An OrthoDB 7 table can be re-formatted using <code>cut</code>, picking out the columns 1, 3, and 4:</p>
-
-<pre><code>$ cut -f1,3,4 ORTHODBFILE > ORTHOGRAPH_INPUT_FILE</code></pre>
-
-<p>You may need to filter the OrthoDB file to contain only those taxa you want. Probably the easiest way is to do this using <code>grep</code>:</p>
-
-<ul>
-    <li>create a file containing the taxon shorthands you want. The shorthands must be unambiguously identical to the ones found in the OrthoDB file, and must be in a single line each, with no extra whitespace anywhere in the file (no trailing empty lines!).</li>
-    <li>use <code>grep -f LISTFILE ORTHODBFILE > OUTPUTFILE</code> to filter the ORTHODBFILE according to the shorthand list in LISTFILE. The output will be written to OUTPUTFILE.</li>
-    <li>double-check the resulting file. Is it empty? Does it contain the right number of lines (number of taxa * number of COGs)?</li>
-</ul>
-
-
-<p>If you want to create these files yourself, make sure that the COG ID is in
-the first tab-separated field, the sequence ID in the second field, and the taxon
-name in the third field.</p>
-
-<p><strong>b) The official gene set (OGS)</strong> for each of the taxa that
-are present in the ortholog set, i.e., contributed sequences to the COGs. The
-sequences for a single taxon must be in Fasta format, and all (!) sequences of
-this taxon that occur in the COGs must be in the OGS database as well. Their
-sequence identifier must be unambiguously identical to the sequence ID in the
-file from OrthoDB. For example, this would be the related sequence for
-Acromyrmex echinatior from the OGS:</p>
-
-<pre><code>&gt;AECH19093-PA</code></pre>
-
-<p>The OGS must be present as amino acid sequences, and may be present as
-nucleotide sequences. If the latter is missing, no nucleotide sequences can be
-output for the reference taxa. The sequence identifiers of corresponding
-nucleotide and amino acid sequences must be identical.</p>
-
-<p>The helper script <code>make-ogs-corresponding.pl</code> is provided that uses
-Exonerate to generate 100% corresponding amino acid and nucleotide sequences
-for the OGS. It only requires that the identifiers are unambiguously identical.
-You can call it like this:</p>
-
-<pre><code>perl make-ogs-corresponding.pl [OPTIONS] PEPTIDEFILE CDSFILE</code></pre>
-
-<p>Provide the OGS on amino acid level as PEPTIDEFILE and on nucleotide level as
-CDSFILE. A list of options is printed when you call the script without arguments
-or with the <code>-h</code> option.</p>
-
-<p>The OGS must be present as amino acid sequences, and may be present as
-nucleotide sequences. If the latter is missing, no nucleotide sequences can be
-output. The sequence identifiers of corresponding nucleotide and amino acid
-sequences must be identical.</p>
-
+<p>Please see the supplied README file for further instructions on how to set up and run Orthograph.</p>
 
 <hr>
 
