@@ -375,7 +375,7 @@ orthograph-reporter:
 
 - summary.txt: a tabular listing of all transcripts that were eventually mapped
   to each COG. These do not overlap, fulfill all other criteria (length, number
-  of mismatches and there are aa and nt output files for them.
+  of mismatches, etc.) and there are aa and nt output files for them.
 
 
 ## 12. Optional: Summarize output
