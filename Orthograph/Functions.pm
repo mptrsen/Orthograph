@@ -153,7 +153,7 @@ sub program_exists {
 	my $path = shift;
 	# remove optional arguments if they exist. this requires that arguments start
 	# with a - and are separated by a space from the command
-	$path =~ s/ +-.+//; 
+	$path =~ s/\s+-.+//; 
 	if (which($path))              { return 1     }
 	elsif (-f $path and -x $path)  { return 1     }
 	else                           { return undef }
@@ -171,11 +171,13 @@ sub fastatranslate_version_ok {
 
 sub alignment_program_version_ok {
 	my $program = shift;
-	my $ret = [ `$program 2>&1 1> /dev/null` ];
-	$$ret[4] =~ /v([0-9.]+)/;
+	$program =~ s/\s.+$//;
+	my $ret = [ `$program --version 2>&1` ];
+	$$ret[0] =~ /v([0-9.]+)/;
 	my $version = $1;
+	#if ($version eq '7.023b') { return $version, 1 }
 	my @nums = split /\./, $version;
-	if ($nums[0] > 7 or ($nums[0] >= 7 and $nums[1] >= 123)) { return ($nums[0] . (defined $nums[1] ? '.' . $nums[1] : ''), 1)  };
+	if ($nums[0] > 7 or ($nums[0] == 7 and $nums[1] >= 123)) { return ($nums[0] . (defined $nums[1] ? '.' . $nums[1] : ''), 1)  };
 	return ($version, 0);
 }
 
@@ -247,25 +249,25 @@ sub test_dependencies {
 
 	# test whether the versions are correct
 	($version, $ok) = fastatranslate_version_ok($translate_program);
-	$ok or die "Fatal: fastatranslate failed version check. Requires at least version 2.2.0. You have version '$version'";
+	$ok or die "Fatal: fastatranslate failed version check. Requires at least version 2.2.0. You have version '$version'\n";
 	print "OK: '$translate_program' version $version\n";
 	($version, $ok) = exonerate_version_ok($exonerate_program);
-	$ok or die "Fatal: exonerate failed version check. Requires at least version 2.2.0. You have version '$version'";
+	$ok or die "Fatal: exonerate failed version check. Requires at least version 2.2.0. You have version '$version'\n";
 	print "OK: '$exonerate_program' version $version\n";
 	($version, $ok) = alignment_program_version_ok($alignment_program);
-	$ok or die "Fatal: mafft failed version check. Requires at least version 7.023b. You have version '$version'";
+	$ok or die "Fatal: mafft failed version check. Requires at least version 7.023b. You have version '$version'\n";
 	print "OK: '$alignment_program' version $version\n";
 	($version, $ok) = hmmbuild_version_ok($hmmbuild_program);
-	$ok or die "Fatal: hmmbuild failed version check. Requires at least version 3.1b1. You have version '$version'";
+	$ok or die "Fatal: hmmbuild failed version check. Requires at least version 3.1b1. You have version '$version'\n";
 	print "OK: '$hmmbuild_program' version $version\n";
 	($version, $ok) = hmmsearch_version_ok($hmmsearch_program);
-	$ok or die "Fatal: hmmsearch failed version check. Requires at least version 3.1b1. You have version '$version'";
+	$ok or die "Fatal: hmmsearch failed version check. Requires at least version 3.1b1. You have version '$version'\n";
 	print "OK: '$hmmsearch_program' version $version\n";
 	($version, $ok) = makeblastdb_version_ok($makeblastdb_program);
-	$ok or die "Fatal: makeblastdb failed version check. Requires at least version 2.2.28. You have version '$version'";
+	$ok or die "Fatal: makeblastdb failed version check. Requires at least version 2.2.28. You have version '$version'\n";
 	print "OK: '$makeblastdb_program' version $version \n";
 	($version, $ok) = blastp_version_ok($blast_program);
-	$ok or die "Fatal: blastp failed version check. Requires at least version 2.2.28. You have version '$version'";
+	$ok or die "Fatal: blastp failed version check. Requires at least version 2.2.28. You have version '$version'\n";
 	print "OK: '$blast_program' version $version \n";
 
 	return 1;
