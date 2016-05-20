@@ -36,7 +36,7 @@ use IO::Dir;        # object-oriented access to dirs
 use IO::File;       # object-oriented access to files
 
 # Custom modules
-use lib $FindBin::Bin;     # $Bin is the directory of the original script
+use lib $FindBin::RealBin; # $RealBin is the directory of the original script
 use IO::Tee;               # not custom, but supplied because from CPAN
 use Seqload::Fasta;        # object-oriented access to fasta files
 use Wrapper::Hmmsearch;    # object-oriented interface to hmmsearch

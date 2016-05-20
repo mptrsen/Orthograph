@@ -30,7 +30,7 @@ use Getopt::Long;   # parse command line arguments
 use Data::Dumper;   # good for debugging
 
 # Custom modules
-use lib $FindBin::Bin;                   # $Bin is the directory of the original script
+use lib $FindBin::RealBin;               # $RealBin is the directory of the original script
 use Seqload::Fasta qw( check_if_fasta ); # object-oriented access to fasta files
 use Orthograph::Functions;               # functions for all Orthograph tools
 use Orthograph::Config;                  # configuration in global hashref $config

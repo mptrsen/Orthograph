@@ -32,7 +32,7 @@ use List::Util qw( first min max sum );  # list functions
 use Time::HiRes qw(time);    # high-resolution timer
 
 # Custom modules
-use lib $FindBin::Bin;                 # $Bin is the directory of the original script
+use lib $FindBin::RealBin;             # $RealBin is the directory of the original script
 use Orthograph::Config;                # configuration in global hashref $config
 use Orthograph::Functions;             # functions for all Orthograph tools
 use Orthograph::Version;

@@ -23,7 +23,7 @@ use File::Basename;
 use File::Spec;             
 use FindBin;                # locate the dir of this script during compile time
 use Getopt::Long;           # parse command line arguments
-use lib $FindBin::Bin;      # $Bin is the directory of the original script
+use lib $FindBin::RealBin;  # $RealBin is the directory of the original script
 require Exporter;
 our @ISA = qw( Exporter );
 our @EXPORT_OK = qw( $config );

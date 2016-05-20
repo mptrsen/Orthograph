@@ -43,7 +43,7 @@ use warnings;
 use Carp;
 use Exporter;
 use FindBin;        # locate the dir of this script during compile time
-use lib $FindBin::Bin;                 # $Bin is the directory of the original script
+use lib $FindBin::RealBin;             # $RealBin is the directory of the original script
 use Orthograph::Config;                # configuration parser getconfig()
 use Orthograph::Functions;
 use Data::Dumper;
