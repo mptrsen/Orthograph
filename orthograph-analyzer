@@ -833,15 +833,34 @@ sub hmmlist {
 # Returns: scalar string filename (protfile)
 sub translate_est {
   my ($infile) = shift;
+	my $prepared_infile = prepare_file_for_translation($infile);
   (my $outfile = File::Spec->catfile($outdir, basename($infile))) =~ s/(\.[^.]*$)/_prot$1/;
   print $stdout "Translating $input_file in all six reading frames...\n" unless $quiet;
   if (-e $outfile) {
     print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
   }
-  my @translateline = qq($translate_program --geneticcode $genetic_code $infile > $outfile);
+  my @translateline = qq($translate_program --geneticcode $genetic_code $prepared_infile > $outfile);
   system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?');
   return($outfile);
+}
+
+# Sub: prepare_file_for_translation
+# Removes all trailing spaces from sequence headers, writing the result to a new file
+# Expects: scalar string filename
+# Returns: scalar string output filename
+sub prepare_file_for_translation {
+	my $file = shift;
+  (my $outfile = File::Spec->catfile($outdir, basename($file))) =~ s/(\.[^.]*$)/_prepared$1/;
+	my $fh = Seqload::Fasta->open($file);
+	my $ofh = IO::File->new($outfile, 'w');
+	while (my ($h, $s) = $fh->next_seq()) {
+		$h =~ s/\s*$//;
+		printf $ofh ">%s\n%s\n", $h, $s;
+	}
+	undef $fh;
+	undef $ofh;
+	return $outfile;
 }
 
 # sub: backup_old_output_files
