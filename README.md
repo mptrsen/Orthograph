@@ -32,7 +32,7 @@ Package        | Version   | Download from
 Perl           | 5.14      | <http://www.perl.org>
 SQLite         | 3.8.2     | <http://sqlite.org/download.html>
 MySQL          | 5.6.17    | <http://dev.mysql.com/downloads/mysql/>
-MAFFT          | 7.023b    | <http://mafft.cbrc.jp/alignment/software/>
+MAFFT          | 7.273     | <http://mafft.cbrc.jp/alignment/software/>
 HMMer          | 3.1b1     | <http://hmmer.janelia.org/software/>
 NCBI BLAST+    | 2.2.28+   | <ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/>
 Exonerate      | 2.2.0     | <https://www.ebi.ac.uk/about/vertebrate-genomics/software/exonerate>
@@ -74,6 +74,7 @@ input file in the example config):
 	$ ./orthograph-analyzer
 
 If all goes smooth, this should run without problems.
+
 
 DATA REQUIREMENTS
 =================
@@ -290,7 +291,8 @@ To check what sets have been uploaded so far, call `orthograph-manager -ls`.
 
 ## 7. Create the required database structure for the Orthograph search program.
 
-Make `orthograph-analyzer` executable and run it with the -prepare option:
+Make `orthograph-analyzer` executable if it isn't already and run it with the
+-prepare option:
 
 	$ chmod +x orthograph-analyzer
 	$ ./orthograph-analyzer --prepare
@@ -301,8 +303,10 @@ file is created in the output directory you specified in the config file.
 
 ## 8. Complete your config file if you didn't fill out everything before.
 
-Supply the rest of the mandatory settings and consider changing some optional
-ones that will affect the searches.
+Change the setting of `ortholog-set` to the name of your custom ortholog set.
+Also supply the rest of the mandatory settings (`species-name`, `input-file`,
+and `output-directory` (recommended)) and consider changing some optional ones
+that will affect the searches.
 
 
 ## 9. Start Orthograph! 
@@ -331,7 +335,7 @@ created in the 'log' directory (or wherever you specified).
 
 ## 11. Start the reporter
 
-Make `orthograph-reporter` executable and run it:
+Make `orthograph-reporter` executable if it isn't already and run it:
 
 	$ chmod +x orthograph-reporter
 	$ ./orthograph-reporter
