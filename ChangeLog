@@ -6,6 +6,11 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 
 ## [0.5.14]
 
+### Added
+
+* Added `--make-set` option to just generate the set (HMM files and BLAST
+  database) and then quit
+
 ### Fixed
 
 * Using `use lib $FindBin::RealBin` now to avoid issues with soft links
