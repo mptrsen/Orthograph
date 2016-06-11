@@ -409,11 +409,13 @@ foreach my $score (@$scores) {
 			else {
 				# does not overlap, add to list of transcripts for this ortholog group
 				push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
-				printf $stdout ">> No overlap with previous hits: added '%s' [%d:%d] to %s.\n",
+				printf $stdout ">> No overlap with previous hits: added '%s' [%d:%d] to %s (hmm %d-%d).\n",
 					$this_match->{'header'},
 					$this_match->{'ali_start'},
 					$this_match->{'ali_end'},
-					$orthoid
+					$orthoid,
+					$this_match->{'hmm_start'},
+					$this_match->{'hmm_end'},
 						unless $quiet;
 				# this transcript can't be found again
 				push @$transcript_list, $this_match;
@@ -426,11 +428,13 @@ foreach my $score (@$scores) {
 		else {
 
 			# this has not been hit before, just assign
-			printf $stdout ">> Assigned '%s' [%d:%d] to %s.\n",
+			printf $stdout ">> Assigned '%s' [%d:%d] to %s (hmm %d-%d).\n",
 				$this_match->{'header'},
 				$this_match->{'ali_start'},
 				$this_match->{'ali_end'},
-				$orthoid
+				$orthoid,
+				$this_match->{'hmm_start'},
+				$this_match->{'hmm_end'},
 					unless $quiet;
 			push @{ $transcripts_mapped_to->{$orthoid} }, $this_match;
 
@@ -453,8 +457,8 @@ undef $non_overlapping_brh_fh;
 
 print $stdout "\n";
 print $stdout "####################################\n";
-print $stdout "Finished fetching from the database.\n";
-print $stdout "Starting output.\n";
+print $stdout "## Finished fetching from the database.\n";
+print $stdout "## Starting output.\n";
 print $stdout "####################################\n";
 
 # a tablefile
@@ -480,7 +484,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 	my $transcripts_skipped = 0;
 
 	++$counter;
-	printf $stdout "Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
+	printf $stdout "## Finalizing %s... (%${l_counter}d of %${l_counter}d)\n", $orthoid, $counter, $num_orthologs;
 	# each reciprocal hit
 	HIT:
 	while (my $hit = shift @$list_of_hits) {
@@ -493,7 +497,7 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 		my ($est_header, $est_sequence_complete) = get_nucleotide_transcript_for($hit->{'header'});
 
 		# crop the est sequence to hmm alignment region
-		my $est_sequence_hmm_region = crop_to_hmm($est_sequence_complete, $est_header, $hit);
+		my $est_sequence_hmm_region = crop_to_hmm_alignment($est_sequence_complete, $est_header, $hit);
 
 		# if you don't want me to correct for frameshift errors or extend the orf...
 		unless ($frameshift_correction) {
@@ -541,16 +545,20 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				# calculate orf coordinates with respect to transcript
 				$hit->{'orf_cdna_start_on_transcript'} = $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 3;
 				$hit->{'orf_cdna_end_on_transcript'}   = $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 3;
-				$hit->{'orf_aa_start_on_transcript'} = ( $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 3 ) / 3;
-				$hit->{'orf_aa_end_on_transcript'}   = ( $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 3 ) / 3;
-				printf $stdout "Got an ORF for '%s'[%d-%d aa] (ORF coords %d-%d nt, %d-%d aa)\n",
+				$hit->{'orf_aa_start_on_transcript'}   = ( $hit->{'orf_cdna_start'} + ( $hit->{'ali_start'} * 3 ) - 3 ) / 3;
+				$hit->{'orf_aa_end_on_transcript'}     = ( $hit->{'orf_cdna_end'} + ( $hit->{'ali_start'} * 3 ) - 3 ) / 3;
+				$hit->{'orf_aa_start_on_hmm'}          = $hit->{'hmm_start'} + $hit->{'orf_aa_start_on_transcript'};
+				$hit->{'orf_aa_end_on_hmm'}            = $hit->{'hmm_start'} + $hit->{'orf_aa_end_on_transcript'};
+				printf $stdout "Got an ORF for '%s'[%d-%d aa] (ORF coords %d-%d nt, %d-%d aa, hmm %d-%d aa)\n",
 					$hit->{'header'},
 					$hit->{'ali_start'},
 					$hit->{'ali_end'},
 					$hit->{'orf_cdna_start_on_transcript'},
 					$hit->{'orf_cdna_end_on_transcript'},
-					$hit->{'orf_aa_start_on_transcript'},
-					$hit->{'orf_aa_end_on_transcript'}
+					$hit->{'orf_aa_start_on_transcript'} + 1,
+					$hit->{'orf_aa_end_on_transcript'},
+					$hit->{'orf_aa_start_on_hmm'} + 1,
+					$hit->{'orf_aa_end_on_hmm'},
 						if $verbose;
 				if ($debug > 1) {
 					print $hit->{'orf_cdna_sequence'}, "\n";
@@ -639,11 +647,13 @@ foreach my $orthoid (sort {$a cmp $b} keys %$transcripts_mapped_to) {
 				# ok, this can be added to the output sequences
 				push @$output_sequences, $hit;
 				if ($verbose) {
-					printf $stdout "Added '%s' (%d-%d nt) to %s\n",
+					printf $stdout "Added '%s' (%d-%d nt) to %s (hmm %d-%d)\n",
 						$hit->{'header'},
 						$hit->{'extended_orf_cdna_start_on_transcript'} ? $hit->{'extended_orf_cdna_start_on_transcript'} : $hit->{'orf_cdna_start_on_transcript'},
 						$hit->{'extended_orf_cdna_end_on_transcript'} ? $hit->{'extended_orf_cdna_end_on_transcript'} : $hit->{'orf_cdna_end_on_transcript'},
 						$orthoid,
+						$hit->{'hmm_start'},
+						$hit->{'hmm_end'},
 					;
 				}
 			}
@@ -996,7 +1006,7 @@ sub print_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
 	my $level      = shift;
-	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) overlap on %s level.\n", 
+	printf $stdout "%s[%d:%d] (hmm %d-%d) and %s[%d:%d] (hmm %d-%d) overlap on %s level.\n", 
 		$$transcript{'header'},
 		$$transcript{'ali_start'},
 		$$transcript{'ali_end'},
@@ -1015,7 +1025,7 @@ sub print_no_overlap {
 	my $candidate = shift;
 	my $transcript = shift;
 	my $level      = shift;
-	printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap on %s level.\n", 
+	printf $stdout "%s[%d:%d] (hmm %d-%d) and %s[%d:%d] (hmm %d-%d) do not overlap on %s level.\n", 
 		$$transcript{'header'},
 		$$transcript{'ali_start'},
 		$$transcript{'ali_end'},
@@ -1038,7 +1048,7 @@ sub transcripts_overlap {
 		# the candidate is either before or after the already assigned transcript
 		# this is ok
 		if ($$candidate{'ali_end'} <= $$assigned_transcript{'ali_start'} or $$candidate{'ali_start'} >= $$assigned_transcript{'ali_end'}) {
-			printf $stdout "%s[%d:%d] (hmm %d:%d) and %s[%d:%d] (hmm %d:%d) do not overlap.\n", 
+			printf $stdout "%s[%d:%d] (hmm %d-%d) and %s[%d:%d] (hmm %d-%d) do not overlap.\n", 
 				$$already_matched{'header'},
 				$$already_matched{'ali_start'},
 				$$already_matched{'ali_end'},
@@ -1329,7 +1339,7 @@ sub concatenate_sequences {
 		# before concatenating, fill gaps with 'X' if desired
 		if ($fill_with_x) {
 			if (defined $prev_end) {
-				my $num_x = $hit->{'orf_aa_start'} - $prev_end;
+				my $num_x = $hit->{'orf_aa_start'} - $prev_end - 1;
 				my $xes   = 'X' x $num_x;
 				# 'N' sequences to fill the cdna sequence are three times longer
 				my $ns    = 'N' x ($num_x * 3);
@@ -1616,18 +1626,18 @@ sub get_reftaxon_name {
 	}
 }
 
-sub crop_to_hmm {
+sub crop_to_hmm_alignment {
 	my $seq = shift;
 	my $hdr = shift;
 	my $h = shift;
-	my $length = abs($h->{'ali_end'} - $h->{'ali_start'} + 1) * 3;
 	my $start = ( $h->{'ali_start'} - 1 ) * 3;
-	printf $stdout "Cropping sequence %s to HMM alignment region (%d-%d aa): %d-%d nt\n",
+	my $length = abs($h->{'ali_end'} - $h->{'ali_start'} + 1) * 3;
+	printf $stdout "Cropping sequence '%s' to HMM alignment region (%d-%d aa): %d-%d nt\n",
 		$hdr,
 		$h->{'ali_start'},
 		$h->{'ali_end'},
 		$start + 1,
-		$start + $length + 1,
+		$start + $length,
 			if $verbose;
 	return substr($seq, $start, $length);
 }
@@ -1640,9 +1650,9 @@ sub hmm_to_orf {
 	my $reference_sequence = shift;
 	my $ali_start_on_aa = $h->{'ali_start'};
 	my $aa_seq = get_transcript_for($h->{'hmmhit'});
-	my $length = abs($h->{'ali_end'} - $h->{'ali_start'} + 1) * 3;
+	my $cdna_length = abs($h->{'ali_end'} - $h->{'ali_start'} + 1) * 3;
 	my $cdna_start = ( $h->{'ali_start'} - 1 ) * 3;
-	my $cdna_end = $cdna_start + $length;
+	my $cdna_end = $cdna_start + $cdna_length;
 	return (
 		# aa sequence -> return hmm region 
 		# cdna sequence -> calculate nt coordinates of HMM alignment region on transcript
