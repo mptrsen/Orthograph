@@ -840,7 +840,7 @@ sub translate_est {
     print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
   }
-  my @translateline = qq($translate_program --geneticcode $genetic_code $prepared_infile > $outfile);
+  my @translateline = qq("$translate_program" --geneticcode $genetic_code "$prepared_infile" > "$outfile");
   system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?');
   return($outfile);
 }
@@ -1065,7 +1065,7 @@ sub align {
 	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
 	my $alnsuffix = '.aln';
 	my $errfile = File::Spec->catfile($logdir, 'alignment.err');
-	my @alignment_cmd = qq($alignment_program $fafile 2> $errfile);	# this prints the alignment to STDOUT, must be captured somehow
+	my @alignment_cmd = qq("$alignment_program" "$fafile" 2> "$errfile");	# this prints the alignment to STDOUT, must be captured somehow
 	print $stdout "@alignment_cmd\n" if $debug;
 	my $alnf = File::Spec->catfile($alndir, $orthoid . '.aln.fa');
 	my $aln = `@alignment_cmd`
@@ -1111,7 +1111,7 @@ sub hmmbuild {
 	my $threads = 1;
 	my $hmmname = basename($hmmfile, $hmmsuffix);
 	if ($num_threads > 1) { $threads = "--cpu $num_threads" } else { $threads = '' }
-	my @hmmbuild_cmd = qq($hmmbuild_program $threads -n $hmmname $hmmfile $alnfile > /dev/null);
+	my @hmmbuild_cmd = qq("$hmmbuild_program" $threads -n "$hmmname" "$hmmfile" "$alnfile" > /dev/null);
 	print $stdout "@hmmbuild_cmd\n" if $debug;
 	system("@hmmbuild_cmd") and
 		return 0;
@@ -1159,7 +1159,7 @@ sub make_blastdb {
 	
 
 	# make blast database
-	my @makeblastdbcmd = qq($makeblastdb_program -in $infh -out $dbfile -input_type fasta -dbtype prot -title $orthoset);
+	my @makeblastdbcmd = qq("$makeblastdb_program" -in "$infh" -out "$dbfile" -input_type fasta -dbtype prot -title "$orthoset");
 	if ($debug) {
 		print $stdout "@makeblastdbcmd\n";
 	}
