@@ -36,7 +36,9 @@ Reads a file, line by line. Removes linebreaks and returns an arrayref.
 sub file2arrayref {
 	my $f = shift;
 	open my $fh, '<', $f or die "Fatal: Could not open file '$f': $!\n";
-	my $l = [ <$fh> ];
+	my $f_content = do { local $/; <$fh> }; # slurp entire file
+	$f_content =~ s/\r\n?/\n/g; # convert to unix-style line breaks
+	my $l = [ split /\n/, $f_content ];
 	chomp @$l;
 	return $l;
 }

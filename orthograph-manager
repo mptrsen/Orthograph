@@ -423,8 +423,8 @@ sub make_csv_for_set_uploading {
 	my $ogsid_for = shift;
 	my @f = ( );
 	my $csvfh = File::Temp->new();
-	open my $fh, '<', $infile;
-	while (my $l = <$fh>) {
+	my $lines = Orthograph::Functions::file2arrayref($infile);
+	while (my $l = shift @$lines) {
 		chomp $l;
 		next if $l =~ /^Group\tGene\tProtein/;  # skip orthodb table header lines
 		next if $l =~ /^\s*$/;	# skip empty lines
