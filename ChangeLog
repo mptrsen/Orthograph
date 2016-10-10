@@ -9,8 +9,8 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 ### Fixed
 
 * Fix off-by-one-bug that made inserted X/NNN too long
-* Table files with Windows or old Mac linebreaks no longer break ortholog set
-generation
+* Table files with Windows or old Mac linebreaks no longer break ortholog set generation
+* Whitespace in file names no longer breaks commands like `fastatranslate`
 
 ## [0.5.14]
 
