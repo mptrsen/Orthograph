@@ -238,6 +238,18 @@ if ($verbose) {
 }
 
 #--------------------------------------------------
+# # see whether Parallel::ForkManager is installed
+#-------------------------------------------------- 
+my $forkmanager = eval {
+	require Parallel::ForkManager;
+};
+unless ($forkmanager) {
+	if ($num_threads != 1) {
+		print "Error: Requested to multi-thread but Parallel::ForkManager not usable\n" and exit 1;	
+	}
+}
+
+#--------------------------------------------------
 # # Special case: Prepare the database by dropping and recreating all
 # # tables if requested, then exit
 #-------------------------------------------------- 
@@ -397,8 +409,8 @@ Wrapper::Blastp->max_hits($blast_max_hits)
 	if $blast_max_hits;
 
 # number of CPU threads to use
-Wrapper::Hmmsearch->num_threads($num_threads);
-Wrapper::Blastp->num_threads($num_threads);
+Wrapper::Hmmsearch->num_threads(1);
+Wrapper::Blastp->num_threads(1);
 
 # the output directories
 Wrapper::Hmmsearch->outdir($hmmoutdir);
@@ -418,8 +430,14 @@ printf($stdout "HMMsearching the translated sequences using all %d HMMs in %s...
 $hmmcount = 0;
 $hmmhitcount = 0;
 
+my $pm = Parallel::ForkManager->new($num_threads);
+
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {
+
+	# Fork and return the pid for the child
+	my $pid = $pm->start and next;
+
 	$blastcount = 0;	# reset counter
 
 	# create new hmmobject with a hmm file, should have all the necessary info for doing hmmsearch
@@ -429,6 +447,7 @@ foreach my $hmmfile (@hmmfiles) {
 	my $orthoid = $hmmobj->hmmname();
 	if ($list_of_wanted_orthoids and not grep { /$orthoid/ } @$list_of_wanted_orthoids) {
 		print $stdout "Skipping $orthoid\n" if $verbose;
+		$pm->finish;
 		next;
 	}
 
@@ -448,6 +467,7 @@ foreach my $hmmfile (@hmmfiles) {
 		if $verbose;
 	# and do not care further with HMM files that did not return any result
 	if ($hmmobj->hitcount() == 0) { 
+		$pm->finish;
 		next HMMFILE;
 	}
 
@@ -489,6 +509,7 @@ foreach my $hmmfile (@hmmfiles) {
 	# no hits above the thresholds
 	if ($count == 0) { 
 		print $stdout "         not conducting reciprocal search.\n" if $verbose;
+		$pm->finish;
 		next;
 	}
 	
@@ -534,7 +555,10 @@ foreach my $hmmfile (@hmmfiles) {
 		$blasthitcount_total += $blastobj->hitcount();
 
 		# skip to next if BLAST finds nothing
-		if ($blastobj->hitcount() == 0) { next HMMRESULT }
+		if ($blastobj->hitcount() == 0) {
+			$pm->finish;
+			next HMMRESULT;
+		}
 
 		# insert the blast results into the db. 4-argument form.
 		my $count = insert_results_into_table($db_table_blast, $blastobj->blasthits_arrayref, basename($blastdb), $hmmsearch_id);
@@ -549,7 +573,11 @@ foreach my $hmmfile (@hmmfiles) {
 			if $verbose;
 	}
 
+	$pm->finish;
+
 }	# End hmmlist loop
+
+$pm->wait_all_children;
 
 # report, end the program
 $timestamp_end = scalar time();
@@ -800,7 +828,12 @@ sub intro {
 	# does the set exist?
 	# TODO rewrite this part using parametrized queries to protect from SQL injections?
 	unless ( set_exists($orthoset) ) {
-		die "Fatal: Set '$orthoset' does not exist in database '$db_dbname'. Typo in config file $configfile? Use orthograph-manager first to set up your ortholog sets. Ask your administrator.\n";
+		printf "Fatal: Set '$orthoset' does not exist in database '$db_dbname'. Typo in config file $configfile? Use orthograph-manager first to set up your ortholog sets. Ask your administrator.\n",
+			$orthoset,
+			$use_mysql ? $db_dbname : $attached_db_file,
+			$configfile
+		;
+		exit 1;
 	}
 
 	# everything is fine
