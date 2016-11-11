@@ -91,12 +91,12 @@ a) The clusters of orthologous groups (COGs)
 
 The information about which genes belong to a COG consists of a tab-delimited
 file that contains at least one line per COG. If you get your COGs from
-[OrthoDB][3] (recommended), this is the case. The table must have three
+[OrthoDB 7][3] (recommended), this is the case. The table must have three
 columns:
 
 	COG_ID	sequence_ID	taxon_name
 
-In an OrthoDB file, each line has a number of tab-delimited fields like this:
+In an OrthoDB 7 file, each line has a number of tab-delimited fields like this:
 
 	EOG7M10DZ	AECH19093	AECH19093-PA	Acromyrmex echinatior	Panamanian leafcutter ant	AECHI	1282	IPR006121,IPR008250,IPR005834,IPR023214 
 
@@ -108,7 +108,7 @@ contains the taxon shorthand. An OrthoDB 7 table can be re-formatted using
 
 	$ cut -f1,3,4 ORTHODBFILE > ORTHOGRAPH_INPUT_FILE
 
-You may need to filter the OrthoDB file to contain only those taxa you want.
+You may need to filter the OrthoDB 7 file to contain only those taxa you want.
 Probably the easiest way is to do this using `grep`:
 
 - create a file containing the taxon shorthands you want. The shorthands must
@@ -126,6 +126,10 @@ Probably the easiest way is to do this using `grep`:
 If you want to create these files yourself, make sure that the COG ID is in the
 first tab-separated field, the sequence ID in the second field, and the taxon
 shorthand in the third field. 
+
+For newer versions of OrthoDB, the table columns may be different. In that
+case, the `cut` and filtering command may need to be adjusted to select
+different columns.  Also make sure the table does not have any column headers.
 
 
 b) The official gene set (OGS)
@@ -276,10 +280,9 @@ made a mistake during input of the information, you may cancel the process at
 any time using `Ctrl+C`. I'm sorry if you mistyped the last taxon name and have
 to start over :)
 
-The file must have an OrthoDB version 7 style tab-delimited format as described
-in the DATA REQUIREMENTS section. This is output by [OrthoDB 7][3] by default,
-so you don't have to worry about that if you downloaded your ortholog set from
-OrthoDB 7. 
+The file must have a three-column tab-delimited format as described
+in the DATA REQUIREMENTS section. If you downloaded your ortholog set from
+OrthoDB 7, you can use the instructions above to format the table accordingly.
 
 Dependent on your OrthoDB query, you may need to filter your file so that it
 contains only the taxa you want in the ortholog set. 

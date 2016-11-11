@@ -11,6 +11,7 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 * Fix off-by-one-bug that made inserted X/NNN too long
 * Table files with Windows or old Mac linebreaks no longer break ortholog set generation
 * Whitespace in file names no longer breaks commands like `fastatranslate`
+* Updated README because it was still talking about native OrthoDB tables w/o reformatting; also added info for newer OrthoDB versions
 
 ## [0.5.14]
 
