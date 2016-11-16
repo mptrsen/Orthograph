@@ -165,8 +165,8 @@ my $logfh = IO::File->new($logfile, 'w')
 	or die "Fatal: Could not open log file '$logfile'\: $!\n";
 $logfh->autoflush();
 my $tablefile = File::Spec->catfile($outdir, 'summary.txt');
-my $best_reciprocal_hits_file = File::Spec->catfile($outdir, 'best-reciprocal-hits.txt');
-my $non_overlapping_best_reciprocal_hits_file = File::Spec->catfile($outdir, 'non-overlapping-best-reciprocal-hits.txt');
+my $reciprocal_hits_file = File::Spec->catfile($outdir, 'reciprocal-hits.txt');
+my $non_overlapping_reciprocal_hits_file = File::Spec->catfile($outdir, 'non-overlapping-reciprocal-hits.txt');
 
 # setup IO::Tee
 my $stdout = IO::Tee->new(
@@ -268,12 +268,12 @@ my $transcript_list = [ ];
 my $non_reciprocal_hits_for = { };
 
 # open a text file to hold all best reciprocal relationships, irrespectively of whether they overlap or not
-my $brh_fh = IO::File->new($best_reciprocal_hits_file, 'w')
-	or print $stderr "Fatal: Could not open output file $best_reciprocal_hits_file\: $!\n" and exit(1);
+my $hits_fh = IO::File->new($reciprocal_hits_file, 'w')
+	or print $stderr "Fatal: Could not open output file $reciprocal_hits_file\: $!\n" and exit(1);
 
 # open a text file to hold all best reciprocal relationships, irrespectively of whether they overlap or not
-my $non_overlapping_brh_fh = IO::File->new($non_overlapping_best_reciprocal_hits_file, 'w')
-	or print $stderr "Fatal: Could not open output file $non_overlapping_best_reciprocal_hits_file\: $!\n" and exit(1);
+my $non_overlapping_hits_fh = IO::File->new($non_overlapping_reciprocal_hits_file, 'w')
+	or print $stderr "Fatal: Could not open output file $non_overlapping_reciprocal_hits_file\: $!\n" and exit(1);
 
 # okay let's do the loop come on baby let's do the loop
 my $c = 0;
@@ -342,7 +342,7 @@ foreach my $score (@$scores) {
 				if $debug;
 
 		# print this to the best reciprocal hits file
-		printf $brh_fh "%s\t%s\t%d\t%d\t%.1f\t%s\n",
+		printf $hits_fh "%s\t%s\t%d\t%d\t%.1f\t%s\n",
 			$orthoid, 
 			$this_match->{'header'},
 			$this_match->{'ali_start'},
@@ -362,7 +362,7 @@ foreach my $score (@$scores) {
 		}
 
 		# no, print this to the non-redundant best reciprocal hits file
-		printf $non_overlapping_brh_fh "%s\t%s\t%d\t%d\t%.1f\t%s\n",
+		printf $non_overlapping_hits_fh "%s\t%s\t%d\t%d\t%.1f\t%s\n",
 			$orthoid, 
 			$this_match->{'header'},
 			$this_match->{'ali_start'},

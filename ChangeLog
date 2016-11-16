@@ -6,6 +6,18 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 
 ## [Unreleased]
 
+### Added
+
+* SWIPE as an alternative Smith-Waterman alignment search algorithm
+* Multi-processing support using Parallel::ForkManager
+
+### Changed
+
+* the output files are now named ("best" has been removed from two file names):
+	- summary.txt
+	- reciprocal-hits.txt
+	- non-overlapping-reciprocal-hits.txt
+
 ### Fixed
 
 * Fix off-by-one-bug that made inserted X/NNN too long

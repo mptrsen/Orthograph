@@ -364,7 +364,7 @@ e) log. This contains log files, such as the entire standard output for both
 The main output directory contains two report tables after running
 orthograph-reporter:
 
-- best-reciprocal-hits.txt: a tabular listing of all sequences (sections) that
+- reciprocal-hits.txt: a tabular listing of all sequences (sections) that
   fulfilled the BRH criterion, _irrespective_ of whether they overlap with
   other sequences. It is structured as follows (tab-separated):
   - the COG ID
@@ -374,7 +374,7 @@ orthograph-reporter:
   - HMM score
   - HMM e-value
 
-- non-overlapping-best-reciprocal-hits.txt: a tabular listing of all sequences
+- non-overlapping-reciprocal-hits.txt: a tabular listing of all sequences
   (sections) that fulfilled the BRH criterion but do _not_ overlap with other
   hits on transcript level. They may overlap on HMM level, though (paralogous
   copies perhaps). Its structure is identical to the one of
@@ -483,8 +483,8 @@ this is the case and make sure it contains these modules:
 -  List::Util 
 -  Time::HiRes
 
-Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
-(c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
+Part of my Diploma and PhD thesis at the ZFMK/zmb, Bonn, Germany 
+(c) 2011-2016 Malte Petersen <mptrsen@uni-bonn.de>
 
 [1]: <http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems>
 [2]: <http://forums.mysql.com/read.php?51,389833,389833>
