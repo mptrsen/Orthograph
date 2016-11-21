@@ -41,6 +41,7 @@ use IO::Tee;               # not custom, but supplied because from CPAN
 use Seqload::Fasta;        # object-oriented access to fasta files
 use Wrapper::Hmmsearch;    # object-oriented interface to hmmsearch
 use Wrapper::Blastp;       # object-oriented interface to blastp
+use Wrapper::Swipe;        # object-oriented interface to swipe
 use Orthograph::Functions; # functions for all Orthograph tools
 use Orthograph::Config;    # configuration in global hashref $config; also handles command line arguments
 use Orthograph::Version;   # holds the version number

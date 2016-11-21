@@ -99,12 +99,14 @@ GetOptions( $config,
 	'quiet|q',
 	'reference-taxa=s',
 	'reference-taxon-shorthand=s',
+	'reverse-search-algorithm=s',
 	'sets-dir=s',
 	'soft-threshold=i',
 	'species-name=s',
 	'sqlite-database=s',
 	'strict-search',
 	'substitute-u-with=s',
+	'swipe-program',
 	'temp-dir=s',
 	'test-deps',
 	'verbose|v',
@@ -216,6 +218,7 @@ $config->{'prepare'}                    //= 0;
 $config->{'quiet'}                      //= 0;  # I like my quiet
 $config->{'reference-taxa'}             //= '';
 $config->{'reference-taxon-shorthand'}  //= '';
+$config->{'reverse-search-algorithm'}   //= 'blast';
 $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 0;
 $config->{'species-name'}               //= '';
@@ -224,6 +227,7 @@ $config->{'sqlite-database'}            //= 'orthograph.sqlite';
 $config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= '';
+$config->{'swipe-program'}              //= 'swipe';
 $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');
 $config->{'test-deps'}                  //= 0;
 $config->{'translate-program'}          //= 'fastatranslate';
@@ -251,6 +255,12 @@ if ($config->{'database-backend'} =~ /sqlite/i and not defined $config->{'sqlite
 	print STDERR "Fatal: SQLite database backend selected, but database file not specified\n";
 	exit 1;
 }
+
+if ($config->{'reverse-search-algorithm'} !~ /^(blast|swipe)$/) {
+	print STDERR "Fatal: Alignment algorithm for reverse search misspecified. Must be 'blast' or 'swipe'.\n";
+	exit 1;
+}
+
 if ($config->{'exonerate-alignment-model'} !~ /^protein2(genome|dna)$/) {
 	print STDERR "Fatal: Alignment model misspecified. Must be 'protein2genome' or 'protein2dna'.\n";
 	exit 1;

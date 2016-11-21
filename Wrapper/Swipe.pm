@@ -85,12 +85,12 @@ Sets $verbose. Defaults to 0.
 
 =cut
 
-sub verbose {#{{{
+sub verbose {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	unless (scalar @_ == 1) { confess("Usage: Wrapper::Swipe->verbose(1)\n") }
 	$verbose = shift;
-}#}}}
+}
 
 =head3 debug()
 
@@ -98,12 +98,12 @@ Sets $debug. Defaults to 0.
 
 =cut
 
-sub debug {#{{{
+sub debug {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	unless (scalar @_ == 1) { confess("Usage: Wrapper::Swipe->debug(1)\n") }
 	$debug = shift;
-}#}}}
+}
 
 =head3 searchprog()
 
@@ -111,12 +111,12 @@ Sets the swipe program. Defaults to B<swipe>.
 
 =cut
 
-sub searchprog {#{{{
+sub searchprog {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	unless (scalar @_ == 1) { confess("Usage: Wrapper::Swipe->searchprog(COMMAND)\n") }
 	$searchprog = shift;
-}#}}}
+}
 
 =head3 set_makeblastdb()
 
@@ -124,12 +124,12 @@ Sets the makeblastdb program. Defaults to B<makeblastdb>.
 
 =cut
 
-sub set_makeblastdb {#{{{
+sub set_makeblastdb {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	unless (scalar @_ == 1) { confess("Usage: Wrapper::Swipe->set_makeblastdb(COMMAND)\n") }
 	$makeblastdbprog = shift;
-}#}}}
+}
 
 
 =head3 outdir()
@@ -138,12 +138,12 @@ Sets the output directory. Defaults to 'F<.>'.
 
 =cut
 
-sub outdir {#{{{
+sub outdir {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	unless (@_ == 1) { confess("Usage: Wrapper::Swipe->outdir(FILENAME)\n") }
 	my $outdir = shift;
-}#}}}
+}
 
 =head3 evalue_threshold()
 
@@ -151,14 +151,14 @@ Sets or returns the e-value threshold to use for the swipe search. Defaults to 1
 
 =cut
 
-sub evalue_threshold {#{{{
+sub evalue_threshold {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	if (scalar(@_) == 0) { return $evalue_threshold };
 	if (scalar(@_) >  1) { confess("Usage: Wrapper::Swipe->evalue_threshold(N)\n") }
 	$evalue_threshold = shift(@_);
 	unless ($evalue_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $evalue_threshold\n") }
-}#}}}
+}
 
 =head3 score_threshold()
 
@@ -166,14 +166,14 @@ Sets or returns the score threshold to use for the swipe search. Defaults to 10.
 
 =cut
 
-sub score_threshold {#{{{
+sub score_threshold {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	if (scalar(@_) == 0) { return $score_threshold };
 	if (scalar(@_) >  1) { confess("Usage: Wrapper::Swipe->score_threshold(N)\n") }
 	$score_threshold = shift(@_);
 	unless ($score_threshold =~ /^[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$/) { confess("Invalid argument (must be integer, float or exponential): $score_threshold\n") }
-}#}}}
+}
 
 =head2 num_threads
 
@@ -196,13 +196,13 @@ Sets the maximum number of hits to be returned. Defaults to 100.
 
 =cut
 
-sub max_hits {#{{{
+sub max_hits {
 	my $class = shift;
 	if (ref $class) { confess("Class method used as object method\n") }
 	unless (@_ == 1) { confess("Usage: Wrapper::Swipe->max_hits(N)\n") }
 	$max_hits = shift;
 	unless ($max_hits =~ /^[0-9]+$/) { confess("Invalid argument (must be integer): $max_hits\n") }
-}#}}}
+}
 
 =head1 OBJECT METHODS
 
@@ -212,11 +212,11 @@ Returns the BLAST database that was selected upon creating a new object
 
 =cut
 
-sub db {#{{{
+sub db {
 	my $self = shift;
 	unless ($self->{'db'}) { confess("I do not have a BLAST db\n") }
 	return $self->{'db'};
-}#}}}
+}
 
 =head3 search()
 
@@ -226,7 +226,7 @@ the e-value set via evalue_threshold().
 
 =cut
 
-sub search {#{{{
+sub search {
 	my $self = shift;
 	unless (scalar @_ == 2) { confess("Usage: Wrapper::Swipe->search(FILE, OUTFILE)\n") }
 	my $queryfile = shift;
@@ -240,8 +240,9 @@ sub search {#{{{
 	}
 	else {
 		print STDERR "SWIPE output file does not exist in '$outfile', conducting new search\n" if $debug;
-		# use outfmt 7 for comment lines
-		my @cmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore qstart qend' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -num_threads $num_threads -db $db -query $queryfile -out $outfile);
+		# use outfmt 9 for comment lines
+		# the columns and their order is different from blast
+		my @cmd = qq($searchprog --outfmt 9 --evalue $evalue_threshold --min_score $score_threshold --num_threads $num_threads --db $db --query $queryfile --out $outfile);
 
 		# do the search or die
 		print STDERR "\n@cmd\n\n"
@@ -253,7 +254,7 @@ sub search {#{{{
 		$self->{'resultfile'} = $outfile;
 		return $self;
 	}
-}#}}}
+}
 
 =head3 resultfile()
 
@@ -261,14 +262,14 @@ Sets or returns the SWIPE result filename as a path.
 
 =cut
 
-sub resultfile {#{{{
+sub resultfile {
 	my $self = shift;
 	if (scalar @_ == 1) {
 		$self->{'resultfile'} = shift;
 		return 1;
 	}
 	return $self->{'resultfile'};
-}#}}}
+}
 
 =head3 hitcount()
 
@@ -276,14 +277,14 @@ Returns the number of SWIPE hits
 
 =cut
 
-sub hitcount {#{{{
+sub hitcount {
 	my $self = shift;
 	if ($self->{'hitcount'}) {
 		return $self->{'hitcount'};
 	}
 	$self->{'hitcount'} = scalar @{$self->result};
 	return $self->{'hitcount'};
-}#}}}
+}
 
 =head3 result()
 
@@ -291,7 +292,7 @@ Returns the SWIPE result as an array of strings, just as it is in the output fil
 
 =cut
 
-sub result {#{{{
+sub result {
 	my $self = shift;
 	if ($self->{'result'}) {
 		return $self->{'result'};
@@ -303,7 +304,7 @@ sub result {#{{{
 	pop(@{$self->{'result'}});
 	$fh->close;
 	return $self->{'result'};
-}#}}}
+}
 
 =head3 hits_arrayref()
 
@@ -311,7 +312,7 @@ Returns the SWIPE result as an array of arrays.
 
 =cut
 
-sub hits_arrayref {#{{{
+sub hits_arrayref {
 	my $self = shift;
 	if ($self->{'hits'}) {
 		return $self->{'hits'};
@@ -322,14 +323,14 @@ sub hits_arrayref {#{{{
 		push(@{$self->{'hits'}}, {
 			'query'  => $line[0],
 			'target' => $line[1],
-			'evalue' => $line[2],
-			'score'  => $line[3],
-			'start'  => $line[4],
-			'end'    => $line[5],
+			'evalue' => $line[-2],
+			'score'  => $line[-1],
+			'start'  => $line[6],
+			'end'    => $line[7],
 		});
 	}
 	return $self->{'hits'};
-}#}}}
+}
 
 =head1 INDEPENDENT FUNCTIONS
 
@@ -339,13 +340,13 @@ Create a BLAST database from a (fasta) file.
 
 =cut
 
-sub makeblastdb {#{{{
+sub makeblastdb {
 	croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n") unless scalar(@_) == 3;
 	my $infile = shift or croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n");
 	my $outfile = shift or croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n");
 	my $title = shift or croak('Usage: makeblastdb($infile, $outfile, $title)' . "\n");
 	my @cmd = qw($makeblastdbprog -in $infile -out $outfile -input_type fasta -title $title);
-}#}}}
+}
 
 # return true
 1;

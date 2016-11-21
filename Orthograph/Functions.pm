@@ -223,6 +223,16 @@ sub blastp_version_ok {
 	return ($version, 0);
 }
 
+sub swipe_version_ok {
+	my $program = shift;
+	my $ret = [ `$program -h` ];
+	$$ret[0] =~ /SWIPE ([0-9.]+)/;
+	my $version = $1;
+	my @nums = split /\./, $version;
+	if ($nums[0] > 2 or ($nums[0] == 2 and $nums[1] > 0) or ($nums[0] == 2 and $nums[1] == 0 and $nums[2] >= 12)) { return ($version, 1) }
+	return ($version, 0);
+}
+
 sub exonerate_version_ok {
 	my $program = shift;
 	my $ret = [ `$program --version` ];
@@ -235,7 +245,7 @@ sub exonerate_version_ok {
 
 sub test_dependencies {
 
-	my ($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program) = @_;
+	my ($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program, $swipe_program) = @_;
 
 	my $version = 0;
 	my $ok = 0;
@@ -248,6 +258,10 @@ sub test_dependencies {
 	program_exists($makeblastdb_program) or die "Fatal: Makeblastdb not executable at '$hmmbuild_program'. Verify path and/or permissions.\n";
 	program_exists($hmmsearch_program)   or die "Fatal: HMMsearch not executable at '$hmmsearch_program'. Verify path and/or permissions.\n";
 	program_exists($blast_program)       or die "Fatal: BLASTP not executable at '$blast_program'. Verify path and/or permissions.\n";
+	# swipe is optional
+	if ($swipe_program) {
+		program_exists($swipe_program)       or die "Fatal: SWIPE not executable at '$swipe_program'. Verify path and/or permissions.\n";
+	}
 
 	# test whether the versions are correct
 	($version, $ok) = fastatranslate_version_ok($translate_program);
