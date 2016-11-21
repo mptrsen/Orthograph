@@ -300,7 +300,7 @@ sub result {
 	my $fh = IO::File->new($self->resultfile);
 	$self->{'result'} = [ <$fh> ];
 	# remove comment lines
-	splice(@{$self->{'result'}}, 0, 5);
+	splice(@{$self->{'result'}}, 0, 4);
 	pop(@{$self->{'result'}});
 	$fh->close;
 	return $self->{'result'};
