@@ -96,6 +96,7 @@ my $hmmbuild_program           = $config->{'hmmbuild-program'};
 my $translate_program          = $config->{'translate-program'};
 my $hmmsearch_program          = $config->{'hmmsearch-program'};
 my $blast_program              = $config->{'blast-program'};
+my $swipe_program              = $config->{'swipe-program'};
 my $exonerate_program          = $config->{'exonerate-program'};
 my $makeblastdb_program        = $config->{'makeblastdb-program'};
 
@@ -268,7 +269,7 @@ if ($preparedb) {
 #-------------------------------------------------- 
 
 # exit here if we are just to test dependencies
-if ($testdeps) { Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program) and exit }
+if ($testdeps) { Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program, $swipe_program) and exit }
 intro();
 
 # get the set id
@@ -387,12 +388,14 @@ $protfile = get_transcripts($species_id, 1);
 if ($verbose) {
 	Wrapper::Hmmsearch->verbose(1);
 	Wrapper::Blastp->verbose(1);
+	Wrapper::Swipe->verbose(1);
 }
 
 # debug output, sets verbose automatically
 if ($debug) {
 	Wrapper::Hmmsearch->debug(1);
 	Wrapper::Blastp->debug(1);
+	Wrapper::Swipe->debug(1);
 }
 
 # e-value and score thresholds
@@ -400,26 +403,34 @@ Wrapper::Hmmsearch->evalue_threshold($hmmsearch_evalue_threshold)
 	if $hmmsearch_evalue_threshold;
 Wrapper::Blastp->evalue_threshold($blast_evalue_threshold)
 	if $blast_evalue_threshold;
+Wrapper::Swipe->evalue_threshold($blast_evalue_threshold)
+	if $blast_evalue_threshold;
 Wrapper::Hmmsearch->score_threshold($hmmsearch_score_threshold)
 	if $hmmsearch_score_threshold;
 Wrapper::Blastp->score_threshold($blast_score_threshold)
 	if $blast_score_threshold;
+Wrapper::Swipe->score_threshold($blast_score_threshold)
+	if $blast_score_threshold;
 
 # maximum number of hits to save for blast
+# this is ignored by swipe
 Wrapper::Blastp->max_hits($blast_max_hits)
 	if $blast_max_hits;
 
 # number of CPU threads to use
 Wrapper::Hmmsearch->num_threads(1);
 Wrapper::Blastp->num_threads(1);
+Wrapper::Swipe->num_threads(1);
 
 # the output directories
 Wrapper::Hmmsearch->outdir($hmmoutdir);
 Wrapper::Blastp->outdir($blastoutdir);
+Wrapper::Swipe->outdir($blastoutdir);
 
 # the programs
 Wrapper::Hmmsearch->searchprog($hmmsearch_program);
 Wrapper::Blastp->searchprog($blast_program);
+Wrapper::Swipe->searchprog($swipe_program);
 
 
 
@@ -435,6 +446,8 @@ my $pm = Parallel::ForkManager->new($num_threads);
 
 HMMFILE:
 foreach my $hmmfile (@hmmfiles) {
+	# count up
+	++$hmmcount;
 
 	# Fork and return the pid for the child
 	my $pid = $pm->start and next;
@@ -453,7 +466,6 @@ foreach my $hmmfile (@hmmfiles) {
 	}
 
 	# now do the hmmsearch on the protfile
-	++$hmmcount;
 	$hmmobj->search($protfile);
 
 	# count the hmmsearch hits
