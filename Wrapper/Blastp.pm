@@ -39,10 +39,10 @@ package without the immense overhead of the entire Bioperl backend.
   my $blastobj = Wrapper::Blast->new('/path/to/blast/database');
 
   # do the blastp search
-  $blastobj->blastp($infile, $outfile);
+  $blastobj->search($infile, $outfile);
 
   # get results 
-  $blastobj->blasthits_arrayref()
+  $blastobj->hits_arrayref()
 
 =cut
 
@@ -226,7 +226,7 @@ the e-value set via evalue_threshold().
 
 =cut
 
-sub blastp {#{{{
+sub search {#{{{
 	my $self = shift;
 	unless (scalar @_ == 2) { confess("Usage: Wrapper::Blastp->blastp(FILE, OUTFILE)\n") }
 	my $queryfile = shift;
@@ -305,21 +305,21 @@ sub result {#{{{
 	return $self->{'result'};
 }#}}}
 
-=head3 blasthits_arrayref()
+=head3 hits_arrayref()
 
-Returns the BLAST result as an array of arrays.
+Returns the result as an array of arrays.
 
 =cut
 
-sub blasthits_arrayref {#{{{
+sub hits_arrayref {#{{{
 	my $self = shift;
-	if ($self->{'blasthits'}) {
-		return $self->{'blasthits'};
+	if ($self->{'hits'}) {
+		return $self->{'hits'};
 	}
-	$self->{'blasthits'} = [ ];
+	$self->{'hits'} = [ ];
 	foreach (@{$self->result}) {
 		my @line = split(/\s+/);
-		push(@{$self->{'blasthits'}}, {
+		push(@{$self->{'hits'}}, {
 			'query'  => $line[0],
 			'target' => $line[1],
 			'evalue' => $line[2],
@@ -328,7 +328,7 @@ sub blasthits_arrayref {#{{{
 			'end'    => $line[5],
 		});
 	}
-	return $self->{'blasthits'};
+	return $self->{'hits'};
 }#}}}
 
 =head1 INDEPENDENT FUNCTIONS

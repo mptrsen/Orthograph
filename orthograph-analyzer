@@ -99,6 +99,7 @@ my $blast_program              = $config->{'blast-program'};
 my $swipe_program              = $config->{'swipe-program'};
 my $exonerate_program          = $config->{'exonerate-program'};
 my $makeblastdb_program        = $config->{'makeblastdb-program'};
+my $rev_search_algorithm       = $config->{'reverse-search-algorithm'};
 
 #--------------------------------------------------
 # # These variables can be set in the config file
@@ -164,12 +165,10 @@ my $alndir               = $EMPTY;
 my $blastcount           = 0;
 my $blastdb              = $EMPTY;
 my $blastdir             = $EMPTY;
-my $blasthitcount_total  = 0;
+my $hitcount_total  = 0;
 my $count                = 0;
 my $hmmcount             = 0;
 my $hmmdir               = $EMPTY;
-my $hmmhitcount          = 0;
-my $hmmhitcount_total    = 0;
 my $hmmresultfileref     = $EMPTY;
 my $list_of_wanted_orthoids = $EMPTY;
 my $listspecies          = 0;
@@ -432,6 +431,8 @@ Wrapper::Hmmsearch->searchprog($hmmsearch_program);
 Wrapper::Blastp->searchprog($blast_program);
 Wrapper::Swipe->searchprog($swipe_program);
 
+# shiny new blastp object
+my $blastobj = $rev_search_algorithm eq 'blast' ? Wrapper::Blastp->new($blastdb) : Wrapper::Swipe->new($blastdb);
 
 
 #--------------------------------------------------
@@ -440,7 +441,6 @@ Wrapper::Swipe->searchprog($swipe_program);
 printf($stdout "HMMsearching the translated sequences using all %d HMMs in %s...\n", scalar(@hmmfiles), $hmmdir)
 	unless $quiet;
 $hmmcount = 0;
-$hmmhitcount = 0;
 
 my $pm = Parallel::ForkManager->new($num_threads);
 
@@ -484,9 +484,7 @@ foreach my $hmmfile (@hmmfiles) {
 		next HMMFILE;
 	}
 
-	# add hitcount to total number of hmm hits,
 	# print list of hits if verbose
-	$hmmhitcount_total += $hmmobj->hitcount();
 	if ($verbose) {
 		my $hits = $hmmobj->hits_arrayref();
 		my $hmmsearch_hits_above_threshold = 0;
@@ -503,7 +501,7 @@ foreach my $hmmfile (@hmmfiles) {
 			;
 			if ($hits->[$i]->{'score'} >= $hmmsearch_score_threshold and $hits->[$i]->{'evalue'} <= $hmmsearch_evalue_threshold) { $hmmsearch_hits_above_threshold++ }
 		}
-		printf $stdout "      %d hit%s within thresholds (e-value: %.1e, score: %.1f)\n",
+		printf $stdout "  %d hit%s within thresholds (e-value: %.1e, score: %.1f)\n",
 			$hmmsearch_hits_above_threshold,
 			$hmmsearch_hits_above_threshold > 1 ? 's' : '',
 			$hmmsearch_evalue_threshold,
@@ -517,7 +515,6 @@ foreach my $hmmfile (@hmmfiles) {
 		$count,
 		$count > 1 ? 's' : ''
 			if $verbose;
-	++$hmmhitcount;
 
 	# no hits above the thresholds
 	if ($count == 0) { 
@@ -547,25 +544,23 @@ foreach my $hmmfile (@hmmfiles) {
 		my $tmpfile = write_sequence_to_tempfile($hmmresults[$n], $hmmobj->hmmfile);
 
 		#--------------------------------------------------
-		# # run blastp 
+		# # run reverse search 
 		#-------------------------------------------------- 
-		# shiny new blastp object
-		my $blastobj = Wrapper::Blastp->new($blastdb);
 		
 		# generate a blast output file name from the HMM name and the hit number
 		my $blastoutfile = generate_blast_output_filename($hmmobj->hmmname, $hmmresults[$n]);
 
 		# do the blastp search
-		$blastobj->blastp($tmpfile, $blastoutfile);
+		$blastobj->search($tmpfile, $blastoutfile);
 
-		printf($stdout "       %4d BLASTP hit%s detected for [%d] against %s, e-value below %2.1e\n",
+		printf($stdout "  %4d second-tier hit%s detected for [%d] against %s, e-value below %2.1e\n",
 			$blastobj->hitcount,
 			$blastobj->hitcount > 1 ? 's' : '',
 			$n + 1,
 			basename($blastdb),
 			$blast_evalue_threshold) if $verbose;
 
-		$blasthitcount_total += $blastobj->hitcount();
+		$hitcount_total += $blastobj->hitcount();
 
 		# skip to next if BLAST finds nothing
 		if ($blastobj->hitcount() == 0) {
@@ -574,8 +569,8 @@ foreach my $hmmfile (@hmmfiles) {
 		}
 
 		# insert the blast results into the db. 4-argument form.
-		my $count = insert_results_into_table($db_table_blast, $blastobj->blasthits_arrayref, basename($blastdb), $hmmsearch_id);
-		printf $stdout "     ... pushed %d hit%s to database.\n",
+		my $count = insert_results_into_table($db_table_blast, $blastobj->hits_arrayref, basename($blastdb), $hmmsearch_id);
+		printf $stdout "         ... pushed %d hit%s to database.\n",
 			$count,
 			$count > 1 ? 's' : ''
 				if $verbose;
@@ -596,12 +591,6 @@ $pm->wait_all_children;
 $timestamp_end = scalar time();
 $timestamp_diff = $timestamp_end - $timestamp_start;
 printf $stdout "\n%s analysis for %s completed in %d seconds.\n", $program_name, $species_name, $timestamp_diff;
-printf $stdout "Searched %d sequences using %d HMMs.\nObtained %d total HMM hits (%.2f average hits per HMM).\n",
-	$num_ests,
-	$hmmcount,
-	$hmmhitcount_total,
-	$hmmhitcount_total / $hmmcount,
-;
 printf $stdout "Now run %s and go look in your output directory %s.\n", "'orthograph-reporter'", $outdir;
 
 # successfully exit :)
@@ -647,7 +636,7 @@ sub get_real_table_names {
 sub intro {
 	# first things first: 
 	# test whether dependencies exist where specified and whether versions are sufficient
-	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program);
+	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program, $swipe_program);
 
 	# construct output directory paths
 	# the output directory. create if it does not exist.
@@ -1398,7 +1387,7 @@ sub generate_blast_output_filename {
 	my $hmmname = shift @_;
 	my $hmmresult = shift @_;
 	my ($start, $end) = ($hmmresult->[2] - 1, $hmmresult->[3] - 1);
-	my $filename = sprintf "%s-%s-[%d-%d]-%s.blast", $hmmname, $hmmresult->[0], $start, $end, basename($blastdb);
+	my $filename = sprintf "%s-%s-[%d-%d]-%s.%s", $hmmname, $hmmresult->[0], $start, $end, basename($blastdb), $rev_search_algorithm;
 	return File::Spec->catfile($blastoutdir, $filename);
 }
 

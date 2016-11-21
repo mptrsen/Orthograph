@@ -285,6 +285,9 @@ sub test_dependencies {
 	($version, $ok) = blastp_version_ok($blast_program);
 	$ok or die "Fatal: blastp failed version check. Requires at least version 2.2.28. You have version '$version'\n";
 	print "OK: '$blast_program' version $version \n";
+	($version, $ok) = swipe_version_ok($swipe_program);
+	$ok or die "Fatal: swipe failed version check. Requires at least version 2.0.12. You have version '$version'\n";
+	print "OK: '$swipe_program' version $version \n";
 
 	return 1;
 
