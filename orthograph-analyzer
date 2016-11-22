@@ -107,7 +107,7 @@ my $rev_search_algorithm       = $config->{'reverse-search-algorithm'};
 my $aaoutdir                   = $config->{'aaoutdir'};
 my $backup                     = $config->{'backup'};
 my $blast_max_hits             = $config->{'blast-max-hits'};
-my $blastoutdir                = $config->{'blastoutdir'};
+my $rev_search_outdir          = $config->{'reverse-search-output-dir'};
 my $blast_evalue_threshold     = $config->{'blast-evalue-threshold'};
 my $blast_score_threshold      = $config->{'blast-score-threshold'};
 my $clear_database             = $config->{'clear-database'};
@@ -423,8 +423,8 @@ Wrapper::Swipe->num_threads(1);
 
 # the output directories
 Wrapper::Hmmsearch->outdir($hmmoutdir);
-Wrapper::Blastp->outdir($blastoutdir);
-Wrapper::Swipe->outdir($blastoutdir);
+Wrapper::Blastp->outdir($rev_search_outdir);
+Wrapper::Swipe->outdir($rev_search_outdir);
 
 # the programs
 Wrapper::Hmmsearch->searchprog($hmmsearch_program);
@@ -568,6 +568,8 @@ foreach my $hmmfile (@hmmfiles) {
 			next HMMRESULT;
 		}
 
+		print Dumper $blastobj;
+
 		# insert the blast results into the db. 4-argument form.
 		my $count = insert_results_into_table($db_table_blast, $blastobj->hits_arrayref, basename($blastdb), $hmmsearch_id);
 		printf $stdout "         ... pushed %d hit%s to database.\n",
@@ -664,7 +666,7 @@ sub intro {
 	$aaoutdir = File::Spec->catdir($outdir, $aaoutdir);
 	$ntoutdir = File::Spec->catdir($outdir, $ntoutdir);
 	$hmmoutdir = defined($hmmoutdir) ? File::Spec->catdir($outdir, $hmmoutdir) : File::Spec->catdir($outdir, basename($hmmsearch_program));
-  $blastoutdir = defined($blastoutdir) ? File::Spec->catdir($outdir, $blastoutdir) : File::Spec->catdir($outdir, basename($blast_program));
+  $rev_search_outdir = defined($rev_search_outdir) ? File::Spec->catdir($outdir, $rev_search_outdir) : File::Spec->catdir($outdir, basename($blast_program));
 
 	# setup the log file
 	$logdir = File::Spec->catdir($outdir, 'log');
@@ -724,13 +726,13 @@ sub intro {
 		Orthograph::Functions::makedir($hmmdir) or print $stderr "Fatal: Failed to create directory $hmmdir\n" and exit(1);
 	}
 
-	# the BLAST directory
+	# the BLAST database directory
 	unless ($blastdir) { $blastdir = File::Spec->catdir($sets_dir, $orthoset, 'blast') }
 	if (-d $blastdir) {
-		print $stdout "BLAST dir '$blastdir' exists.\n" unless $quiet;
+		print $stdout "BLAST database dir '$blastdir' exists.\n" unless $quiet;
 	}
 	else {
-		print $stdout "BLAST dir '$blastdir' does not exist, creating...\n" unless $quiet;
+		print $stdout "BLAST database dir '$blastdir' does not exist, creating...\n" unless $quiet;
 		Orthograph::Functions::makedir($blastdir) or print $stderr "Fatal: Failed to create directory $blastdir\n" and exit(1);
 	}
 
@@ -758,20 +760,20 @@ sub intro {
 		Orthograph::Functions::makedir($hmmoutdir) or print $stderr "Fatal: Failed to create directory $hmmoutdir\n" and exit(1);
 	}
 
-  # the BLASTP output directory
-  if (-d $blastoutdir) {
-    print $stdout "BLASTP output dir '$blastoutdir' exists.\n" unless $quiet;
+  # the reverse search output directory
+  if (-d $rev_search_outdir) {
+    print $stdout "Reverse search output dir '$rev_search_outdir' exists.\n" unless $quiet;
 		if ($clear_files) {
-			Orthograph::Functions::cleardir($blastoutdir);
-			print $stdout "Purged BLAST output dir '$blastoutdir' of old result files.\n" unless $quiet;
+			Orthograph::Functions::cleardir($rev_search_outdir);
+			print $stdout "Purged reverse search output dir '$rev_search_outdir' of old result files.\n" unless $quiet;
 		}
 		elsif ($backup) {
-			schedule_for_backup($blastoutdir);
+			schedule_for_backup($rev_search_outdir);
 		}
   }
   else {
-    print $stdout "BLASTP output dir '$blastoutdir' does not exist, creating...\n" unless $quiet;
-    Orthograph::Functions::makedir($blastoutdir) or print $stderr "Fatal: Failed to create directory $blastoutdir\n" and exit(1);
+    print $stdout "Reverse search output dir '$rev_search_outdir' does not exist, creating...\n" unless $quiet;
+    Orthograph::Functions::makedir($rev_search_outdir) or print $stderr "Fatal: Failed to create directory $rev_search_outdir\n" and exit(1);
   }
 	# the aa output directory
 	if (-d $aaoutdir) {
@@ -823,7 +825,7 @@ sub intro {
 	if ($clear_files) {
 		# empty the directories
 		Orthograph::Functions::cleardir($hmmoutdir);
-		Orthograph::Functions::cleardir($blastoutdir);
+		Orthograph::Functions::cleardir($rev_search_outdir);
 		Orthograph::Functions::cleardir($aaoutdir);
 	}
 
@@ -981,7 +983,7 @@ sub insert_results_into_table {
 	my $hitcount;
 
 
-	# this is a BLASTP result
+	# this is a BLASTP/SWIPE result
 	if ($blastdb) {
 		if ($use_mysql) {
 			return Wrapper::Mysql::insert_results_into_blast_table($hits, $species_id, $hmmsearch_id);
@@ -1388,7 +1390,7 @@ sub generate_blast_output_filename {
 	my $hmmresult = shift @_;
 	my ($start, $end) = ($hmmresult->[2] - 1, $hmmresult->[3] - 1);
 	my $filename = sprintf "%s-%s-[%d-%d]-%s.%s", $hmmname, $hmmresult->[0], $start, $end, basename($blastdb), $rev_search_algorithm;
-	return File::Spec->catfile($blastoutdir, $filename);
+	return File::Spec->catfile($rev_search_outdir, $filename);
 }
 
 sub get_hmmresults {

@@ -44,7 +44,7 @@ GetOptions( $config,
 	'blast-max-hits=i',
 	'blast-score-threshold=i',
 	'blastoutdir=s',
-	'blastp-output-dir=s',
+	'reverse-search-output-dir=s',
 	'brh-only',
 	'clear-database!',
 	'clear-files!',
@@ -219,6 +219,7 @@ $config->{'quiet'}                      //= 0;  # I like my quiet
 $config->{'reference-taxa'}             //= '';
 $config->{'reference-taxon-shorthand'}  //= '';
 $config->{'reverse-search-algorithm'}   //= 'blast';
+$config->{'reverse-search-output-dir'}  //= 'reverse';
 $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 0;
 $config->{'species-name'}               //= '';

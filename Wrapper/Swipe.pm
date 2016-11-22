@@ -242,7 +242,7 @@ sub search {
 		print STDERR "SWIPE output file does not exist in '$outfile', conducting new search\n" if $debug;
 		# use outfmt 9 for comment lines
 		# the columns and their order is different from blast
-		my @cmd = qq($searchprog --outfmt 9 --evalue $evalue_threshold --min_score $score_threshold --num_threads $num_threads --db $db --query $queryfile --out $outfile);
+		my @cmd = qq($searchprog --outfmt 0 --evalue $evalue_threshold --min_score $score_threshold --num_threads $num_threads --db $db --query $queryfile --out $outfile);
 
 		# do the search or die
 		print STDERR "\n@cmd\n\n"
@@ -282,7 +282,7 @@ sub hitcount {
 	if ($self->{'hitcount'}) {
 		return $self->{'hitcount'};
 	}
-	$self->{'hitcount'} = scalar @{$self->result};
+	$self->{'hitcount'} = scalar @{$self->hits_arrayref};
 	return $self->{'hitcount'};
 }
 
@@ -299,10 +299,12 @@ sub result {
 	}
 	my $fh = IO::File->new($self->resultfile);
 	$self->{'result'} = [ <$fh> ];
-	# remove comment lines
-	splice(@{$self->{'result'}}, 0, 5);
-	pop(@{$self->{'result'}});
 	$fh->close;
+	chomp @{$self->{'result'}};
+	# join the two lines containing the description where SWIPE splits the SHA256 digest because it is too long -.-
+	my $rest_of_digest = $self->{'result'}->[13];
+	$rest_of_digest =~ s/\s+//g;
+	$self->{'result'}->[12] .= $rest_of_digest;
 	return $self->{'result'};
 }
 
@@ -318,15 +320,22 @@ sub hits_arrayref {
 		return $self->{'hits'};
 	}
 	$self->{'hits'} = [ ];
+	my $query = '';
 	foreach (@{$self->result}) {
+		# identify the query
+		if (/^Query description:\s+(.+)/) {
+			$query = $1;
+			next;
+		}
+		next unless /^gnl/;
 		my @line = split(/\s+/);
 		push(@{$self->{'hits'}}, {
-			'query'  => $line[0],
+			'query'  => $query,
 			'target' => $line[1],
-			'evalue' => $line[-2],
-			'score'  => $line[-1],
-			'start'  => $line[6],
-			'end'    => $line[7],
+			'score'  => $line[2],
+			'evalue' => $line[3],
+			'start'  => 1,
+			'end'    => 1,
 		});
 	}
 	return $self->{'hits'};

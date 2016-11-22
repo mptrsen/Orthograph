@@ -6,6 +6,17 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 
 ## [Unreleased]
 
+### Added
+
+* SWIPE algorithm now supported. Additional options:
+`reverse-search-algorithm` (values: 'blast' or 'swipe') and `swipe-program`
+(default value: 'swipe')
+
+### Changed
+
+* Output directory for BLAST/SWIPE search results is now named 'reverse' by default
+* Changed option name 'blastp-output-dir' to 'reverse-search-output-dir'
+
 ### Fixed
 
 * Fix off-by-one-bug that made inserted X/NNN too long
