@@ -568,7 +568,7 @@ foreach my $hmmfile (@hmmfiles) {
 			next HMMRESULT;
 		}
 
-		print Dumper $blastobj;
+		#print Dumper $blastobj;
 
 		# insert the blast results into the db. 4-argument form.
 		my $count = insert_results_into_table($db_table_blast, $blastobj->hits_arrayref, basename($blastdb), $hmmsearch_id);

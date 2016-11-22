@@ -329,6 +329,7 @@ sub hits_arrayref {
 		}
 		next unless /^gnl/;
 		my @line = split(/\s+/);
+		if ($line[3] =~ /^e/) { $line[3] = '1' . $line[3] }
 		push(@{$self->{'hits'}}, {
 			'query'  => $query,
 			'target' => $line[1],
