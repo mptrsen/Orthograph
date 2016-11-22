@@ -54,6 +54,8 @@ change or drop features frequently across versions. Also, there has been
 a report about an older SQLite version not working, so make sure you
 have a reasonably recent one.</p>
 
+<p>You only need SWIPE if you want to use it.</p>
+
 <p>You need a database backend, either SQLite (the default) or MySQL. If you
 don't know which one to pick, use SQLite. It's easier to install and use, but
 doesn't have the capabilities for a centralized server-client setup. In grid
@@ -104,6 +106,11 @@ required, but the database is a flat file on the hard drive.</p>
 			<td align="left">2.2.0</td>
 			<td align="left"><a href="https://www.ebi.ac.uk/about/vertebrate-genomics/software/exonerate">https://www.ebi.ac.uk/about/vertebrate-genomics/software/exonerate</a></td>
 		</tr>
+		<tr>
+			<td align="left">SWIPE</td>
+			<td align="left">2.0.12</td>
+			<td align="left"><a href="https://github.com/torognes/swipe">https://github.com/torognes/swipe</a></td>
+		</tr>
 	</tbody>
 </table>
 
@@ -117,10 +124,12 @@ uses. Additionally, you need the Perl modules <b>DBI</b> or <b>DBD::mysql</b>
 or <b>DBD::SQLite</b>, depending on your database choice.</p>
 
 <p>Don't worry about your Perl version if you run a reasonably recent Linux or
-UNIX system, such as Mac OS X, but see <a href="http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems">here</a> and <a href="http://forums.mysql.com/read.php?51,389833,389833">there</a> if you are
-trying to install the required packages on a Windows system under Cygwin (or
-natively, for that matter). You might run into problems getting the MySQL
-driver, HMMer3 and Exonerate to work. Really, don't use Windows. </p>
+UNIX system, such as Mac OS X, but see <a
+href="http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems">here</a>
+and <a href="http://forums.mysql.com/read.php?51,389833,389833">there</a> if
+you are trying to install the required packages on a Windows system under
+Cygwin (or natively, for that matter). You might run into problems getting the
+MySQL driver, HMMer3 and Exonerate to work. Really, don't use Windows. </p>
 
 <p>Make sure you have the database interface module DBI for your Perl version as
 well as the proper database driver for your database engine of choice
