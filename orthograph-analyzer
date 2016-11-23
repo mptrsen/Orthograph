@@ -1196,7 +1196,7 @@ sub make_blastdb {
 	
 
 	# make blast database
-	my @makeblastdbcmd = qq("$makeblastdb_program" -in "$infh" -out "$dbfile" -input_type fasta -dbtype prot -title "$orthoset");
+	my @makeblastdbcmd = qq("$makeblastdb_program" -in "$infh" -out "$dbfile" -input_type fasta -dbtype prot -title "$orthoset" -parse_seqids);
 	if ($debug) {
 		print $stdout "@makeblastdbcmd\n";
 	}
