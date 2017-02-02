@@ -166,7 +166,7 @@ Affects only orthograph-reporter.
 
 .TP
 \fB--fill-with-x\fP
-when concatenating transcripts, fill the gap in amino acid sequences with 'X' characters and in nucleotide sequences with 'N' characters.
+when concatenating transcripts, fill the gap in amino acid sequences with 'X' characters and in nucleotide sequences with 'N' characters. Can be disabled by prefixing "no-" (\fB--no-fill-with-x\fP). Default: fill with X.
 
 Affects only orthograph-reporter.
 

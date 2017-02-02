@@ -302,7 +302,7 @@ sub result {
 	$fh->close;
 	chomp @{$self->{'result'}};
 	# remove the four comment lines
-	splice $self->{'result'}, 0, 4;
+	splice @{$self->{'result'}}, 0, 4;
 	return $self->{'result'};
 }
 
