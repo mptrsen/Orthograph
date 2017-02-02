@@ -136,7 +136,6 @@ if ($verbose) {
 	$message .= "\n";
 }
 
-
 # set the logfile unless specified
 unless ($logfile) {
 	$logfile = File::Spec->catfile($logdir, 'orthograph-reporter-' . $timestring . '.log');
