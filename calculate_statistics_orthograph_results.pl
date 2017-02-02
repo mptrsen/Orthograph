@@ -7,7 +7,7 @@
 #average length, and median length of hits
 #
 #The script must be executed in the directory where the result folders (1 or more species)
-# of Orthograph are placed -> eg /home/user/Documents/Orthograph_results.Results are printed
+# of Orthograph are placed -> eg /home/user/Documents/Orthograph_results. Results are printed
 #in a tab delimited (excel format) .txt file in the same directory
 #
 #Usage: calculate_statistics_orthograph_results.pl species_directory_1 [species_directory_2 ..]
@@ -154,7 +154,7 @@ sub calculate_statistics_orthograph_results {
 	$mean = $total_aa_sites/$no_hits;
 
 	#Calculate N50 for protein hit lengths
-	my @lengths_sorted = sort { $a <=> $b } @lengths;    
+	my @lengths_sorted = sort { $b <=> $a } @lengths;
 	my $N50_threshold = $total_aa_sites/2;   
 	my $sum_check = 0;
     
@@ -175,8 +175,8 @@ sub calculate_statistics_orthograph_results {
 	else {
 		$median_length = $lengths_sorted[((scalar @lengths_sorted)-1)/2];
 	}
-	$max_length = pop @lengths_sorted;
-	$min_length = shift @lengths_sorted;
+	$max_length = shift @lengths_sorted;
+	$min_length = pop @lengths_sorted;
 	
 	my @statistics = ($no_hits, $total_aa_sites, $total_Xs, $total_stop, $N50, $mean, $median_length, $max_length, $min_length);
 	return @statistics;
