@@ -1,5 +1,5 @@
 package Orthograph::Version;
 
-our $version = '0.6.0';
+our $version = '0.6.1';
 
 1;
