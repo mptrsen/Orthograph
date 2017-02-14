@@ -376,6 +376,13 @@ specify a comma-separated list of reference taxon \fIshorthands\fP that are cons
 Affects only orthograph-reporter.
 
 .TP
+\fB--reverse-search-algorithm\fP {blast|swipe}
+specify an algorithm for the reverse search. Valid values are "blast" or "swipe". The SWIPE algorithm is a non-heuristic (deterministic) Smith-Waterman algorithm. To actually use it, you also need to specify the SWIPE executable using \fB--swipe-program\fP.
+
+Affects only orthograph-analyzer.
+
+
+.TP
 \fB--sets-dir\fP DIR
 set the ortholog set directory to DIR. This will contain the HMM files and the BLAST database for each set. Will be created if it does not exist. Defaults to 'sets' in the current directory.
 
@@ -412,6 +419,12 @@ Affects only orthograph-reporter.
 set the substitution character for selenocysteine (U) to X. This is used before BLAST database creation because BLAST does not like Us in amino acid sequences. May be a single character. Defaults to '' (no substitution).
 
 Affects orthograph-manager and orthograph-analyzer.
+
+.TP
+\fB--swipe-program\fP PATH
+set the SWIPE program. Must be the complete path if the location is not in the $PATH. You can also specify options, but the argument needs to be enclosed in quotes then. Defaults to 'swipe'.
+
+Affects only orthograph-analyzer.
 
 .TP
 \fB--temp-dir\fP DIR
