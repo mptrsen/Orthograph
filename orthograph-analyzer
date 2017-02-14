@@ -268,7 +268,12 @@ if ($preparedb) {
 #-------------------------------------------------- 
 
 # exit here if we are just to test dependencies
-if ($testdeps) { Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program, $swipe_program) and exit }
+if ($testdeps) {
+	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program, $swipe_program);
+	exit;
+}
+
+# otherwise, continue
 intro();
 
 # get the set id
