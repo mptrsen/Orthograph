@@ -4,11 +4,6 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
-<<<<<<< HEAD
-## [0.5.15]
-||||||| merged common ancestors
-## [Unreleased]
-=======
 ## [0.6.1]
 
 ### Fixed
@@ -22,7 +17,6 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 * removed `no-fill-with-x` option.
 
 ## [0.6.0]
->>>>>>> devel
 
 ### Added
 
