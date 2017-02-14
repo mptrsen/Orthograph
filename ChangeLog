@@ -4,7 +4,19 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
-## [0.5.15]
+## [0.6.1]
+
+### Fixed
+
+* SWIPE executable is only tested if `reverse-search-algorithm` is set to
+`swipe` and `swipe-program` is set
+
+### Changed
+
+* `fill-with-x` is now disabled by default and must be turned on if desired
+* removed `no-fill-with-x` option.
+
+## [0.6.0]
 
 ### Added
 

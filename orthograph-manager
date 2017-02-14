@@ -83,6 +83,7 @@ my $exonerate_program          = $config->{'exonerate-program'};
 my $hmmsearch_program          = $config->{'hmmsearch-program'};
 my $blast_program              = $config->{'blast-program'};
 my $makeblastdb_program        = $config->{'makeblastdb-program'};
+my $swipe_program              = $config->{'swipe-program'};
 
 # Actions
 my $create                    = $config->{'create'};
@@ -226,7 +227,8 @@ elsif ($listtaxa) {
 
 # test dependencies and everything
 elsif ($testdeps) {
-	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program) and exit;
+	Orthograph::Functions::test_dependencies($translate_program, $alignment_program, $hmmbuild_program, $makeblastdb_program, $hmmsearch_program, $blast_program, $exonerate_program, $swipe_program);
+	exit;
 }
 
 # load a nucleotide ogs file

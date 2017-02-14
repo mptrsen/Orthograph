@@ -42,6 +42,7 @@ GetOptions( $config,
 	'backup-extension=s',
 	'blast-evalue-threshold=f',
 	'blast-max-hits=i',
+	'blast-program=s',
 	'blast-score-threshold=i',
 	'blastoutdir=s',
 	'reverse-search-output-dir=s',
@@ -62,14 +63,14 @@ GetOptions( $config,
 	'exonerate-alignment-model=s',
 	'extend-orf!',
 	'extended-orf-overlap-minimum',
-	'fill-with-x!',
+	'fill-with-x',
 	'genetic-code=i',
 	'header-separator=s',
 	'help|h',
 	'hmmsearch-evalue-threshold=f',
 	'hmmsearch-output-dir=s',
 	'hmmsearch-score-threshold=i',
-	'hmmsearchprog=s',
+	'hmmsearch-program=s',
 	'input-file|i=s',
 	'list-ests|le',
 	'list-ogs|lo',
@@ -187,7 +188,7 @@ $config->{'extend-orf'}                 //= 0;
 $config->{'extended-orf-overlap-minimum'} //= 0.5;
 $config->{'exonerate-program'}          //= 'exonerate';
 $config->{'exonerate-alignment-model'}  //= 'protein2genome';
-$config->{'fill-with-x'}                //= 1;
+$config->{'fill-with-x'}                //= 0;
 $config->{'genetic-code'}               //= 1;
 $config->{'header-separator'}           //= '|';
 $config->{'help'}                       //= 0;
@@ -228,7 +229,7 @@ $config->{'sqlite-database'}            //= 'orthograph.sqlite';
 $config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out
 $config->{'substitute-u-with'}          //= '';
-$config->{'swipe-program'}              //= 'swipe';
+$config->{'swipe-program'}              //= '';
 $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output-directory'}, 'tmp');
 $config->{'test-deps'}                  //= 0;
 $config->{'translate-program'}          //= 'fastatranslate';
