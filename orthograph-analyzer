@@ -69,6 +69,13 @@ if ($config->{'help'}) {
 }
 
 #--------------------------------------------------
+# # The user only wants the version
+#-------------------------------------------------- 
+if ($config->{'version'}) {
+	print "$program_name version $version\n" and exit;
+}
+
+#--------------------------------------------------
 # # Database settings
 #-------------------------------------------------- 
 # which database backend do we use?
@@ -813,7 +820,7 @@ sub intro {
 
 	# check whether the database structure exists
 	if (!db_structure_present()) {
-		fail_and_exit("Orthograph database structure not present! Did you forget to run `orthograph-manager -create`?");
+		fail_and_exit("$program_name database structure not present! Did you forget to run `orthograph-manager -create`?");
 	}
 
 

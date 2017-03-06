@@ -111,6 +111,7 @@ GetOptions( $config,
 	'temp-dir=s',
 	'test-deps',
 	'verbose|v',
+	'version',
 ) or print "Fatal: No suitable option found. I don't know what you want me to do. Terminating.\n" and exit(1);
 
 # if something went wrong
@@ -234,6 +235,7 @@ $config->{'temp-dir'}                   //= File::Spec->catdir($config->{'output
 $config->{'test-deps'}                  //= 0;
 $config->{'translate-program'}          //= 'fastatranslate';
 $config->{'verbose'}                    //= 0;
+$config->{'version'}                    //= 0;
 
 #--------------------------------------------------
 # # compound options
