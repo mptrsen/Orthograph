@@ -4,6 +4,16 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
+## [Unreleased]
+
+### Added
+
+* `--version` option to display version
+
+### Changed
+
+* "Parsing config file ..." message now omitted when not verbose or debug
+
 ## [0.6.1]
 
 ### Fixed
