@@ -130,8 +130,8 @@ my $attached_db_file        = File::Spec->catfile($config->{'output-directory'},
 my $query_attach_file       = "ATTACH DATABASE '$attached_db_file' as '$db_attached'";
 
 # report that this module is loaded
-print "Using SQLite database file '$database'\n" unless $quiet;
-print "Using SQLite database file '$attached_db_file' as species-specific database\n" unless $quiet;
+print "Using SQLite database file '$database'\n" if $verbose;
+print "Using SQLite database file '$attached_db_file' as species-specific database\n" if $verbose;
 unless (-f $attached_db_file) { Orthograph::Functions::touch($attached_db_file) }
 
 # test whether the sqlite binary exists where specified

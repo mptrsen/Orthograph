@@ -13,6 +13,8 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 ### Changed
 
 * "Parsing config file ..." message now omitted when not verbose or debug
+* "Using SQLite database file ..." message now omitted when not verbose or
+debug
 
 ## [0.6.1]
 
