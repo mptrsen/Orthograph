@@ -307,7 +307,7 @@ sub getconfig {
 
 	# parse if exists
 	if (-e $configfile) {
-		print "Parsing config file '$configfile'.\n";
+		print "Parsing config file '$configfile'.\n" if $config->{'verbose'};
 		$config = parse_config($configfile);
 	}#}}}
 	else {
