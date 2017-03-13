@@ -242,13 +242,13 @@ sub search {
 		print STDERR "SWIPE output file does not exist in '$outfile', conducting new search\n" if $debug;
 		# use outfmt 9 for comment lines
 		# the columns and their order is different from blast
-		my @cmd = qq($searchprog --outfmt 9 --evalue $evalue_threshold --min_score $score_threshold --num_threads $num_threads --db $db --query $queryfile --out $outfile);
+		my $cmd = qq($searchprog --outfmt 9 --evalue $evalue_threshold --min_score $score_threshold --num_threads $num_threads --db $db --query "$queryfile" --out "$outfile");
 
 		# do the search or die
-		print STDERR "\n@cmd\n\n"
+		print STDERR "\n$cmd\n\n"
 			if $debug;
 		croak "Fatal: SWIPE search failed: $!\n"
-			if system("@cmd");
+			if system("$cmd");
 
 		# store the resultfile path
 		$self->{'resultfile'} = $outfile;

@@ -889,8 +889,8 @@ sub translate_est {
     print $stdout "$outfile exists, using this one.\n" unless $quiet;
     return($outfile);
   }
-  my @translateline = qq("$translate_program" --geneticcode $genetic_code "$prepared_infile" > "$outfile");
-  system("@translateline") and fail_and_exit('Could not translate input file. Is this nucleotide data?');
+  my $translateline = qq($translate_program --geneticcode $genetic_code '$prepared_infile' > '$outfile');
+  system($translateline) and fail_and_exit('Could not translate input file. Is this nucleotide data?');
   return($outfile);
 }
 
@@ -1114,10 +1114,10 @@ sub align {
 	(my $fasuffix = $fafile) =~ /(\.(fa|fas|fasta))/;
 	my $alnsuffix = '.aln';
 	my $errfile = File::Spec->catfile($logdir, 'alignment.err');
-	my @alignment_cmd = qq("$alignment_program" "$fafile" 2> "$errfile");	# this prints the alignment to STDOUT, must be captured somehow
-	print $stdout "@alignment_cmd\n" if $debug;
+	my $alignment_cmd = qq($alignment_program '$fafile' 2> '$errfile');	# this prints the alignment to STDOUT, must be captured somehow
+	print $stdout "$alignment_cmd\n" if $debug;
 	my $alnf = File::Spec->catfile($alndir, $orthoid . '.aln.fa');
-	my $aln = `@alignment_cmd`
+	my $aln = `$alignment_cmd`
 		or print $stderr "\nFatal: Alignment for $orthoid failed: errcode $?. Look into alignment.err in your log directory for more information.\n" and exit(1);
 	my $alnfh = IO::File->new($alnf, 'w')
 		or print $stderr "\nFatal: Could not open alignment file '$alnf' for writing: $!\n" and exit(1);
@@ -1160,9 +1160,9 @@ sub hmmbuild {
 	my $threads = 1;
 	my $hmmname = basename($hmmfile, $hmmsuffix);
 	if ($num_threads > 1) { $threads = "--cpu $num_threads" } else { $threads = '' }
-	my @hmmbuild_cmd = qq("$hmmbuild_program" $threads -n "$hmmname" "$hmmfile" "$alnfile" > /dev/null);
-	print $stdout "@hmmbuild_cmd\n" if $debug;
-	system("@hmmbuild_cmd") and
+	my $hmmbuild_cmd = qq($hmmbuild_program $threads -n '$hmmname' '$hmmfile' '$alnfile' > /dev/null);
+	print $stdout "$hmmbuild_cmd\n" if $debug;
+	system($hmmbuild_cmd) and
 		return 0;
 	return $hmmfile;
 }
@@ -1208,14 +1208,14 @@ sub make_blastdb {
 	
 
 	# make blast database
-	my @makeblastdbcmd = qq("$makeblastdb_program" -in "$infh" -out "$dbfile" -input_type fasta -dbtype prot -title "$orthoset" -parse_seqids);
+	my $makeblastdbcmd = qq($makeblastdb_program -in '$infh' -out '$dbfile' -input_type fasta -dbtype prot -title '$orthoset' -parse_seqids);
 	if ($debug) {
-		print $stdout "@makeblastdbcmd\n";
+		print $stdout "$makeblastdbcmd\n";
 	}
 	else {
-		push @makeblastdbcmd, qq( > /dev/null );
+		$makeblastdbcmd .= qq( > /dev/null );
 	}
-	system("@makeblastdbcmd") and print $stderr "Fatal: BLAST database generation failed: $! (errcode $?)\n" and exit(1);
+	system($makeblastdbcmd) and print $stderr "Fatal: BLAST database generation failed: $! (errcode $?)\n" and exit(1);
 	#
 	# make sure the tempfile is deleted
 	undef $infh;

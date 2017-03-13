@@ -177,10 +177,10 @@ sub search {#{{{
   else {
 		print STDERR "HMMsearch output file does not exist in '$outfile', conducting new search\n" if $debug;
 		my $threshold_option = $evalue_threshold ? qq(-E $evalue_threshold) : qq(-T $score_threshold);
-    my @hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option --cpu $num_threads $hmmfile $protfile);
-    print STDERR "\n@hmmsearchline\n\n" if $debug;
+    my $hmmsearchline = qq($searchprog --domtblout $outfile $threshold_option --cpu $num_threads $hmmfile $protfile);
+    print STDERR "\n$hmmsearchline\n\n" if $debug;
     # do the search
-    my $result = [ `@hmmsearchline` ];
+    my $result = [ `$hmmsearchline` ];
     confess("Fatal: hmmsearch failed on '$protfile' with HMM '$hmmfile': $!")
       unless (scalar @$result);
 		$self->{'resultfile'} = $outfile;

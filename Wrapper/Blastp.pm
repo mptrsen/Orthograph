@@ -241,13 +241,13 @@ sub search {#{{{
 	else {
 		print STDERR "BLAST output file does not exist in '$outfile', conducting new search\n" if $debug;
 		# use outfmt 7 for comment lines
-		my @blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore qstart qend' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -num_threads $num_threads -db $db -query $queryfile -out $outfile);
+		my $blastcmd = qq($searchprog -outfmt '7 qseqid sseqid evalue bitscore qstart qend' -evalue $evalue_threshold -threshold $score_threshold -max_target_seqs $max_hits -num_threads $num_threads -db $db -query $queryfile -out $outfile);
 
 		# do the search or die
-		print STDERR "\n@blastcmd\n\n"
+		print STDERR "\n$blastcmd\n\n"
 			if $debug;
 		croak "Fatal: BLAST search failed: $!\n"
-			if system("@blastcmd");
+			if system("$blastcmd");
 
 		# store the resultfile path
 		$self->{'resultfile'} = $outfile;

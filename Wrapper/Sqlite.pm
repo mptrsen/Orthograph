@@ -1102,13 +1102,13 @@ sub load_ests_from_file {
 		".mode list",
 	);
 	foreach (@loadqueries) {
-		my @cmd = qq{$sqlite -separator "," "$attached_db_file" "$_"};
+		my $cmd = qq{$sqlite -separator "," "$attached_db_file" "$_"};
 		if ($debug) {
-			print "@cmd\n";
+			print "$cmd\n";
 			print "execute? "; 
 			<STDIN>;
 		}
-		system("@cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $db_table_temp\n";
+		system("$cmd") and die "Fatal: Could not import CSV file '$csvfile' into temporary table $db_table_temp\n";
 	}
 
 	# transfer data from temptable into main table
@@ -2727,11 +2727,11 @@ sub load_set_into_temptable {
 		".mode list",
 	);
 	foreach (@loadqueries) {
-		my @cmd = qq{$sqlite -separator "," "$database" "$_"};
+		my $cmd = qq{$sqlite -separator "," "$database" "$_"};
 		if ($debug) {
-			print "@cmd\n";
+			print "$cmd\n";
 		}
-		system("@cmd") and fail_and_exit("Could not import CSV file '$csvfile' into temporary table $db_table_temp\n");
+		system("$cmd") and fail_and_exit("Could not import CSV file '$csvfile' into temporary table $db_table_temp\n");
 	}
 	return 1;
 }
