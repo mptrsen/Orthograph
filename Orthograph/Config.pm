@@ -166,7 +166,7 @@ undef %C;
 # more variables
 
 $config->{'aaoutdir'}                   //= 'aa';
-$config->{'alignment-program'}          //= 'mafft-linsi --anysymbol';
+$config->{'alignment-program'}          //= 'mafft-linsi';
 $config->{'backup'}                     //= 1;
 $config->{'blast-evalue-threshold'}     //= 1e-5;
 $config->{'blast-max-hits'}             //= 100;
