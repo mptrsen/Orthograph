@@ -1,18 +1,22 @@
 #!/usr/bin/env perl
 
-#Calculate statistics for Orthograph results for one or more species of the analysis
+###############################################################################################
+#Calculate statistics of Orthograph results for one or more species of the analysis
+###############################################################################################
 #
-#Calculate no of hits, absolute total no. of aa sites (including ambiguous sites) for all
-#the hits of each species, number of ambiguous sites (X and *), N50 statistic for protein hits,
-#average length, and median length of hits
+#Calculate no. of hits (no. assigned orthologous protein sequences for each species)
+#absolute total no. of aa sites (including ambiguous sites) for all the hits of each species, 
+#number of ambiguous sites (X and *), N50 statistic for protein hits,
+#average, maximum, minimum and median length of protein hits
 #
 #The script must be executed in the directory where the result folders (1 or more species)
-# of Orthograph are placed -> eg /home/user/Documents/Orthograph_results. Results are printed
+#of Orthograph are placed -> eg /home/user/Documents/Orthograph_results. Results are printed
 #in a tab delimited (excel format) .txt file in the same directory
 #
 #Usage: calculate_statistics_orthograph_results.pl species_directory_1 [species_directory_2 ..]
 #or calculate_statistics_orthograph_results.pl list_with_names_of_species_directories.txt
-
+#Copyright 2017 A.Vasilikopoulos
+###############################################################################################
 
 use strict;
 use warnings;
@@ -94,90 +98,93 @@ else {
 	}                    
 }
 
-########################################################################################################################
+#############################################################################################################################################
 
 sub calculate_statistics_orthograph_results {
 	
 	my $input_dir = shift @_;
 	
+	#generate statistics variables
 	my @lengths;
 	my $no_hits;
-	my $total_aa_sites;
-	my $total_Xs;
-	my $total_stop;
-	my $N50;
-	my $mean;
-	my $median_length;
-	my $max_length;
-	my $min_length;
+	my $total_aa_sites=0;
+	my $total_Xs=0;
+	my $total_stop=0;
+	my $N50=0;
+	my $mean=0;
+	my $median_length=0;
+	my $max_length=0;
+	my $min_length=0;
 	
 	#Change to the directory where the COG fasta files with the aminoacid sequeces are placed
-	chdir("$input_dir/aa"); 
-	
+	my $path_aa="$input_dir/aa";	
+	if (-d $path_aa) {chdir("$path_aa");}	   
+	else{ die"Could not access directory $path_aa:$!\n";}
+		
 	#Count no. of hits for the species
 	$no_hits = qx(ls -1 | wc -l);	
 	chomp $no_hits;
     
 	#Calculate total aa sites, total X sites and total stop codons
-	my @COG_names = glob "*.fa";
+    my @COG_names = glob "*.fa";
+    if (@COG_names){
 	
-	foreach my $COG (@COG_names) {
+	     #loop through the output aa files for each species
+	     foreach my $COG (@COG_names) {
 		
-		open (my $fh_COG, '<', $COG) 
+		    open (my $fh_COG, '<', $COG) 
 			or die"Could not open file \"$COG\":$!\n";
 		
-		while (my $line = <$fh_COG>) {			
-			chomp $line;			
-			if ($line =~ m/>.+\[translate\([1-3]\)\].+/) {
-					 
-				$line = <$fh_COG>;	
-				chomp $line;				 
+		     while (my $line = <$fh_COG>) {			
+			   chomp $line;
+						
+			   if ($line =~ m/>.+\[translate\([1-3]\)\].+/) {				 
+				   $line = <$fh_COG>;	
+				   chomp $line;				 
 			 
-				#Count no of ambiguous sites
-				my @aa = split ("", $line);
-				
-				foreach my $aa (@aa){
-					if    ($aa eq "*") { ++$total_stop }
-					elsif ($aa eq "X") { ++$total_Xs   }
-				}
-				
-				my $length = length $line;			 
-				$total_aa_sites += $length;   
-				push (@lengths, $length);								 
-			}
-		}
-		
-		close $fh_COG;
-	}	
+				   #Count no of ambiguous sites (* and X)
+				   my @aa = split ("", $line);				
+				   foreach my $aa (@aa){
+					   if    ($aa eq "*") { ++$total_stop }
+					   elsif ($aa eq "X") { ++$total_Xs   }
+				   }
+				   #calculate total aa length
+				   my $length = length $line;			 
+				   $total_aa_sites += $length;   
+				   push (@lengths, $length);								 
+			   }
+		     }		
+	    	close $fh_COG;
+	      }	
 	
-	#calculate average length of protein hits
-	$mean = $total_aa_sites/$no_hits;
+	     #calculate average length of protein hits
+	     $mean = $total_aa_sites/$no_hits;
 
-	#Calculate N50 for protein hit lengths
-	my @lengths_sorted = sort { $b <=> $a } @lengths;
-	my $N50_threshold = $total_aa_sites/2;   
-	my $sum_check = 0;
+	     #Calculate N50 for protein hit lengths
+	     my @lengths_sorted = sort { $b <=> $a } @lengths;    
+	     my $N50_threshold = $total_aa_sites/2;   
+	     my $sum_check = 0;
     
-	for (my $i = 0; $i < @lengths_sorted; ++$i){
-		$sum_check += $lengths_sorted[$i];		
-		if ($sum_check >= $N50_threshold) {
-			$N50 = $lengths_sorted[$i];
-			last;
-		}
-	}
+	     for (my $i = 0; $i < @lengths_sorted; ++$i){
+		     $sum_check += $lengths_sorted[$i];		
+		     if ($sum_check >= $N50_threshold) {
+			     $N50 = $lengths_sorted[$i];last;
+		     }
+	     }
 
-	#Calculate median length of protein hits
-	if ($no_hits%2==0) {
-		my $first = $lengths_sorted[scalar @lengths_sorted/2];		
-		my $second = $lengths_sorted[(scalar @lengths_sorted/2)-1];		
-		$median_length = ($first+$second)/2;
-	}
-	else {
-		$median_length = $lengths_sorted[((scalar @lengths_sorted)-1)/2];
-	}
-	$max_length = shift @lengths_sorted;
-	$min_length = pop @lengths_sorted;
-	
+	     #Calculate median length of protein hits
+	     if ($no_hits%2==0) {
+		     my $first = $lengths_sorted[scalar @lengths_sorted/2];		
+		     my $second = $lengths_sorted[(scalar @lengths_sorted/2)-1];		
+		     $median_length = ($first+$second)/2;
+	     }
+	     else {
+		     $median_length = $lengths_sorted[((scalar @lengths_sorted)-1)/2];
+	     }
+	     #calculate max, min lengths
+	     $max_length = shift @lengths_sorted;
+	     $min_length = pop @lengths_sorted;
+    }
 	my @statistics = ($no_hits, $total_aa_sites, $total_Xs, $total_stop, $N50, $mean, $median_length, $max_length, $min_length);
 	return @statistics;
 }

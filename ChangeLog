@@ -16,6 +16,10 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 * "Using SQLite database file ..." message now omitted when not verbose or
 debug
 * Default for `alignment-program` is now `mafft-linsi`
+* Updated `calculate_statistics_orthograph_results.pl`:
+  1. It now checks whether there are hits for each species of the analysis
+  2. If not the values 0 are printed as output for all the statistics
+  3. It also checks whether the aa output directory for each species exists
 
 ## [0.6.1]
 
