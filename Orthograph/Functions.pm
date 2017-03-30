@@ -179,7 +179,7 @@ sub alignment_program_version_ok {
 	my $version = $1;
 	#if ($version eq '7.023b') { return $version, 1 }
 	my @nums = split /\./, $version;
-	if ($nums[0] > 7 or ($nums[0] == 7 and $nums[1] >= 123)) { return ($nums[0] . (defined $nums[1] ? '.' . $nums[1] : ''), 1)  };
+	if ($nums[0] > 7 or ($nums[0] == 7 and $nums[1] >= 273)) { return ($nums[0] . (defined $nums[1] ? '.' . $nums[1] : ''), 1)  };
 	return ($version, 0);
 }
 
@@ -271,7 +271,7 @@ sub test_dependencies {
 	$ok or die "Fatal: exonerate failed version check. Requires at least version 2.2.0. You have version '$version'\n";
 	print "OK: '$exonerate_program' version $version\n";
 	($version, $ok) = alignment_program_version_ok($alignment_program);
-	$ok or die "Fatal: mafft failed version check. Requires at least version 7.023b. You have version '$version'\n";
+	$ok or die "Fatal: mafft failed version check. Requires at least version 7.273. You have version '$version'\n";
 	print "OK: '$alignment_program' version $version\n";
 	($version, $ok) = hmmbuild_version_ok($hmmbuild_program);
 	$ok or die "Fatal: hmmbuild failed version check. Requires at least version 3.1b1. You have version '$version'\n";

@@ -21,6 +21,10 @@ debug
   2. If not the values 0 are printed as output for all the statistics
   3. It also checks whether the aa output directory for each species exists
 
+### Fixed
+
+* Fixed version mismatch in testing dependencies
+
 ## [0.6.1]
 
 ### Fixed
