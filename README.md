@@ -330,7 +330,7 @@ using all pHMMs. Candidate orthologs are verified with a reciprocal search
 against the BLAST database of all proteomes in your ortholog set. The results
 are cached in the database.
 
-The HMMER and BLAST output tables are placed in the 'hmmsearch' and 'blastp'
+The HMMER and BLAST output tables are placed in the 'hmmsearch' and 'blast'
 subdirectories in the output directory. The 'aa' and 'nt' directories are
 created but left empty. A log file called 'orthograph-analyzer-DATE.log' is
 created in the 'log' directory (or wherever you specified).
@@ -349,7 +349,7 @@ the output directory contains five subdirectories:
 
 a) hmmsearch. This contains all the HMMsearch output tables. 
 
-b) blastp. This contains all the BLASTP output tables.
+b) blast. This contains all the BLASTP output tables.
 
 c) aa. This contains the actual result of your analysis. The hit sequences are
 output along with the core-ortholog sequences from your ortholog set, grouped

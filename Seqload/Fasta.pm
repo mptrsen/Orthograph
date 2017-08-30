@@ -10,24 +10,24 @@ Incompatibility with BioPerl is intentional.
 
 =head1 SYNOPSIS
 
-  use Seqload::Fasta qw(fasta2csv check_if_fasta);
-  
-  # test whether this is a valid fasta file
-  check_if_fasta($filename) or die "Not a valid fasta file: $filename\n";
+	use Seqload::Fasta qw(fasta2csv check_if_fasta);
+	
+	# test whether this is a valid fasta file
+	check_if_fasta($filename) or die "Not a valid fasta file: $filename\n";
 
-  # open the file, return fasta file object
-  my $file = Seqload::Fasta->open($filename);
-  
-  # loop through the sequences
-  while (my ($hdr, $seq) = $file->next_seq) {
-    print $hdr . "\n" . $seq . "\n";
-  }
+	# open the file, return fasta file object
+	my $file = Seqload::Fasta->open($filename);
+	
+	# loop through the sequences
+	while (my ($hdr, $seq) = $file->next_seq) {
+	  print $hdr . "\n" . $seq . "\n";
+	}
 
-  # just undef the object, the destructor closes the file
-  undef($file)
+	# just undef the object, the destructor closes the file
+	undef($file)
 
-  # convert a fasta file to a csv file
-  fasta2csv($fastafile, $csvfile);
+	# convert a fasta file to a csv file
+	fasta2csv($fastafile, $csvfile);
 
 
 =head1 METHODS
@@ -41,7 +41,7 @@ Opens a fasta file. Returns a sequence database object.
 Returns the next sequence in a sequence database object as an array (HEADER,
 SEQUENCE). Note that the '>' character is truncated from the header.
 
-  ($header, $sequence) = $file->next_seq;
+	($header, $sequence) = $file->next_seq;
 
 =head1 FUNCTIONS
 
@@ -67,76 +67,76 @@ our @EXPORT_OK = qw( fasta2csv check_if_fasta );
 
 # Constructor. Returns a sequence database object.
 sub open {
-  my ($class, $filename) = @_;
-  open (my $fh, '<', $filename)
-    or confess "Fatal: Could not open $filename\: $!\n";
-  my $self = {
-    'filename' => $filename,
-    'fh'       => $fh
-  };
-  bless($self, $class);
-  return $self;
+	my ($class, $filename) = @_;
+	open (my $fh, '<', $filename)
+		or confess "Fatal: Could not open $filename\: $!\n";
+	my $self = {
+		'filename' => $filename,
+		'fh'       => $fh
+	};
+	bless($self, $class);
+	return $self;
 }
 
 # Returns the next sequence as an array (hdr, seq). 
 # Useful for looping through a seq database.
 sub next_seq {
-  my $self = shift;
-  my $fh = $self->{'fh'};
+	my $self = shift;
+	my $fh = $self->{'fh'};
 	# this is the trick that makes this work
-  local $/ = "\n>"; # change the line separator
-  return unless defined(my $item = readline($fh));  # read the line(s)
-  chomp $item;
-  
-  if ($. == 1 and $item !~ /^>/) {  # first line is not a header
-    croak "Fatal: " . $self->{'filename'} . " is not a FASTA file: Missing descriptor line\n";
-  }
+	local $/ = "\n>"; # change the line separator
+	return unless defined(my $item = readline($fh));  # read the line(s)
+	chomp $item;
+	
+	if ($. == 1 and $item !~ /^>/) {  # first line is not a header
+		croak "Fatal: " . $self->{'filename'} . " is not a FASTA file: Missing descriptor line\n";
+	}
 
 	# remove the '>'
-  $item =~ s/^>//;
+	$item =~ s/^>//;
 
 	# split to a maximum of two items (header, sequence)
-  my ($hdr, $seq) = split(/\n/, $item, 2);
+	my ($hdr, $seq) = split(/\n/, $item, 2);
 	$hdr =~ s/\s+$//;	# remove all trailing whitespace
-  $seq =~ s/>//g if defined $seq;
-  $seq =~ s/\s+//g if defined $seq; # remove all whitespace, including newlines
+	$seq =~ s/>//g if defined $seq;
+	$seq =~ s/\s+//g if defined $seq; # remove all whitespace, including newlines
 
-  return($hdr, $seq);
+	return($hdr, $seq);
 }
 
 # Closes the file and undefs the database object.
 sub close {
-  my $self = shift;
-  my $fh = $self->{'fh'};
-  my $filename = $self->{'filename'};
-  close($fh) or carp("Warning: Could not close $filename\: $!\n");
-  undef($self);
+	my $self = shift;
+	my $fh = $self->{'fh'};
+	my $filename = $self->{'filename'};
+	close($fh) or carp("Warning: Could not close $filename\: $!\n");
+	undef($self);
 }
 
 # Destructor. This is called when you undef() an object
 sub DESTROY {
-  my $self = shift;
-  $self->close;
+	my $self = shift;
+	$self->close;
 }
 
 # Convert a fasta file to a csv file the easy way
 # Usage: Seqload::Fasta::fasta2csv($fastafile, $csvfile);
 sub fasta2csv {
-  my $fastafile = shift;
-  my $csvfile = shift;
+	my $fastafile = shift;
+	my $csvfile = shift;
 
-  my $fastafh = Seqload::Fasta->open($fastafile);
-  CORE::open(my $outfh, '>', $csvfile)
-    or confess "Fatal: Could not open $csvfile\: $!\n";
-  while (my ($hdr, $seq) = $fastafh->next_seq) {
+	my $fastafh = Seqload::Fasta->open($fastafile);
+	CORE::open(my $outfh, '>', $csvfile)
+	  or confess "Fatal: Could not open $csvfile\: $!\n";
+	while (my ($hdr, $seq) = $fastafh->next_seq) {
 		$hdr =~ s/,/_/g;	# remove commas from header, they mess up a csv file
-    print $outfh $hdr . ',' . $seq . "\n"
+		print $outfh $hdr . ',' . $seq . "\n"
 			or confess "Fatal: Could not write to $csvfile\: $!\n";
-  }
-  CORE::close $outfh;
-  $fastafh->close;
+	}
+	CORE::close $outfh;
+	$fastafh->close;
 
-  return 1;
+	return 1;
 }
 
 # validates a fasta file by looking at the FIRST (header, sequence) pair

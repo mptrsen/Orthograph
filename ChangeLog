@@ -4,6 +4,13 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
+## [Unreleased]
+
+### Changed
+
+* Reverse search output directory renamed to 'blast' or 'swipe' depending on
+what the reverse search algorithm is
+
 ## [0.6.2]
 
 ### Added
