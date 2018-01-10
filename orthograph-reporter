@@ -894,7 +894,9 @@ sub is_reciprocal_match {
 	# set the mismatch counter
 	$mismatches = 0;
 
-	foreach my $result (@$blastresults) {
+	for (my $i = 0; $i < scalar @$blastresults; $i++) {
+
+		my $result = $blastresults->[$i];
 		my $reftaxon = get_reftaxon_name($result->{'blast_hit'});
 
 		# this reciprocal hit occurs in the HMM
@@ -934,6 +936,16 @@ sub is_reciprocal_match {
 				}
 			}
 
+		}
+		#
+		# if this one didn't hit anything, and the next hit has the same score, evaluate the next one.
+		#
+		elsif (defined $blastresults->[$i+1] and $blastresults->[$i+1]->{'blast_score'} == $result->{'blast_score'}) {
+			printf $stdout "    reciprocal hit %d (%s) not used in this HMM, but next one has same score, skipping this hit\n",
+				$result->{'blast_hit'},
+				$reftaxon
+					if $verbose;
+			next;
 		}
 		else {  # not found
 			# cry
