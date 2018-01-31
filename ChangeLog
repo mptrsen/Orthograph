@@ -208,45 +208,6 @@ just database IDs
 - Fixed bug in orthograph2hamstrad.pl that prevented summarized data to be
 converted
 
-## [0.5.8] - 2016-02-01
-
-### Changed
-
-- The helper script `summarize_orthograph_results.pl` can now mask internal
-stop codons, clip terminal stop codons and mask selenocystein characters. The
-new options are `-s`, `-t`, and `-u`, respectively.
-
-- The helper script `make-ogs-corresponding.pl` can now run with multiple
-threads using `--num-threads`. This requires the module
-`Parallel::Forkmanager`.
-
-- Changed change log to more sensible format
-
-### Fixed
-
-- orthograph2hamstrad.pl now also accepts directories that were summarized
-using summarize_orthograph_results.pl
-
-- Description is now really optional when uploading a new ortholog set
-
-- Uses ali coordinates instead of env coordinates for everything
-
-
-## [0.5.7] - 2015-11-24
-
-### Changed
-
-- Moved notification on reftaxon skipping to `verbose`, improved wording on
-said message
-
-- Alignment files for ortholog set now contain the reference OGS headers, not
-just database IDs
-
-### Fixed
-
-- Fixed bug in orthograph2hamstrad.pl that prevented summarized data to be
-converted
-
 
 ## [0.5.6] - 2015-08-26
 
