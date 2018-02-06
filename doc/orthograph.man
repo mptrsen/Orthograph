@@ -449,6 +449,18 @@ Affects both orthograph-analyzer and orthograph-reporter.
 \fB-v\fP, \fB--verbose\fP
 be verbose. Report more information about what Orthograph is doing. Available for all Orthograph tools.
 
+.PP
+.SH CONFIGURATION FILE
+.nf
+
+Orthograph will read from the file \fIorthograph.conf\fP by default, and can be directed to read from a different file with the \fB-c\fP option. The configuration file follows a simple syntax:
+
+Options are specified like on the command line (without leading dashes) and separated from their values by a equals sign, with or without surrounding spaces. Example:
+
+    ortholog-set = example_set
+    database-backend = sqlite
+
+Lines starting with a \fB#\fP character are comments and are ignored. Empty lines are ignored.
 
 .PP
 .SH FILES
