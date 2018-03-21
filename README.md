@@ -1,14 +1,19 @@
 ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models
 ===========================================================================================================
 
+If you use Orthograph in your publications, please cite:
+
+**Petersen M**, Meusemann K, Donath A, Dowling D, Liu S, Peters RS, Podsiadlowski L, Vasilikopoulos A, Zhou X, Misof B, Niehuis O (2017) Orthograph: a versatile tool for mapping coding nucleotide sequences to clusters of orthologous genes. *BMC Bioinformatics 18:111*. [doi:10.1186/s12859-017-1529-8](http://dx.doi.org/10.1186/s12859-017-1529-8)
+
 DOCUMENTATION
 =============
 
 A manual page containing a description of all options is in the `doc`
 directory. It can be read using `man -l doc/orthograph.man` or directly with
-`man orthograph` if installed properly (ask your system administrator).
+`man orthograph` if installed properly (ask your system administrator). You can
+also create a PDF of the manual by typing `make doc` in the Orthograph directory.
 
-This is a quickstart guide to help you start off. 
+This is a quickstart guide to help you start off.
 
 SYSTEM REQUIREMENTS
 ===================
@@ -91,24 +96,29 @@ a) The clusters of orthologous groups (COGs)
 
 The information about which genes belong to a COG consists of a tab-delimited
 file that contains at least one line per COG. If you get your COGs from
-[OrthoDB 7][3] (recommended), this is the case. The table must have three
+[OrthoDB 9][3] (recommended), this is the case. The table must have three
 columns:
 
 	COG_ID	sequence_ID	taxon_name
 
-In an OrthoDB 7 file, each line has a number of tab-delimited fields like this:
+In an OrthoDB 9 file, each line has a number of tab-delimited fields with these headers:
 
-	EOG7M10DZ	AECH19093	AECH19093-PA	Acromyrmex echinatior	Panamanian leafcutter ant	AECHI	1282	IPR006121,IPR008250,IPR005834,IPR023214 
+	pub_og_id	og_name	level_taxid	organism_taxid	organism_name	int_prot_id	pub_gene_id	description
 
-The 'EOG7M10DZ' field is the COG ID. The line must also have an unambiguous
-sequence ID. For OrthoDB version 7, it is always in the third field, i.e.,
-'AECH19093-PA'. The taxon name is in the fourth field and the sixth field
-contains the taxon shorthand. An OrthoDB 7 table can be re-formatted using
-`cut`, picking out the columns 1, 3, and 4:
+The 'pub_og_id' field is the COG ID. The line must also have an unambiguous
+sequence ID. For OrthoDB version 9, it is always in the seventh field, i.e.,
+'pub_gene_id'. The taxon name is in the fifth field. An OrthoDB 9 table can be
+re-formatted using `cut`, picking out the columns 1, 7, and 5:
 
-	$ cut -f1,3,4 ORTHODBFILE > ORTHOGRAPH_INPUT_FILE
+	$ cut -f 1,7,5 ORTHODBFILE > ORTHOGRAPH_INPUT_FILE
 
-You may need to filter the OrthoDB 7 file to contain only those taxa you want.
+In the resulting file, you need to remove the header and swap columns two and
+three. Or do this in one go:
+
+	$ cut -f 1,7,5 ORTHODBFILE | awk -F "\t" '{ OFS = "\t"; print $1, $3, $2 }' | tail -n +2 > ORTHOGRAPH_INPUT_FILE
+
+
+You may need to filter the OrthoDB 9 file to contain only those taxa you want.
 Probably the easiest way is to do this using `grep`:
 
 - create a file containing the taxon shorthands you want. The shorthands must
@@ -287,6 +297,30 @@ OrthoDB 7, you can use the instructions above to format the table accordingly.
 Dependent on your OrthoDB query, you may need to filter your file so that it
 contains only the taxa you want in the ortholog set. 
 
+The interaction should look like this:
+
+	Setting up core ortholog set from 'lophotrochozoa.filtered.tsv' in database 'lophotrochozoa.sqlite' on host 'localhost'... (press CTRL+C to abort)
+	
+	Enter the set name (required; ASCII only, no commas!): Lophotrochozoa
+	
+	Enter a description for the set (optional but recommended). IMPORTANT: Do not use any commas (,): Lophotrochozoa set as obtained from OrthoDB 9 with 1997 clusters of single-copy genes
+	
+	This is a list of present OGS in the database:
+	[#] Taxon name             version  type  sequences
+	---------------------------------------------------
+	[1] Biomphalaria_glabrata  1        aa    14141
+	[2] Capitella_teleta       1        aa    32175
+	[3] Crassostrea_gigas      1        aa    26089
+	[4] Helobdella_robusta     1        aa    23432
+	[5] Lottia_gigantea        1        aa    23340
+	
+	Enter the OGS ID for Biomphalaria_glabrata or 0 if you don't want to use this OGS: 1
+	Enter the OGS ID for Capitella_teleta or 0 if you don't want to use this OGS: 2
+	Enter the OGS ID for Crassostrea_gigas or 0 if you don't want to use this OGS: 3
+	Enter the OGS ID for Helobdella_robusta or 0 if you don't want to use this OGS: 4
+	Enter the OGS ID for Lottia_gigantea or 0 if you don't want to use this OGS: 5
+	Done: 9985 orthologous sequence relationships (1997 COGs) for set Lophotrochozoa
+
 Make a note of your ortholog set name. You will need it later.
 
 To check what sets have been uploaded so far, call `orthograph-manager -ls`. 
@@ -324,11 +358,11 @@ set, if they don't exist. This may take a long time depending on the size of
 your set, but rest assured, once the pHMMs exist, subsequent analyses will be
 faster by that amount of time. 
 
-After that, your input file is translated into all six possible reading frames.
-The translated file is placed in your output directory. This library is searched
-using all pHMMs. Candidate orthologs are verified with a reciprocal search
-against the BLAST database of all proteomes in your ortholog set. The results
-are cached in the database.
+After that, the nucleotide sequences in your input file are translated into all
+six possible reading frames. The translated library is placed in your output
+directory. This library is searched using all pHMMs. Candidate orthologs are
+verified with a reciprocal search against the BLAST database of all proteomes
+in your ortholog set. The results are cached in the database.
 
 The HMMER and BLAST output tables are placed in the 'hmmsearch' and 'blast'
 subdirectories in the output directory. The 'aa' and 'nt' directories are
@@ -361,7 +395,7 @@ e) log. This contains log files, such as the entire standard output for both
 `orthograph-analyzer` and `orthograph-reporter`:
 
 
-The main output directory contains two report tables after running
+The main output directory contains three report tables after running
 orthograph-reporter:
 
 - best-reciprocal-hits.txt: a tabular listing of all sequences (sections) that
@@ -414,6 +448,11 @@ places them in OUTPUT_DIRECTORY/aa and OUTPUT_DIRECTORY/nt, respectively.
 OUTPUT_DIRECTORY must exist, the aa and nt subdirectories will be created.
 
 
+# Copyright
+
+Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
+(c) 2011-2018 Malte Petersen <mptrsen@uni-bonn.de>
+
 
 APPENDIX
 ========
@@ -454,6 +493,7 @@ orthograph processes.
 
 Required Perl modules
 ---------------------
+
 Orthograph uses only modules that are present in any standard Perl distribution. 
 Additional modules such as IO::Tee and File::Which are shipped with Orthograph.
 If you get an error like "Can't locate Some/Thing.pm in @INC" it means that
@@ -482,9 +522,6 @@ this is the case and make sure it contains these modules:
 -  IO::File
 -  List::Util 
 -  Time::HiRes
-
-Part of my Diploma thesis at the ZFMK/zmb, Bonn, Germany 
-(c) 2011-2012 Malte Petersen <mptrsen@uni-bonn.de>
 
 [1]: <http://cpansearch.perl.org/src/JWIED/DBD-mysql-2.1028/INSTALL.html#special%20systems>
 [2]: <http://forums.mysql.com/read.php?51,389833,389833>
