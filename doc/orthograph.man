@@ -71,6 +71,12 @@ set the output directory for BLAST result files. Will be created if it does not 
 Affects only orthograph-analyzer.
 
 .TP
+\fB--brh-only\fP
+Only return the best hit for each reference ortholog. This disables concatenating multiple fragments if parts of the query gene are found in more than one place. It also speeds up the analysis.
+
+Affects only orthograph-reporter.
+
+.TP
 \fB--clear-database\fP
 clear the database of old results. This will give you a clean slate before a new analysis. Does not remove any ortholog sets, only alignment results. This is the default, disable it by saying \fB--no-clear-database\fP.
 
@@ -218,6 +224,11 @@ Affects only orthograph-analyzer.
 .TP
 \fB--input-file\fP FILE
 set the input file. Required for \fIorthograph-analyzer\fP.
+
+.TP
+\fB--introns\fP
+Model introns. This effectively sets the alignment model for Exonerate to 'protein2genome'. The protein2dna model compares a protein sequence to a DNA sequence, incorporating all the appropriate gaps and frameshifts. The protein2genome model allows alignment of a protein sequence to genomic DNA. This is similar to the protein2dna model, with the addition of modelling of introns and intron phases. You should use 'protein2genome' unless you have sequences that contain introns. Defaults to 'protein2genome'.
+Affects only \fIorthograph-analyzer\fP.
 
 .TP
 \fB-le\fP, \fB--list-ests\fP

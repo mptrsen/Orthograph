@@ -16,10 +16,18 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 * Added example output for `orthograph-manager` upon ortholog set creation to
 the quickstart guide in the README, for comparison purposes.
 * Added citation info to README
+* Added description of `brh-only` option to manual
 
 ### Changed
 
 * Updated information in README.md to most recent OrthoDB version
+* Added option `introns` as a simpler way of specifying
+`exonerate-alignment-model`
+
+### Notes
+
+* In future releases, `exonerate-alignment-model` will default to protein2dna,
+meaning that introns will be excluded 
 
 ## [0.6.3]
 

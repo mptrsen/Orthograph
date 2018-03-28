@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # Orthograph. If not, see http://www.gnu.org/licenses/.
 #-------------------------------------------------- 
+
 package Orthograph::Config;
 use strict;
 use warnings;
@@ -31,6 +32,7 @@ our @EXPORT_OK = qw( $config );
 my $program_name = 'Orthograph';
 my $configfile = File::Spec->catfile($FindBin::Bin, lc($program_name) . '.conf');
 our $config = getconfig(); 
+my $seen = { };
 
 #--------------------------------------------------
 # # Get command line options. These may override variables set in the config file.
@@ -72,6 +74,7 @@ GetOptions( $config,
 	'hmmsearch-score-threshold=i',
 	'hmmsearch-program=s',
 	'input-file|i=s',
+	'introns!',
 	'list-ests|le',
 	'list-ogs|lo',
 	'list-sets|ls',
@@ -199,6 +202,7 @@ $config->{'hmmsearch-score-threshold'}  //= 10;
 $config->{'hmmsearch-evalue-threshold'} //= 1e-5;
 $config->{'hmmsearch-output-dir'}       //= basename($config->{'hmmsearch-program'});
 $config->{'input-file'}                 //= '';
+$config->{'introns'}                    //= 1;
 $config->{'load-ogs-nucleotide'}        //= '';
 $config->{'load-ogs-peptide'}           //= '';
 $config->{'make-set'}                   //= 0;
@@ -268,6 +272,14 @@ if ($config->{'reverse-search-algorithm'} !~ /^(blast|swipe)$/) {
 if ($config->{'exonerate-alignment-model'} !~ /^protein2(genome|dna)$/) {
 	print STDERR "Fatal: Alignment model misspecified. Must be 'protein2genome' or 'protein2dna'.\n";
 	exit 1;
+}
+
+# use alignment model that incorporates introns unless the user doesn't want those
+if ($config->{'introns'}) {
+	$config->{'exonerate-alignment-model'} = 'protein2genome';
+}
+else {
+	$config->{'exonerate-alignment-model'} = 'protein2dna';
 }
 
 if ($config->{'verbose'} and $config->{'quiet'}) {
