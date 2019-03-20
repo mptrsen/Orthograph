@@ -1,6 +1,13 @@
 ORTHOGRAPH: Orthology prediction using a Graph-based, Reciprocal Approach with Profile Hidden Markov models
 ===========================================================================================================
 
+CITATION
+========
+
+Orthograph was published in [BMC Bioinformatics
+(2017)](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-017-1529-8).
+Please cite this paper in your academic publications. Thank you.
+
 DOCUMENTATION
 =============
 
