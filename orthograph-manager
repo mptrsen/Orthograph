@@ -661,6 +661,7 @@ sub get_all_ogsids {
 		if ($line =~ /^Group\tGene\tProtein/) { next }
 		# skip empty lines as well
 		if ($line =~ /^\s*$/) { next }
+		$line =~ s/\r\n?/\n/g; # convert to unix-style line breaks
 		chomp $line;
 		@fields = split "\t", $line;
 		next if exists $seen->{$fields[2]};
