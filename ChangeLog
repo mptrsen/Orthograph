@@ -4,6 +4,16 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
+## 0.7.0
+
+### Fixed
+
+* Did not allow changing `sqlite-program` on the command line
+
+### Added
+
+* Option `input-is-amino-acid` to allow analysis of protein data directly
+
 ## 0.6.3
 
 ### Fixed

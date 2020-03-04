@@ -220,6 +220,12 @@ Affects only orthograph-analyzer.
 set the input file. Required for \fIorthograph-analyzer\fP.
 
 .TP
+\fB--input-is-amino-acid\fP FILE
+input is amino acid data. This allows to analyze protein sequences directly (it effectively skips the translation step). 
+
+Affects only \fIorthograph-analyzer\fP.
+
+.TP
 \fB-le\fP, \fB--list-ests\fP
 list a summary of all est data present in the database.
 

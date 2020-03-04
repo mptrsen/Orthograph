@@ -123,6 +123,7 @@ my $configfile                 = $config->{'configfile'};
 my $continue                   = $config->{'continue'};
 my $debug                      = $config->{'debug'};
 my $input_file                 = $config->{'input-file'};
+my $input_is_amino_acid        = $config->{'input-is-amino-acid'};
 my $genetic_code               = $config->{'genetic-code'};
 my $hmmfile                    = $config->{'hmmfile'};
 my $hmmoutdir                  = $config->{'hmmsearch-output-dir'};
@@ -328,7 +329,13 @@ unless ($quiet) {
 #--------------------------------------------------
 # # translate the ESTs to protein, feed that stuff to the database
 #-------------------------------------------------- 
-$protfile = translate_est(File::Spec->catfile($input_file));
+if ($input_is_amino_acid) {
+	print $stdout "Input specified to be amino acid, not translating\n";
+	$protfile = $input_file;
+}
+else {
+	$protfile = translate_est(File::Spec->catfile($input_file));
+}
 
 # clear database of data from the same species
 if ($clear_database) {
