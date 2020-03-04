@@ -95,6 +95,9 @@ elsif ($use_sqlite) {
 	$attached_db_file = Wrapper::Sqlite::attached_db_file();
 }
 
+# make sure we can use Parallel::ForkManager
+
+
 #--------------------------------------------------
 # # Programs in the order of their use
 #-------------------------------------------------- 
@@ -251,11 +254,10 @@ if ($verbose) {
 #-------------------------------------------------- 
 my $forkmanager = eval {
 	require Parallel::ForkManager;
+	Parallel::ForkManager->new($num_threads);
 };
 unless ($forkmanager) {
-	if ($num_threads != 1) {
-		print "Error: Requested to multi-thread but Parallel::ForkManager not usable\n" and exit 1;	
-	}
+	print "Error: Parallel::ForkManager not usable. Did you install the Perl module?\n" and exit 1;	
 }
 
 #--------------------------------------------------
