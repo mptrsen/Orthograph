@@ -52,7 +52,7 @@ my $version = $Orthograph::Version::version;
 # this message will be printed later when we have a log file handle
 my $message = "$program_name: Orthology prediction using a Graph-based,\n" .
 	"Reciprocal Approach with Profile Hidden Markov models\n" .
-	"Copyright 2015 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
+	"Copyright 2020 Malte Petersen <mptrsen\@uni-bonn.de>\n" .
 	"Version $version\n\n";
 my $program_file = $FindBin::Script;
 
