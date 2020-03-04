@@ -659,6 +659,8 @@ sub get_all_ogsids {
 	while (my $line = <$fh>) {
 		# skip the first line if it is some orthodb file
 		if ($line =~ /^Group\tGene\tProtein/) { next }
+		# skip empty lines as well
+		if ($line =~ /^\s*$/) { next }
 		chomp $line;
 		@fields = split "\t", $line;
 		next if exists $seen->{$fields[2]};
