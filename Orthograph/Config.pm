@@ -227,7 +227,7 @@ $config->{'reverse-search-output-dir'}  //= $config->{'reverse-search-algorithm'
 $config->{'sets-dir'}                   //= 'sets';
 $config->{'soft-threshold'}             //= 0;
 $config->{'species-name'}               //= '';
-$config->{'sqlite-program'}             //= '/usr/bin/sqlite3';
+$config->{'sqlite-program'}             //= 'sqlite3';
 $config->{'sqlite-database'}            //= 'orthograph.sqlite';
 $config->{'strict-search'}              //= 0;
 # substitution character for selenocysteine, which normally leads to blast freaking out

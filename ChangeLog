@@ -4,7 +4,13 @@ Notable changes to the Orthograph project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 This file tries to adhere to [Good Changelog Principles](https://github.com/olivierlacan/keep-a-changelog).
 
-## 0.7.0
+## [0.7.2]
+
+### Changed
+
+* Remove absolute path to SQLite binary, rely on it being in PATH instead
+
+## [0.7.0]
 
 ### Fixed
 
@@ -14,7 +20,7 @@ This file tries to adhere to [Good Changelog Principles](https://github.com/oliv
 
 * Option `input-is-amino-acid` to allow analysis of protein data directly
 
-## 0.6.3
+## [0.6.3]
 
 ### Fixed
 
